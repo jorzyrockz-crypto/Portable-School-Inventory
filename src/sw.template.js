@@ -3,6 +3,9 @@
  * - Precaches the whole app on first visit, so it opens with no internet.
  * - Page (index.html): network first (3 s timeout), falls back to the cached copy.
  * - Assets (CSS, fonts, icons): cache first – they are versioned via CACHE below.
+ * - firebase-config.js (Supply Requests settings): network first like the page, so a
+ *   config edited on GitHub reaches phones without a rebuild.
+ * - Firebase SDK (assets/cloud/) is not precached; it is cached the first time it is used.
  * - Text recognition for "Scan ICS" (assets/ocr/, ~7 MB) is not precached; it is kept
  *   in its own cache the first time it is used, so app updates don't download it again.
  * Inventory data itself lives in localStorage and never touches this cache.
@@ -54,6 +57,20 @@ async function handleNavigation(request) {
   }
 }
 
+async function handleConfig(request) {
+  const cache = await caches.open(CACHE);
+  try {
+    const response = await fetchWithTimeout(new Request(request, { cache: 'no-cache' }), NETWORK_TIMEOUT_MS);
+    if (response && response.ok) {
+      cache.put('./firebase-config.js', response.clone());
+      return response;
+    }
+    throw new Error(`HTTP ${response && response.status}`);
+  } catch (err) {
+    return (await cache.match('./firebase-config.js', { ignoreSearch: true })) || Response.error();
+  }
+}
+
 async function handleAsset(request) {
   const isOcr = new URL(request.url).pathname.includes('/assets/ocr/');
   const cache = await caches.open(isOcr ? OCR_CACHE : CACHE);
@@ -72,6 +89,8 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(handleNavigation(request));
+  } else if (url.pathname.endsWith('/firebase-config.js')) {
+    event.respondWith(handleConfig(request));
   } else {
     event.respondWith(handleAsset(request));
   }

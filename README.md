@@ -29,6 +29,37 @@ Everything else moved out of the way:
 | **Reports** tab | valuation, condition, property tags, categories, rooms, print and APP-CSE summary |
 | **☰ More** menu | add custom item, import, scan ICS / QR, print, CSV exports, school info, backup, restore, change history, sample data |
 
+## Supply requests & Purchase Requests
+
+Teachers request supplies from their own phones; the custodian reviews each request, checks it against stock, approves it, and turns approved requests into a **Purchase Request (Appendix 60)**.
+
+**Teacher**
+1. Open the invite link (or scan the QR code) the custodian shared, then type your name, position and grade/section once.
+2. Tap **New supply request**, search for items (e.g. “bond paper”, “ballpen”) or type anything not in the catalog, set quantities, add a purpose and a needed-by date, and send.
+3. Follow the status on the same screen: *To review → Approved → Being purchased (PR No.) → Supplied*, or *Declined* with the custodian’s reason. A pending request can still be cancelled.
+
+A teacher’s phone only shows the request screen and only that teacher’s own requests — never the school inventory.
+
+**Custodian**
+1. On Home, tap **Supply requests** (also in ☰ More) and sign in with an email and password. The first sign-in creates your school.
+2. Tap **Invite** and send the link or QR code to your faculty group chat.
+3. **To review**: open a request to see *asked / on hand / to buy* for every line. Edit names, quantities, units and unit costs, link a line to an inventory item, add a note, then **Approve** or **Decline** (with a reason). You can also enter walk-in requests with **New**.
+4. **To purchase**: tick approved requests and tap **Prepare Purchase Request**. Only the quantity not in stock goes on the PR (asked minus on hand, editable). Identical items from several teachers are added together, and their names go in the Purpose.
+5. Check the PR header (entity, fund cluster, office, PR No., responsibility center code, date), the lines and the signatories, then **Save & print**. Saved PRs are listed under **Purchase requests**, where you can reprint them or export them to CSV. Mark a request **Supplied** once the items are handed over.
+
+### Supply requests: Firebase setup (one time, ~10 minutes)
+
+Requests travel through your own free Firebase project (Spark plan). Until it is set up, the rest of the app works as usual and the Supply requests card shows these steps.
+
+1. Go to <https://console.firebase.google.com>, click **Create a project**, and give it a name (Google Analytics is not needed).
+2. **Build → Authentication → Get started → Sign-in method**: turn on **Email/Password** (for the custodian) and **Anonymous** (for teachers).
+3. **Authentication → Settings → Authorized domains**: add `jorzyrockz-crypto.github.io`.
+4. **Build → Firestore Database → Create database**: pick a location near you (e.g. `asia-southeast1`, Singapore) and start in **production mode**.
+5. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests, and only the custodian read all requests and create Purchase Requests.
+6. **Project settings (⚙) → Your apps → Web (`</>`)**: register an app, copy the `firebaseConfig` object, paste it into [`firebase-config.js`](firebase-config.js) in place of `null`, and commit to `main`.
+
+The config values are not secret; access is controlled by the published rules. Phones pick up the new config the next time they open the app online.
+
 ## Equipment condition tracking
 
 For equipment (ICS/PAR) items, the item editor records how many on-hand units are

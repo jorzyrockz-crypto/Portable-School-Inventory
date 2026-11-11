@@ -1,0 +1,73 @@
+rules_version = '2';
+
+// CustodianPro · Supply Requests
+// Publish in Firebase console → Firestore Database → Rules (see README).
+//
+//   schools/{schoolId}                        a school; custodians[] may manage it
+//   schools/{schoolId}/requests/{id}          supply requests from teachers
+//   schools/{schoolId}/purchaseRequests/{id}  Purchase Requests (Appendix 60)
+//
+// Teachers sign in anonymously from the invite link: they can send requests and see
+// or cancel only their own. The property custodian signs in with email + password
+// and sees, reviews and approves every request of their school.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function withPassword() {
+      return signedIn() && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+    function isCustodian(schoolId) {
+      return signedIn() &&
+        request.auth.uid in get(/databases/$(database)/documents/schools/$(schoolId)).data.custodians;
+    }
+    function shortText(v, max) { return v is string && v.size() <= max; }
+
+    match /schools/{schoolId} {
+      // Teachers read the school name after opening the invite link (the ID is the secret).
+      allow get: if signedIn();
+      // A custodian finds their own school on a new device (query: custodians array-contains uid).
+      allow list: if signedIn() && request.auth.uid in resource.data.custodians;
+      allow create: if withPassword()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.custodians == [request.auth.uid]
+        && shortText(request.resource.data.name, 120);
+      allow update: if isCustodian(schoolId)
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if false;
+
+      match /requests/{requestId} {
+        allow create: if signedIn()
+          && exists(/databases/$(database)/documents/schools/$(schoolId))
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'position', 'office', 'purpose', 'neededBy',
+                                                   'lines', 'status', 'createdAt', 'clientAt', 'via'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.status == 'pending'
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
+          && shortText(request.resource.data.position, 80)
+          && shortText(request.resource.data.office, 80)
+          && shortText(request.resource.data.purpose, 300)
+          && request.resource.data.lines is list
+          && request.resource.data.lines.size() > 0 && request.resource.data.lines.size() <= 50;
+
+        // Teachers: only their own requests (the app queries where uid == their uid).
+        allow get, list: if signedIn()
+          && (resource.data.uid == request.auth.uid || isCustodian(schoolId));
+
+        // Custodian: review, approve, decline, put on a PR. Teacher: cancel while pending.
+        allow update: if (isCustodian(schoolId) && request.resource.data.uid == resource.data.uid)
+          || (signedIn() && resource.data.uid == request.auth.uid
+              && resource.data.status == 'pending'
+              && request.resource.data.status == 'cancelled'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
+        allow delete: if false;
+      }
+
+      match /purchaseRequests/{prId} {
+        allow read, create, update: if isCustodian(schoolId);
+        allow delete: if false;
+      }
+    }
+  }
+}
