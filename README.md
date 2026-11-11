@@ -36,6 +36,20 @@ transferred or lost) from its list first. The QR generator and reader are bundle
 `assets/vendor/`, so tagging and scanning work offline too. The camera needs HTTPS (GitHub Pages
 is fine) and permission to use the camera.
 
+## Change history
+
+Every change is recorded automatically with the date, time and custodian name:
+- counts (taps on the same item within 3 minutes are merged, e.g. *Quantity 12 → 15*)
+- prices, minimum alert levels, locations and classification
+- condition
+- property numbers: tagged, renamed or removed (with the reason you enter), plus scans and
+  label printing
+- school info, sample data, reset, backups and restores
+
+Open it from **Change History** in *Quick Custodian Tools*, or from the clock button in the item
+editor / *History* in the property-number list to see one item. You can filter by type, search,
+and **Export CSV**. The latest 3,000 changes are kept on the device and included in backups.
+
 ## Equipment vs. consumable classification
 
 Each item is automatically classified as **Equipment (ICS/PAR)** or **Consumable (RIS)** by

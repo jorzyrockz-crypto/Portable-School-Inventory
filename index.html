@@ -458,6 +458,10 @@
               <span>Restore</span>
             </button>
             <input type="file" id="restoreFileInput" accept=".json,application/json" class="hidden" onchange="importBackupJSON(event)">
+            <button onclick="openHistory()" class="col-span-2 h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition" title="Every change: counts, condition, tags, scans">
+              <i class="ph-bold ph-list-magnifying-glass text-brand-600"></i>
+              <span>Change History</span>
+            </button>
           </div>
           <p id="backupStatusLine" class="text-[11px] text-slate-500 flex items-center gap-1.5">
             <i class="ph-bold ph-clock-counter-clockwise"></i>
@@ -700,9 +704,14 @@
           </div>
           <h3 id="modalItemName" class="font-bold text-base text-slate-900 mt-1.5">Item Name</h3>
         </div>
-        <button onclick="closeItemModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
-          <i class="ph-bold ph-x"></i>
-        </button>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button onclick="openHistory(activeModalCode)" title="Change history of this item" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-brand-50 text-slate-500 hover:text-brand-600 flex items-center justify-center">
+            <i class="ph-bold ph-clock-counter-clockwise"></i>
+          </button>
+          <button onclick="closeItemModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+            <i class="ph-bold ph-x"></i>
+          </button>
+        </div>
       </div>
 
       <div class="space-y-4 py-4">
@@ -990,6 +999,38 @@
       <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
         <button onclick="closeCustomItemModal()" class="h-10 px-4 rounded-xl bg-slate-100 text-xs font-bold text-slate-700">Cancel</button>
         <button onclick="saveCustomItem()" class="h-10 px-5 rounded-xl bg-brand-600 text-xs font-bold text-white shadow-sm">Add to Inventory</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 6: CHANGE HISTORY (audit log, newest first) -->
+  <div id="historyModal" class="fixed inset-0 z-[55] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200">
+      <div class="p-5 pb-3 border-b border-slate-100">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
+              <i class="ph-bold ph-clock-counter-clockwise text-brand-600"></i> Change History
+            </h3>
+            <p id="historySubtitle" class="text-xs text-slate-500 mt-0.5"></p>
+          </div>
+          <button onclick="closeHistory()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+            <i class="ph-bold ph-x"></i>
+          </button>
+        </div>
+        <div id="historyItemFilter" class="hidden mt-2.5"></div>
+        <div class="relative mt-3">
+          <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input id="historySearch" type="text" oninput="historyFilter.limit = 150; renderHistory()" placeholder="Search changes, items, property numbers…" class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none">
+        </div>
+        <div id="historyKindChips" class="flex gap-1.5 mt-2.5 overflow-x-auto no-scrollbar"></div>
+      </div>
+      <div id="historyList" class="flex-1 min-h-0 overflow-y-auto px-5 pb-3"></div>
+      <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-3">
+        <p class="text-[11px] text-slate-500">Stored on this device and included in backups (latest 3,000 changes).</p>
+        <button onclick="exportHistoryCSV()" class="shrink-0 h-10 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
+          <i class="ph-bold ph-file-csv text-emerald-600"></i> Export CSV
+        </button>
       </div>
     </div>
   </div>
@@ -1534,7 +1575,9 @@
         try { customRawItems = JSON.parse(savedCustom); } catch (e) { customRawItems = []; }
       }
 
+      loadHistory();
       rebuildCatalogList();
+      resetHistoryBase();
       renderCategoryPills();
       renderItems();
       updateDockStats();
@@ -1633,6 +1676,7 @@
     }
 
     function saveState() {
+      recordHistory();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
       markUnsavedChanges();
       updateDockStats();
@@ -2117,7 +2161,7 @@
         updateSchoolHeader();
       }
 
-      saveState();
+      saveStateWith({ summary: { kind: 'system', text: `Loaded sample inventory (${Object.keys(sampleData).length} items)` } });
       renderItems();
       renderDashboard();
     }
@@ -2440,7 +2484,7 @@
             delete userState[item.code].units;
           }
         });
-        saveState();
+        saveStateWith({ summary: { kind: 'system', text: `Reset all quantities to 0${tagCount ? ` and removed ${plural(tagCount, 'property number')}` : ''}` } });
         renderItems();
         renderDashboard();
       }
@@ -2659,7 +2703,7 @@
       if (typeChoice === 'EQUIPMENT' || typeChoice === 'CONSUMABLE') userState[code].typeOverride = typeChoice;
 
       rebuildCatalogList();
-      saveState();
+      saveStateWith({ summary: { kind: 'edit', code, text: `Added custom item · quantity ${qty} ${unit}${note ? ` · ${note}` : ''}` } });
       renderItems();
       renderDashboard();
       closeCustomItemModal();
@@ -2734,6 +2778,7 @@
     }
 
     function saveSchoolInfo() {
+      const before = { ...schoolInfo };
       schoolInfo = {
         ...schoolInfo,
         school: document.getElementById('infoSchool').value.trim(),
@@ -2744,6 +2789,9 @@
         propPrefix: cleanPrefix(document.getElementById('infoPropPrefix').value)
       };
       localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+      const labels = { school: 'school name', uacs: 'agency/division', custodian: 'custodian', position: 'position', head: 'school head', propPrefix: 'property number prefix' };
+      const changed = Object.keys(labels).filter(k => (before[k] || '') !== (schoolInfo[k] || ''));
+      if (changed.length) logHistory('system', `School info updated: ${changed.map(k => labels[k]).join(', ')}`);
       markUnsavedChanges();
       updateSchoolHeader();
       renderPrintReport();
@@ -2806,7 +2854,8 @@
         exportedAt: new Date().toISOString(),
         schoolInfo,
         userState,
-        customRawItems
+        customRawItems,
+        history: changeHistory
       };
       const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -2819,6 +2868,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 30000);
 
       markBackedUp(Date.now());
+      logHistory('system', 'Backup file saved');
       showToast('Backup file saved – keep a copy off this device', 'ph-floppy-disk');
     }
 
@@ -2863,8 +2913,11 @@
         applyData({
           userState: data.userState,
           schoolInfo: data.schoolInfo && typeof data.schoolInfo === 'object' ? data.schoolInfo : schoolInfo,
-          customRawItems: Array.isArray(data.customRawItems) ? data.customRawItems : []
+          customRawItems: Array.isArray(data.customRawItems) ? data.customRawItems : [],
+          // Older backups have no history: keep this device's log in that case.
+          history: Array.isArray(data.history) ? data.history : safetyCopy.history
         });
+        logHistory('system', `Restored backup from ${savedOn}`);
         // The device now matches a backup file, so nothing is unsaved.
         const restoredAt = Date.parse(data.exportedAt);
         markBackedUp(Math.max(safetyCopy.meta.lastBackupAt || 0, isNaN(restoredAt) ? 0 : restoredAt) || Date.now());
@@ -2874,6 +2927,7 @@
           onClick: () => {
             applyData(safetyCopy);
             restoreBackupMeta(safetyCopy.meta);
+            logHistory('system', 'Undid backup restore');
             showToast('Restore undone – previous data is back', 'ph-arrow-counter-clockwise');
           }
         });
@@ -2900,19 +2954,25 @@
         userState: JSON.parse(JSON.stringify(userState)),
         schoolInfo: JSON.parse(JSON.stringify(schoolInfo)),
         customRawItems: JSON.parse(JSON.stringify(customRawItems)),
+        history: changeHistory.slice(),
         meta: getBackupMeta()
       };
     }
 
-    function applyData({ userState: us, schoolInfo: si, customRawItems: cri }) {
+    function applyData({ userState: us, schoolInfo: si, customRawItems: cri, history: hist }) {
       userState = us || {};
       schoolInfo = si || { school: "", uacs: "", custodian: "", position: "" };
       customRawItems = cri || [];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
       localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
       localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
+      if (Array.isArray(hist)) {
+        changeHistory = hist.filter(e => e && typeof e.t === 'number' && typeof e.x === 'string');
+        persistHistory();
+      }
       updateSchoolHeader();
       rebuildCatalogList();
+      resetHistoryBase();
       updateDockStats();
       renderItems();
       renderDashboard();
@@ -3174,6 +3234,9 @@
           <button onclick="openScanner()" ${units.length ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-40 disabled:pointer-events-none">
             <i class="ph-bold ph-scan"></i> Scan
           </button>
+          <button onclick="openHistory('${item.code}')" class="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
+            <i class="ph-bold ph-clock-counter-clockwise"></i> History
+          </button>
         </div>`;
       document.getElementById('unitsToolbar').innerHTML = toolbar;
 
@@ -3311,8 +3374,12 @@
       const item = items.find(i => i.code === code);
       const unit = findUnit(code, id);
       if (!item || !unit) return;
-      if (!confirm(`Remove unit ${unit.no}?\n\nUse this when the unit was disposed of, transferred or lost. ` +
-        `On-hand quantity goes from ${item.qty} to ${item.qty - 1}.`)) return;
+      const reason = prompt(`Remove unit ${unit.no}?\n\nUse this when the unit was disposed of, transferred or lost. ` +
+        `On-hand quantity goes from ${item.qty} to ${item.qty - 1}.\n\nReason (optional, saved in Change History):`, '');
+      if (reason === null) return;
+      const why = reason.trim();
+      const removedText = `Removed unit ${unit.no} (${(UNIT_COND[unit.cond] || UNIT_COND.S).label})` +
+        `${why ? ` – ${why}` : ''} · quantity ${item.qty} → ${item.qty - 1}`;
       const before = { units: getUnits(code).slice(), qty: item.qty };
       const state = userState[code];
       state.units = before.units.filter(u => u.id !== id);
@@ -3326,7 +3393,7 @@
         item.unserv = unit.cond === 'U' ? Math.max(0, item.unserv - 1) : item.unserv;
         clampCondition(item);
       }
-      saveState();
+      saveStateWith({ summary: { kind: 'tag', code, text: removedText } });
       if (unitsModalCode === code) renderUnitsModal();
       showToast(`Removed ${unit.no}`, 'ph-trash', {
         label: 'Undo',
@@ -3336,7 +3403,7 @@
           item.qty = before.qty;
           s.qty = before.qty;
           syncUnitCondition(item);
-          saveState();
+          saveStateWith({ summary: { kind: 'tag', code, text: `Undid removal of ${unit.no} · quantity back to ${before.qty}` } });
           if (unitsModalCode === code) renderUnitsModal();
           renderItems();
         }
@@ -3648,10 +3715,10 @@
       if (!text) return;
       input.value = '';
       input.blur();
-      lookupScannedTag(text);
+      lookupScannedTag(text, 'typed');
     }
 
-    function lookupScannedTag(text) {
+    function lookupScannedTag(text, via = 'scan') {
       const hit = findUnitByNo(text);
       if (!hit) {
         scanShown = { missing: text };
@@ -3662,7 +3729,7 @@
       hit.unit.seen = Date.now();
       scanSession.add(hit.unit.id);
       scanShown = { code: hit.item.code, id: hit.unit.id };
-      saveState();
+      saveStateWith({ via });
       scanFeedback(true);
       updateScanCount();
       renderScanResult();
@@ -3753,6 +3820,312 @@
       const shown = scanShown;
       closeScanner();
       if (shown && shown.code) openUnitsModal(shown.code, shown.id);
+    }
+
+    // =========================================================================
+    // CHANGE HISTORY (audit log): what changed, when and by whom
+    // =========================================================================
+    // Every saveState() compares the data with the last saved copy and records readable
+    // entries { t, k: kind, x: text, c?: item code, by?: custodian }. Bulk actions (sample
+    // data, reset, restore…) record one summary entry instead. Quantity taps on the same
+    // item within 3 minutes are merged into one "Quantity 12 → 15" entry.
+    const HISTORY_KEY = 'custodian_history_v1';
+    const HISTORY_MAX = 3000;
+    const HISTORY_MERGE_MS = 3 * 60 * 1000;
+    const HISTORY_KINDS = {
+      count: { label: 'Counts', icon: 'ph-hash', tone: 'bg-brand-50 text-brand-600' },
+      condition: { label: 'Condition', icon: 'ph-wrench', tone: 'bg-orange-50 text-orange-600' },
+      tag: { label: 'Tags & scans', icon: 'ph-qr-code', tone: 'bg-violet-50 text-violet-600' },
+      edit: { label: 'Details', icon: 'ph-pencil-simple', tone: 'bg-slate-100 text-slate-600' },
+      system: { label: 'System', icon: 'ph-gear-six', tone: 'bg-emerald-50 text-emerald-600' }
+    };
+    const TYPE_LABELS = { EQUIPMENT: 'Equipment (ICS/PAR)', CONSUMABLE: 'Consumable (RIS)' };
+    let changeHistory = [];
+    let historyBase = {};
+    let historyContext = null; // { via: 'scan'|'typed' } or { summary: { kind, text, code? } }
+    let historyFilter = { code: null, kind: 'ALL', limit: 150 };
+
+    function loadHistory() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(HISTORY_KEY));
+        changeHistory = Array.isArray(saved) ? saved : [];
+      } catch (e) {
+        changeHistory = [];
+      }
+    }
+
+    // History is part of the data, but writing it never marks "unsaved changes" by itself.
+    function persistHistory() {
+      if (changeHistory.length > HISTORY_MAX) changeHistory = changeHistory.slice(-HISTORY_MAX);
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(changeHistory));
+      } catch (e) {
+        // Storage full: keep the newest half rather than losing inventory saves.
+        changeHistory = changeHistory.slice(-Math.floor(changeHistory.length / 2));
+        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(changeHistory)); } catch (e2) {}
+      }
+    }
+
+    function resetHistoryBase() {
+      historyBase = JSON.parse(JSON.stringify(userState));
+    }
+
+    function historyEntry(kind, text, code = null, extra = null) {
+      const e = { t: Date.now(), k: kind, x: text };
+      if (code) e.c = code;
+      if (schoolInfo.custodian) e.by = schoolInfo.custodian;
+      return extra ? Object.assign(e, extra) : e;
+    }
+
+    function logHistory(kind, text, code = null) {
+      changeHistory.push(historyEntry(kind, text, code));
+      persistHistory();
+    }
+
+    function saveStateWith(ctx) {
+      historyContext = ctx;
+      try { saveState(); } finally { historyContext = null; }
+    }
+
+    function recordHistory() {
+      const ctx = historyContext;
+      if (ctx && ctx.summary) {
+        changeHistory.push(historyEntry(ctx.summary.kind, ctx.summary.text, ctx.summary.code || null));
+      } else {
+        diffForHistory(historyBase, userState, ctx).forEach(addHistoryEntry);
+      }
+      resetHistoryBase();
+      persistHistory();
+    }
+
+    function addHistoryEntry(e) {
+      const last = changeHistory[changeHistory.length - 1];
+      if (e.k === 'count' && last && last.k === 'count' && last.c === e.c && last.from !== undefined &&
+          e.t - last.t < HISTORY_MERGE_MS) {
+        last.to = e.to;
+        last.t = e.t;
+        last.x = `Quantity ${last.from} → ${last.to}`;
+        if (last.from === last.to) changeHistory.pop(); // tapped back to where it was
+        return;
+      }
+      changeHistory.push(e);
+    }
+
+    function condSummary(repair, unserv) {
+      if (!repair && !unserv) return 'all serviceable';
+      return [repair ? `${repair} repair` : '', unserv ? `${unserv} unserviceable` : ''].filter(Boolean).join(', ');
+    }
+
+    function diffForHistory(prev, cur, ctx) {
+      const out = [];
+      const verified = [];
+      const printed = [];
+      const via = ctx && ctx.via === 'scan' ? ' (scanned)' : ctx && ctx.via === 'typed' ? ' (typed in scanner)' : '';
+      const condName = c => (UNIT_COND[c] || UNIT_COND.S).label;
+      new Set([...Object.keys(prev), ...Object.keys(cur)]).forEach(code => {
+        const p = prev[code] || {}, c = cur[code] || {};
+        if (JSON.stringify(p) === JSON.stringify(c)) return;
+        const item = items.find(i => i.code === code);
+        const add = (kind, text, extra) => out.push(historyEntry(kind, text, code, extra));
+
+        const pq = parseInt(p.qty, 10) || 0, cq = parseInt(c.qty, 10) || 0;
+        if (pq !== cq) add('count', `Quantity ${pq} → ${cq}`, { from: pq, to: cq });
+
+        const defPrice = item ? item.defaultPrice : 0;
+        const pp = Number(p.customPrice ?? defPrice), cp = Number(c.customPrice ?? defPrice);
+        if (pp !== cp) add('edit', `Unit price ${formatCurrency(pp)} → ${formatCurrency(cp)}`);
+
+        const defMin = item && item.type === 'EQUIPMENT' ? 2 : 5;
+        const pm = p.minQty ?? defMin, cm = c.minQty ?? defMin;
+        if (pm !== cm) add('edit', `Min alert qty ${pm} → ${cm}`);
+
+        const pn = (p.note || '').trim(), cn = (c.note || '').trim();
+        if (pn !== cn) add('edit', !pn ? `Location set to “${cn}”` : !cn ? `Location “${pn}” cleared` : `Location “${pn}” → “${cn}”`);
+
+        if ((p.typeOverride || null) !== (c.typeOverride || null)) {
+          add('edit', c.typeOverride ? `Classification set to ${TYPE_LABELS[c.typeOverride]} (manual)` : 'Classification back to automatic');
+        }
+
+        const pu = Array.isArray(p.units) ? p.units : [], cu = Array.isArray(c.units) ? c.units : [];
+        if (!pu.length && !cu.length) {
+          const pr = p.repair || 0, px = p.unserv || 0, cr = c.repair || 0, cx = c.unserv || 0;
+          if (pr !== cr || px !== cx) add('condition', `Condition ${condSummary(pr, px)} → ${condSummary(cr, cx)}`);
+        }
+
+        const before = new Map(pu.map(u => [u.id, u]));
+        const after = new Map(cu.map(u => [u.id, u]));
+        const added = cu.filter(u => !before.has(u.id));
+        if (added.length) {
+          add('tag', added.length === 1 ? `Tagged unit ${added[0].no}`
+            : `Tagged ${added.length} units (${added[0].no} – ${added[added.length - 1].no})`);
+        }
+        pu.filter(u => !after.has(u.id)).forEach(u => add('tag', `Removed unit ${u.no}`));
+        cu.forEach(u => {
+          const o = before.get(u.id);
+          if (!o) return;
+          if (o.no !== u.no) add('tag', `Property number ${o.no} → ${u.no}`);
+          if ((o.cond || 'S') !== (u.cond || 'S')) add('condition', `${u.no}: ${condName(o.cond)} → ${condName(u.cond)}`);
+          const details = [['serial', 'serial no.'], ['loc', 'location'], ['to', 'assigned to']]
+            .filter(([k]) => (o[k] || '') !== (u[k] || ''))
+            .map(([k, label]) => u[k] ? `${label} “${u[k]}”` : `${label} cleared`);
+          if (details.length) add('edit', `${u.no}: ${details.join(', ')}`);
+          if (u.seen && u.seen !== o.seen) verified.push({ code, no: u.no });
+          if (u.printed && u.printed !== o.printed) printed.push({ code, no: u.no });
+        });
+      });
+      const onlyCode = list => list.every(v => v.code === list[0].code) ? list[0].code : null;
+      if (verified.length) {
+        out.push(historyEntry('tag', verified.length === 1 ? `Verified ${verified[0].no}${via}` : `Verified ${verified.length} units${via}`, onlyCode(verified)));
+      }
+      if (printed.length) {
+        out.push(historyEntry('tag', printed.length === 1 ? `Printed QR label ${printed[0].no}` : `Printed ${printed.length} QR labels`, onlyCode(printed)));
+      }
+      return out;
+    }
+
+    // ---- History viewer -------------------------------------------------------
+    function openHistory(code = null) {
+      historyFilter = { code: code || null, kind: 'ALL', limit: 150 };
+      document.getElementById('historySearch').value = '';
+      document.getElementById('historyModal').classList.remove('hidden');
+      renderHistory();
+      document.getElementById('historyList').scrollTop = 0;
+    }
+
+    function closeHistory() {
+      document.getElementById('historyModal').classList.add('hidden');
+    }
+
+    function setHistoryKind(kind) {
+      historyFilter.kind = kind;
+      historyFilter.limit = 150;
+      renderHistory();
+    }
+
+    function setHistoryItem(code) {
+      historyFilter.code = code || null;
+      historyFilter.limit = 150;
+      renderHistory();
+      document.getElementById('historyList').scrollTop = 0;
+    }
+
+    function showMoreHistory() {
+      historyFilter.limit += 300;
+      renderHistory();
+    }
+
+    function historyItemName(code) {
+      const item = code && items.find(i => i.code === code);
+      return item ? item.name : (code || '');
+    }
+
+    function filteredHistory() {
+      const q = document.getElementById('historySearch').value.toLowerCase().trim();
+      return changeHistory.filter(e =>
+        (!historyFilter.code || e.c === historyFilter.code) &&
+        (historyFilter.kind === 'ALL' || e.k === historyFilter.kind) &&
+        (!q || `${e.x} ${e.c || ''} ${historyItemName(e.c)} ${e.by || ''}`.toLowerCase().includes(q))
+      ).reverse();
+    }
+
+    function historyDayLabel(ts) {
+      const d = new Date(ts).setHours(0, 0, 0, 0);
+      const today = new Date().setHours(0, 0, 0, 0);
+      if (d === today) return 'Today';
+      if (today - d === DAY_MS || Math.round((today - d) / DAY_MS) === 1) return 'Yesterday';
+      return new Date(ts).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function renderHistory() {
+      const oldest = changeHistory[0];
+      document.getElementById('historySubtitle').textContent = changeHistory.length
+        ? `${plural(changeHistory.length, 'change')} recorded since ${formatShortDate(oldest.t)}`
+        : 'No changes recorded yet';
+
+      const itemBox = document.getElementById('historyItemFilter');
+      itemBox.classList.toggle('hidden', !historyFilter.code);
+      itemBox.innerHTML = historyFilter.code ? `
+        <span class="inline-flex items-center gap-2 max-w-full pl-2.5 pr-1 py-1 rounded-lg bg-brand-50 border border-brand-100 text-brand-700 text-xs font-bold">
+          <i class="ph-bold ph-funnel"></i>
+          <span class="truncate">${escapeHTML(historyItemName(historyFilter.code))}</span>
+          <button onclick="setHistoryItem(null)" class="w-6 h-6 rounded-md hover:bg-brand-100 flex items-center justify-center" title="Show all items"><i class="ph-bold ph-x"></i></button>
+        </span>` : '';
+
+      document.getElementById('historyKindChips').innerHTML = [['ALL', 'All'], ...Object.entries(HISTORY_KINDS).map(([k, v]) => [k, v.label])]
+        .map(([k, label]) => `
+          <button onclick="setHistoryKind('${k}')" class="shrink-0 h-8 px-3 rounded-lg text-xs font-bold transition ${historyFilter.kind === k ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${label}</button>`)
+        .join('');
+
+      const list = document.getElementById('historyList');
+      const all = filteredHistory();
+      if (!all.length) {
+        list.innerHTML = `
+          <div class="py-12 text-center">
+            <i class="ph-duotone ph-clock-counter-clockwise text-4xl text-slate-300 block mb-2"></i>
+            <p class="text-sm font-bold text-slate-700">${changeHistory.length ? 'No changes match this view' : 'Nothing recorded yet'}</p>
+            <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Counts, prices, locations, condition, property numbers and scans are recorded here as you work.</p>
+          </div>`;
+        return;
+      }
+      const shown = all.slice(0, historyFilter.limit);
+      let html = '';
+      let day = '';
+      shown.forEach(e => {
+        const label = historyDayLabel(e.t);
+        if (label !== day) {
+          day = label;
+          html += `<p class="sticky top-0 z-10 bg-white/95 backdrop-blur pt-3 pb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">${label}</p>`;
+        }
+        const kind = HISTORY_KINDS[e.k] || HISTORY_KINDS.edit;
+        const time = new Date(e.t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+        const itemLink = e.c && e.c !== historyFilter.code
+          ? ` · <button onclick="setHistoryItem('${escapeHTML(e.c)}')" class="text-brand-600 font-semibold hover:underline text-left">${escapeHTML(historyItemName(e.c))}</button>`
+          : '';
+        html += `
+          <div class="flex items-start gap-3 py-2 border-b border-slate-50 last:border-0">
+            <div class="w-8 h-8 shrink-0 rounded-lg ${kind.tone} flex items-center justify-center"><i class="ph-bold ${kind.icon}"></i></div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-slate-800 leading-snug break-words">${historyTextHTML(e.x)}</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">${time}${itemLink}${e.by ? ` · ${escapeHTML(e.by)}` : ''}</p>
+            </div>
+          </div>`;
+      });
+      if (all.length > shown.length) {
+        html += `
+          <div class="pt-3 text-center">
+            <button onclick="showMoreHistory()" class="h-9 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs">Show older (${(all.length - shown.length).toLocaleString()} more)</button>
+          </div>`;
+      }
+      list.innerHTML = html;
+    }
+
+    // The bundled Inter subset has no "→" glyph, so draw arrows with the icon font.
+    function historyTextHTML(text) {
+      return escapeHTML(text).replace(/→/g, '<i class="ph-bold ph-arrow-right text-slate-400 text-xs mx-0.5"></i>');
+    }
+
+    function exportHistoryCSV() {
+      const rows = filteredHistory();
+      if (!rows.length) {
+        alert('There are no changes to export in this view.');
+        return;
+      }
+      const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const csv = [
+        q('CHANGE HISTORY'),
+        [q('School/Office:'), q(schoolInfo.school || 'N/A'), q('Date Exported:'), q(new Date().toLocaleDateString('en-PH'))].join(','),
+        '',
+        ['Date', 'Time', 'Type', 'Item Code', 'Item', 'Change', 'By'].map(q).join(',')
+      ];
+      rows.forEach(e => {
+        const d = new Date(e.t);
+        csv.push([
+          d.toLocaleDateString('en-PH'), d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }),
+          (HISTORY_KINDS[e.k] || HISTORY_KINDS.edit).label, e.c || '', e.c ? historyItemName(e.c) : '', e.x, e.by || ''
+        ].map(q).join(','));
+      });
+      const school = (schoolInfo.school || 'School').replace(/\s+/g, '_');
+      downloadText('\ufeff' + csv.join('\n'), `Change_History_${school}_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8;');
     }
 
     // =========================================================================
