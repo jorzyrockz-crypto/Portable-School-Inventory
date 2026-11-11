@@ -109,7 +109,23 @@ fs.rmSync(twOut);
 fs.writeFileSync(path.join(ASSETS, 'app.css'), appCss);
 
 // ---------------------------------------------------------------------------
-// 4. Service worker with a precache manifest
+// 4. Vendor scripts, lazy-loaded by index.html (and precached for offline use)
+//    qrcode.js – draws the QR codes on printed property labels   (MIT, Kazuhiko Arase)
+//    jsQR.js   – reads QR codes from the camera in the scanner    (Apache-2.0, Cosmo Wolfe)
+// ---------------------------------------------------------------------------
+const VENDOR = path.join(ASSETS, 'vendor');
+fs.rmSync(VENDOR, { recursive: true, force: true });
+fs.mkdirSync(VENDOR, { recursive: true });
+for (const [src, dest] of [
+  ['qrcode-generator/dist/qrcode.js', 'qrcode.js'],
+  ['jsqr/dist/jsQR.js', 'jsQR.js'],
+  ['jsqr/LICENSE', 'jsQR.LICENSE.txt'],
+]) {
+  fs.copyFileSync(path.join(NM, src), path.join(VENDOR, dest));
+}
+
+// ---------------------------------------------------------------------------
+// 5. Service worker with a precache manifest
 // ---------------------------------------------------------------------------
 const listFiles = (dir) =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {

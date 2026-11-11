@@ -49,10 +49,27 @@
     /* Installed (standalone) mode on iPad/iPhone: respect notch & home indicator */
     .safe-top { padding-top: env(safe-area-inset-top); }
     .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+    /* QR property labels (printed 3 across on A4 / Letter) */
+    .label-sheet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3mm; }
+    .qr-label {
+      display: flex; align-items: center; gap: 2.5mm; height: 30mm; padding: 2.5mm;
+      border: 0.3mm dashed #94a3b8; border-radius: 2mm; overflow: hidden; color: #000;
+      break-inside: avoid; page-break-inside: avoid;
+    }
+    .qr-label-code { width: 24mm; height: 24mm; flex: none; }
+    .qr-label-code svg { width: 100%; height: 100%; display: block; }
+    .qr-label-text { min-width: 0; line-height: 1.15; }
+    .qr-label-school { font-size: 6pt; font-weight: 700; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .qr-label-caption { font-size: 5.5pt; text-transform: uppercase; color: #475569; margin-top: 1mm; }
+    .qr-label-no { font-family: "JetBrains Mono Variable", "JetBrains Mono", monospace; font-size: 8pt; font-weight: 800; word-break: break-all; }
+    .qr-label-name { font-size: 6.5pt; font-weight: 600; margin-top: 0.8mm; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .qr-label-meta { font-size: 5.5pt; color: #475569; margin-top: 0.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     @media print {
       .no-print { display: none !important; }
       .print-only { display: block !important; }
       body { background: white; padding-bottom: 0; color: black; }
+      body.printing-labels #printReportSection { display: none !important; }
+      body:not(.printing-labels) #printLabelsSection { display: none !important; }
     }
   </style>
 </head>
@@ -327,6 +344,59 @@
       </p>
     </div>
 
+    <!-- PROPERTY TAGS & PHYSICAL COUNT (property number + QR label per equipment unit) -->
+    <div id="tagsPanel" class="hidden bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="w-8 h-8 shrink-0 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center">
+            <i class="ph-bold ph-qr-code text-lg"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 class="font-extrabold text-sm text-slate-900 leading-tight">Property Tags &amp; Physical Count</h3>
+            <p id="tagsHint" class="text-[11px] text-slate-500">Property number + QR label per equipment unit &middot; scan to verify it is on site</p>
+          </div>
+        </div>
+        <button onclick="openScanner()" class="shrink-0 h-10 px-4 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition">
+          <i class="ph-bold ph-scan text-base"></i>
+          <span>Scan Tags</span>
+        </button>
+      </div>
+      <div class="grid grid-cols-3 gap-2.5 mt-3">
+        <div class="rounded-xl bg-slate-50 border border-slate-100 p-2.5">
+          <span class="block text-[10px] font-bold uppercase text-slate-500">Tagged units</span>
+          <span class="font-mono font-extrabold text-base text-slate-900"><span id="tagsTagged">0</span><span class="text-xs font-semibold text-slate-400"> / <span id="tagsEquipUnits">0</span></span></span>
+          <div class="h-1.5 mt-1 rounded-full bg-slate-200 overflow-hidden">
+            <div id="tagsTaggedBar" class="h-full bg-violet-500 transition-all duration-300" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="rounded-xl bg-slate-50 border border-slate-100 p-2.5">
+          <span class="block text-[10px] font-bold uppercase text-slate-500">Verified in <span id="tagsYear">2026</span></span>
+          <span class="font-mono font-extrabold text-base text-emerald-700"><span id="tagsVerifiedYear">0</span><span class="text-xs font-semibold text-slate-400"> / <span id="tagsTaggedOf">0</span></span></span>
+          <div class="h-1.5 mt-1 rounded-full bg-slate-200 overflow-hidden">
+            <div id="tagsVerifiedBar" class="h-full bg-emerald-500 transition-all duration-300" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="rounded-xl bg-slate-50 border border-slate-100 p-2.5">
+          <span class="block text-[10px] font-bold uppercase text-slate-500">Verified today</span>
+          <span id="tagsVerifiedToday" class="font-mono font-extrabold text-base text-slate-900">0</span>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 mt-3">
+        <button id="tagsPrintNewBtn" onclick="printNewLabels()" class="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-40 disabled:pointer-events-none">
+          <i class="ph-bold ph-printer text-violet-600"></i>
+          <span>Print new labels (<span id="tagsUnprinted">0</span>)</span>
+        </button>
+        <button id="tagsReprintBtn" onclick="printAllLabels()" class="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-40 disabled:pointer-events-none">
+          <i class="ph-bold ph-stack text-slate-500"></i>
+          <span>Reprint all</span>
+        </button>
+        <button id="tagsRegisterBtn" onclick="exportRegisterCSV()" class="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-40 disabled:pointer-events-none" title="One row per tagged unit (property number, serial, location, condition, last verified)">
+          <i class="ph-bold ph-file-csv text-emerald-600"></i>
+          <span>Property register (CSV)</span>
+        </button>
+      </div>
+    </div>
+
     <!-- MIDDLE ROW: Stock Health & Storage Location Distribution -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       
@@ -375,7 +445,7 @@
               <i class="ph-bold ph-magic-wand text-brand-600"></i>
               <span>Sample Data</span>
             </button>
-            <button onclick="window.print()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+            <button onclick="printReport()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition">
               <i class="ph-bold ph-printer text-slate-600"></i>
               <span>Print Report</span>
             </button>
@@ -388,6 +458,10 @@
               <span>Restore</span>
             </button>
             <input type="file" id="restoreFileInput" accept=".json,application/json" class="hidden" onchange="importBackupJSON(event)">
+            <button onclick="openHistory()" class="col-span-2 h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition" title="Every change: counts, condition, tags, scans">
+              <i class="ph-bold ph-list-magnifying-glass text-brand-600"></i>
+              <span>Change History</span>
+            </button>
           </div>
           <p id="backupStatusLine" class="text-[11px] text-slate-500 flex items-center gap-1.5">
             <i class="ph-bold ph-clock-counter-clockwise"></i>
@@ -568,14 +642,17 @@
       </div>
       <div>
         <p class="mb-8">Noted & Approved by:</p>
-        <p class="font-bold uppercase border-b border-black inline-block min-w-[220px]">&nbsp;</p>
+        <p id="printHeadName" class="font-bold uppercase border-b border-black inline-block min-w-[220px]">&nbsp;</p>
         <p class="text-[11px] text-slate-600 mt-0.5">School Head / Head of Office</p>
       </div>
     </div>
   </section>
 
+  <!-- QR PROPERTY LABELS (printed instead of the report while body has .printing-labels) -->
+  <section id="printLabelsSection" class="print-only"></section>
+
   <!-- TOAST (status messages, e.g. "ready to work offline") -->
-  <div id="appToast" role="status" aria-live="polite" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-40 items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-2xl no-print">
+  <div id="appToast" role="status" aria-live="polite" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-[70] items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-2xl no-print">
     <i id="appToastIcon" class="ph-bold ph-check-circle text-lg text-emerald-400"></i>
     <span id="appToastText"></span>
     <button id="appToastAction" class="hidden ml-2 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-amber-300 font-bold"></button>
@@ -604,6 +681,10 @@
       </div>
 
       <div class="flex items-center gap-2">
+        <button onclick="openScanner()" class="h-12 px-4 rounded-xl bg-white/10 hover:bg-white/15 active:scale-95 transition font-bold text-xs sm:text-sm flex items-center gap-2" title="Scan a QR property label">
+          <i class="ph-bold ph-scan text-lg text-violet-300"></i>
+          <span>Scan</span>
+        </button>
         <button onclick="openSummaryModal()" class="h-12 px-4 sm:px-5 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-95 transition font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-brand-500/25">
           <i class="ph-bold ph-receipt text-lg"></i>
           <span>APP-CSE Summary</span>
@@ -614,7 +695,7 @@
 
   <!-- MODAL 1: EDIT ITEM INVENTORY DETAILS / LOCATION / REORDER ALERT / PRICE -->
   <div id="itemModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
-    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+    <div class="bg-white rounded-2xl max-w-md w-full max-h-[94vh] overflow-y-auto p-6 shadow-2xl border border-slate-200">
       <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
         <div>
           <div class="flex items-center gap-2">
@@ -623,9 +704,14 @@
           </div>
           <h3 id="modalItemName" class="font-bold text-base text-slate-900 mt-1.5">Item Name</h3>
         </div>
-        <button onclick="closeItemModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
-          <i class="ph-bold ph-x"></i>
-        </button>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button onclick="openHistory(activeModalCode)" title="Change history of this item" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-brand-50 text-slate-500 hover:text-brand-600 flex items-center justify-center">
+            <i class="ph-bold ph-clock-counter-clockwise"></i>
+          </button>
+          <button onclick="closeItemModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+            <i class="ph-bold ph-x"></i>
+          </button>
+        </div>
       </div>
 
       <div class="space-y-4 py-4">
@@ -676,22 +762,44 @@
             <div class="rounded-lg bg-white border border-orange-200 p-2 text-center">
               <span class="block text-[10px] font-bold uppercase text-orange-700">Needs Repair</span>
               <div class="flex items-center justify-center gap-1">
-                <button type="button" onclick="stepModalCondition('modalItemRepair', -1)" class="w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
+                <button type="button" onclick="stepModalCondition('modalItemRepair', -1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
                 <input type="number" id="modalItemRepair" min="0" oninput="updateModalConditionPreview()" class="w-10 h-9 text-center font-mono font-extrabold text-lg text-orange-700 bg-transparent outline-none">
-                <button type="button" onclick="stepModalCondition('modalItemRepair', 1)" class="w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
+                <button type="button" onclick="stepModalCondition('modalItemRepair', 1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
               </div>
             </div>
             <div class="rounded-lg bg-white border border-rose-200 p-2 text-center">
               <span class="block text-[10px] font-bold uppercase text-rose-700">Unserviceable</span>
               <div class="flex items-center justify-center gap-1">
-                <button type="button" onclick="stepModalCondition('modalItemUnserv', -1)" class="w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
+                <button type="button" onclick="stepModalCondition('modalItemUnserv', -1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
                 <input type="number" id="modalItemUnserv" min="0" oninput="updateModalConditionPreview()" class="w-10 h-9 text-center font-mono font-extrabold text-lg text-rose-700 bg-transparent outline-none">
-                <button type="button" onclick="stepModalCondition('modalItemUnserv', 1)" class="w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
+                <button type="button" onclick="stepModalCondition('modalItemUnserv', 1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
               </div>
             </div>
           </div>
           <p id="modalCondError" class="hidden mt-2 text-[11px] font-semibold text-rose-600 items-center gap-1">
             <i class="ph-fill ph-warning"></i> Needs Repair + Unserviceable cannot exceed the on-hand quantity.
+          </p>
+          <p id="modalCondLockedNote" class="hidden mt-2 text-[11px] font-semibold text-violet-700 items-center gap-1">
+            <i class="ph-bold ph-tag"></i> Condition is set per unit under Property Numbers below.
+          </p>
+        </div>
+
+        <!-- Property numbers & QR labels (one record per physical unit) -->
+        <div id="modalTagsSection" class="hidden rounded-xl border border-violet-200 bg-violet-50/50 p-3">
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <label class="text-[11px] font-bold uppercase text-violet-700 flex items-center gap-1.5">
+                <i class="ph-bold ph-qr-code"></i> Property Numbers &amp; QR Labels
+              </label>
+              <p id="modalTagsText" class="text-xs text-slate-600 mt-0.5">No units tagged yet</p>
+            </div>
+            <button type="button" onclick="openUnitsFromItemModal()" class="shrink-0 h-9 px-3 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition" title="Saves this form, then opens the unit list">
+              <i class="ph-bold ph-tag"></i>
+              <span id="modalTagsBtnText">Tag units</span>
+            </button>
+          </div>
+          <p id="modalTagQtyError" class="hidden mt-2 text-[11px] font-semibold text-rose-600 items-center gap-1">
+            <i class="ph-fill ph-warning"></i> <span></span>
           </p>
         </div>
 
@@ -785,7 +893,7 @@
           Open Active Items in Catalog
         </button>
         <div class="flex gap-2">
-          <button onclick="window.print()" class="h-10 px-4 rounded-xl bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5">
+          <button onclick="printReport()" class="h-10 px-4 rounded-xl bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5">
             <i class="ph-bold ph-printer text-base"></i> Print Official Report
           </button>
           <button onclick="exportCSV()" class="h-10 px-4 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5">
@@ -811,7 +919,7 @@
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-bold uppercase text-slate-500 mb-1">School / Office Name</label>
-          <input type="text" id="infoSchool" placeholder="e.g., San Jose National High School" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
+          <input type="text" id="infoSchool" oninput="updatePrefixPreview()" placeholder="e.g., San Jose National High School" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
         </div>
         <div>
           <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Agency Code / UACS / Division</label>
@@ -824,6 +932,15 @@
         <div>
           <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Position / Designation</label>
           <input type="text" id="infoPosition" placeholder="e.g., Administrative Officer IV / Supply Officer" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">School Head (Noted &amp; Approved by)</label>
+          <input type="text" id="infoHead" placeholder="e.g., Dr. Ana R. Reyes, Principal IV" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Property Number Prefix</label>
+          <input type="text" id="infoPropPrefix" oninput="updatePrefixPreview()" placeholder="Auto: school initials" autocapitalize="characters" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-mono font-bold uppercase">
+          <p class="text-[11px] text-slate-500 mt-1">New property numbers look like <strong id="infoPrefixPreview" class="font-mono text-slate-700">PROP-2026-0001</strong>. Existing numbers are not changed.</p>
         </div>
       </div>
       <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
@@ -882,6 +999,95 @@
       <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
         <button onclick="closeCustomItemModal()" class="h-10 px-4 rounded-xl bg-slate-100 text-xs font-bold text-slate-700">Cancel</button>
         <button onclick="saveCustomItem()" class="h-10 px-5 rounded-xl bg-brand-600 text-xs font-bold text-white shadow-sm">Add to Inventory</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 6: CHANGE HISTORY (audit log, newest first) -->
+  <div id="historyModal" class="fixed inset-0 z-[55] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200">
+      <div class="p-5 pb-3 border-b border-slate-100">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
+              <i class="ph-bold ph-clock-counter-clockwise text-brand-600"></i> Change History
+            </h3>
+            <p id="historySubtitle" class="text-xs text-slate-500 mt-0.5"></p>
+          </div>
+          <button onclick="closeHistory()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+            <i class="ph-bold ph-x"></i>
+          </button>
+        </div>
+        <div id="historyItemFilter" class="hidden mt-2.5"></div>
+        <div class="relative mt-3">
+          <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input id="historySearch" type="text" oninput="historyFilter.limit = 150; renderHistory()" placeholder="Search changes, items, property numbers…" class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none">
+        </div>
+        <div id="historyKindChips" class="flex gap-1.5 mt-2.5 overflow-x-auto no-scrollbar"></div>
+      </div>
+      <div id="historyList" class="flex-1 min-h-0 overflow-y-auto px-5 pb-3"></div>
+      <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-3">
+        <p class="text-[11px] text-slate-500">Stored on this device and included in backups (latest 3,000 changes).</p>
+        <button onclick="exportHistoryCSV()" class="shrink-0 h-10 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
+          <i class="ph-bold ph-file-csv text-emerald-600"></i> Export CSV
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 5: PROPERTY NUMBERS / PER-UNIT RECORDS (equipment) -->
+  <div id="unitsModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200">
+      <div class="p-5 pb-3 border-b border-slate-100 flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span id="unitsItemCode" class="font-mono text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded">CODE</span>
+            <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-violet-50 text-violet-700 inline-flex items-center gap-1"><i class="ph-bold ph-qr-code"></i> Property Numbers</span>
+          </div>
+          <h3 id="unitsItemName" class="font-bold text-base text-slate-900 mt-1.5 leading-snug">Item Name</h3>
+          <p id="unitsSummary" class="text-xs text-slate-500 mt-0.5"></p>
+        </div>
+        <button onclick="closeUnitsModal()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+      <div id="unitsToolbar" class="px-5 py-3 border-b border-slate-100 space-y-2.5"></div>
+      <div id="unitsList" class="flex-1 min-h-0 overflow-y-auto px-5 py-3 space-y-2.5"></div>
+      <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-2">
+        <p class="text-[11px] text-slate-500 flex items-center gap-1"><i class="ph-bold ph-check"></i> Changes are saved automatically</p>
+        <button onclick="closeUnitsModal()" class="h-11 px-6 rounded-xl bg-brand-600 font-bold text-xs text-white shadow-md">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR SCANNER (camera): look up a unit by its label and mark it verified -->
+  <div id="scannerOverlay" class="hidden fixed inset-0 z-[60] bg-slate-950 flex-col no-print">
+    <div class="safe-top">
+      <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3 text-white">
+        <div class="min-w-0">
+          <h3 class="font-extrabold text-base flex items-center gap-2"><i class="ph-bold ph-scan text-violet-300"></i> Scan Property Tag</h3>
+          <p class="text-[11px] text-slate-400">Each match is marked as verified today &ndash; useful for the physical count</p>
+        </div>
+        <div class="flex items-center gap-2.5 shrink-0">
+          <span class="text-xs font-bold px-2.5 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300"><span id="scanSessionCount">0</span> verified</span>
+          <button onclick="closeScanner()" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center" aria-label="Close scanner">
+            <i class="ph-bold ph-x text-lg"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="relative flex-1 min-h-0 overflow-hidden flex items-center justify-center">
+      <video id="scanVideo" playsinline muted autoplay class="absolute inset-0 w-full h-full object-cover"></video>
+      <div id="scanFrame" class="hidden relative w-64 h-64 sm:w-72 sm:h-72 rounded-3xl border-4 border-white/80 shadow-[0_0_0_9999px_rgba(2,6,23,0.55)] transition-colors duration-200"></div>
+      <p id="scanMessage" class="absolute bottom-8 inset-x-6 text-center text-sm font-semibold text-white/90">Starting camera&hellip;</p>
+    </div>
+    <div class="safe-bottom bg-white rounded-t-3xl -mt-5 relative">
+      <div class="max-w-xl mx-auto p-4 space-y-3">
+        <div id="scanResult"></div>
+        <form onsubmit="event.preventDefault(); manualScanLookup();" class="flex gap-2">
+          <input id="scanManualInput" type="text" placeholder="Or type a property number&hellip;" autocapitalize="characters" autocomplete="off" spellcheck="false" class="flex-1 min-w-0 h-11 px-3 rounded-xl border border-slate-300 font-mono text-sm font-bold uppercase focus:border-brand-500 outline-none">
+          <button type="submit" class="h-11 px-5 rounded-xl bg-slate-900 text-white text-xs font-bold">Find</button>
+        </form>
       </div>
     </div>
   </div>
@@ -1369,7 +1575,9 @@
         try { customRawItems = JSON.parse(savedCustom); } catch (e) { customRawItems = []; }
       }
 
+      loadHistory();
       rebuildCatalogList();
+      resetHistoryBase();
       renderCategoryPills();
       renderItems();
       updateDockStats();
@@ -1407,6 +1615,9 @@
           unserv: Math.max(0, parseInt(savedItem.unserv, 10) || 0)
         };
       });
+
+      // Items with per-unit records take their condition counts from the units.
+      items.forEach(item => { if (getUnits(item.code).length) syncUnitCondition(item); });
 
       document.getElementById('count-ALL').textContent = items.length;
       document.getElementById('kpiTotalCatalogSkus').textContent = items.length;
@@ -1465,6 +1676,7 @@
     }
 
     function saveState() {
+      recordHistory();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
       markUnsavedChanges();
       updateDockStats();
@@ -1589,6 +1801,7 @@
       document.getElementById('kpiUnpricedCount').textContent = `${unpricedActiveCount} SKUs`;
 
       renderConditionPanel(activeItems);
+      renderTagsPanel(activeItems);
 
       renderDashboardCategoryBars(totalVal);
       renderDashboardLocations(activeItems);
@@ -1740,7 +1953,8 @@
           i.name.toLowerCase().includes(q) || 
           i.code.toLowerCase().includes(q) || 
           i.category.toLowerCase().includes(q) ||
-          i.note.toLowerCase().includes(q)
+          i.note.toLowerCase().includes(q) ||
+          getUnits(i.code).some(u => u.no.toLowerCase().includes(q) || (u.serial || '').toLowerCase().includes(q))
         );
       }
 
@@ -1785,6 +1999,7 @@
                   </span>
                 `}
                 ${conditionChipHTML(item)}
+                ${tagChipHTML(item)}
               </div>
 
               <h4 class="font-bold text-sm text-slate-900 leading-snug">${item.name}</h4>
@@ -1816,6 +2031,10 @@
                 </button>
               </div>
 
+              ${item.type === 'EQUIPMENT' || getUnits(item.code).length ? `
+                <button onclick="openUnitsModal('${item.code}')" title="Property numbers & QR labels" class="w-9 h-9 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 flex items-center justify-center">
+                  <i class="ph-bold ph-qr-code"></i>
+                </button>` : ''}
               <button onclick="openItemModal('${item.code}')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center">
                 <i class="ph-bold ph-pencil-simple"></i>
               </button>
@@ -1849,6 +2068,7 @@
       document.getElementById('printDate').textContent = 'Generated on ' + new Date().toLocaleDateString('en-PH', { dateStyle: 'long' });
       document.getElementById('printCustodianName').textContent = schoolInfo.custodian || 'PROPERTY CUSTODIAN';
       document.getElementById('printCustodianPos').textContent = schoolInfo.position || 'Property Custodian / Supply Officer';
+      document.getElementById('printHeadName').innerHTML = schoolInfo.head ? escapeHTML(schoolInfo.head) : '&nbsp;';
 
       document.getElementById('printTotalSkus').textContent = activeItems.length + ' Items';
       document.getElementById('printPart1Val').textContent = formatCurrency(part1Val);
@@ -1864,7 +2084,7 @@
       tbody.innerHTML = activeItems.map(item => `
         <tr class="border-b border-black">
           <td class="border border-black p-1.5 font-mono">${item.code}</td>
-          <td class="border border-black p-1.5 font-semibold">${item.name}</td>
+          <td class="border border-black p-1.5 font-semibold">${item.name}${getUnits(item.code).length ? `<div class="font-mono text-[9px] font-normal mt-0.5">Prop. No.: ${getUnits(item.code).map(u => escapeHTML(u.no)).join(', ')}</div>` : ''}</td>
           <td class="border border-black p-1.5">${item.type === 'EQUIPMENT' ? 'ICS/PAR' : 'RIS'}</td>
           <td class="border border-black p-1.5">${item.note || 'Unassigned'}</td>
           <td class="border border-black p-1.5 text-center font-mono">${item.qty} ${item.unit}</td>
@@ -1918,6 +2138,7 @@
           item.unserv = data.unserv || 0;
           if (data.customPrice) item.price = data.customPrice;
           userState[code] = {
+            ...(userState[code] || {}),
             qty: item.qty,
             customPrice: item.price,
             note: item.note,
@@ -1925,6 +2146,7 @@
             repair: item.repair,
             unserv: item.unserv
           };
+          syncUnitCondition(item);
         }
       });
 
@@ -1939,7 +2161,7 @@
         updateSchoolHeader();
       }
 
-      saveState();
+      saveStateWith({ summary: { kind: 'system', text: `Loaded sample inventory (${Object.keys(sampleData).length} items)` } });
       renderItems();
       renderDashboard();
     }
@@ -2133,6 +2355,11 @@
     }
 
     function updateItemQty(item, newQty) {
+      const tagged = getUnits(item.code).length;
+      if (newQty < tagged) {
+        showToast(`${plural(tagged, 'unit')} of this item ${tagged === 1 ? 'has a' : 'have'} property number${tagged === 1 ? '' : 's'} – remove units under Property Numbers to lower the count`, 'ph-tag');
+        newQty = tagged;
+      }
       item.qty = newQty;
       if (!userState[item.code]) userState[item.code] = {};
       userState[item.code].qty = newQty;
@@ -2243,7 +2470,9 @@
     }
 
     function confirmResetAll() {
-      if (confirm("Are you sure you want to reset all inventory quantities to 0? Your room notes and custom prices will be kept.")) {
+      const tagCount = allTaggedUnits().length;
+      const tagWarning = tagCount ? ` All ${plural(tagCount, 'property number')} will also be removed.` : '';
+      if (confirm(`Are you sure you want to reset all inventory quantities to 0? Your room notes and custom prices will be kept.${tagWarning}`)) {
         items.forEach(item => {
           item.qty = 0;
           item.repair = 0;
@@ -2252,9 +2481,10 @@
             userState[item.code].qty = 0;
             userState[item.code].repair = 0;
             userState[item.code].unserv = 0;
+            delete userState[item.code].units;
           }
         });
-        saveState();
+        saveStateWith({ summary: { kind: 'system', text: `Reset all quantities to 0${tagCount ? ` and removed ${plural(tagCount, 'property number')}` : ''}` } });
         renderItems();
         renderDashboard();
       }
@@ -2317,6 +2547,29 @@
       const type = modalEffectiveType();
       document.getElementById('modalItemTypeBadge').textContent = type === 'EQUIPMENT' ? 'Equipment (ICS/PAR)' : 'Consumable (RIS)';
       document.getElementById('modalConditionSection').classList.toggle('hidden', type !== 'EQUIPMENT');
+      updateModalTagsUI(item, type);
+    }
+
+    // Property numbers section in the item form; tagged items get their condition from the units.
+    function updateModalTagsUI(item, type) {
+      const units = getUnits(item.code);
+      const locked = units.length > 0;
+      document.getElementById('modalTagsSection').classList.toggle('hidden', type !== 'EQUIPMENT' && !locked);
+      document.getElementById('modalTagsText').textContent = locked
+        ? `${units.length} of ${item.qty} on-hand ${units.length === 1 ? 'unit has a property number' : 'units have property numbers'}`
+        : 'Give each unit its own property number and QR label';
+      document.getElementById('modalTagsBtnText').textContent = locked ? 'Manage units' : 'Tag units';
+      ['modalItemRepair', 'modalItemUnserv'].forEach(id => { document.getElementById(id).readOnly = locked; });
+      document.querySelectorAll('.cond-step-btn').forEach(btn => btn.classList.toggle('invisible', locked));
+      const note = document.getElementById('modalCondLockedNote');
+      note.classList.toggle('hidden', !locked);
+      note.classList.toggle('flex', locked);
+    }
+
+    function openUnitsFromItemModal() {
+      const code = activeModalCode;
+      saveItemModal();
+      if (activeModalCode === null && code) openUnitsModal(code);
     }
 
     function readModalInt(id) {
@@ -2340,7 +2593,17 @@
       const err = document.getElementById('modalCondError');
       err.classList.toggle('hidden', !invalid);
       err.classList.toggle('flex', invalid);
-      return !invalid;
+
+      const tagged = activeModalCode ? getUnits(activeModalCode).length : 0;
+      const tooFew = qty < tagged;
+      const qtyErr = document.getElementById('modalTagQtyError');
+      qtyErr.classList.toggle('hidden', !tooFew);
+      qtyErr.classList.toggle('flex', tooFew);
+      if (tooFew) {
+        qtyErr.querySelector('span').textContent =
+          `${plural(tagged, 'unit')} ${tagged === 1 ? 'has a property number' : 'have property numbers'}, so on-hand can't be below ${tagged}. Remove units there first.`;
+      }
+      return !invalid && !tooFew;
     }
 
     function setQuickNote(roomName) {
@@ -2365,6 +2628,7 @@
       const newRepair = isEquipmentForm ? readModalInt('modalItemRepair') : (item.repair || 0);
       const newUnserv = isEquipmentForm ? readModalInt('modalItemUnserv') : (item.unserv || 0);
       if (isEquipmentForm && !updateModalConditionPreview()) return;
+      if (newQty < getUnits(item.code).length) { updateModalConditionPreview(); return; }
 
       item.qty = newQty;
       item.repair = newRepair;
@@ -2375,7 +2639,9 @@
       item.typeOverride = modalTypeChoice === 'AUTO' ? null : modalTypeChoice;
       item.type = resolveItemType(item, item.typeOverride);
 
+      // Merge, so per-unit records (property numbers) and other fields are kept.
       userState[item.code] = {
+        ...(userState[item.code] || {}),
         qty: newQty,
         customPrice: newPrice,
         minQty: newMinQty,
@@ -2384,6 +2650,8 @@
         unserv: newUnserv
       };
       if (item.typeOverride) userState[item.code].typeOverride = item.typeOverride;
+      else delete userState[item.code].typeOverride;
+      syncUnitCondition(item);
       clampCondition(item);
 
       saveState();
@@ -2435,7 +2703,7 @@
       if (typeChoice === 'EQUIPMENT' || typeChoice === 'CONSUMABLE') userState[code].typeOverride = typeChoice;
 
       rebuildCatalogList();
-      saveState();
+      saveStateWith({ summary: { kind: 'edit', code, text: `Added custom item · quantity ${qty} ${unit}${note ? ` · ${note}` : ''}` } });
       renderItems();
       renderDashboard();
       closeCustomItemModal();
@@ -2499,6 +2767,9 @@
       document.getElementById('infoUacs').value = schoolInfo.uacs || '';
       document.getElementById('infoCustodian').value = schoolInfo.custodian || '';
       document.getElementById('infoPosition').value = schoolInfo.position || '';
+      document.getElementById('infoHead').value = schoolInfo.head || '';
+      document.getElementById('infoPropPrefix').value = schoolInfo.propPrefix || '';
+      updatePrefixPreview();
       document.getElementById('schoolModal').classList.remove('hidden');
     }
 
@@ -2507,17 +2778,30 @@
     }
 
     function saveSchoolInfo() {
+      const before = { ...schoolInfo };
       schoolInfo = {
+        ...schoolInfo,
         school: document.getElementById('infoSchool').value.trim(),
         uacs: document.getElementById('infoUacs').value.trim(),
         custodian: document.getElementById('infoCustodian').value.trim(),
-        position: document.getElementById('infoPosition').value.trim()
+        position: document.getElementById('infoPosition').value.trim(),
+        head: document.getElementById('infoHead').value.trim(),
+        propPrefix: cleanPrefix(document.getElementById('infoPropPrefix').value)
       };
       localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+      const labels = { school: 'school name', uacs: 'agency/division', custodian: 'custodian', position: 'position', head: 'school head', propPrefix: 'property number prefix' };
+      const changed = Object.keys(labels).filter(k => (before[k] || '') !== (schoolInfo[k] || ''));
+      if (changed.length) logHistory('system', `School info updated: ${changed.map(k => labels[k]).join(', ')}`);
       markUnsavedChanges();
       updateSchoolHeader();
       renderPrintReport();
       closeSchoolModal();
+    }
+
+    function updatePrefixPreview() {
+      const typed = cleanPrefix(document.getElementById('infoPropPrefix').value);
+      const prefix = typed || schoolInitials(document.getElementById('infoSchool').value) || 'PROP';
+      document.getElementById('infoPrefixPreview').textContent = nextPropertyNumbers(1, prefix)[0];
     }
 
     function updateSchoolHeader() {
@@ -2541,7 +2825,7 @@
       csv.push(`"Property Custodian:","${schoolInfo.custodian || 'N/A'}","Position:","${schoolInfo.position || 'N/A'}"`);
       csv.push(`"Date Exported:","${new Date().toLocaleDateString()}"`);
       csv.push("");
-      csv.push(`"Part","Item No","Item Code","Item & Specifications","Classification","Category","Unit of Measure","Quantity On-Hand","Serviceable","Needs Repair","Unserviceable","Min Alert Qty","Stock Status","Unit Price","Total Valuation","Room / Location / Notes"`);
+      csv.push(`"Part","Item No","Item Code","Item & Specifications","Classification","Category","Unit of Measure","Quantity On-Hand","Serviceable","Needs Repair","Unserviceable","Min Alert Qty","Stock Status","Unit Price","Total Valuation","Room / Location / Notes","Property Numbers"`);
 
       activeItems.forEach(item => {
         const total = (item.qty * item.price).toFixed(2);
@@ -2550,7 +2834,7 @@
         const safeNote = (item.note || 'Unassigned').replace(/"/g, '""');
         const c = getCondition(item);
         const cond = item.type === 'EQUIPMENT' ? [c.serv, c.repair, c.unserv] : ['', '', ''];
-        csv.push(`"${item.part}","${item.itemNo}","${item.code}","${safeName}","${item.type}","${item.category}","${item.unit}","${item.qty}","${cond[0]}","${cond[1]}","${cond[2]}","${item.minQty}","${status}","${item.price.toFixed(2)}","${total}","${safeNote}"`);
+        csv.push(`"${item.part}","${item.itemNo}","${item.code}","${safeName}","${item.type}","${item.category}","${item.unit}","${item.qty}","${cond[0]}","${cond[1]}","${cond[2]}","${item.minQty}","${status}","${item.price.toFixed(2)}","${total}","${safeNote}","${getUnits(item.code).map(u => u.no).join('; ').replace(/"/g, '""')}"`);
       });
 
       const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -2570,7 +2854,8 @@
         exportedAt: new Date().toISOString(),
         schoolInfo,
         userState,
-        customRawItems
+        customRawItems,
+        history: changeHistory
       };
       const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -2583,6 +2868,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 30000);
 
       markBackedUp(Date.now());
+      logHistory('system', 'Backup file saved');
       showToast('Backup file saved – keep a copy off this device', 'ph-floppy-disk');
     }
 
@@ -2617,7 +2903,8 @@
           `Backup from: ${savedOn}\n` +
           `School: ${(data.schoolInfo && data.schoolInfo.school) || 'not set'}\n` +
           `Contains: ${plural(incoming.counted, 'counted item')}, ${plural(incoming.units, 'unit')}` +
-          `${incoming.custom ? `, ${plural(incoming.custom, 'custom item')}` : ''}\n\n` +
+          `${incoming.custom ? `, ${plural(incoming.custom, 'custom item')}` : ''}` +
+          `${incoming.tags ? `, ${plural(incoming.tags, 'property number')}` : ''}\n\n` +
           `This REPLACES what is on this device now (${plural(current.counted, 'counted item')}, ` +
           `${plural(current.units, 'unit')}). You can undo right after restoring.`;
         if (!confirm(message)) return;
@@ -2626,8 +2913,11 @@
         applyData({
           userState: data.userState,
           schoolInfo: data.schoolInfo && typeof data.schoolInfo === 'object' ? data.schoolInfo : schoolInfo,
-          customRawItems: Array.isArray(data.customRawItems) ? data.customRawItems : []
+          customRawItems: Array.isArray(data.customRawItems) ? data.customRawItems : [],
+          // Older backups have no history: keep this device's log in that case.
+          history: Array.isArray(data.history) ? data.history : safetyCopy.history
         });
+        logHistory('system', `Restored backup from ${savedOn}`);
         // The device now matches a backup file, so nothing is unsaved.
         const restoredAt = Date.parse(data.exportedAt);
         markBackedUp(Math.max(safetyCopy.meta.lastBackupAt || 0, isNaN(restoredAt) ? 0 : restoredAt) || Date.now());
@@ -2637,6 +2927,7 @@
           onClick: () => {
             applyData(safetyCopy);
             restoreBackupMeta(safetyCopy.meta);
+            logHistory('system', 'Undid backup restore');
             showToast('Restore undone – previous data is back', 'ph-arrow-counter-clockwise');
           }
         });
@@ -2653,7 +2944,8 @@
       return {
         counted: entries.length,
         units: entries.reduce((sum, v) => sum + (parseInt(v.qty, 10) || 0), 0),
-        custom: Array.isArray(custom) ? custom.length : 0
+        custom: Array.isArray(custom) ? custom.length : 0,
+        tags: Object.values(state || {}).reduce((sum, v) => sum + (v && Array.isArray(v.units) ? v.units.length : 0), 0)
       };
     }
 
@@ -2662,19 +2954,25 @@
         userState: JSON.parse(JSON.stringify(userState)),
         schoolInfo: JSON.parse(JSON.stringify(schoolInfo)),
         customRawItems: JSON.parse(JSON.stringify(customRawItems)),
+        history: changeHistory.slice(),
         meta: getBackupMeta()
       };
     }
 
-    function applyData({ userState: us, schoolInfo: si, customRawItems: cri }) {
+    function applyData({ userState: us, schoolInfo: si, customRawItems: cri, history: hist }) {
       userState = us || {};
       schoolInfo = si || { school: "", uacs: "", custodian: "", position: "" };
       customRawItems = cri || [];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
       localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
       localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
+      if (Array.isArray(hist)) {
+        changeHistory = hist.filter(e => e && typeof e.t === 'number' && typeof e.x === 'string');
+        persistHistory();
+      }
       updateSchoolHeader();
       rebuildCatalogList();
+      resetHistoryBase();
       updateDockStats();
       renderItems();
       renderDashboard();
@@ -2774,6 +3072,1063 @@
     }
 
     // =========================================================================
+    // PROPERTY NUMBERS: per-unit records, QR labels & camera scanning
+    // =========================================================================
+    // An equipment item can hold one record per physical unit in userState[code].units:
+    //   { id, no, serial, loc, to, cond: 'S'|'R'|'U', seen, printed, added }
+    // Rules that keep the counts honest:
+    //  - Once an item has unit records, its repair/unserviceable counts come from them
+    //    (extra untagged units count as serviceable).
+    //  - The on-hand quantity can't drop below the number of tagged units.
+    //  - The first "Tag units" carries over the condition counts already recorded.
+    const UNIT_COND = {
+      S: { label: 'Serviceable', on: 'bg-emerald-600 text-white border-emerald-600', off: 'bg-white text-emerald-700 border-emerald-200' },
+      R: { label: 'Needs Repair', on: 'bg-orange-500 text-white border-orange-500', off: 'bg-white text-orange-700 border-orange-200' },
+      U: { label: 'Unserviceable', on: 'bg-rose-600 text-white border-rose-600', off: 'bg-white text-rose-700 border-rose-200' }
+    };
+    let unitsModalCode = null;
+    let unitIdSeq = 0;
+
+    function escapeHTML(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    function getUnits(code) {
+      const s = userState[code];
+      return s && Array.isArray(s.units) ? s.units : [];
+    }
+
+    function allTaggedUnits() {
+      const list = [];
+      items.forEach(item => getUnits(item.code).forEach(unit => list.push({ item, unit })));
+      return list;
+    }
+
+    function normalizePropNo(value) {
+      return String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
+    }
+
+    function cleanPrefix(value) {
+      return normalizePropNo(value).replace(/\s+/g, '-').replace(/^-+|-+$/g, '');
+    }
+
+    function newUnitId() {
+      unitIdSeq += 1;
+      return 'u' + Date.now().toString(36) + unitIdSeq.toString(36) + Math.random().toString(36).slice(2, 6);
+    }
+
+    function findUnitByNo(value, exceptId = null) {
+      const no = normalizePropNo(value);
+      if (!no) return null;
+      return allTaggedUnits().find(({ unit }) => unit.id !== exceptId && normalizePropNo(unit.no) === no) || null;
+    }
+
+    function syncUnitCondition(item) {
+      const units = getUnits(item.code);
+      if (!units.length) return;
+      item.repair = units.filter(u => u.cond === 'R').length;
+      item.unserv = units.filter(u => u.cond === 'U').length;
+      if ((item.qty || 0) < units.length) item.qty = units.length;
+      const s = userState[item.code];
+      s.qty = item.qty;
+      s.repair = item.repair;
+      s.unserv = item.unserv;
+    }
+
+    function schoolInitials(name) {
+      const skip = new Set(['OF', 'THE', 'AND', 'DE', 'DEL', 'NG', 'SA']);
+      return String(name || '').toUpperCase().replace(/[^A-Z0-9\s]/g, ' ').split(/\s+/)
+        .filter(w => w && !skip.has(w)).map(w => w[0]).join('').slice(0, 8);
+    }
+
+    function propertyPrefix() {
+      return cleanPrefix(schoolInfo.propPrefix) || schoolInitials(schoolInfo.school) || 'PROP';
+    }
+
+    // PREFIX-YEAR-0001 style, continuing after the highest number already used this year.
+    function nextPropertyNumbers(count, prefix = propertyPrefix()) {
+      const base = `${prefix}-${new Date().getFullYear()}-`;
+      let max = 0;
+      allTaggedUnits().forEach(({ unit }) => {
+        const rest = unit.no.startsWith(base) ? unit.no.slice(base.length) : '';
+        if (/^\d+$/.test(rest)) max = Math.max(max, parseInt(rest, 10));
+      });
+      return Array.from({ length: count }, (_, i) => base + String(max + 1 + i).padStart(4, '0'));
+    }
+
+    function formatShortDate(ts) {
+      return new Date(ts).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function tagChipHTML(item) {
+      const n = getUnits(item.code).length;
+      if (!n) return '';
+      return `
+        <button onclick="openUnitsModal('${item.code}')" class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border bg-violet-50 text-violet-700 border-violet-200">
+          <i class="ph-bold ph-tag"></i> ${n}/${item.qty} tagged
+        </button>`;
+    }
+
+    function condButtonsHTML(code, id, cond, handler) {
+      return `<div class="grid grid-cols-3 gap-1.5 mt-2">` + Object.entries(UNIT_COND).map(([key, c]) => `
+        <button type="button" onclick="${handler}('${code}', '${id}', '${key}')" class="h-8 rounded-lg border text-[11px] font-bold transition active:scale-95 ${cond === key ? c.on : c.off}">${c.label}</button>`
+      ).join('') + `</div>`;
+    }
+
+    // ---- Units modal --------------------------------------------------------
+    function openUnitsModal(code, highlightId = null) {
+      if (!items.find(i => i.code === code)) return;
+      unitsModalCode = code;
+      document.getElementById('unitsModal').classList.remove('hidden');
+      renderUnitsModal(highlightId);
+      const card = highlightId && document.getElementById(`unitcard-${highlightId}`);
+      if (card) card.scrollIntoView({ block: 'center' });
+      else document.getElementById('unitsList').scrollTop = 0;
+    }
+
+    function closeUnitsModal() {
+      unitsModalCode = null;
+      document.getElementById('unitsModal').classList.add('hidden');
+      renderItems();
+      renderDashboard();
+    }
+
+    function renderUnitsModal(highlightId = null) {
+      const item = items.find(i => i.code === unitsModalCode);
+      if (!item) return;
+      const units = getUnits(item.code);
+      const untagged = Math.max(0, item.qty - units.length);
+
+      document.getElementById('unitsItemCode').textContent = item.code;
+      document.getElementById('unitsItemName').textContent = item.name;
+      document.getElementById('unitsSummary').textContent =
+        `${units.length} of ${item.qty} on-hand tagged` + (item.note ? ` · ${item.note}` : '');
+
+      let toolbar = '';
+      if (untagged > 0) {
+        const next = nextPropertyNumbers(untagged);
+        const headline = units.length === 0
+          ? `${untagged === 1 ? 'The on-hand unit has' : `None of the ${untagged} on-hand units have`} a property number yet.`
+          : `${untagged} new ${untagged === 1 ? 'unit has' : 'units have'} no property number yet.`;
+        toolbar += `
+          <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div class="text-xs text-amber-900 min-w-0">
+              <p class="font-bold">${headline}</p>
+              <p class="mt-0.5 text-amber-800">New numbers: <span class="font-mono font-bold">${escapeHTML(next[0])}</span>${untagged > 1 ? ` to <span class="font-mono font-bold">${escapeHTML(next[next.length - 1])}</span>` : ''}. You can edit any number afterwards to match an existing sticker.</p>
+            </div>
+            <button onclick="generateUnitTags()" class="shrink-0 h-10 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition">
+              <i class="ph-bold ph-tag"></i> Tag ${plural(untagged, 'unit')}
+            </button>
+          </div>`;
+      }
+      toolbar += `
+        <div class="flex flex-wrap items-center gap-2">
+          ${untagged === 0 ? `
+            <button onclick="addUnitTag()" class="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
+              <i class="ph-bold ph-plus"></i> Add new unit
+            </button>` : ''}
+          <button onclick="printItemLabels()" ${units.length ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-40 disabled:pointer-events-none">
+            <i class="ph-bold ph-printer"></i> Print ${units.length ? plural(units.length, 'QR label') : 'QR labels'}
+          </button>
+          <button onclick="openScanner()" ${units.length ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-40 disabled:pointer-events-none">
+            <i class="ph-bold ph-scan"></i> Scan
+          </button>
+          <button onclick="openHistory('${item.code}')" class="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
+            <i class="ph-bold ph-clock-counter-clockwise"></i> History
+          </button>
+        </div>`;
+      document.getElementById('unitsToolbar').innerHTML = toolbar;
+
+      const list = document.getElementById('unitsList');
+      list.innerHTML = units.length
+        ? units.map((u, idx) => unitCardHTML(item, u, idx, u.id === highlightId)).join('')
+        : `
+          <div class="py-10 text-center">
+            <i class="ph-duotone ph-qr-code text-4xl text-slate-300 block mb-2"></i>
+            <p class="text-sm font-bold text-slate-700">No units tagged yet</p>
+            <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Give each unit its own property number, print QR labels, then scan them during the physical count.</p>
+          </div>`;
+    }
+
+    function unitCardHTML(item, u, idx, highlight) {
+      const code = item.code;
+      const field = (key, label, placeholder) => `
+        <label class="block min-w-0">
+          <span class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">${label}</span>
+          <input type="text" value="${escapeHTML(u[key] || '')}" placeholder="${escapeHTML(placeholder)}" onchange="setUnitField('${code}', '${u.id}', '${key}', this.value)" class="w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
+        </label>`;
+      return `
+        <div id="unitcard-${u.id}" class="rounded-xl border p-3 transition ${highlight ? 'border-emerald-300 ring-2 ring-emerald-400/40 bg-emerald-50/40' : 'border-slate-200 bg-white'}">
+          <div class="flex items-center gap-2">
+            <span class="w-7 shrink-0 text-[11px] font-bold text-slate-400">#${idx + 1}</span>
+            <input type="text" value="${escapeHTML(u.no)}" aria-label="Property number" autocapitalize="characters" spellcheck="false" onchange="renameUnit('${code}', '${u.id}', this)" class="unit-no-input flex-1 min-w-0 h-10 px-3 rounded-lg border border-slate-300 font-mono font-extrabold text-sm text-slate-900 uppercase focus:border-brand-500 outline-none">
+            <button onclick="printUnitLabel('${code}', '${u.id}')" title="Print this label" class="w-10 h-10 shrink-0 rounded-lg bg-slate-100 hover:bg-violet-50 text-slate-600 hover:text-violet-700 flex items-center justify-center">
+              <i class="ph-bold ph-printer"></i>
+            </button>
+            <button onclick="removeUnitTag('${code}', '${u.id}')" title="Remove unit (disposed, transferred or lost)" class="w-10 h-10 shrink-0 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center">
+              <i class="ph-bold ph-trash"></i>
+            </button>
+          </div>
+          ${condButtonsHTML(code, u.id, u.cond, 'setUnitCond')}
+          <div class="grid grid-cols-3 gap-2 mt-2">
+            ${field('serial', 'Serial No.', 'Optional')}
+            ${field('loc', 'Location', item.note || 'Room')}
+            ${field('to', 'Assigned to', 'Accountable person')}
+          </div>
+          <p class="mt-2 text-[11px] text-slate-500 flex flex-wrap gap-x-3 gap-y-0.5">
+            ${u.seen
+              ? `<span class="text-emerald-700 font-semibold inline-flex items-center gap-1"><i class="ph-fill ph-seal-check"></i> Verified ${formatShortDate(u.seen)}</span>`
+              : `<span class="inline-flex items-center gap-1"><i class="ph-bold ph-seal-question"></i> Not verified yet</span>`}
+            <span class="inline-flex items-center gap-1"><i class="ph-bold ph-printer"></i> ${u.printed ? `Label printed ${formatShortDate(u.printed)}` : 'Label not printed'}</span>
+          </p>
+        </div>`;
+    }
+
+    function findUnit(code, id) {
+      return getUnits(code).find(u => u.id === id) || null;
+    }
+
+    function generateUnitTags() {
+      const item = items.find(i => i.code === unitsModalCode);
+      if (!item) return;
+      const units = getUnits(item.code);
+      const untagged = item.qty - units.length;
+      if (untagged <= 0) return;
+      // First tagging keeps the condition counts already recorded for this item.
+      let unserv = 0, repair = 0;
+      if (!units.length) ({ unserv, repair } = getCondition(item));
+      const now = Date.now();
+      const created = nextPropertyNumbers(untagged).map((no, i) => ({
+        id: newUnitId(), no, serial: '', loc: '', to: '',
+        cond: i < unserv ? 'U' : i < unserv + repair ? 'R' : 'S',
+        seen: null, printed: null, added: now
+      }));
+      const state = userState[item.code] || (userState[item.code] = { qty: item.qty });
+      state.units = [...units, ...created];
+      syncUnitCondition(item);
+      saveState();
+      renderUnitsModal();
+      showToast(`${plural(created.length, 'property number')} created – edit any to match existing stickers`, 'ph-tag');
+    }
+
+    function addUnitTag() {
+      const item = items.find(i => i.code === unitsModalCode);
+      if (!item) return;
+      if (item.qty > getUnits(item.code).length) return generateUnitTags();
+      const state = userState[item.code] || (userState[item.code] = { qty: item.qty });
+      const unit = {
+        id: newUnitId(), no: nextPropertyNumbers(1)[0], serial: '', loc: '', to: '',
+        cond: 'S', seen: null, printed: null, added: Date.now()
+      };
+      state.units = [...getUnits(item.code), unit];
+      item.qty += 1;
+      state.qty = item.qty;
+      syncUnitCondition(item);
+      saveState();
+      renderUnitsModal(unit.id);
+      document.getElementById(`unitcard-${unit.id}`)?.scrollIntoView({ block: 'center' });
+    }
+
+    function renameUnit(code, id, input) {
+      const unit = findUnit(code, id);
+      if (!unit) return;
+      const no = normalizePropNo(input.value);
+      if (!no) {
+        input.value = unit.no;
+        showToast('A property number cannot be empty', 'ph-warning');
+        return;
+      }
+      const dup = findUnitByNo(no, id);
+      if (dup) {
+        input.value = unit.no;
+        alert(`${no} is already used by another unit:\n${dup.item.name}`);
+        return;
+      }
+      if (no !== unit.no) unit.printed = null; // the old label no longer matches
+      unit.no = no;
+      input.value = no;
+      saveState();
+      renderUnitsModal();
+    }
+
+    function setUnitField(code, id, key, value) {
+      const unit = findUnit(code, id);
+      if (!unit || !['serial', 'loc', 'to'].includes(key)) return;
+      unit[key] = String(value || '').trim();
+      saveState();
+    }
+
+    function setUnitCond(code, id, cond) {
+      const unit = findUnit(code, id);
+      const item = items.find(i => i.code === code);
+      if (!unit || !item || !UNIT_COND[cond]) return;
+      unit.cond = cond;
+      syncUnitCondition(item);
+      saveState();
+      if (unitsModalCode === code) renderUnitsModal();
+      if (scanShown && scanShown.id === id) renderScanResult();
+    }
+
+    function removeUnitTag(code, id) {
+      const item = items.find(i => i.code === code);
+      const unit = findUnit(code, id);
+      if (!item || !unit) return;
+      const reason = prompt(`Remove unit ${unit.no}?\n\nUse this when the unit was disposed of, transferred or lost. ` +
+        `On-hand quantity goes from ${item.qty} to ${item.qty - 1}.\n\nReason (optional, saved in Change History):`, '');
+      if (reason === null) return;
+      const why = reason.trim();
+      const removedText = `Removed unit ${unit.no} (${(UNIT_COND[unit.cond] || UNIT_COND.S).label})` +
+        `${why ? ` – ${why}` : ''} · quantity ${item.qty} → ${item.qty - 1}`;
+      const before = { units: getUnits(code).slice(), qty: item.qty };
+      const state = userState[code];
+      state.units = before.units.filter(u => u.id !== id);
+      item.qty -= 1;
+      state.qty = item.qty;
+      if (state.units.length) {
+        syncUnitCondition(item);
+      } else {
+        delete state.units;
+        item.repair = unit.cond === 'R' ? Math.max(0, item.repair - 1) : item.repair;
+        item.unserv = unit.cond === 'U' ? Math.max(0, item.unserv - 1) : item.unserv;
+        clampCondition(item);
+      }
+      saveStateWith({ summary: { kind: 'tag', code, text: removedText } });
+      if (unitsModalCode === code) renderUnitsModal();
+      showToast(`Removed ${unit.no}`, 'ph-trash', {
+        label: 'Undo',
+        onClick: () => {
+          const s = userState[code] || (userState[code] = {});
+          s.units = before.units;
+          item.qty = before.qty;
+          s.qty = before.qty;
+          syncUnitCondition(item);
+          saveStateWith({ summary: { kind: 'tag', code, text: `Undid removal of ${unit.no} · quantity back to ${before.qty}` } });
+          if (unitsModalCode === code) renderUnitsModal();
+          renderItems();
+        }
+      });
+    }
+
+    // ---- Dashboard panel & register --------------------------------------------
+    function renderTagsPanel(activeItems) {
+      const panel = document.getElementById('tagsPanel');
+      const equipment = activeItems.filter(i => i.type === 'EQUIPMENT');
+      const tagged = allTaggedUnits();
+      if (!equipment.length && !tagged.length) {
+        panel.classList.add('hidden');
+        return;
+      }
+      panel.classList.remove('hidden');
+      const equipUnits = Math.max(equipment.reduce((sum, i) => sum + i.qty, 0), tagged.length);
+      const year = new Date().getFullYear();
+      const yearStart = new Date(year, 0, 1).getTime();
+      const todayStart = new Date().setHours(0, 0, 0, 0);
+      const verifiedYear = tagged.filter(t => t.unit.seen >= yearStart).length;
+      const verifiedToday = tagged.filter(t => t.unit.seen >= todayStart).length;
+      const unprinted = tagged.filter(t => !t.unit.printed).length;
+      const pct = (n, d) => d ? Math.round(n / d * 100) + '%' : '0%';
+
+      document.getElementById('tagsTagged').textContent = tagged.length;
+      document.getElementById('tagsEquipUnits').textContent = equipUnits;
+      document.getElementById('tagsTaggedBar').style.width = pct(tagged.length, equipUnits);
+      document.getElementById('tagsYear').textContent = year;
+      document.getElementById('tagsVerifiedYear').textContent = verifiedYear;
+      document.getElementById('tagsTaggedOf').textContent = tagged.length;
+      document.getElementById('tagsVerifiedBar').style.width = pct(verifiedYear, tagged.length);
+      document.getElementById('tagsVerifiedToday').textContent = verifiedToday;
+      document.getElementById('tagsUnprinted').textContent = unprinted;
+      document.getElementById('tagsPrintNewBtn').disabled = unprinted === 0;
+      document.getElementById('tagsReprintBtn').disabled = tagged.length === 0;
+      document.getElementById('tagsRegisterBtn').disabled = tagged.length === 0;
+      document.getElementById('tagsHint').textContent = tagged.length
+        ? 'Property number + QR label per equipment unit · scan to verify it is on site'
+        : 'No property numbers yet – tap the QR button on an equipment item in the ledger below to tag its units';
+    }
+
+    function downloadText(text, filename, type) {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    }
+
+    // One row per tagged unit – a starting point for the RPCPPE / property card.
+    function exportRegisterCSV() {
+      const rows = allTaggedUnits().sort((a, b) => a.unit.no.localeCompare(b.unit.no, undefined, { numeric: true }));
+      if (!rows.length) {
+        alert('No property numbers yet. Tag the units of an equipment item first.');
+        return;
+      }
+      const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const date = ts => ts ? new Date(ts).toLocaleDateString('en-PH') : '';
+      const csv = [
+        q('PROPERTY REGISTER - TAGGED EQUIPMENT UNITS'),
+        [q('School/Office:'), q(schoolInfo.school || 'N/A'), q('Property Custodian:'), q(schoolInfo.custodian || 'N/A')].join(','),
+        [q('Date Exported:'), q(new Date().toLocaleDateString('en-PH'))].join(','),
+        '',
+        ['Property No.', 'Item Code', 'Item & Specifications', 'Category', 'Serial No.', 'Location', 'Assigned To',
+          'Condition', 'Unit Cost', 'Last Verified', 'Label Printed'].map(q).join(',')
+      ];
+      rows.forEach(({ item, unit }) => csv.push([
+        unit.no, item.code, item.name, item.category, unit.serial, unit.loc || item.note, unit.to,
+        (UNIT_COND[unit.cond] || UNIT_COND.S).label, item.price.toFixed(2), date(unit.seen), date(unit.printed)
+      ].map(q).join(',')));
+      const school = (schoolInfo.school || 'School').replace(/\s+/g, '_');
+      downloadText('\ufeff' + csv.join('\n'), `Property_Register_${school}_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8;');
+    }
+
+    // ---- QR labels ----------------------------------------------------------
+    const scriptLoads = {};
+    function loadScript(src) {
+      if (!scriptLoads[src]) {
+        scriptLoads[src] = new Promise((resolve, reject) => {
+          const el = document.createElement('script');
+          el.src = src;
+          el.onload = resolve;
+          el.onerror = () => { delete scriptLoads[src]; el.remove(); reject(new Error(`Could not load ${src}`)); };
+          document.head.appendChild(el);
+        });
+      }
+      return scriptLoads[src];
+    }
+
+    function qrSVG(text) {
+      const qr = qrcode(0, 'M');
+      qr.addData(text);
+      qr.make();
+      return qr.createSvgTag({ cellSize: 4, margin: 8, scalable: true });
+    }
+
+    function printReport() {
+      document.body.classList.remove('printing-labels');
+      window.print();
+    }
+
+    async function printLabels(rows) {
+      if (!rows.length) {
+        showToast('No labels to print', 'ph-printer');
+        return;
+      }
+      if (typeof qrcode !== 'function') {
+        try {
+          await loadScript('assets/vendor/qrcode.js');
+        } catch (e) {
+          alert('The QR code generator could not be loaded. Open the app once while online, then try again.');
+          return;
+        }
+      }
+      const school = schoolInfo.school || 'School Property';
+      document.getElementById('printLabelsSection').innerHTML = `<div class="label-sheet">${rows.map(({ item, unit }) => `
+        <div class="qr-label">
+          <div class="qr-label-code">${qrSVG(unit.no)}</div>
+          <div class="qr-label-text">
+            <div class="qr-label-school">${escapeHTML(school)}</div>
+            <div class="qr-label-caption">Property No.</div>
+            <div class="qr-label-no">${escapeHTML(unit.no)}</div>
+            <div class="qr-label-name">${escapeHTML(item.name)}</div>
+            <div class="qr-label-meta">${escapeHTML(item.code)}${unit.serial ? ' · S/N ' + escapeHTML(unit.serial) : ''}</div>
+          </div>
+        </div>`).join('')}</div>`;
+      const now = Date.now();
+      rows.forEach(({ unit }) => { unit.printed = now; });
+      saveState();
+      if (unitsModalCode) renderUnitsModal();
+      document.body.classList.add('printing-labels');
+      window.print();
+    }
+
+    function printItemLabels() {
+      const item = items.find(i => i.code === unitsModalCode);
+      if (item) printLabels(getUnits(item.code).map(unit => ({ item, unit })));
+    }
+
+    function printUnitLabel(code, id) {
+      const item = items.find(i => i.code === code);
+      const unit = findUnit(code, id);
+      if (item && unit) printLabels([{ item, unit }]);
+    }
+
+    function printNewLabels() {
+      printLabels(allTaggedUnits().filter(t => !t.unit.printed));
+    }
+
+    function printAllLabels() {
+      const rows = allTaggedUnits();
+      if (rows.length > 30 && !confirm(`Print all ${rows.length} labels?`)) return;
+      printLabels(rows);
+    }
+
+    // ---- Camera scanner -----------------------------------------------------
+    // Uses the built-in BarcodeDetector where available (Chrome/Android), otherwise jsQR
+    // (iPad Safari). Everything runs on the device; no image leaves it.
+    let scanStream = null, scanTimer = null, scanDetector = null, scanCanvas = null, scanAudio = null;
+    let scanLast = { text: '', at: 0 };
+    let scanSession = new Set();
+    let scanShown = null; // { code, id } | { missing } | null
+
+    function scannerIsOpen() {
+      return !document.getElementById('scannerOverlay').classList.contains('hidden');
+    }
+
+    function openScanner() {
+      const overlay = document.getElementById('scannerOverlay');
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+      document.body.style.overflow = 'hidden';
+      scanSession = new Set();
+      scanShown = null;
+      scanLast = { text: '', at: 0 };
+      updateScanCount();
+      renderScanResult();
+      try {
+        scanAudio = scanAudio || new (window.AudioContext || window.webkitAudioContext)();
+        if (scanAudio.state === 'suspended') scanAudio.resume();
+      } catch (e) {
+        scanAudio = null;
+      }
+      startCamera();
+    }
+
+    function closeScanner() {
+      stopCamera();
+      const overlay = document.getElementById('scannerOverlay');
+      overlay.classList.add('hidden');
+      overlay.classList.remove('flex');
+      document.body.style.overflow = '';
+      if (unitsModalCode) renderUnitsModal();
+      renderItems();
+      renderDashboard();
+    }
+
+    function setScanMessage(text, problem = false) {
+      document.getElementById('scanMessage').textContent = text;
+      document.getElementById('scanFrame').classList.toggle('hidden', problem);
+    }
+
+    async function startCamera() {
+      if (scanStream) return;
+      setScanMessage('Starting camera…', true);
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setScanMessage('The camera is not available in this browser. Type the property number below.', true);
+        return;
+      }
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+      } catch (err) {
+        const blocked = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+        setScanMessage(blocked
+          ? 'Camera access is blocked. Allow the camera for this app (iPad Settings › Safari › Camera), or type the property number below.'
+          : 'No camera could be started. Type the property number below.', true);
+        return;
+      }
+      if (!scannerIsOpen() || document.visibilityState === 'hidden') {
+        stream.getTracks().forEach(t => t.stop());
+        return;
+      }
+      scanStream = stream;
+      const video = document.getElementById('scanVideo');
+      video.srcObject = stream;
+      try { await video.play(); } catch (e) {}
+
+      if (!scanDetector && 'BarcodeDetector' in window) {
+        try {
+          const formats = await BarcodeDetector.getSupportedFormats();
+          if (formats.includes('qr_code')) scanDetector = new BarcodeDetector({ formats: ['qr_code'] });
+        } catch (e) {}
+      }
+      if (!scanDetector && typeof jsQR !== 'function') {
+        try {
+          await loadScript('assets/vendor/jsQR.js');
+        } catch (e) {
+          setScanMessage('The QR reader could not be loaded. Open the app once while online, or type the number below.', true);
+          return;
+        }
+      }
+      if (!scanStream) return;
+      setScanMessage('Hold a QR property label inside the frame');
+      scanLoop();
+    }
+
+    function stopCamera() {
+      clearTimeout(scanTimer);
+      scanTimer = null;
+      if (scanStream) {
+        scanStream.getTracks().forEach(t => t.stop());
+        scanStream = null;
+      }
+      document.getElementById('scanVideo').srcObject = null;
+    }
+
+    function scanLoop() {
+      clearTimeout(scanTimer);
+      scanTimer = setTimeout(async () => {
+        if (!scanStream) return;
+        try { await scanFrame(); } catch (e) {}
+        if (scanStream) scanLoop();
+      }, 200);
+    }
+
+    async function scanFrame() {
+      const video = document.getElementById('scanVideo');
+      if (video.readyState < 2 || !video.videoWidth) return;
+      if (scanDetector) {
+        const codes = await scanDetector.detect(video);
+        if (codes.length) handleScanText(codes[0].rawValue);
+        return;
+      }
+      if (typeof jsQR !== 'function') return;
+      // Decode the centre square (where the frame is), scaled down for speed.
+      const w = video.videoWidth, h = video.videoHeight;
+      const side = Math.min(w, h), size = Math.min(side, 640);
+      scanCanvas = scanCanvas || document.createElement('canvas');
+      if (scanCanvas.width !== size) { scanCanvas.width = size; scanCanvas.height = size; }
+      const ctx = scanCanvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(video, (w - side) / 2, (h - side) / 2, side, side, 0, 0, size, size);
+      const img = ctx.getImageData(0, 0, size, size);
+      const code = jsQR(img.data, size, size, { inversionAttempts: 'dontInvert' });
+      if (code && code.data) handleScanText(code.data);
+    }
+
+    function handleScanText(raw) {
+      const text = normalizePropNo(String(raw || '').split(/\r?\n/)[0]);
+      if (!text) return;
+      const now = Date.now();
+      // A label held in view counts once; it can be scanned again after leaving the frame for 2 s.
+      const stillInView = text === scanLast.text && now - scanLast.at < 2000;
+      scanLast = { text, at: now };
+      if (!stillInView) lookupScannedTag(text);
+    }
+
+    function manualScanLookup() {
+      const input = document.getElementById('scanManualInput');
+      const text = normalizePropNo(input.value);
+      if (!text) return;
+      input.value = '';
+      input.blur();
+      lookupScannedTag(text, 'typed');
+    }
+
+    function lookupScannedTag(text, via = 'scan') {
+      const hit = findUnitByNo(text);
+      if (!hit) {
+        scanShown = { missing: text };
+        scanFeedback(false);
+        renderScanResult();
+        return;
+      }
+      hit.unit.seen = Date.now();
+      scanSession.add(hit.unit.id);
+      scanShown = { code: hit.item.code, id: hit.unit.id };
+      saveStateWith({ via });
+      scanFeedback(true);
+      updateScanCount();
+      renderScanResult();
+    }
+
+    function scanFeedback(ok) {
+      const frame = document.getElementById('scanFrame');
+      const tone = ok ? 'border-emerald-400' : 'border-rose-500';
+      frame.classList.remove('border-white/80');
+      frame.classList.add(tone);
+      clearTimeout(scanFeedback._t);
+      scanFeedback._t = setTimeout(() => {
+        frame.classList.remove('border-emerald-400', 'border-rose-500');
+        frame.classList.add('border-white/80');
+      }, 700);
+      if (!scanAudio) return;
+      try {
+        const osc = scanAudio.createOscillator();
+        const gain = scanAudio.createGain();
+        osc.type = ok ? 'sine' : 'square';
+        osc.frequency.value = ok ? 1046 : 220;
+        gain.gain.value = 0.08;
+        osc.connect(gain);
+        gain.connect(scanAudio.destination);
+        const t = scanAudio.currentTime;
+        osc.start(t);
+        osc.stop(t + (ok ? 0.09 : 0.25));
+      } catch (e) {}
+    }
+
+    function updateScanCount() {
+      document.getElementById('scanSessionCount').textContent = scanSession.size;
+    }
+
+    function renderScanResult() {
+      const box = document.getElementById('scanResult');
+      if (!scanShown) {
+        box.innerHTML = `
+          <div class="flex items-center gap-3 rounded-2xl bg-slate-50 border border-slate-200 p-3">
+            <i class="ph-duotone ph-qr-code text-3xl text-violet-500"></i>
+            <div>
+              <p class="text-sm font-bold text-slate-800">Ready to scan</p>
+              <p class="text-xs text-slate-500">Point the camera at a CustodianPro QR label. Matches are marked as verified today.</p>
+            </div>
+          </div>`;
+        return;
+      }
+      if (scanShown.missing) {
+        box.innerHTML = `
+          <div class="flex items-start gap-3 rounded-2xl bg-rose-50 border border-rose-200 p-3">
+            <i class="ph-fill ph-x-circle text-2xl text-rose-500 mt-0.5"></i>
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-rose-800">Not found: <span class="font-mono break-all">${escapeHTML(scanShown.missing)}</span></p>
+              <p class="text-xs text-rose-700/90 mt-0.5">No unit on this device has this property number. If it was tagged on another device, restore that backup first.</p>
+            </div>
+          </div>`;
+        return;
+      }
+      const item = items.find(i => i.code === scanShown.code);
+      const unit = findUnit(scanShown.code, scanShown.id);
+      if (!item || !unit) {
+        scanShown = null;
+        renderScanResult();
+        return;
+      }
+      box.innerHTML = `
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-[11px] font-bold uppercase text-emerald-700 flex items-center gap-1"><i class="ph-fill ph-seal-check text-sm"></i> Verified ${formatTimeAgo(unit.seen)}</p>
+              <p class="font-mono font-extrabold text-lg text-slate-900 leading-tight break-all">${escapeHTML(unit.no)}</p>
+              <p class="text-sm font-bold text-slate-800 truncate">${escapeHTML(item.name)}</p>
+              <p class="text-xs text-slate-500 mt-0.5 flex flex-wrap gap-x-3">
+                <span class="inline-flex items-center gap-1"><i class="ph-fill ph-map-pin"></i>${escapeHTML(unit.loc || item.note || 'No location')}</span>
+                ${unit.to ? `<span class="inline-flex items-center gap-1"><i class="ph-fill ph-user"></i>${escapeHTML(unit.to)}</span>` : ''}
+                ${unit.serial ? `<span>S/N ${escapeHTML(unit.serial)}</span>` : ''}
+              </p>
+            </div>
+            <button onclick="openUnitFromScanner()" class="shrink-0 h-9 px-3 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1">
+              <i class="ph-bold ph-arrow-square-out"></i> Open
+            </button>
+          </div>
+          ${condButtonsHTML(item.code, unit.id, unit.cond, 'setUnitCond')}
+        </div>`;
+    }
+
+    function openUnitFromScanner() {
+      const shown = scanShown;
+      closeScanner();
+      if (shown && shown.code) openUnitsModal(shown.code, shown.id);
+    }
+
+    // =========================================================================
+    // CHANGE HISTORY (audit log): what changed, when and by whom
+    // =========================================================================
+    // Every saveState() compares the data with the last saved copy and records readable
+    // entries { t, k: kind, x: text, c?: item code, by?: custodian }. Bulk actions (sample
+    // data, reset, restore…) record one summary entry instead. Quantity taps on the same
+    // item within 3 minutes are merged into one "Quantity 12 → 15" entry.
+    const HISTORY_KEY = 'custodian_history_v1';
+    const HISTORY_MAX = 3000;
+    const HISTORY_MERGE_MS = 3 * 60 * 1000;
+    const HISTORY_KINDS = {
+      count: { label: 'Counts', icon: 'ph-hash', tone: 'bg-brand-50 text-brand-600' },
+      condition: { label: 'Condition', icon: 'ph-wrench', tone: 'bg-orange-50 text-orange-600' },
+      tag: { label: 'Tags & scans', icon: 'ph-qr-code', tone: 'bg-violet-50 text-violet-600' },
+      edit: { label: 'Details', icon: 'ph-pencil-simple', tone: 'bg-slate-100 text-slate-600' },
+      system: { label: 'System', icon: 'ph-gear-six', tone: 'bg-emerald-50 text-emerald-600' }
+    };
+    const TYPE_LABELS = { EQUIPMENT: 'Equipment (ICS/PAR)', CONSUMABLE: 'Consumable (RIS)' };
+    let changeHistory = [];
+    let historyBase = {};
+    let historyContext = null; // { via: 'scan'|'typed' } or { summary: { kind, text, code? } }
+    let historyFilter = { code: null, kind: 'ALL', limit: 150 };
+
+    function loadHistory() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(HISTORY_KEY));
+        changeHistory = Array.isArray(saved) ? saved : [];
+      } catch (e) {
+        changeHistory = [];
+      }
+    }
+
+    // History is part of the data, but writing it never marks "unsaved changes" by itself.
+    function persistHistory() {
+      if (changeHistory.length > HISTORY_MAX) changeHistory = changeHistory.slice(-HISTORY_MAX);
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(changeHistory));
+      } catch (e) {
+        // Storage full: keep the newest half rather than losing inventory saves.
+        changeHistory = changeHistory.slice(-Math.floor(changeHistory.length / 2));
+        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(changeHistory)); } catch (e2) {}
+      }
+    }
+
+    function resetHistoryBase() {
+      historyBase = JSON.parse(JSON.stringify(userState));
+    }
+
+    function historyEntry(kind, text, code = null, extra = null) {
+      const e = { t: Date.now(), k: kind, x: text };
+      if (code) e.c = code;
+      if (schoolInfo.custodian) e.by = schoolInfo.custodian;
+      return extra ? Object.assign(e, extra) : e;
+    }
+
+    function logHistory(kind, text, code = null) {
+      changeHistory.push(historyEntry(kind, text, code));
+      persistHistory();
+    }
+
+    function saveStateWith(ctx) {
+      historyContext = ctx;
+      try { saveState(); } finally { historyContext = null; }
+    }
+
+    function recordHistory() {
+      const ctx = historyContext;
+      if (ctx && ctx.summary) {
+        changeHistory.push(historyEntry(ctx.summary.kind, ctx.summary.text, ctx.summary.code || null));
+      } else {
+        diffForHistory(historyBase, userState, ctx).forEach(addHistoryEntry);
+      }
+      resetHistoryBase();
+      persistHistory();
+    }
+
+    function addHistoryEntry(e) {
+      const last = changeHistory[changeHistory.length - 1];
+      if (e.k === 'count' && last && last.k === 'count' && last.c === e.c && last.from !== undefined &&
+          e.t - last.t < HISTORY_MERGE_MS) {
+        last.to = e.to;
+        last.t = e.t;
+        last.x = `Quantity ${last.from} → ${last.to}`;
+        if (last.from === last.to) changeHistory.pop(); // tapped back to where it was
+        return;
+      }
+      changeHistory.push(e);
+    }
+
+    function condSummary(repair, unserv) {
+      if (!repair && !unserv) return 'all serviceable';
+      return [repair ? `${repair} repair` : '', unserv ? `${unserv} unserviceable` : ''].filter(Boolean).join(', ');
+    }
+
+    function diffForHistory(prev, cur, ctx) {
+      const out = [];
+      const verified = [];
+      const printed = [];
+      const via = ctx && ctx.via === 'scan' ? ' (scanned)' : ctx && ctx.via === 'typed' ? ' (typed in scanner)' : '';
+      const condName = c => (UNIT_COND[c] || UNIT_COND.S).label;
+      new Set([...Object.keys(prev), ...Object.keys(cur)]).forEach(code => {
+        const p = prev[code] || {}, c = cur[code] || {};
+        if (JSON.stringify(p) === JSON.stringify(c)) return;
+        const item = items.find(i => i.code === code);
+        const add = (kind, text, extra) => out.push(historyEntry(kind, text, code, extra));
+
+        const pq = parseInt(p.qty, 10) || 0, cq = parseInt(c.qty, 10) || 0;
+        if (pq !== cq) add('count', `Quantity ${pq} → ${cq}`, { from: pq, to: cq });
+
+        const defPrice = item ? item.defaultPrice : 0;
+        const pp = Number(p.customPrice ?? defPrice), cp = Number(c.customPrice ?? defPrice);
+        if (pp !== cp) add('edit', `Unit price ${formatCurrency(pp)} → ${formatCurrency(cp)}`);
+
+        const defMin = item && item.type === 'EQUIPMENT' ? 2 : 5;
+        const pm = p.minQty ?? defMin, cm = c.minQty ?? defMin;
+        if (pm !== cm) add('edit', `Min alert qty ${pm} → ${cm}`);
+
+        const pn = (p.note || '').trim(), cn = (c.note || '').trim();
+        if (pn !== cn) add('edit', !pn ? `Location set to “${cn}”` : !cn ? `Location “${pn}” cleared` : `Location “${pn}” → “${cn}”`);
+
+        if ((p.typeOverride || null) !== (c.typeOverride || null)) {
+          add('edit', c.typeOverride ? `Classification set to ${TYPE_LABELS[c.typeOverride]} (manual)` : 'Classification back to automatic');
+        }
+
+        const pu = Array.isArray(p.units) ? p.units : [], cu = Array.isArray(c.units) ? c.units : [];
+        if (!pu.length && !cu.length) {
+          const pr = p.repair || 0, px = p.unserv || 0, cr = c.repair || 0, cx = c.unserv || 0;
+          if (pr !== cr || px !== cx) add('condition', `Condition ${condSummary(pr, px)} → ${condSummary(cr, cx)}`);
+        }
+
+        const before = new Map(pu.map(u => [u.id, u]));
+        const after = new Map(cu.map(u => [u.id, u]));
+        const added = cu.filter(u => !before.has(u.id));
+        if (added.length) {
+          add('tag', added.length === 1 ? `Tagged unit ${added[0].no}`
+            : `Tagged ${added.length} units (${added[0].no} – ${added[added.length - 1].no})`);
+        }
+        pu.filter(u => !after.has(u.id)).forEach(u => add('tag', `Removed unit ${u.no}`));
+        cu.forEach(u => {
+          const o = before.get(u.id);
+          if (!o) return;
+          if (o.no !== u.no) add('tag', `Property number ${o.no} → ${u.no}`);
+          if ((o.cond || 'S') !== (u.cond || 'S')) add('condition', `${u.no}: ${condName(o.cond)} → ${condName(u.cond)}`);
+          const details = [['serial', 'serial no.'], ['loc', 'location'], ['to', 'assigned to']]
+            .filter(([k]) => (o[k] || '') !== (u[k] || ''))
+            .map(([k, label]) => u[k] ? `${label} “${u[k]}”` : `${label} cleared`);
+          if (details.length) add('edit', `${u.no}: ${details.join(', ')}`);
+          if (u.seen && u.seen !== o.seen) verified.push({ code, no: u.no });
+          if (u.printed && u.printed !== o.printed) printed.push({ code, no: u.no });
+        });
+      });
+      const onlyCode = list => list.every(v => v.code === list[0].code) ? list[0].code : null;
+      if (verified.length) {
+        out.push(historyEntry('tag', verified.length === 1 ? `Verified ${verified[0].no}${via}` : `Verified ${verified.length} units${via}`, onlyCode(verified)));
+      }
+      if (printed.length) {
+        out.push(historyEntry('tag', printed.length === 1 ? `Printed QR label ${printed[0].no}` : `Printed ${printed.length} QR labels`, onlyCode(printed)));
+      }
+      return out;
+    }
+
+    // ---- History viewer -------------------------------------------------------
+    function openHistory(code = null) {
+      historyFilter = { code: code || null, kind: 'ALL', limit: 150 };
+      document.getElementById('historySearch').value = '';
+      document.getElementById('historyModal').classList.remove('hidden');
+      renderHistory();
+      document.getElementById('historyList').scrollTop = 0;
+    }
+
+    function closeHistory() {
+      document.getElementById('historyModal').classList.add('hidden');
+    }
+
+    function setHistoryKind(kind) {
+      historyFilter.kind = kind;
+      historyFilter.limit = 150;
+      renderHistory();
+    }
+
+    function setHistoryItem(code) {
+      historyFilter.code = code || null;
+      historyFilter.limit = 150;
+      renderHistory();
+      document.getElementById('historyList').scrollTop = 0;
+    }
+
+    function showMoreHistory() {
+      historyFilter.limit += 300;
+      renderHistory();
+    }
+
+    function historyItemName(code) {
+      const item = code && items.find(i => i.code === code);
+      return item ? item.name : (code || '');
+    }
+
+    function filteredHistory() {
+      const q = document.getElementById('historySearch').value.toLowerCase().trim();
+      return changeHistory.filter(e =>
+        (!historyFilter.code || e.c === historyFilter.code) &&
+        (historyFilter.kind === 'ALL' || e.k === historyFilter.kind) &&
+        (!q || `${e.x} ${e.c || ''} ${historyItemName(e.c)} ${e.by || ''}`.toLowerCase().includes(q))
+      ).reverse();
+    }
+
+    function historyDayLabel(ts) {
+      const d = new Date(ts).setHours(0, 0, 0, 0);
+      const today = new Date().setHours(0, 0, 0, 0);
+      if (d === today) return 'Today';
+      if (today - d === DAY_MS || Math.round((today - d) / DAY_MS) === 1) return 'Yesterday';
+      return new Date(ts).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function renderHistory() {
+      const oldest = changeHistory[0];
+      document.getElementById('historySubtitle').textContent = changeHistory.length
+        ? `${plural(changeHistory.length, 'change')} recorded since ${formatShortDate(oldest.t)}`
+        : 'No changes recorded yet';
+
+      const itemBox = document.getElementById('historyItemFilter');
+      itemBox.classList.toggle('hidden', !historyFilter.code);
+      itemBox.innerHTML = historyFilter.code ? `
+        <span class="inline-flex items-center gap-2 max-w-full pl-2.5 pr-1 py-1 rounded-lg bg-brand-50 border border-brand-100 text-brand-700 text-xs font-bold">
+          <i class="ph-bold ph-funnel"></i>
+          <span class="truncate">${escapeHTML(historyItemName(historyFilter.code))}</span>
+          <button onclick="setHistoryItem(null)" class="w-6 h-6 rounded-md hover:bg-brand-100 flex items-center justify-center" title="Show all items"><i class="ph-bold ph-x"></i></button>
+        </span>` : '';
+
+      document.getElementById('historyKindChips').innerHTML = [['ALL', 'All'], ...Object.entries(HISTORY_KINDS).map(([k, v]) => [k, v.label])]
+        .map(([k, label]) => `
+          <button onclick="setHistoryKind('${k}')" class="shrink-0 h-8 px-3 rounded-lg text-xs font-bold transition ${historyFilter.kind === k ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${label}</button>`)
+        .join('');
+
+      const list = document.getElementById('historyList');
+      const all = filteredHistory();
+      if (!all.length) {
+        list.innerHTML = `
+          <div class="py-12 text-center">
+            <i class="ph-duotone ph-clock-counter-clockwise text-4xl text-slate-300 block mb-2"></i>
+            <p class="text-sm font-bold text-slate-700">${changeHistory.length ? 'No changes match this view' : 'Nothing recorded yet'}</p>
+            <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Counts, prices, locations, condition, property numbers and scans are recorded here as you work.</p>
+          </div>`;
+        return;
+      }
+      const shown = all.slice(0, historyFilter.limit);
+      let html = '';
+      let day = '';
+      shown.forEach(e => {
+        const label = historyDayLabel(e.t);
+        if (label !== day) {
+          day = label;
+          html += `<p class="sticky top-0 z-10 bg-white/95 backdrop-blur pt-3 pb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">${label}</p>`;
+        }
+        const kind = HISTORY_KINDS[e.k] || HISTORY_KINDS.edit;
+        const time = new Date(e.t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+        const itemLink = e.c && e.c !== historyFilter.code
+          ? ` · <button onclick="setHistoryItem('${escapeHTML(e.c)}')" class="text-brand-600 font-semibold hover:underline text-left">${escapeHTML(historyItemName(e.c))}</button>`
+          : '';
+        html += `
+          <div class="flex items-start gap-3 py-2 border-b border-slate-50 last:border-0">
+            <div class="w-8 h-8 shrink-0 rounded-lg ${kind.tone} flex items-center justify-center"><i class="ph-bold ${kind.icon}"></i></div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-slate-800 leading-snug break-words">${historyTextHTML(e.x)}</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">${time}${itemLink}${e.by ? ` · ${escapeHTML(e.by)}` : ''}</p>
+            </div>
+          </div>`;
+      });
+      if (all.length > shown.length) {
+        html += `
+          <div class="pt-3 text-center">
+            <button onclick="showMoreHistory()" class="h-9 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs">Show older (${(all.length - shown.length).toLocaleString()} more)</button>
+          </div>`;
+      }
+      list.innerHTML = html;
+    }
+
+    // The bundled Inter subset has no "→" glyph, so draw arrows with the icon font.
+    function historyTextHTML(text) {
+      return escapeHTML(text).replace(/→/g, '<i class="ph-bold ph-arrow-right text-slate-400 text-xs mx-0.5"></i>');
+    }
+
+    function exportHistoryCSV() {
+      const rows = filteredHistory();
+      if (!rows.length) {
+        alert('There are no changes to export in this view.');
+        return;
+      }
+      const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const csv = [
+        q('CHANGE HISTORY'),
+        [q('School/Office:'), q(schoolInfo.school || 'N/A'), q('Date Exported:'), q(new Date().toLocaleDateString('en-PH'))].join(','),
+        '',
+        ['Date', 'Time', 'Type', 'Item Code', 'Item', 'Change', 'By'].map(q).join(',')
+      ];
+      rows.forEach(e => {
+        const d = new Date(e.t);
+        csv.push([
+          d.toLocaleDateString('en-PH'), d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }),
+          (HISTORY_KINDS[e.k] || HISTORY_KINDS.edit).label, e.c || '', e.c ? historyItemName(e.c) : '', e.x, e.by || ''
+        ].map(q).join(','));
+      });
+      const school = (schoolInfo.school || 'School').replace(/\s+/g, '_');
+      downloadText('\ufeff' + csv.join('\n'), `Change_History_${school}_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8;');
+    }
+
+    // =========================================================================
     // OFFLINE SUPPORT (service worker, persistent storage, connection badge)
     // =========================================================================
     // action = { label, onClick } adds a button (e.g. "Undo") and keeps the toast up longer.
@@ -2839,7 +4194,13 @@
       // Re-check when the app comes back to the foreground (iPad apps stay open for days).
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') updateBackupReminder();
+        // iPadOS stops the camera in the background; restart it when the scanner is still open.
+        if (document.visibilityState === 'hidden') stopCamera();
+        else if (scannerIsOpen()) startCamera();
       });
+      window.addEventListener('afterprint', () => document.body.classList.remove('printing-labels'));
+      // Load the label generator early so "Print labels" opens the print dialog right away.
+      setTimeout(() => loadScript('assets/vendor/qrcode.js').catch(() => {}), 1500);
       setInterval(updateBackupReminder, 30 * 60 * 1000);
     });
   </script>
