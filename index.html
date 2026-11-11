@@ -1,0 +1,2293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>CustodianPro | General Inventory & APP-CSE 2027</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#1e1b4b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* iPad & Tablet Touch Optimizations */
+    * {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    body {
+      background-color: #f1f5f9;
+      overscroll-behavior-y: none;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+    .print-only {
+      display: none;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background: white; padding-bottom: 0; color: black; }
+    }
+  </style>
+</head>
+<body class="text-slate-800 antialiased selection:bg-brand-500 selection:text-white pb-28">
+
+  <!-- TOP STICKY NAVIGATION & CONTROLS (Portrait Tablet Optimized) -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm no-print">
+    
+    <!-- Top Bar: App Identity & School Actions -->
+    <div class="max-w-4xl mx-auto px-4 pt-3 pb-2 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+          <i class="ph-bold ph-package text-2xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-extrabold text-lg tracking-tight text-slate-900 leading-none">CustodianPro</h1>
+            <span class="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider bg-brand-50 text-brand-700 rounded-md border border-brand-200">APP-CSE 2027</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1 font-medium">School General Inventory & Supply System</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2">
+        <button onclick="openCustomItemModal()" class="h-10 px-3 rounded-xl bg-brand-50 hover:bg-brand-100 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-brand-700 border border-brand-200" title="Add Custom Supply or Equipment">
+          <i class="ph-bold ph-plus-circle text-base"></i>
+          <span class="hidden sm:inline">Custom Item</span>
+        </button>
+        <button onclick="openSchoolModal()" class="h-10 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition flex items-center gap-2 text-xs font-semibold text-slate-700">
+          <i class="ph-bold ph-buildings text-base text-brand-600"></i>
+          <span id="headerSchoolName" class="max-w-[130px] truncate">Set School Info</span>
+        </button>
+        <button onclick="exportCSV()" class="h-10 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-white shadow-sm">
+          <i class="ph-bold ph-download-simple text-base"></i>
+          <span>Export CSV</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- PRIMARY VIEW SWITCHER: General Inventory Dashboard vs. Item Catalog -->
+    <div class="max-w-4xl mx-auto px-4 py-2">
+      <div class="grid grid-cols-2 bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
+        <button 
+          onclick="switchMainView('DASHBOARD')" 
+          id="navBtn-DASHBOARD"
+          class="h-10 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition bg-white text-brand-600 shadow-sm"
+        >
+          <i class="ph-bold ph-chart-pie-slice text-lg"></i>
+          <span>General Inventory Dashboard</span>
+        </button>
+        <button 
+          onclick="switchMainView('CATALOG')" 
+          id="navBtn-CATALOG"
+          class="h-10 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition text-slate-600 hover:text-slate-900"
+        >
+          <i class="ph-bold ph-list-bullets text-lg"></i>
+          <span>Item Catalog & Counter</span>
+          <span id="navBadgeCount" class="px-2 py-0.5 text-[11px] rounded-full bg-brand-100 text-brand-700 font-mono">0</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- CATALOG-ONLY CONTROLS (Search & Category Pills) -->
+    <div id="catalogHeaderControls" class="hidden border-t border-slate-100">
+      <div class="max-w-4xl mx-auto px-4 py-2 flex flex-col sm:flex-row gap-2.5">
+        <!-- Search Input -->
+        <div class="relative flex-1">
+          <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+          <input 
+            type="text" 
+            id="searchInput" 
+            oninput="handleSearch(this.value)"
+            placeholder="Search item name, code, or room/location..." 
+            class="w-full h-11 pl-10 pr-10 bg-slate-100 focus:bg-white rounded-xl border border-transparent focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 text-sm font-medium outline-none transition"
+          >
+          <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-300 text-slate-700 items-center justify-center">
+            <i class="ph-bold ph-x text-xs"></i>
+          </button>
+        </div>
+
+        <!-- Segmented View Filter -->
+        <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200/70 shrink-0">
+          <button onclick="setPartFilter('ALL')" id="tab-ALL" class="part-tab px-3 py-1.5 rounded-lg text-xs font-bold transition bg-white text-slate-900 shadow-sm">
+            All (<span id="count-ALL">0</span>)
+          </button>
+          <button onclick="setPartFilter('PART1')" id="tab-PART1" class="part-tab px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600">
+            Part I (PS-DBM)
+          </button>
+          <button onclick="setPartFilter('PART2')" id="tab-PART2" class="part-tab px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600">
+            Part II (Other)
+          </button>
+          <button onclick="setPartFilter('SELECTED')" id="tab-SELECTED" class="part-tab px-3 py-1.5 rounded-lg text-xs font-bold transition text-brand-600 flex items-center gap-1">
+            <i class="ph-fill ph-check-circle"></i>
+            <span>In Stock (<span id="count-SELECTED">0</span>)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Horizontal Category Pills -->
+      <div class="max-w-4xl mx-auto px-4 pb-2.5 pt-1">
+        <div id="categoryPills" class="flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- VIEW 1: GENERAL INVENTORY DASHBOARD (Default View)                    -->
+  <!-- ===================================================================== -->
+  <section id="viewDashboard" class="max-w-4xl mx-auto px-4 pt-4 space-y-5 no-print">
+
+    <!-- Empty Inventory Onboarding Banner (Shows only when 0 items are counted) -->
+    <div id="dashboardEmptyBanner" class="hidden bg-gradient-to-r from-brand-600 to-indigo-700 rounded-2xl p-5 text-white shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="space-y-1">
+        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[11px] font-bold uppercase tracking-wider">
+          <i class="ph-fill ph-sparkle"></i> Ready for Inventory Count
+        </div>
+        <h2 class="text-lg font-extrabold">Your General Inventory is Currently Empty</h2>
+        <p class="text-xs text-indigo-100 max-w-lg">Start adding quantities in the Item Catalog, or load realistic sample school inventory data to explore the dashboard metrics.</p>
+      </div>
+      <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+        <button onclick="loadSampleInventory()" class="flex-1 sm:flex-initial h-11 px-4 rounded-xl bg-white text-brand-700 hover:bg-indigo-50 active:scale-95 font-extrabold text-xs shadow-sm transition flex items-center justify-center gap-1.5">
+          <i class="ph-bold ph-magic-wand text-base"></i>
+          <span>Load Sample Inventory</span>
+        </button>
+        <button onclick="switchMainView('CATALOG')" class="flex-1 sm:flex-initial h-11 px-4 rounded-xl bg-brand-900/40 hover:bg-brand-900/60 active:scale-95 text-white font-bold text-xs border border-white/20 transition flex items-center justify-center gap-1.5">
+          <span>Open Catalog</span>
+          <i class="ph-bold ph-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Top KPI Cards Grid (2x2 on Portrait Tablet) -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      
+      <!-- KPI 1: Total Valuation -->
+      <div onclick="openSummaryModal()" class="bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-emerald-400 cursor-pointer shadow-sm flex flex-col justify-between transition">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Valuation</span>
+          <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <i class="ph-bold ph-currency-circle-dollar text-lg"></i>
+          </div>
+        </div>
+        <div class="my-2">
+          <div id="kpiTotalValue" class="text-xl sm:text-2xl font-extrabold font-mono text-slate-900 truncate">₱0.00</div>
+        </div>
+        <div class="text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
+          <span>PS-DBM: <strong id="kpiPart1Val" class="text-slate-700 font-mono">₱0</strong></span>
+          <span>Other: <strong id="kpiPart2Val" class="text-slate-700 font-mono">₱0</strong></span>
+        </div>
+      </div>
+
+      <!-- KPI 2: Active SKUs & Total Units -->
+      <div onclick="filterLedgerAndScroll('ALL')" class="bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-brand-400 cursor-pointer shadow-sm flex flex-col justify-between transition">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Active Inventory</span>
+          <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
+            <i class="ph-bold ph-stack text-lg"></i>
+          </div>
+        </div>
+        <div class="my-2 flex items-baseline gap-1.5">
+          <span id="kpiActiveSkus" class="text-xl sm:text-2xl font-extrabold font-mono text-slate-900">0</span>
+          <span class="text-xs font-semibold text-slate-400">/ <span id="kpiTotalCatalogSkus">323</span> SKUs</span>
+        </div>
+        <div class="text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
+          <span>Total Physical Units:</span>
+          <strong id="kpiTotalUnits" class="text-brand-600 font-mono font-bold">0</strong>
+        </div>
+      </div>
+
+      <!-- KPI 3: Equipment vs Consumables -->
+      <div onclick="filterLedgerAndScroll('EQUIPMENT')" class="bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-blue-400 cursor-pointer shadow-sm flex flex-col justify-between transition">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Asset Breakdown</span>
+          <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+            <i class="ph-bold ph-desktop-tower text-lg"></i>
+          </div>
+        </div>
+        <div class="my-2 flex items-baseline gap-2">
+          <div>
+            <span id="kpiEquipmentCount" class="text-xl sm:text-2xl font-extrabold font-mono text-blue-600">0</span>
+            <span class="text-[11px] font-semibold text-slate-500 block">Equipment (ICS/PAR)</span>
+          </div>
+          <div class="h-6 w-px bg-slate-200 mx-1"></div>
+          <div>
+            <span id="kpiConsumableCount" class="text-xl sm:text-2xl font-extrabold font-mono text-indigo-600">0</span>
+            <span class="text-[11px] font-semibold text-slate-500 block">Consumables (RIS)</span>
+          </div>
+        </div>
+        <div class="text-[11px] text-slate-500 border-t border-slate-100 pt-2 truncate">
+          Equip Value: <strong id="kpiEquipmentValue" class="text-slate-700 font-mono">₱0.00</strong>
+        </div>
+      </div>
+
+      <!-- KPI 4: Stock Alerts & Unpriced Items -->
+      <div onclick="filterLedgerAndScroll('LOW')" class="bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-amber-400 cursor-pointer shadow-sm flex flex-col justify-between transition">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Attention Needed</span>
+          <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+            <i class="ph-bold ph-warning-octagon text-lg"></i>
+          </div>
+        </div>
+        <div class="my-2 flex items-baseline gap-2">
+          <span id="kpiLowStockCount" class="text-xl sm:text-2xl font-extrabold font-mono text-amber-600">0</span>
+          <span class="text-xs font-semibold text-slate-500">Low Stock Items</span>
+        </div>
+        <div class="text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
+          <span>Unpriced (₱0.00):</span>
+          <strong id="kpiUnpricedCount" class="text-rose-600 font-mono font-bold">0 SKUs</strong>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MIDDLE ROW: Stock Health & Storage Location Distribution -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      
+      <!-- Left 2 Cols: Category Inventory Distribution -->
+      <div class="md:col-span-2 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2">
+                <i class="ph-bold ph-folders text-brand-600"></i>
+                <span>Inventory by Category</span>
+              </h3>
+              <p class="text-xs text-slate-500">Tap any category to jump directly to its items</p>
+            </div>
+            <button onclick="toggleShowAllCategories()" id="btnToggleCats" class="text-xs font-bold text-brand-600 bg-brand-50 px-3 py-1.5 rounded-lg border border-brand-200 active:scale-95 transition">
+              Show All 25
+            </button>
+          </div>
+
+          <!-- Category Bars Container -->
+          <div id="dashboardCategoryBars" class="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Right 1 Col: Room / Location Breakdown & Quick Tools -->
+      <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5 flex flex-col justify-between space-y-4">
+        <div>
+          <h3 class="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2 mb-1">
+            <i class="ph-bold ph-map-pin-line text-emerald-600"></i>
+            <span>Stock Locations / Rooms</span>
+          </h3>
+          <p class="text-xs text-slate-500 mb-3">Assigned custodian storage & rooms</p>
+
+          <div id="dashboardLocationsList" class="space-y-2 max-h-48 overflow-y-auto">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+        <!-- Quick Custodian Actions Box -->
+        <div class="pt-3 border-t border-slate-100 space-y-2">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Quick Custodian Tools</span>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="loadSampleInventory()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+              <i class="ph-bold ph-magic-wand text-brand-600"></i>
+              <span>Sample Data</span>
+            </button>
+            <button onclick="window.print()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+              <i class="ph-bold ph-printer text-slate-600"></i>
+              <span>Print Report</span>
+            </button>
+            <button onclick="exportBackupJSON()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition" title="Save backup file to device">
+              <i class="ph-bold ph-floppy-disk text-emerald-600"></i>
+              <span>Backup Data</span>
+            </button>
+            <button onclick="document.getElementById('restoreFileInput').click()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition" title="Restore from backup JSON">
+              <i class="ph-bold ph-upload-simple text-amber-600"></i>
+              <span>Restore</span>
+            </button>
+            <input type="file" id="restoreFileInput" accept=".json" class="hidden" onchange="importBackupJSON(event)">
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM SECTION: GENERAL INVENTORY MASTER LEDGER -->
+    <div id="masterLedgerSection" class="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+      
+      <!-- Ledger Header & Filter Pills -->
+      <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
+            <i class="ph-bold ph-clipboard-text text-brand-600 text-lg"></i>
+            <span>General Inventory Master Ledger</span>
+          </h3>
+          <p class="text-xs text-slate-500">Real-time list of all active supplies, equipment, and stock levels</p>
+        </div>
+
+        <!-- Ledger Filter Tabs -->
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar bg-slate-100 p-1 rounded-xl border border-slate-200/70">
+          <button onclick="setLedgerFilter('ALL')" id="ledgerTab-ALL" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition bg-white text-slate-900 shadow-sm">
+            All In-Stock
+          </button>
+          <button onclick="setLedgerFilter('EQUIPMENT')" id="ledgerTab-EQUIPMENT" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-slate-600">
+            Equipment (ICS/PAR)
+          </button>
+          <button onclick="setLedgerFilter('CONSUMABLE')" id="ledgerTab-CONSUMABLE" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-slate-600">
+            Consumables (RIS)
+          </button>
+          <button onclick="setLedgerFilter('LOW')" id="ledgerTab-LOW" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-amber-700">
+            Low Stock Alerts
+          </button>
+        </div>
+      </div>
+
+      <!-- Ledger Search & Sort Bar -->
+      <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div class="relative w-full sm:w-72">
+          <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input 
+            type="text" 
+            id="ledgerSearchInput"
+            oninput="renderDashboardLedger()"
+            placeholder="Filter ledger by item, code, or room..." 
+            class="w-full h-9 pl-8 pr-3 bg-white rounded-lg border border-slate-200 text-xs font-medium outline-none focus:border-brand-500"
+          >
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <label class="text-[11px] font-bold uppercase text-slate-400">Sort By:</label>
+          <select id="ledgerSortSelect" onchange="renderDashboardLedger()" class="h-9 px-2.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 outline-none">
+            <option value="VALUE_DESC">Highest Value (₱)</option>
+            <option value="QTY_DESC">Highest Quantity</option>
+            <option value="QTY_ASC">Lowest Quantity First</option>
+            <option value="NAME_ASC">Alphabetical (A-Z)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Ledger Table / List -->
+      <div id="dashboardLedgerContainer" class="divide-y divide-slate-100">
+        <!-- Populated dynamically via JS -->
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- VIEW 2: ITEM CATALOG & COUNTER (Full 323 APP-CSE Items)               -->
+  <!-- ===================================================================== -->
+  <main id="viewCatalog" class="hidden max-w-4xl mx-auto px-4 pt-4 no-print">
+    
+    <!-- Results Status Bar -->
+    <div class="flex items-center justify-between mb-3 px-1">
+      <div class="flex items-center gap-2">
+        <p id="resultsStatus" class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Showing all items</p>
+        <button id="clearCatFilterBtn" onclick="setCategoryFilter('ALL')" class="hidden px-2 py-0.5 text-[11px] font-bold bg-brand-100 text-brand-700 rounded-md items-center gap-1">
+          <span id="activeCatLabel">Category</span>
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+      <button onclick="confirmResetAll()" class="text-xs font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1">
+        <i class="ph-bold ph-arrow-counter-clockwise"></i> Reset Quantities
+      </button>
+    </div>
+
+    <!-- Items Container -->
+    <div id="itemsContainer" class="space-y-2.5">
+      <!-- Populated dynamically via JS -->
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="hidden bg-white rounded-2xl border border-slate-200 p-12 text-center my-6">
+      <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+        <i class="ph-duotone ph-magnifying-glass text-3xl"></i>
+      </div>
+      <h3 class="text-base font-bold text-slate-800">No matching items found</h3>
+      <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Try adjusting your search query or switching your category filter.</p>
+      <div class="mt-4 flex items-center justify-center gap-2">
+        <button onclick="resetFilters()" class="px-4 py-2 bg-brand-600 text-white text-xs font-bold rounded-xl shadow-sm active:scale-95 transition">
+          Show All Items
+        </button>
+        <button onclick="openCustomItemModal()" class="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl active:scale-95 transition">
+          + Add Custom Item
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- OFFICIAL PRINTABLE REPORT VIEW (Only visible when printing)           -->
+  <!-- ===================================================================== -->
+  <section id="printReportSection" class="print-only max-w-4xl mx-auto p-6 text-black">
+    <div class="text-center border-b-2 border-black pb-4 mb-4">
+      <p class="text-xs uppercase tracking-widest font-semibold">Republic of the Philippines</p>
+      <h1 id="printSchoolName" class="text-xl font-extrabold uppercase mt-0.5">SCHOOL / OFFICE NAME</h1>
+      <p id="printUacs" class="text-xs font-medium text-slate-600">Division / Agency Code</p>
+      <h2 class="text-sm font-bold uppercase mt-3 bg-slate-100 inline-block px-4 py-1 border border-black">
+        General Inventory Report & APP-CSE 2027 Schedule
+      </h2>
+      <p id="printDate" class="text-[11px] mt-1">As of Date</p>
+    </div>
+
+    <!-- Print Summary Row -->
+    <div class="grid grid-cols-4 gap-3 mb-4 text-xs border border-black p-3">
+      <div>
+        <span class="block text-[10px] uppercase text-slate-600">Active SKUs</span>
+        <strong id="printTotalSkus" class="text-sm font-mono">0</strong>
+      </div>
+      <div>
+        <span class="block text-[10px] uppercase text-slate-600">Part I (PS-DBM)</span>
+        <strong id="printPart1Val" class="text-sm font-mono">₱0.00</strong>
+      </div>
+      <div>
+        <span class="block text-[10px] uppercase text-slate-600">Part II (Other)</span>
+        <strong id="printPart2Val" class="text-sm font-mono">₱0.00</strong>
+      </div>
+      <div>
+        <span class="block text-[10px] uppercase text-slate-600">Total Valuation</span>
+        <strong id="printGrandVal" class="text-sm font-mono">₱0.00</strong>
+      </div>
+    </div>
+
+    <table class="w-full text-left border-collapse border border-black text-[11px]">
+      <thead>
+        <tr class="bg-slate-100 border-b border-black">
+          <th class="border border-black p-1.5">Code</th>
+          <th class="border border-black p-1.5">Item & Specifications</th>
+          <th class="border border-black p-1.5">Type</th>
+          <th class="border border-black p-1.5">Room / Location</th>
+          <th class="border border-black p-1.5 text-center">Qty</th>
+          <th class="border border-black p-1.5 text-right">Unit Cost</th>
+          <th class="border border-black p-1.5 text-right">Total Value</th>
+        </tr>
+      </thead>
+      <tbody id="printTableBody">
+        <!-- Populated dynamically via JS -->
+      </tbody>
+    </table>
+
+    <div class="grid grid-cols-2 gap-12 mt-12 text-xs">
+      <div>
+        <p class="mb-8">Prepared & Certified Correct by:</p>
+        <p id="printCustodianName" class="font-bold uppercase border-b border-black inline-block min-w-[220px]">PROPERTY CUSTODIAN</p>
+        <p id="printCustodianPos" class="text-[11px] text-slate-600 mt-0.5">Property Custodian / Supply Officer</p>
+      </div>
+      <div>
+        <p class="mb-8">Noted & Approved by:</p>
+        <p class="font-bold uppercase border-b border-black inline-block min-w-[220px]">&nbsp;</p>
+        <p class="text-[11px] text-slate-600 mt-0.5">School Head / Head of Office</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOTTOM FLOATING SUMMARY BAR (iPad Portrait Dock Style) -->
+  <div class="fixed bottom-0 inset-x-0 z-30 bg-slate-900/95 backdrop-blur-md text-white border-t border-slate-800 shadow-2xl no-print">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      
+      <div class="flex items-center gap-5 sm:gap-6">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">General Inventory</span>
+          <div class="flex items-baseline gap-1.5">
+            <span id="dockTotalItems" class="text-xl font-extrabold text-white">0</span>
+            <span class="text-xs text-slate-400 font-medium">SKUs</span>
+            <span class="text-xs text-brand-400 font-mono">(<span id="dockTotalUnits">0</span> units)</span>
+          </div>
+        </div>
+
+        <div class="h-8 w-px bg-slate-700"></div>
+
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Valuation</span>
+          <span id="dockTotalAmount" class="text-xl font-extrabold text-emerald-400 font-mono">₱0.00</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="openSummaryModal()" class="h-12 px-4 sm:px-5 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-95 transition font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-brand-500/25">
+          <i class="ph-bold ph-receipt text-lg"></i>
+          <span>APP-CSE Summary</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 1: EDIT ITEM INVENTORY DETAILS / LOCATION / REORDER ALERT / PRICE -->
+  <div id="itemModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+      <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span id="modalItemCode" class="font-mono text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded">CODE</span>
+            <span id="modalItemTypeBadge" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-700">TYPE</span>
+          </div>
+          <h3 id="modalItemName" class="font-bold text-base text-slate-900 mt-1.5">Item Name</h3>
+        </div>
+        <button onclick="closeItemModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 py-4">
+        <div class="grid grid-cols-3 gap-2.5">
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">On-Hand (<span id="modalItemUnit">unit</span>)</label>
+            <input type="number" id="modalItemQty" min="0" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-mono font-bold text-base focus:border-brand-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Unit Price (₱)</label>
+            <input type="number" id="modalItemPrice" step="0.01" min="0" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-mono font-bold text-base focus:border-brand-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-amber-700 mb-1">Min Alert Qty</label>
+            <input type="number" id="modalItemMinQty" min="0" placeholder="5" class="w-full h-11 px-3 rounded-xl border border-amber-300 bg-amber-50/40 font-mono font-bold text-base focus:border-amber-500 outline-none">
+          </div>
+        </div>
+
+        <!-- Quick Room / Storage Location Pills -->
+        <div>
+          <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1.5">Quick Assign Storage / Room Location</label>
+          <div class="flex flex-wrap gap-1.5 mb-2">
+            <button type="button" onclick="setQuickNote('Central Stockroom')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Central Stockroom</button>
+            <button type="button" onclick="setQuickNote('Principal / Admin Office')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Admin Office</button>
+            <button type="button" onclick="setQuickNote('Faculty Room')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Faculty Room</button>
+            <button type="button" onclick="setQuickNote('ICT / Computer Lab')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">ICT Lab</button>
+            <button type="button" onclick="setQuickNote('School Clinic')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">School Clinic</button>
+            <button type="button" onclick="setQuickNote('School Library')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Library</button>
+            <button type="button" onclick="setQuickNote('Utility / Janitorial Room')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Utility Room</button>
+          </div>
+          <textarea id="modalItemNote" rows="2" placeholder="Room location, custodian remarks, or serial number..." class="w-full p-3 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none"></textarea>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <button onclick="closeItemModal()" class="h-11 px-4 rounded-xl bg-slate-100 font-semibold text-xs text-slate-700">Cancel</button>
+        <button onclick="saveItemModal()" class="h-11 px-5 rounded-xl bg-brand-600 font-bold text-xs text-white shadow-md">Save Inventory Item</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: APP-CSE 2027 OFFICIAL SUMMARY COMPUTATION -->
+  <div id="summaryModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200">
+      <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h2 class="font-extrabold text-lg text-slate-900">APP-CSE 2027 Official Summary</h2>
+          <p class="text-xs text-slate-500">Computation based on PS-DBM Page 8 Guidelines</p>
+        </div>
+        <button onclick="closeSummaryModal()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
+          <i class="ph-bold ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-5 flex-1">
+        <!-- Part I Breakdown -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
+          <h4 class="text-xs font-extrabold uppercase tracking-wider text-brand-700">Part I. Available at PS-DBM</h4>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-600 font-medium">A. Total Part I Items</span>
+            <span id="sumPart1Total" class="font-mono font-bold text-slate-900">₱0.00</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-600 font-medium">B. Additional Provision for Price Changes (10% of A)</span>
+            <span id="sumPart1Inflation" class="font-mono font-bold text-slate-900">₱0.00</span>
+          </div>
+          <div class="flex justify-between text-sm items-center">
+            <span class="text-slate-600 font-medium">C. Freight & Transport Cost (If Applicable)</span>
+            <input type="number" id="freightInput" oninput="updateSummaryMath()" value="0" min="0" step="100" class="w-32 h-8 px-2 text-right font-mono text-sm font-bold bg-white border border-slate-300 rounded-lg">
+          </div>
+          <div class="border-t border-slate-200 pt-2 flex justify-between text-base">
+            <span class="font-bold text-slate-900">D. Part I Grand Total (A + B + C)</span>
+            <span id="sumPart1Grand" class="font-mono font-extrabold text-brand-600">₱0.00</span>
+          </div>
+        </div>
+
+        <!-- Part II Breakdown -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+          <h4 class="text-xs font-extrabold uppercase tracking-wider text-amber-700">Part II. Other Items (External Sources)</h4>
+          <div class="flex justify-between text-base">
+            <span class="font-bold text-slate-900">A. Total Part II Items</span>
+            <span id="sumPart2Total" class="font-mono font-extrabold text-amber-600">₱0.00</span>
+          </div>
+        </div>
+
+        <!-- Combined Overall Total -->
+        <div class="bg-slate-900 text-white p-4 rounded-xl flex items-center justify-between">
+          <div>
+            <span class="text-xs uppercase tracking-wider text-slate-400 font-bold block">Combined School Procurement Budget</span>
+            <span class="text-xs text-slate-300">Part I Grand Total + Part II Total</span>
+          </div>
+          <span id="sumOverallTotal" class="text-2xl font-mono font-extrabold text-emerald-400">₱0.00</span>
+        </div>
+
+        <!-- Selected Items Quick Table -->
+        <div>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Active Inventory & Procurement List</h4>
+          <div id="summaryItemsList" class="divide-y divide-slate-100 border border-slate-200 rounded-xl max-h-60 overflow-y-auto">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-200 flex justify-between items-center bg-slate-50 rounded-b-2xl">
+        <button onclick="switchMainView('CATALOG'); setPartFilter('SELECTED'); closeSummaryModal();" class="text-xs font-bold text-brand-600 hover:underline">
+          Open Active Items in Catalog
+        </button>
+        <div class="flex gap-2">
+          <button onclick="window.print()" class="h-10 px-4 rounded-xl bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5">
+            <i class="ph-bold ph-printer text-base"></i> Print Official Report
+          </button>
+          <button onclick="exportCSV()" class="h-10 px-4 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5">
+            <i class="ph-bold ph-file-csv text-base"></i> Download CSV
+          </button>
+          <button onclick="closeSummaryModal()" class="h-10 px-4 rounded-xl bg-slate-200 text-slate-800 font-bold text-xs">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: SCHOOL / CUSTODIAN HEADER INFO -->
+  <div id="schoolModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <h3 class="font-extrabold text-base text-slate-900">School & Custodian Details</h3>
+        <button onclick="closeSchoolModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">School / Office Name</label>
+          <input type="text" id="infoSchool" placeholder="e.g., San Jose National High School" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Agency Code / UACS / Division</label>
+          <input type="text" id="infoUacs" placeholder="e.g., DepEd - Division of Laguna" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Property Custodian Name</label>
+          <input type="text" id="infoCustodian" placeholder="e.g., Juan Dela Cruz" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Position / Designation</label>
+          <input type="text" id="infoPosition" placeholder="e.g., Administrative Officer IV / Supply Officer" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
+        <button onclick="closeSchoolModal()" class="h-10 px-4 rounded-xl bg-slate-100 text-xs font-bold text-slate-700">Cancel</button>
+        <button onclick="saveSchoolInfo()" class="h-10 px-5 rounded-xl bg-brand-600 text-xs font-bold text-white">Save Info</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: ADD CUSTOM ITEM (PART II) -->
+  <div id="customItemModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <div>
+          <h3 class="font-extrabold text-base text-slate-900">Add Custom School Item</h3>
+          <p class="text-xs text-slate-500">Added under Part II (Other Items)</p>
+        </div>
+        <button onclick="closeCustomItemModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Item Description & Specifications</label>
+          <input type="text" id="customName" placeholder="e.g., SOLAR STREET LIGHT, 100W LED" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Unit of Measure</label>
+            <input type="text" id="customUnit" placeholder="unit, piece, box, set" value="unit" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Unit Price (₱)</label>
+            <input type="number" id="customPrice" step="0.01" min="0" placeholder="0.00" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-mono font-bold">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Initial Quantity</label>
+            <input type="number" id="customQty" min="0" value="1" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-mono font-bold">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Room / Location</label>
+            <input type="text" id="customNote" placeholder="e.g., Central Stockroom" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
+        <button onclick="closeCustomItemModal()" class="h-10 px-4 rounded-xl bg-slate-100 text-xs font-bold text-slate-700">Cancel</button>
+        <button onclick="saveCustomItem()" class="h-10 px-5 rounded-xl bg-brand-600 text-xs font-bold text-white shadow-sm">Add to Inventory</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION JAVASCRIPT & COMPLETE PDF DATASET -->
+  <script>
+    // =========================================================================
+    // 1. CATEGORIES MAPPING (From APP-CSE 2027 PDF)
+    // =========================================================================
+    const CATEGORIES = [
+      "Antiseptics",                          // 0
+      "Arts & Crafts Supplies",               // 1
+      "Audio & Visual Equipment",             // 2
+      "Batteries & Cells",                    // 3
+      "Cleaning Equipment & Supplies",        // 4
+      "Color Compounds & Ink",                // 5
+      "Consumer Electronics",                 // 6
+      "Films",                                // 7
+      "Fire Fighting Equipment",              // 8
+      "Flags & Accessories",                  // 9
+      "Furniture & Furnishings",              // 10
+      "Heating, Ventilation & Fans",          // 11
+      "ICT Equipment & Devices",              // 12
+      "Lighting & Fixtures",                  // 13
+      "Manufacturing, Glue & Tapes",          // 14
+      "Measuring Equipment",                  // 15
+      "Office Equipment & Supplies",          // 16
+      "Paper Materials & Products",           // 17
+      "Perfumes & Hand Sanitizers",           // 18
+      "Pesticides & Pest Repellents",         // 19
+      "Printed Publications",                 // 20
+      "Printer / Copier Consumables",         // 21
+      "Software & Cloud Services",            // 22
+      "Airline Tickets & Motor Vehicles",     // 23
+      "Part II: Other Regular Items"          // 24
+    ];
+
+    // Helper to classify item into "EQUIPMENT" (ICS/PAR) vs "CONSUMABLE" (RIS)
+    const EQUIPMENT_CATS = new Set([2, 6, 8, 10, 11, 12]);
+    function classifyItemType(catIdx, unit, price, name) {
+      if (EQUIPMENT_CATS.has(catIdx)) return "EQUIPMENT";
+      if (unit === "unit" && (price >= 500 || name.includes("AIR CONDITIONING") || name.includes("CAMERA") || name.includes("PRINTER") || name.includes("LAPTOP") || name.includes("TELEVISION") || name.includes("CABINET") || name.includes("CHAIR") || name.includes("DISPENSER") || name.includes("WHITEBOARD") || name.includes("SCANNER") || name.includes("LAMINATING MACHINE") || name.includes("TABLET"))) {
+        return "EQUIPMENT";
+      }
+      return "CONSUMABLE";
+    }
+
+    // =========================================================================
+    // 2. COMPLETE RAW DATASET FROM ALL 9 PAGES OF APP-CSE 2027 PDF
+    // Format: [ItemNumber, ItemCode, Description, Unit, UnitPrice, CategoryIndex, Part("PART1"|"PART2")]
+    // =========================================================================
+    const RAW_ITEMS = [
+      // PAGE 1: PART I
+      [1, "12191601-AL-E04", "ALCOHOL, Ethyl, 500 mL", "bottle", 58.90, 0, "PART1"],
+      [2, "12191601-AL-E03", "ALCOHOL, Ethyl, 1 Gallon", "gallon", 405.80, 0, "PART1"],
+      [3, "60121413-CB-P01", "CLEARBOOK, A4 size", "piece", 35.52, 1, "PART1"],
+      [4, "60121413-CB-P02", "CLEARBOOK, Legal size", "piece", 37.04, 1, "PART1"],
+      [5, "60121534-ER-P01", "ERASER, plastic/rubber", "piece", 9.34, 1, "PART1"],
+      [6, "60121524-SP-G01", "SIGN PEN, Extra Fine Tip, Black", "piece", 38.10, 1, "PART1"],
+      [7, "60121524-SP-G02", "SIGN PEN, Extra Fine Tip, Blue", "piece", 36.96, 1, "PART1"],
+      [8, "60121524-SP-G03", "SIGN PEN, Extra Fine Tip, Red", "piece", 35.09, 1, "PART1"],
+      [9, "60121524-SP-G04", "SIGN PEN, Fine Tip, Black", "piece", 25.07, 1, "PART1"],
+      [10, "60121524-SP-G05", "SIGN PEN, Fine Tip, Blue", "piece", 25.86, 1, "PART1"],
+      [11, "60121524-SP-G06", "SIGN PEN, Fine Tip, Red", "piece", 28.76, 1, "PART1"],
+      [12, "60121524-SP-G07", "SIGN PEN, Medium Tip, Black", "piece", 62.08, 1, "PART1"],
+      [13, "60121524-SP-G08", "SIGN PEN, Medium Tip, Blue", "piece", 61.76, 1, "PART1"],
+      [14, "60121524-SP-G09", "SIGN PEN, Medium Tip, Red", "piece", 63.62, 1, "PART1"],
+      [15, "60121124-WR-P01", "WRAPPING PAPER", "pack", 328.41, 1, "PART1"],
+      [16, "45121517-DO-C02", "DOCUMENT CAMERA", "unit", 23977.95, 2, "PART1"],
+      [17, "45111609-MM-P01", "MULTIMEDIA PROJECTOR", "unit", 16836.82, 2, "PART1"],
+      [18, "26111702-BT-A02", "BATTERY, DRY CELL, AA", "pack", 20.80, 3, "PART1"],
+      [19, "26111702-BT-A01", "BATTERY, DRY CELL, AAA", "pack", 18.61, 3, "PART1"],
+      [20, "47131812-AF-A01", "AIR FRESHENER", "can", 126.67, 4, "PART1"],
+      [21, "47131604-BR-S01", "BROOM (Walis Tambo)", "piece", 207.00, 4, "PART1"],
+      [22, "47131604-BR-T01", "BROOM (Walis Ting-ting)", "piece", 26.39, 4, "PART1"],
+      [23, "47131829-TB-C01", "CLEANER, Toilet Bowl and Urinal", "bottle", 42.22, 4, "PART1"],
+      [24, "47131805-CL-P01", "CLEANSER, Scouring Powder", "can", 42.22, 4, "PART1"],
+      [25, "47131811-DE-B02", "DETERGENT BAR", "piece", 9.48, 4, "PART1"],
+      [26, "47131811-DE-P03", "DETERGENT POWDER, all purpose", "pouch", 54.89, 4, "PART1"],
+      [27, "47131803-DS-A01", "DISINFECTANT SPRAY", "can", 289.75, 4, "PART1"],
+      [28, "47131601-DU-P01", "DUST PAN", "piece", 47.50, 4, "PART1"],
+      [29, "47131802-FW-P02", "FLOOR WAX, paste type, red", "can", 314.41, 4, "PART1"],
+      [30, "47131830-FC-A01", "FURNITURE CLEANER", "can", 168.57, 4, "PART1"],
+      [31, "73101612-HS-L01", "HAND SOAP, liquid, 500mL", "bottle", 61.76, 4, "PART1"],
+      [32, "47121804-MP-B01", "MOP BUCKET", "unit", 2322.32, 4, "PART1"],
+      [33, "47131501-RG-C01", "RAGS", "bundle", 78.11, 4, "PART1"],
+      [34, "47131602-SC-N01", "SCOURING PAD", "pack", 114.46, 4, "PART1"],
+
+      // PAGE 2: PART I
+      [35, "47121701-TB-P04", "TRASHBAG, XXL size", "pack", 131.95, 4, "PART1"],
+      [36, "47121701-TB-P05", "TRASHBAG, Large size", "pack", 59.28, 4, "PART1"],
+      [37, "47121701-TB-P06", "TRASHBAG, XL size", "pack", 92.56, 4, "PART1"],
+      [38, "47121702-WB-P01", "WASTEBASKET", "piece", 73.55, 4, "PART1"],
+      [39, "12171703-SI-P01", "STAMP PAD, INK", "bottle", 37.86, 5, "PART1"],
+      [40, "52161535-DV-R01", "DIGITAL VOICE RECORDER", "unit", 7449.24, 6, "PART1"],
+      [41, "13111203-AC-F01", "ACETATE", "roll", 1262.50, 7, "PART1"],
+      [42, "13111201-CF-P02", "CARBON FILM, Legal size", "box", 349.48, 7, "PART1"],
+      [43, "46191601-FE-M01", "FIRE EXTINGUISHER, dry chemical", "unit", 1161.16, 8, "PART1"],
+      [44, "55121905-PH-F01", "PHILIPPINE NATIONAL FLAG", "piece", 289.11, 9, "PART1"],
+      [45, "56101504-CM-B01", "MONOBLOC CHAIR, beige", "piece", 355.61, 10, "PART1"],
+      [46, "56101504-CM-W01", "MONOBLOC CHAIR, white", "piece", 355.14, 10, "PART1"],
+      [47, "40101604-EF-C01", "ELECTRIC FAN, ceiling mount, orbit type", "unit", 1269.69, 11, "PART1"],
+      [48, "40101604-EF-G01", "ELECTRIC FAN, industrial, ground type", "unit", 1289.86, 11, "PART1"],
+      [49, "40101604-EF-S01", "ELECTRIC FAN, stand type", "unit", 1322.14, 11, "PART1"],
+      [50, "40101604-EF-W01", "ELECTRIC FAN, wall mount", "unit", 836.53, 11, "PART1"],
+      [51, "43211507-DSK001", "DESKTOP for Basic Users", "unit", 25165.50, 12, "PART1"],
+      [52, "43211507-DSK002", "DESKTOP for Mid-Range Users", "unit", 43026.26, 12, "PART1"],
+      [53, "43201827-HD-X02", "EXTERNAL HARD DRIVE", "unit", 3060.18, 12, "PART1"],
+      [54, "43202010-FD-U04", "FLASH DRIVE", "piece", 155.04, 12, "PART1"],
+      [55, "43211503-LAP001", "LAPTOP COMPUTER, Mid-range", "unit", 43015.70, 12, "PART1"],
+      [56, "43211503-LAP002", "LAPTOP COMPUTER, Lightweight", "unit", 47502.00, 12, "PART1"],
+      [57, "43211708-MO-O02", "MOUSE, OPTICAL", "unit", 130.97, 12, "PART1"],
+      [58, "43212105-PR-L01", "PRINTER, Laser, Monochrome", "unit", 9339.95, 12, "PART1"],
+      [59, "39101628-LB-L01", "LIGHT-EMITTING DIODE (LED) LIGHT BULB, 7 watts", "piece", 89.73, 13, "PART1"],
+      [60, "39101628-LT-L01", "LIGHT-EMITTING DIODE (LED) LINEAR TUBE, 18 watts", "piece", 208.90, 13, "PART1"],
+      [61, "31201610-GL-J01", "GLUE, all-purpose", "bottle", 63.07, 14, "PART1"],
+      [62, "31151804-SW-H01", "STAPLE WIRE, heavy duty (binder type), 23/13", "box", 21.50, 14, "PART1"],
+      [63, "31151804-SW-S01", "STAPLE WIRE, standard", "box", 28.50, 14, "PART1"],
+      [64, "31201502-TA-E01", "TAPE, electrical", "roll", 19.74, 14, "PART1"],
+      [65, "31201503-TA-M01", "TAPE, masking, 24mm", "roll", 59.11, 14, "PART1"],
+      [66, "31201503-TA-M02", "TAPE, masking, 48 mm", "roll", 133.46, 14, "PART1"],
+      [67, "31201517-TA-P01", "TAPE, packaging, 48 mm", "roll", 29.56, 14, "PART1"],
+      [68, "31201512-TA-T01", "TAPE, transparent, 24mm", "roll", 17.95, 14, "PART1"],
+      [69, "31201512-TA-T02", "TAPE, transparent, 48 mm", "roll", 28.08, 14, "PART1"],
+      [70, "31151507-TW-P01", "TWINE, plastic", "roll", 76.95, 14, "PART1"],
+      [71, "41111604-RU-P02", "RULER, plastic, 450mm", "piece", 20.23, 15, "PART1"],
+      [72, "44121612-BL-H01", "BLADE, for general purpose cutter/utility knife", "tube", 16.62, 16, "PART1"],
+      [73, "44101602-PB-M01", "BINDING AND PUNCHING MACHINE", "unit", 13287.89, 16, "PART1"],
+      [74, "44122037-RB-P10", "BINDING RING/COMB, plastic, 32 mm", "bundle", 222.49, 16, "PART1"],
+      [75, "44101807-CA-C01", "CALCULATOR, Compact", "unit", 192.83, 16, "PART1"],
+      [76, "44121710-CH-W01", "CHALK, white enamel", "box", 33.46, 16, "PART1"],
+      [77, "44122105-BF-C01", "CLIP, backfold, 19mm", "box", 11.29, 16, "PART1"],
+      [78, "44122105-BF-C02", "CLIP, backfold, 25mm", "box", 19.91, 16, "PART1"],
+      [79, "44122105-BF-C03", "CLIP, backfold, 32mm", "box", 29.35, 16, "PART1"],
+      [80, "44122105-BF-C04", "CLIP, backfold, 50mm", "box", 63.83, 16, "PART1"],
+
+      // PAGE 3: PART I
+      [81, "44121801-CT-R02", "CORRECTION TAPE", "piece", 23.03, 16, "PART1"],
+      [82, "44121612-CU-H01", "CUTTER/UTILITY KNIFE, HEAVY DUTY", "piece", 30.08, 16, "PART1"],
+      [83, "44111515-DF-B01", "DATA FILE BOX", "piece", 151.25, 16, "PART1"],
+      [84, "44122011-DF-F01", "DATA FOLDER", "piece", 101.34, 16, "PART1"],
+      [85, "44103202-DS-M01", "DATER STAMP", "piece", 411.04, 16, "PART1"],
+      [86, "44121506-EN-D01", "ENVELOPE, Documentary, A4", "box", 860.31, 16, "PART1"],
+      [87, "44121506-EN-D02", "ENVELOPE, Documentary, legal", "box", 1033.38, 16, "PART1"],
+      [88, "44121506-EN-X01", "ENVELOPE, Expanding, Kraft", "box", 908.47, 16, "PART1"],
+      [89, "44121506-EN-X02", "ENVELOPE, Expanding, Plastic", "piece", 30.95, 16, "PART1"],
+      [90, "44121506-EN-M02", "ENVELOPE, Mailing", "box", 467.42, 16, "PART1"],
+      [91, "44121504-EN-W02", "ENVELOPE, Mailing, with window", "box", 531.81, 16, "PART1"],
+      [92, "44111912-ER-B01", "ERASER, felt, for blackboard/whiteboard", "piece", 13.77, 16, "PART1"],
+      [93, "44122118-FA-P01", "FASTENER, METAL, NON-SHARP EDGES", "box", 96.06, 16, "PART1"],
+      [94, "44111515-FO-X01", "FILE ORGANIZER", "piece", 121.82, 16, "PART1"],
+      [95, "44122018-FT-D01", "FILE TAB DIVIDER, A4", "set", 11.29, 16, "PART1"],
+      [96, "44122018-FT-D02", "FILE TAB DIVIDER, Legal", "set", 14.44, 16, "PART1"],
+      [97, "44122011-FO-F01", "FOLDER, MOROCCO WITH SLIDE, A4", "bundle", 274.46, 16, "PART1"],
+      [98, "44122011-FO-F02", "FOLDER, MOROCCO WITH SLIDE, LEGAL", "bundle", 306.12, 16, "PART1"],
+      [99, "44122011-FO-L01", "FOLDER, L-type, A4", "pack", 183.91, 16, "PART1"],
+      [100, "44122011-FO-L02", "FOLDER, L-type, Legal", "pack", 247.79, 16, "PART1"],
+      [101, "44122027-FO-P01", "FOLDER, pressboard", "box", 1979.25, 16, "PART1"],
+      [102, "44122011-FO-T01", "FOLDER with tab, A4", "pack", 392.82, 16, "PART1"],
+      [103, "44122011-FO-T02", "FOLDER with tab, Legal", "pack", 396.93, 16, "PART1"],
+      [104, "44122008-IT-T01", "INDEX TAB", "box", 79.03, 16, "PART1"],
+      [105, "44121716-MA-F01", "MARKER, Flourescent", "set", 31.57, 16, "PART1"],
+      [106, "44121708-MP-B01", "MARKER, Permanent, Black", "piece", 15.84, 16, "PART1"],
+      [107, "44121708-MP-B02", "MARKER, Permanent, Blue", "piece", 15.30, 16, "PART1"],
+      [108, "44121708-MP-B03", "MARKER, Permanent, Red", "piece", 15.03, 16, "PART1"],
+      [109, "44121708-MW-B01", "MARKER, Whiteboard, Black", "piece", 22.17, 16, "PART1"],
+      [110, "44121708-MW-B02", "MARKER, Whiteboard, Blue", "piece", 22.17, 16, "PART1"],
+      [111, "44121708-MW-B03", "MARKER, Whiteboard, Red", "piece", 22.01, 16, "PART1"],
+      [112, "44122104-PC-G01", "PAPER CLIP, vinyl/plastic coated, 33mm", "box", 8.15, 16, "PART1"],
+      [113, "44122104-PC-J02", "PAPER CLIP, vinyl/plastic coated, jumbo, 50mm", "box", 18.20, 16, "PART1"],
+      [114, "44101603-PS-M02", "PAPER SHREDDER", "unit", 16349.13, 16, "PART1"],
+      [115, "44101601-PT-M02", "PAPER TRIMMER/CUTTING MACHINE", "unit", 9046.97, 16, "PART1"],
+      [116, "44121706-PE-L01", "PENCIL, lead/graphite, with eraser", "box", 45.38, 16, "PART1"],
+      [117, "44121619-PS-M01", "PENCIL SHARPENER", "piece", 258.59, 16, "PART1"],
+      [118, "44101602-PU-P01", "PUNCHER, paper, heavy duty", "piece", 151.68, 16, "PART1"],
+      [119, "44122101-RU-B01", "RUBBER BAND", "box", 143.95, 16, "PART1"],
+      [120, "44121905-SP-F01", "STAMP PAD, felt", "piece", 40.51, 16, "PART1"],
+      [121, "44121618-SS-S01", "SCISSORS, symmetrical/asymmetrical", "pair", 37.23, 16, "PART1"],
+      [122, "44121615-ST-S01", "STAPLER, standard type", "piece", 90.46, 16, "PART1"],
+      [123, "44121615-ST-B01", "STAPLER, heavy duty (binder)", "unit", 597.87, 16, "PART1"],
+      [124, "44121613-SR-P02", "STAPLE REMOVER, plier-type", "piece", 32.57, 16, "PART1"],
+      [125, "44121605-TD-T01", "TAPE DISPENSER, table top", "unit", 80.43, 16, "PART1"],
+      [126, "14111525-CA-A01", "CARTOLINA, assorted colors", "pack", 201.87, 17, "PART1"],
+      [127, "14111506-CF-L11", "COMPUTER CONTINUOUS FORM, 1 ply, 280mm x 241mm", "box", 985.93, 17, "PART1"],
+      [128, "14111506-CF-L12", "COMPUTER CONTINUOUS FORM, 1 ply, 280mm x 378mm", "box", 1817.22, 17, "PART1"],
+      [129, "14111514-NP-S02", "NOTEPAD, stick-on, 50mm x 76mm", "pad", 15.62, 17, "PART1"],
+      [130, "14111514-NP-S04", "NOTEPAD, stick-on, 76mm x 100mm", "pad", 27.71, 17, "PART1"],
+      [131, "14111514-NP-S03", "NOTEPAD, stick-on, 76mm x 76mm", "pad", 21.95, 17, "PART1"],
+      [132, "14111514-NB-S02", "STENO NOTEBOOK", "piece", 16.35, 17, "PART1"],
+      [133, "14111507-PP-M01", "PAPER, MULTICOPY A4", "ream", 213.86, 17, "PART1"],
+      [134, "14111507-PP-M02", "PAPER, MULTICOPY LEGAL", "ream", 227.64, 17, "PART1"],
+      [135, "14111507-PP-C01", "PAPER, MULTIPURPOSE A4", "ream", 139.80, 17, "PART1"],
+      [136, "14111507-PP-C02", "PAPER, MULTIPURPOSE LEGAL", "ream", 161.30, 17, "PART1"],
+      [137, "14111531-PP-R01", "PAD PAPER, ruled", "pad", 35.42, 17, "PART1"],
+
+      // PAGE 4: PART I
+      [138, "14111503-PA-P01", "PAPER, parchment", "box", 145.85, 17, "PART1"],
+      [139, "14111531-RE-B01", "RECORD BOOK, 300 PAGES", "book", 89.73, 17, "PART1"],
+      [140, "14111531-RE-B02", "RECORD BOOK, 500 PAGES", "book", 121.35, 17, "PART1"],
+      [141, "14111704-TT-P04", "TISSUE, INTERFOLDED PAPER TOWEL", "pack", 34.31, 17, "PART1"],
+      [142, "14111704-TT-P02", "TOILET TISSUE PAPER, 2 ply", "pack", 100.88, 17, "PART1"],
+      [143, "53131626-HS-S01", "HAND SANITIZER, 500ML", "bottle", 84.45, 18, "PART1"],
+      [144, "10191509-IN-A01", "INSECTICIDE", "can", 260.47, 19, "PART1"],
+      [145, "55101524-RA-H01", "HANDBOOK ON PHILIPPINE GOVERNMENT PROCUREMENT", "book", 37.77, 20, "PART1"],
+
+      // PAGE 4 & 5: PRINTER OR FACSIMILE OR PHOTOCOPIER SUPPLIES (CONSUMABLES)
+      [1, "44103109-BR-D05", "DRUM CARTRIDGE, BROTHER DR-3455, Black", "cart", 7051.41, 21, "PART1"],
+      [2, "44103105-CA-C02", "INK CARTRIDGE, CANON CL-811, Colored", "cart", 1195.99, 21, "PART1"],
+      [3, "44103105-CA-B02", "INK CARTRIDGE, CANON PG-810, Black", "cart", 905.70, 21, "PART1"],
+      [4, "44103105-EP-B17", "INK CARTRIDGE, EPSON C13T664100 (T6641), Black", "cart", 235.38, 21, "PART1"],
+      [5, "44103105-EP-C17", "INK CARTRIDGE, EPSON C13T664200 (T6642), Cyan", "cart", 245.83, 21, "PART1"],
+      [6, "44103105-EP-M17", "INK CARTRIDGE, EPSON C13T664300 (T6643), Magenta", "cart", 245.83, 21, "PART1"],
+      [7, "44103105-EP-Y17", "INK CARTRIDGE, EPSON C13T664400 (T6644), Yellow", "cart", 245.83, 21, "PART1"],
+      [8, "44103105-HP-B40", "INK CARTRIDGE, HP C2P04AA (HP62), Black", "cart", 865.59, 21, "PART1"],
+      [9, "44103105-HP-T40", "INK CARTRIDGE, HP C2P06AA (HP62), Tri-color", "cart", 1064.04, 21, "PART1"],
+      [10, "44103105-HP-B17", "INK CARTRIDGE, HP CC640WA (HP60), Black", "cart", 894.09, 21, "PART1"],
+      [11, "44103105-HP-T17", "INK CARTRIDGE, HP CC643WA (HP60), Tri-color", "cart", 1062.99, 21, "PART1"],
+      [12, "44103105-HP-B20", "INK CARTRIDGE, HP CH561WA (HP61), Black", "cart", 878.26, 21, "PART1"],
+      [13, "44103105-HP-T20", "INK CARTRIDGE, HP CH562WA (HP61), Tri-color", "cart", 1081.99, 21, "PART1"],
+      [14, "44103105-HX-B43", "INK CARTRIDGE, HP CN045AA (HP950XL), Black", "cart", 2000.36, 21, "PART1"],
+      [15, "44103105-HX-C43", "INK CARTRIDGE, HP CN046AA (HP951XL), Cyan", "cart", 1540.12, 21, "PART1"],
+      [16, "44103105-HX-M43", "INK CARTRIDGE, HP CN047AA (HP951XL), Magenta", "cart", 1540.12, 21, "PART1"],
+      [17, "44103105-HX-Y43", "INK CARTRIDGE, HP CN048AA (HP951XL), Yellow", "cart", 1540.12, 21, "PART1"],
+      [18, "44103105-HP-B36", "INK CARTRIDGE, HP CN692AA (HP704), Black", "cart", 425.41, 21, "PART1"],
+      [19, "44103105-HP-T36", "INK CARTRIDGE, HP CN693AA (HP704), Tri-color", "cart", 425.41, 21, "PART1"],
+      [20, "44103105-HP-B33", "INK CARTRIDGE, HP CZ107AA (HP678), Black", "cart", 410.63, 21, "PART1"],
+      [21, "44103105-HP-T33", "INK CARTRIDGE, HP CZ108AA (HP678), Tri-color", "cart", 410.63, 21, "PART1"],
+      [22, "44103105-HP-T43", "INK CARTRIDGE, HP F6V26AA (HP680), Tri-color", "cart", 430.68, 21, "PART1"],
+      [23, "44103105-HP-B43", "INK CARTRIDGE, HP F6V27AA (HP680), Black", "cart", 430.68, 21, "PART1"],
+      [24, "44103105-HP-C50", "INK CARTRIDGE, HP L0S51AA (HP955), Cyan Original", "cart", 997.54, 21, "PART1"],
+      [25, "44103105-HP-M50", "INK CARTRIDGE, HP L0S54AA (HP955), Magenta Original", "cart", 997.54, 21, "PART1"],
+      [26, "44103105-HP-Y50", "INK CARTRIDGE, HP L0S57AA (HP955), Yellow Original", "cart", 997.54, 21, "PART1"],
+      [27, "44103105-HP-B50", "INK CARTRIDGE, HP L0S60AA (HP955), Black Original", "cart", 1314.22, 21, "PART1"],
+      [28, "44103105-HX-C48", "INK CARTRIDGE, HP L0S63AA (HP955XL), Cyan Original", "cart", 1359.61, 21, "PART1"],
+      [29, "44103105-HX-M48", "INK CARTRIDGE, HP L0S66AA (HP955XL), Magenta", "cart", 1359.61, 21, "PART1"],
+      [30, "44103105-HX-Y48", "INK CARTRIDGE, HP L0S69AA (HP955XL), Yellow", "cart", 1359.61, 21, "PART1"],
+      [31, "44103105-HX-B48", "INK CARTRIDGE, HP L0S72AA (HP955XL), Black Original", "cart", 1845.19, 21, "PART1"],
+      [32, "44103105-HP-C51", "INK CARTRIDGE, HP T6L89AA (HP905), Cyan Original", "cart", 475.02, 21, "PART1"],
+      [33, "44103105-HP-M51", "INK CARTRIDGE, HP T6L93AA (HP905), Magenta Original", "cart", 475.02, 21, "PART1"],
+      [34, "44103105-HP-Y51", "INK CARTRIDGE, HP T6L97AA (HP905), Yellow Original", "cart", 475.02, 21, "PART1"],
+      [35, "44103105-HP-B51", "INK CARTRIDGE, HP T6M01AA (HP905), Black Original", "cart", 786.42, 21, "PART1"],
+      [36, "44103112-EP-R05", "RIBBON CARTRIDGE, EPSON C13S015516 (#8750), Black", "cart", 78.59, 21, "PART1"],
+      [37, "44103112-EP-R07", "RIBBON CARTRIDGE, EPSON C13S015531 (S015086)", "cart", 830.76, 21, "PART1"],
+      [38, "44103112-EP-R13", "RIBBON CARTRIDGE, EPSON C13S015632, Black", "cart", 79.11, 21, "PART1"],
+      [39, "44103103-BR-B09", "TONER CARTRIDGE, BROTHER TN-3320, Black", "cart", 3620.71, 21, "PART1"],
+      [40, "44103103-BR-B11", "TONER CARTRIDGE, BROTHER TN-3350, Black", "cart", 5077.44, 21, "PART1"],
+      [41, "44103103-BR-B15", "TONER CARTRIDGE, BROTHER TN-3478, Black", "cart", 5659.07, 21, "PART1"],
+      [42, "44103103-BR-B16", "TONER CARTRIDGE, BROTHER TN-456 Black, High Yield", "cart", 4633.03, 21, "PART1"],
+      [43, "44103103-BR-C03", "TONER CARTRIDGE, BROTHER TN-456 Cyan, High Yield", "cart", 7832.55, 21, "PART1"],
+      [44, "44103103-BR-M03", "TONER CARTRIDGE, BROTHER TN-456 Magenta, High Yield", "cart", 7832.55, 21, "PART1"],
+      [45, "44103103-BR-Y03", "TONER CARTRIDGE, BROTHER TN-456 Yellow, High Yield", "cart", 7832.55, 21, "PART1"],
+      [46, "44103103-CA-B00", "TONER CARTRIDGE, CANON CRG-324 II", "cart", 14145.04, 21, "PART1"],
+      [47, "44103103-HP-B12", "TONER CARTRIDGE, HP CB435A, Black", "cart", 3490.87, 21, "PART1"],
+      [48, "44103103-HP-B18", "TONER CARTRIDGE, HP CE255A, Black", "cart", 7820.94, 21, "PART1"],
+      [49, "44103103-HP-B21", "TONER CARTRIDGE, HP CE278A, Black", "cart", 4215.01, 21, "PART1"],
+      [50, "44103103-HP-B22", "TONER CARTRIDGE, HP CE285A (HP85A), Black", "cart", 3652.38, 21, "PART1"],
+      [51, "44103103-HP-B23", "TONER CARTRIDGE, HP CE310A, Black", "cart", 2647.44, 21, "PART1"],
+      [52, "44103103-HP-C23", "TONER CARTRIDGE, HP CE311A, Cyan", "cart", 2940.90, 21, "PART1"],
+      [53, "44103103-HP-Y23", "TONER CARTRIDGE, HP CE312A, Yellow", "cart", 2940.90, 21, "PART1"],
+      [54, "44103103-HP-M23", "TONER CARTRIDGE, HP CE313A, Magenta", "cart", 2940.90, 21, "PART1"],
+      [55, "44103103-HP-B28", "TONER CARTRIDGE, HP CE505A, Black", "cart", 4563.36, 21, "PART1"],
+      [56, "44103103-HP-B52", "TONER CARTRIDGE, HP CF217A (HP17A), Black LaserJet", "cart", 3242.80, 21, "PART1"],
+      [57, "44103103-HP-B53", "TONER CARTRIDGE, HP CF226A (HP26A), Black LaserJet", "cart", 5910.30, 21, "PART1"],
+      [58, "44103103-HP-B56", "TONER CARTRIDGE, HP CF281A (HP81A), Black LaserJet", "cart", 8787.87, 21, "PART1"],
+      [59, "44103103-HP-B57", "TONER CARTRIDGE, HP CF283A (HP83A), LaserJet Black", "cart", 3418.03, 21, "PART1"],
+      [60, "44103103-HP-B58", "TONER CARTRIDGE, HP CF287A (HP87), Black", "cart", 11072.19, 21, "PART1"],
+      [61, "44103103-HP-B60", "TONER CARTRIDGE, HP CF350A, Black Laserjet", "cart", 2899.73, 21, "PART1"],
+      [62, "44103103-HP-C60", "TONER CARTRIDGE, HP CF351A, Cyan Laserjet", "cart", 2987.35, 21, "PART1"],
+      [63, "44103103-HP-Y60", "TONER CARTRIDGE, HP CF352A, Yellow Laserjet", "cart", 2987.35, 21, "PART1"],
+      [64, "44103103-HP-M60", "TONER CARTRIDGE, HP CF353A, Magenta Laserjet", "cart", 2987.35, 21, "PART1"],
+      [65, "44103103-HP-B61", "TONER CARTRIDGE, HP CF360A (HP508A), Black LaserJet", "cart", 7920.17, 21, "PART1"],
+      [66, "44103103-HP-C61", "TONER CARTRIDGE, HP CF361A (HP508A), Cyan LaserJet", "cart", 9930.03, 21, "PART1"],
+      [67, "44103103-HP-Y61", "TONER CARTRIDGE, HP CF362A (HP508A), Yellow LaserJet", "cart", 9930.03, 21, "PART1"],
+      [68, "44103103-HP-M61", "TONER CARTRIDGE, HP CF363A (HP508A), Magenta LaserJet", "cart", 9930.03, 21, "PART1"],
+      [69, "44103103-HP-B62", "TONER CARTRIDGE, HP CF400A (HP201A), Black LaserJet", "cart", 3490.87, 21, "PART1"],
+      [70, "44103103-HP-C62", "TONER CARTRIDGE, HP CF401A (HP201A), Cyan LaserJet", "cart", 4124.23, 21, "PART1"],
+      [71, "44103103-HP-Y62", "TONER CARTRIDGE, HP CF402A (HP201A), Yellow LaserJet", "cart", 4124.23, 21, "PART1"],
+      [72, "44103103-HP-M62", "TONER CARTRIDGE, HP CF403A (HP201A), Magenta LaserJet", "cart", 4124.23, 21, "PART1"],
+      [73, "44103103-HP-B63", "TONER CARTRIDGE, HP CF410A (HP410A), Black", "cart", 4393.41, 21, "PART1"],
+      [74, "44103103-HP-C63", "TONER CARTRIDGE, HP CF411A (HP410A), Cyan", "cart", 5675.96, 21, "PART1"],
+      [75, "44103103-HP-Y63", "TONER CARTRIDGE, HP CF412A (HP410A), Yellow", "cart", 5675.96, 21, "PART1"],
+      [76, "44103103-HP-M63", "TONER CARTRIDGE, HP CF413A (HP410A), Magenta", "cart", 5675.96, 21, "PART1"],
+      [77, "44103103-HP-B34", "TONER CARTRIDGE, HP Q2612A, Black", "cart", 4218.18, 21, "PART1"],
+      [78, "44103103-HP-B48", "TONER CARTRIDGE, HP Q7553A, Black", "cart", 4750.20, 21, "PART1"],
+
+      // PAGE 5 & 6: SOFTWARE, CLOUD, AIRLINE, VEHICLES
+      [1, "43231513-SFT-001", "Business function specific software", "license", 0.00, 22, "PART1"],
+      [2, "43231602-SFT-002", "Finance accounting and enterprise resource planning ERP software", "license", 0.00, 22, "PART1"],
+      [3, "43232004-SFT-003", "Interactive or entertainment software", "license", 0.00, 22, "PART1"],
+      [4, "43232107-SFT-004", "Content authoring and editing software", "license", 0.00, 22, "PART1"],
+      [5, "43232202-SFT-005", "Content management software", "license", 0.00, 22, "PART1"],
+      [6, "43232304-SFT-006", "Data management and query software", "license", 0.00, 22, "PART1"],
+      [7, "43232402-SFT-007", "Development software", "license", 0.00, 22, "PART1"],
+      [8, "43232505-SFT-008", "Educational or reference software", "license", 0.00, 22, "PART1"],
+      [9, "43232603-SFT-009", "Industry specific software", "license", 0.00, 22, "PART1"],
+      [10, "43233501-SFT-016", "Information exchange software", "license", 0.00, 22, "PART1"],
+      [11, "43232701-SFT-010", "Network applications software", "license", 0.00, 22, "PART1"],
+      [12, "43232802-SFT-011", "Network management software", "license", 0.00, 22, "PART1"],
+      [13, "43232905-SFT-012", "Networking software", "license", 0.00, 22, "PART1"],
+      [14, "43233004-SFT-013", "Operating environment software", "license", 0.00, 22, "PART1"],
+      [15, "43233205-SFT-014", "Security and protection software", "license", 0.00, 22, "PART1"],
+      [16, "43233405-SFT-015", "Utility and device driver software", "license", 0.00, 22, "PART1"],
+      [17, "80141505-TS-066", "Electrical Equipment Software", "license", 0.00, 22, "PART1"],
+      [18, "80141505-TS-067", "System Management Software", "license", 0.00, 22, "PART1"],
+      [19, "80141505-TS-069", "CLOUD COMPUTING SERVICES", "license", 0.00, 22, "PART1"],
+      [1, "80141505-TS-051", "AIRLINE TICKETS (DOMESTIC)", "ticket", 0.00, 23, "PART1"],
+      [2, "80141505-TS-052", "AIRLINE TICKETS (INTERNATIONAL)", "ticket", 0.00, 23, "PART1"],
+      [22, "80141505-TS-063", "MOTORCYCLE", "unit", 0.00, 23, "PART1"],
+      [23, "25101503-MU-V01", "MULTI-PURPOSE VEHICLE (MPV)", "unit", 0.00, 23, "PART1"],
+      [27, "25101503-PA-V01", "PASSENGER VAN (ENTRY LEVEL)", "unit", 0.00, 23, "PART1"],
+      [45, "25101503-UT-V01", "UTILITY VAN (ENTRY LEVEL)", "unit", 0.00, 23, "PART1"],
+
+      // PAGE 6, 7, 8: PART II - OTHER ITEMS NOT AVAILABLE AT PS-DBM
+      [1, "80141505-TS-072", "AIR CONDITIONING UNIT, 1.0 HP, CEILING TYPE", "unit", 0.00, 24, "PART2"],
+      [2, "80141505-TS-078", "AIR CONDITIONING UNIT, 1.0 HP, SPLIT TYPE", "unit", 0.00, 24, "PART2"],
+      [3, "80141505-TS-075", "AIR CONDITIONING UNIT, 1.0 HP, WALL TYPE", "unit", 0.00, 24, "PART2"],
+      [4, "80141505-TS-011", "AIR CONDITIONING UNIT, 1.0 HP, WINDOW TYPE", "unit", 0.00, 24, "PART2"],
+      [5, "80141505-TS-073", "AIR CONDITIONING UNIT, 1.5 HP, CEILING TYPE", "unit", 0.00, 24, "PART2"],
+      [6, "80141505-TS-079", "AIR CONDITIONING UNIT, 1.5 HP, SPLIT TYPE", "unit", 0.00, 24, "PART2"],
+      [7, "80141505-TS-076", "AIR CONDITIONING UNIT, 1.5 HP, WALL TYPE", "unit", 0.00, 24, "PART2"],
+      [8, "80141505-TS-070", "AIR CONDITIONING UNIT, 1.5 HP, WINDOW TYPE", "unit", 0.00, 24, "PART2"],
+      [9, "80141505-TS-074", "AIR CONDITIONING UNIT, 2.0 HP, CEILING TYPE", "unit", 0.00, 24, "PART2"],
+      [10, "80141505-TS-080", "AIR CONDITIONING UNIT, 2.0 HP, SPLIT TYPE", "unit", 0.00, 24, "PART2"],
+      [11, "80141505-TS-077", "AIR CONDITIONING UNIT, 2.0 HP, WALL TYPE", "unit", 0.00, 24, "PART2"],
+      [12, "80141505-TS-071", "AIR CONDITIONING UNIT, 2.0 HP, WINDOW TYPE", "unit", 0.00, 24, "PART2"],
+      [13, "80141505-TS-103", "AIR COOLER", "piece", 0.00, 24, "PART2"],
+      [14, "80141505-TS-036", "AMPLIFIER", "unit", 0.00, 24, "PART2"],
+      [15, "80141505-TS-104", "ARROW FLAG (SIGN HERE)", "pack", 0.00, 24, "PART2"],
+      [16, "80141505-TS-032", "AUTOMOTIVE BATTERIES", "piece", 0.00, 24, "PART2"],
+      [17, "80141505-TS-124", "BAGS / BAYONGS / TOTE BAGS", "piece", 0.00, 24, "PART2"],
+      [18, "80141505-TS-001", "BALLPOINT PEN, EXTRA FINE TIP", "piece", 0.00, 24, "PART2"],
+      [19, "80141505-TS-081", "BALLPOINT PEN, FINE TIP", "piece", 0.00, 24, "PART2"],
+      [20, "80141505-TS-082", "BALLPOINT PEN, MEDIUM TIP", "piece", 0.00, 24, "PART2"],
+      [21, "80141505-TS-007", "BLEACHING SOLUTION", "bottle", 0.00, 24, "PART2"],
+      [22, "80141505-TS-044", "BLUETOOTH SPEAKER", "unit", 0.00, 24, "PART2"],
+      [23, "80141505-TS-111", "BODY CAM", "unit", 0.00, 24, "PART2"],
+      [24, "80141505-TS-023", "BOND PAPER", "ream", 0.00, 24, "PART2"],
+      [25, "80141505-TS-131", "BONSAI BEADS", "piece", 0.00, 24, "PART2"],
+      [26, "80141505-TS-128", "CALENDAR", "piece", 0.00, 24, "PART2"],
+      [27, "80141505-TS-119", "CARD HOLDER", "piece", 0.00, 24, "PART2"],
+      [28, "80141505-TS-083", "CCTV CAMERA", "unit", 0.00, 24, "PART2"],
+      [29, "80141505-TS-008", "CERTIFICATE FRAME", "piece", 0.00, 24, "PART2"],
+      [30, "80141505-TS-084", "CERTIFICATE HOLDER, DOUBLE-SIDED, A4", "piece", 0.00, 24, "PART2"],
+      [31, "80141505-TS-009", "CERTIFICATE HOLDER, SINGLE-SIDED, A4", "piece", 0.00, 24, "PART2"],
+      [32, "80141505-TS-125", "COIN PURSE", "piece", 0.00, 24, "PART2"],
+      [33, "80141505-TS-035", "COMPACT DISC", "piece", 0.00, 24, "PART2"],
+      [34, "80141505-TS-014", "CONFERENCE MICROPHONE", "unit", 0.00, 24, "PART2"],
+      [35, "80141505-TS-085", "CONFERENCE SPEAKERPHONE", "unit", 0.00, 24, "PART2"],
+      [36, "80141505-TS-112", "DASH CAM", "unit", 0.00, 24, "PART2"],
+      [37, "80141505-TS-028", "DEODORANT CAKE", "piece", 0.00, 24, "PART2"],
+      [38, "80141505-TS-016", "DISHWASHING LIQUID", "bottle", 0.00, 24, "PART2"],
+      [39, "80141505-TS-087", "DISPOSABLE GLOVES, LARGE", "box", 0.00, 24, "PART2"],
+      [40, "80141505-TS-086", "DISPOSABLE GLOVES, NITRILE, MEDIUM", "box", 0.00, 24, "PART2"],
+      [41, "80141505-TS-029", "DISPOSABLE GLOVES, NITRILE, SMALL", "box", 0.00, 24, "PART2"],
+      [42, "80141505-TS-039", "DOCUMENT SCANNER", "unit", 0.00, 24, "PART2"],
+      [43, "80141505-TS-025", "DOOR MAT", "piece", 0.00, 24, "PART2"],
+      [44, "80141505-TS-120", "DOPP KIT", "piece", 0.00, 24, "PART2"],
+      [45, "80141505-TS-005", "DOUBLE-SIDED TAPE, FOAM, 12mm", "roll", 0.00, 24, "PART2"],
+      [46, "80141505-TS-088", "DOUBLE-SIDED TAPE, FOAM, 24mm", "roll", 0.00, 24, "PART2"],
+      [47, "80141505-TS-089", "DOUBLE-SIDED TAPE, TISSUE, 12mm", "roll", 0.00, 24, "PART2"],
+      [48, "80141505-TS-090", "DOUBLE-SIDED TAPE, TISSUE, 24mm", "roll", 0.00, 24, "PART2"],
+      [49, "80141505-TS-047", "DSLR CAMERA", "unit", 0.00, 24, "PART2"],
+      [50, "80141505-TS-020", "EXTENSION CORD", "piece", 0.00, 24, "PART2"],
+      [51, "80141505-TS-091", "EXTERNAL DRIVE, SOLID STATE DRIVE, 1TB", "unit", 0.00, 24, "PART2"],
+      [52, "80141505-TS-050", "FUEL FILTERS", "piece", 0.00, 24, "PART2"],
+      [53, "80141505-TS-115", "GLASS PLAQUES", "piece", 0.00, 24, "PART2"],
+      [54, "80141505-TS-042", "GLUE GUN", "unit", 0.00, 24, "PART2"],
+      [55, "80141505-TS-027", "GLUE STICK (FOR GLUE GUN)", "pack", 0.00, 24, "PART2"],
+      [56, "80141505-TS-092", "GLUE STICK PASTE, 15g", "piece", 0.00, 24, "PART2"],
+      [57, "80141505-TS-026", "GLUE STICK PASTE, 8g", "piece", 0.00, 24, "PART2"],
+      [58, "80141505-TS-133", "HOTEL VENUE AND SERVICES", "lot", 0.00, 24, "PART2"],
+      [58, "80141505-TS-134", "WEBCAM WITH TRIPOD", "lot", 0.00, 24, "PART2"],
+      [59, "80141505-TS-114", "ID LACE", "piece", 0.00, 24, "PART2"],
+      [60, "80141505-TS-105", "INTERACTIVE/DIGITAL WHITEBOARD", "unit", 0.00, 24, "PART2"],
+      [61, "80141505-TS-117", "KEY CHAINS", "piece", 0.00, 24, "PART2"],
+      [62, "80141505-TS-046", "KEYBOARD", "unit", 0.00, 24, "PART2"],
+      [63, "80141505-TS-003", "LAMINATING FILM", "pack", 0.00, 24, "PART2"],
+      [64, "80141505-TS-049", "LAMINATING MACHINE", "unit", 0.00, 24, "PART2"],
+      [65, "80141505-TS-107", "LAPTOP FOR CREATIVE AND TECHNICAL USE", "unit", 0.00, 24, "PART2"],
+      [66, "80141505-TS-108", "LOGISTICS SERVICES", "lot", 0.00, 24, "PART2"],
+      [67, "80141505-TS-015", "MEDAL AND PINS", "piece", 0.00, 24, "PART2"],
+      [69, "80141505-TS-034", "MOBILE PHONE", "unit", 0.00, 24, "PART2"],
+      [70, "80141505-TS-118", "MOBILE SLING", "piece", 0.00, 24, "PART2"],
+      [71, "80141505-TS-122", "MUGS / TUMBLERS", "piece", 0.00, 24, "PART2"],
+      [72, "80141505-TS-002", "MULTIFUNCTION PRINTER", "unit", 0.00, 24, "PART2"],
+      [73, "80141505-TS-130", "NOTEBOOK WITH BALLPEN", "piece", 0.00, 24, "PART2"],
+      [74, "80141505-TS-030", "OFFICE CHAIR", "piece", 0.00, 24, "PART2"],
+      [75, "80141505-TS-033", "PADLOCK, 40mm", "piece", 0.00, 24, "PART2"],
+      [76, "80141505-TS-093", "PADLOCK, 50mm", "piece", 0.00, 24, "PART2"],
+      [77, "80141505-TS-021", "PAINT", "gallon", 0.00, 24, "PART2"],
+      [78, "80141505-TS-132", "PAPER CRAFTS", "piece", 0.00, 24, "PART2"],
+      [79, "80141505-TS-022", "PAPER, COLORED, A4", "pack", 0.00, 24, "PART2"],
+      [80, "80141505-TS-094", "PAPER, LAID", "pack", 0.00, 24, "PART2"],
+      [81, "80141505-TS-031", "PAPER, MANILA", "pack", 0.00, 24, "PART2"],
+      [82, "80141505-TS-041", "PARACETAMOL", "pack", 0.00, 24, "PART2"],
+      [83, "80141505-TS-006", "PHOTO PAPER, MATTE", "pack", 0.00, 24, "PART2"],
+      [84, "80141505-TS-095", "PHOTO PAPER, SATIN", "pack", 0.00, 24, "PART2"],
+      [85, "80141505-TS-113", "PLANNERS", "piece", 0.00, 24, "PART2"],
+      [86, "80141505-TS-038", "PLASTIC ENVELOPE", "piece", 0.00, 24, "PART2"],
+      [87, "80141505-TS-017", "PLASTIC FASTENER", "box", 0.00, 24, "PART2"],
+      [88, "80141505-TS-045", "POVIDONE IODINE", "bottle", 0.00, 24, "PART2"],
+      [89, "80141505-TS-096", "PROFESSIONAL WIRELESS HEADSET", "unit", 0.00, 24, "PART2"],
+      [90, "80141505-TS-024", "PUSH PIN", "pack", 0.00, 24, "PART2"],
+      [91, "80141505-TS-109", "ROUTERS", "unit", 0.00, 24, "PART2"],
+      [92, "80141505-TS-097", "SCHOOL CHAIR", "piece", 0.00, 24, "PART2"],
+      [93, "80141505-TS-012", "SMART TELEVISION", "unit", 0.00, 24, "PART2"],
+      [94, "80141505-TS-121", "STACKABLE PEN HOLDERS", "piece", 0.00, 24, "PART2"],
+      [95, "80141505-TS-018", "STEEL FILING CABINET", "piece", 0.00, 24, "PART2"],
+      [96, "80141505-TS-048", "STEEL RACK", "set", 0.00, 24, "PART2"],
+      [97, "80141505-TS-004", "STICKER PAPER, MATTE", "pack", 0.00, 24, "PART2"],
+      [98, "80141505-TS-037", "STORAGE BOX, FOR LEGAL SIZE", "piece", 0.00, 24, "PART2"],
+      [99, "80141505-TS-110", "SWITCHES OR HUB", "unit", 0.00, 24, "PART2"],
+      [100, "80141505-TS-098", "TABLET COMPUTER", "unit", 0.00, 24, "PART2"],
+      [101, "80141505-TS-123", "TISSUE HOLDER", "piece", 0.00, 24, "PART2"],
+      [102, "80141505-TS-129", "T-SHIRT", "piece", 0.00, 24, "PART2"],
+      [103, "80141505-TS-127", "UMBRELLA", "piece", 0.00, 24, "PART2"],
+      [104, "80141505-TS-126", "UMBRELLA (CUSTOMIZED)", "piece", 0.00, 24, "PART2"],
+      [105, "80141505-TS-010", "UNINTERRUPTIBLE POWER SUPPLY, TOWER TYPE, 650VA", "unit", 0.00, 24, "PART2"],
+      [106, "80141505-TS-019", "VELLUM BOARD PAPER", "pack", 0.00, 24, "PART2"],
+      [107, "80141505-TS-099", "VIDEO CONFERENCING CAMERA", "unit", 0.00, 24, "PART2"],
+      [108, "80141505-TS-040", "WATER DISPENSER", "unit", 0.00, 24, "PART2"],
+      [109, "80141505-TS-106", "WATER FILTER/PURIFIER FOR FAUCET", "piece", 0.00, 24, "PART2"],
+      [110, "80141505-TS-013", "WHITEBOARD", "piece", 0.00, 24, "PART2"],
+      [111, "80141505-TS-100", "WIFI EXTENDER", "unit", 0.00, 24, "PART2"],
+      [112, "80141505-TS-101", "WIRELESS MICROPHONE", "unit", 0.00, 24, "PART2"],
+      [113, "80141505-TS-116", "WOOD TROPHIES", "piece", 0.00, 24, "PART2"]
+    ];
+
+    // =========================================================================
+    // 3. STATE MANAGEMENT & INITIALIZATION
+    // =========================================================================
+    const STORAGE_KEY = 'custodian_app_cse_2027_v1';
+    const SCHOOL_KEY = 'custodian_school_info_v1';
+    const CUSTOM_ITEMS_KEY = 'custodian_custom_items_v1';
+
+    let items = [];
+    let customRawItems = [];
+    let userState = {}; // { [code]: { qty: 0, customPrice: null, note: "", minQty: 5 } }
+    let schoolInfo = { school: "", uacs: "", custodian: "", position: "" };
+
+    // View & Filter States
+    let activeMainView = 'DASHBOARD'; // 'DASHBOARD' | 'CATALOG'
+    let showAllDashboardCats = false;
+    let ledgerFilter = 'ALL'; // 'ALL' | 'EQUIPMENT' | 'CONSUMABLE' | 'LOW'
+
+    let filterPart = 'ALL'; // ALL, PART1, PART2, SELECTED
+    let filterCategory = 'ALL';
+    let searchQuery = '';
+    let activeModalCode = null;
+
+    function initApp() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try { userState = JSON.parse(saved); } catch (e) { userState = {}; }
+      }
+
+      const savedSchool = localStorage.getItem(SCHOOL_KEY);
+      if (savedSchool) {
+        try {
+          schoolInfo = JSON.parse(savedSchool);
+          updateSchoolHeader();
+        } catch (e) {}
+      }
+
+      const savedCustom = localStorage.getItem(CUSTOM_ITEMS_KEY);
+      if (savedCustom) {
+        try { customRawItems = JSON.parse(savedCustom); } catch (e) { customRawItems = []; }
+      }
+
+      rebuildCatalogList();
+      renderCategoryPills();
+      renderItems();
+      updateDockStats();
+      renderDashboard();
+    }
+
+    function rebuildCatalogList() {
+      const combinedRaw = [...RAW_ITEMS, ...customRawItems];
+      items = combinedRaw.map((raw, idx) => {
+        const code = raw[1];
+        const savedItem = userState[code] || {};
+        const price = savedItem.customPrice !== undefined && savedItem.customPrice !== null ? savedItem.customPrice : raw[4];
+        const type = classifyItemType(raw[5], raw[3], price, raw[2]);
+        const defaultMin = type === 'EQUIPMENT' ? 2 : 5;
+
+        return {
+          uid: idx,
+          itemNo: raw[0],
+          code: code,
+          name: raw[2],
+          unit: raw[3],
+          defaultPrice: raw[4],
+          price: price,
+          catIdx: raw[5],
+          category: CATEGORIES[raw[5]],
+          part: raw[6],
+          type: type, // 'EQUIPMENT' or 'CONSUMABLE'
+          qty: savedItem.qty || 0,
+          minQty: savedItem.minQty !== undefined ? savedItem.minQty : defaultMin,
+          note: savedItem.note || ""
+        };
+      });
+
+      document.getElementById('count-ALL').textContent = items.length;
+      document.getElementById('kpiTotalCatalogSkus').textContent = items.length;
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
+      updateDockStats();
+      if (activeMainView === 'DASHBOARD') {
+        renderDashboard();
+      } else {
+        renderPrintReport();
+      }
+    }
+
+    // =========================================================================
+    // 4. VIEW NAVIGATION (DASHBOARD <-> CATALOG)
+    // =========================================================================
+    function switchMainView(viewName) {
+      activeMainView = viewName;
+      const dashSection = document.getElementById('viewDashboard');
+      const catSection = document.getElementById('viewCatalog');
+      const catControls = document.getElementById('catalogHeaderControls');
+      const btnDash = document.getElementById('navBtn-DASHBOARD');
+      const btnCat = document.getElementById('navBtn-CATALOG');
+
+      if (viewName === 'DASHBOARD') {
+        dashSection.classList.remove('hidden');
+        catSection.classList.add('hidden');
+        catControls.classList.add('hidden');
+
+        btnDash.className = "h-10 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition bg-white text-brand-600 shadow-sm";
+        btnCat.className = "h-10 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition text-slate-600 hover:text-slate-900";
+        renderDashboard();
+      } else {
+        dashSection.classList.add('hidden');
+        catSection.classList.remove('hidden');
+        catControls.classList.remove('hidden');
+
+        btnCat.className = "h-10 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition bg-white text-brand-600 shadow-sm";
+        btnDash.className = "h-10 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition text-slate-600 hover:text-slate-900";
+        renderItems();
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function filterLedgerAndScroll(filterType) {
+      setLedgerFilter(filterType);
+      document.getElementById('masterLedgerSection')?.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function jumpToCategoryFromDashboard(catIdx) {
+      filterPart = 'ALL';
+      setPartFilter('ALL');
+      setCategoryFilter(catIdx);
+      switchMainView('CATALOG');
+    }
+
+    function jumpToLocationFromDashboard(locQuery) {
+      filterPart = 'SELECTED';
+      setPartFilter('SELECTED');
+      setCategoryFilter('ALL');
+      const input = document.getElementById('searchInput');
+      input.value = locQuery === 'Unassigned Room' ? '' : locQuery;
+      handleSearch(input.value);
+      switchMainView('CATALOG');
+    }
+
+    // =========================================================================
+    // 5. GENERAL INVENTORY DASHBOARD ENGINE
+    // =========================================================================
+    function renderDashboard() {
+      const activeItems = items.filter(i => i.qty > 0);
+      const emptyBanner = document.getElementById('dashboardEmptyBanner');
+
+      if (activeItems.length === 0) {
+        emptyBanner.classList.remove('hidden');
+      } else {
+        emptyBanner.classList.add('hidden');
+      }
+
+      // Compute KPIs
+      let totalVal = 0;
+      let part1Val = 0;
+      let part2Val = 0;
+      let totalUnits = 0;
+
+      let equipSkus = 0;
+      let equipVal = 0;
+      let consumableSkus = 0;
+
+      let lowStockCount = 0;
+      let unpricedActiveCount = 0;
+
+      activeItems.forEach(item => {
+        const sub = item.qty * item.price;
+        totalVal += sub;
+        totalUnits += item.qty;
+
+        if (item.part === 'PART1') part1Val += sub;
+        else part2Val += sub;
+
+        if (item.type === 'EQUIPMENT') {
+          equipSkus++;
+          equipVal += sub;
+        } else {
+          consumableSkus++;
+        }
+
+        if (item.qty <= item.minQty) lowStockCount++;
+        if (item.price === 0) unpricedActiveCount++;
+      });
+
+      // Populate KPI Cards
+      document.getElementById('kpiTotalValue').textContent = formatCurrency(totalVal);
+      document.getElementById('kpiPart1Val').textContent = formatCompactCurrency(part1Val);
+      document.getElementById('kpiPart2Val').textContent = formatCompactCurrency(part2Val);
+
+      document.getElementById('kpiActiveSkus').textContent = activeItems.length;
+      document.getElementById('kpiTotalUnits').textContent = totalUnits.toLocaleString();
+
+      document.getElementById('kpiEquipmentCount').textContent = equipSkus;
+      document.getElementById('kpiConsumableCount').textContent = consumableSkus;
+      document.getElementById('kpiEquipmentValue').textContent = formatCurrency(equipVal);
+
+      document.getElementById('kpiLowStockCount').textContent = lowStockCount;
+      document.getElementById('kpiUnpricedCount').textContent = `${unpricedActiveCount} SKUs`;
+
+      renderDashboardCategoryBars(totalVal);
+      renderDashboardLocations(activeItems);
+      renderDashboardLedger();
+      renderPrintReport();
+    }
+
+    function toggleShowAllCategories() {
+      showAllDashboardCats = !showAllDashboardCats;
+      const btn = document.getElementById('btnToggleCats');
+      btn.textContent = showAllDashboardCats ? 'Show Active Only' : 'Show All 25';
+      renderDashboard();
+    }
+
+    function renderDashboardCategoryBars(totalVal) {
+      const container = document.getElementById('dashboardCategoryBars');
+      
+      const catStats = CATEGORIES.map((name, idx) => {
+        const catItems = items.filter(i => i.catIdx === idx);
+        const activeCatItems = catItems.filter(i => i.qty > 0);
+        const units = activeCatItems.reduce((sum, i) => sum + i.qty, 0);
+        const val = activeCatItems.reduce((sum, i) => sum + (i.qty * i.price), 0);
+        return {
+          idx,
+          name,
+          totalSkus: catItems.length,
+          activeSkus: activeCatItems.length,
+          units,
+          val
+        };
+      });
+
+      let displayed = showAllDashboardCats 
+        ? catStats 
+        : catStats.filter(c => c.activeSkus > 0).sort((a, b) => b.val - a.val || b.units - a.units);
+
+      if (displayed.length === 0) {
+        displayed = catStats.slice(0, 6);
+      }
+
+      container.innerHTML = displayed.map(c => {
+        const pct = totalVal > 0 ? Math.min(100, Math.round((c.val / totalVal) * 100)) : 0;
+        const hasActive = c.activeSkus > 0;
+
+        return `
+          <div onclick="jumpToCategoryFromDashboard(${c.idx})" class="p-2.5 rounded-xl border ${hasActive ? 'border-slate-200 bg-slate-50/70 hover:border-brand-400' : 'border-slate-100 bg-white opacity-75'} cursor-pointer transition group">
+            <div class="flex items-center justify-between text-xs mb-1.5">
+              <div class="flex items-center gap-2 min-w-0 pr-2">
+                <span class="font-bold text-slate-800 group-hover:text-brand-600 truncate">${c.name}</span>
+                <span class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded ${hasActive ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-500'}">
+                  ${c.activeSkus}/${c.totalSkus} SKUs
+                </span>
+              </div>
+              <div class="text-right shrink-0 font-mono">
+                <span class="font-bold text-slate-900">${formatCurrency(c.val)}</span>
+                <span class="text-[10px] text-slate-400 ml-1">(${c.units} units)</span>
+              </div>
+            </div>
+            <div class="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden">
+              <div class="h-full bg-brand-600 rounded-full transition-all duration-300" style="width: ${hasActive ? Math.max(4, pct) : 0}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderDashboardLocations(activeItems) {
+      const container = document.getElementById('dashboardLocationsList');
+      if (activeItems.length === 0) {
+        container.innerHTML = `<div class="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-slate-100">No active inventory locations yet.</div>`;
+        return;
+      }
+
+      const locMap = {};
+      activeItems.forEach(item => {
+        const loc = item.note ? item.note.trim() : 'Unassigned Room';
+        if (!locMap[loc]) locMap[loc] = { count: 0, units: 0, val: 0 };
+        locMap[loc].count++;
+        locMap[loc].units += item.qty;
+        locMap[loc].val += (item.qty * item.price);
+      });
+
+      const entries = Object.entries(locMap).sort((a, b) => b[1].count - a[1].count);
+
+      container.innerHTML = entries.map(([loc, data]) => `
+        <div onclick="jumpToLocationFromDashboard('${loc.replace(/'/g, "\\'")}')" class="p-2.5 rounded-xl bg-slate-50 hover:bg-brand-50/50 border border-slate-200/70 flex items-center justify-between text-xs cursor-pointer transition">
+          <div class="flex items-center gap-2 min-w-0 pr-2">
+            <i class="ph-fill ph-map-pin ${loc === 'Unassigned Room' ? 'text-slate-400' : 'text-emerald-600'} text-sm shrink-0"></i>
+            <span class="font-bold ${loc === 'Unassigned Room' ? 'text-slate-500 italic' : 'text-slate-800'} truncate">${loc}</span>
+          </div>
+          <div class="shrink-0 font-mono text-right">
+            <span class="px-2 py-0.5 rounded bg-white border border-slate-200 font-bold text-slate-700">${data.count} SKUs</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function setLedgerFilter(filter) {
+      ledgerFilter = filter;
+      document.querySelectorAll('.ledger-tab').forEach(btn => {
+        btn.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+      });
+      const activeBtn = document.getElementById(`ledgerTab-${filter}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+      }
+      renderDashboardLedger();
+    }
+
+    function renderDashboardLedger() {
+      const container = document.getElementById('dashboardLedgerContainer');
+      const q = (document.getElementById('ledgerSearchInput')?.value || '').toLowerCase().trim();
+      const sortBy = document.getElementById('ledgerSortSelect')?.value || 'VALUE_DESC';
+
+      let list = items.filter(i => i.qty > 0);
+
+      if (ledgerFilter === 'EQUIPMENT') list = list.filter(i => i.type === 'EQUIPMENT');
+      if (ledgerFilter === 'CONSUMABLE') list = list.filter(i => i.type === 'CONSUMABLE');
+      if (ledgerFilter === 'LOW') list = list.filter(i => i.qty <= i.minQty);
+
+      if (q) {
+        list = list.filter(i => 
+          i.name.toLowerCase().includes(q) || 
+          i.code.toLowerCase().includes(q) || 
+          i.category.toLowerCase().includes(q) ||
+          i.note.toLowerCase().includes(q)
+        );
+      }
+
+      list.sort((a, b) => {
+        if (sortBy === 'VALUE_DESC') return (b.qty * b.price) - (a.qty * a.price);
+        if (sortBy === 'QTY_DESC') return b.qty - a.qty;
+        if (sortBy === 'QTY_ASC') return a.qty - b.qty;
+        if (sortBy === 'NAME_ASC') return a.name.localeCompare(b.name);
+        return 0;
+      });
+
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="p-10 text-center">
+            <i class="ph-duotone ph-package text-4xl text-slate-300 mb-2 block"></i>
+            <p class="text-sm font-bold text-slate-700">No active inventory items match this view</p>
+            <p class="text-xs text-slate-400 mt-1">Switch to the Item Catalog to add quantities or load sample inventory data above.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = list.map(item => {
+        const isLow = item.qty <= item.minQty;
+        const lineTotal = item.qty * item.price;
+
+        return `
+          <div class="p-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 transition">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center flex-wrap gap-1.5 mb-1">
+                <span class="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">${item.code}</span>
+                <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded ${item.type === 'EQUIPMENT' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}">
+                  ${item.type === 'EQUIPMENT' ? 'Equipment (ICS/PAR)' : 'Consumable (RIS)'}
+                </span>
+                ${isLow ? `
+                  <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                    <i class="ph-fill ph-warning"></i> Low Stock (Min: ${item.minQty})
+                  </span>
+                ` : `
+                  <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">
+                    <i class="ph-fill ph-check-circle"></i> Healthy
+                  </span>
+                `}
+              </div>
+
+              <h4 class="font-bold text-sm text-slate-900 leading-snug">${item.name}</h4>
+
+              <div class="flex items-center flex-wrap gap-3 mt-1 text-xs text-slate-500">
+                <span>Category: <strong class="text-slate-700">${item.category}</strong></span>
+                <span>Unit Cost: <strong class="font-mono text-slate-700">${formatCurrency(item.price)}</strong></span>
+                <button onclick="openItemModal('${item.code}')" class="inline-flex items-center gap-1 text-brand-600 font-semibold hover:underline">
+                  <i class="ph-fill ph-map-pin"></i>
+                  <span>${item.note ? item.note : 'Assign Room / Location'}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Right Controls in Ledger -->
+            <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
+              <div class="text-left sm:text-right font-mono">
+                <div class="text-[10px] uppercase font-sans font-bold text-slate-400">Total Value</div>
+                <div class="text-sm font-extrabold text-emerald-700">${formatCurrency(lineTotal)}</div>
+              </div>
+
+              <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button onclick="adjustQty('${item.code}', -1)" class="w-9 h-8 rounded-lg bg-white hover:bg-rose-50 active:scale-95 text-slate-700 font-bold flex items-center justify-center shadow-sm">
+                  <i class="ph-bold ph-minus text-xs"></i>
+                </button>
+                <span class="w-14 text-center font-mono font-extrabold text-xs text-slate-900">${item.qty} <span class="text-[10px] font-normal text-slate-500">${item.unit}</span></span>
+                <button onclick="adjustQty('${item.code}', 1)" class="w-9 h-8 rounded-lg bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold flex items-center justify-center shadow-sm">
+                  <i class="ph-bold ph-plus text-xs"></i>
+                </button>
+              </div>
+
+              <button onclick="openItemModal('${item.code}')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center">
+                <i class="ph-bold ph-pencil-simple"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderPrintReport() {
+      const activeItems = items.filter(i => i.qty > 0);
+      let part1Val = 0;
+      let part2Val = 0;
+
+      activeItems.forEach(i => {
+        const sub = i.qty * i.price;
+        if (i.part === 'PART1') part1Val += sub;
+        else part2Val += sub;
+      });
+
+      document.getElementById('printSchoolName').textContent = schoolInfo.school || 'SCHOOL / OFFICE GENERAL INVENTORY';
+      document.getElementById('printUacs').textContent = schoolInfo.uacs || 'Department of Education';
+      document.getElementById('printDate').textContent = 'Generated on ' + new Date().toLocaleDateString('en-PH', { dateStyle: 'long' });
+      document.getElementById('printCustodianName').textContent = schoolInfo.custodian || 'PROPERTY CUSTODIAN';
+      document.getElementById('printCustodianPos').textContent = schoolInfo.position || 'Property Custodian / Supply Officer';
+
+      document.getElementById('printTotalSkus').textContent = activeItems.length + ' Items';
+      document.getElementById('printPart1Val').textContent = formatCurrency(part1Val);
+      document.getElementById('printPart2Val').textContent = formatCurrency(part2Val);
+      document.getElementById('printGrandVal').textContent = formatCurrency(part1Val + part2Val);
+
+      const tbody = document.getElementById('printTableBody');
+      if (activeItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center">No active inventory items recorded.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = activeItems.map(item => `
+        <tr class="border-b border-black">
+          <td class="border border-black p-1.5 font-mono">${item.code}</td>
+          <td class="border border-black p-1.5 font-semibold">${item.name}</td>
+          <td class="border border-black p-1.5">${item.type === 'EQUIPMENT' ? 'ICS/PAR' : 'RIS'}</td>
+          <td class="border border-black p-1.5">${item.note || 'Unassigned'}</td>
+          <td class="border border-black p-1.5 text-center font-mono">${item.qty} ${item.unit}</td>
+          <td class="border border-black p-1.5 text-right font-mono">${formatCurrency(item.price)}</td>
+          <td class="border border-black p-1.5 text-right font-mono font-bold">${formatCurrency(item.qty * item.price)}</td>
+        </tr>
+      `).join('');
+    }
+
+    // =========================================================================
+    // 6. SAMPLE SCHOOL INVENTORY LOADER (FOR INSTANT DASHBOARD DEMO)
+    // =========================================================================
+    function loadSampleInventory() {
+      const hasExisting = items.some(i => i.qty > 0);
+      if (hasExisting && !confirm("This will load sample school inventory counts so you can preview the dashboard. Continue?")) {
+        return;
+      }
+
+      const sampleData = {
+        "12191601-AL-E04": { qty: 45, note: "School Clinic" },
+        "12191601-AL-E03": { qty: 12, note: "Central Stockroom" },
+        "14111507-PP-M01": { qty: 120, note: "Central Stockroom" },
+        "14111507-PP-M02": { qty: 85, note: "Central Stockroom" },
+        "45111609-MM-P01": { qty: 4, note: "ICT / Computer Lab" },
+        "45121517-DO-C02": { qty: 2, note: "Audio-Visual Room" },
+        "43211507-DSK001": { qty: 15, note: "ICT / Computer Lab" },
+        "43211503-LAP001": { qty: 6, note: "Faculty Room" },
+        "43212105-PR-L01": { qty: 4, note: "Principal / Admin Office" },
+        "56101504-CM-B01": { qty: 60, note: "Social Hall / Covered Court" },
+        "40101604-EF-W01": { qty: 24, note: "Grade 7-10 Classrooms" },
+        "40101604-EF-S01": { qty: 3, note: "Faculty Room" },
+        "46191601-FE-M01": { qty: 8, note: "Main Building Corridors" },
+        "47131604-BR-S01": { qty: 20, note: "Utility / Janitorial Room" },
+        "47121804-MP-B01": { qty: 3, note: "Utility / Janitorial Room" },
+        "47121701-TB-P04": { qty: 30, note: "Utility / Janitorial Room" },
+        "44121708-MW-B01": { qty: 50, note: "Faculty Room" },
+        "44103105-EP-B17": { qty: 18, note: "Principal / Admin Office" },
+        "44103105-EP-C17": { qty: 4, note: "Principal / Admin Office" },
+        "39101628-LT-L01": { qty: 4, note: "Central Stockroom" },
+        "80141505-TS-012": { qty: 5, customPrice: 18500, note: "Grade 10 Classrooms" },
+        "80141505-TS-018": { qty: 4, customPrice: 8200, note: "Principal / Admin Office" }
+      };
+
+      Object.entries(sampleData).forEach(([code, data]) => {
+        const item = items.find(i => i.code === code);
+        if (item) {
+          item.qty = data.qty;
+          item.note = data.note;
+          if (data.customPrice) item.price = data.customPrice;
+          userState[code] = {
+            qty: item.qty,
+            customPrice: item.price,
+            note: item.note,
+            minQty: item.minQty
+          };
+        }
+      });
+
+      if (!schoolInfo.school) {
+        schoolInfo = {
+          school: "San Jose National High School",
+          uacs: "DepEd - Division Office",
+          custodian: "Maria Santos",
+          position: "School Property Custodian"
+        };
+        localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+        updateSchoolHeader();
+      }
+
+      saveState();
+      renderItems();
+      renderDashboard();
+    }
+
+    // =========================================================================
+    // 7. CATALOG RENDERING FUNCTIONS
+    // =========================================================================
+    function renderCategoryPills() {
+      const container = document.getElementById('categoryPills');
+      let html = `
+        <button onclick="setCategoryFilter('ALL')" class="px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${filterCategory === 'ALL' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+          All Categories
+        </button>
+      `;
+
+      CATEGORIES.forEach((cat, idx) => {
+        const isActive = filterCategory === idx;
+        html += `
+          <button onclick="setCategoryFilter(${idx})" class="px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${isActive ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+            ${cat}
+          </button>
+        `;
+      });
+
+      container.innerHTML = html;
+
+      const clearCatBtn = document.getElementById('clearCatFilterBtn');
+      const activeCatLabel = document.getElementById('activeCatLabel');
+      if (filterCategory !== 'ALL') {
+        activeCatLabel.textContent = CATEGORIES[filterCategory];
+        clearCatBtn.classList.remove('hidden');
+        clearCatBtn.classList.add('inline-flex');
+      } else {
+        clearCatBtn.classList.add('hidden');
+        clearCatBtn.classList.remove('inline-flex');
+      }
+    }
+
+    function getFilteredItems() {
+      const q = searchQuery.toLowerCase().trim();
+      return items.filter(item => {
+        if (filterPart === 'PART1' && item.part !== 'PART1') return false;
+        if (filterPart === 'PART2' && item.part !== 'PART2') return false;
+        if (filterPart === 'SELECTED' && item.qty <= 0) return false;
+        if (filterCategory !== 'ALL' && item.catIdx !== filterCategory) return false;
+        if (q) {
+          const matchName = item.name.toLowerCase().includes(q);
+          const matchCode = item.code.toLowerCase().includes(q);
+          const matchNote = item.note.toLowerCase().includes(q);
+          if (!matchName && !matchCode && !matchNote) return false;
+        }
+        return true;
+      });
+    }
+
+    function formatCurrency(num) {
+      return '₱' + Number(num || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatCompactCurrency(num) {
+      if (num >= 1000000) return '₱' + (num / 1000000).toFixed(2) + 'M';
+      if (num >= 1000) return '₱' + (num / 1000).toFixed(1) + 'k';
+      return '₱' + Number(num || 0).toFixed(0);
+    }
+
+    function renderItems() {
+      const filtered = getFilteredItems();
+      const container = document.getElementById('itemsContainer');
+      const emptyState = document.getElementById('emptyState');
+      const statusEl = document.getElementById('resultsStatus');
+
+      statusEl.textContent = `Showing ${filtered.length} of ${items.length} items`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      const html = filtered.map(item => {
+        const isSelected = item.qty > 0;
+        const isLow = isSelected && item.qty <= item.minQty;
+        const lineTotal = item.qty * item.price;
+        const needsPrice = item.price === 0;
+
+        return `
+          <div id="card-${item.code}" class="rounded-2xl bg-white p-3.5 sm:p-4 transition-all border ${isSelected ? 'border-brand-500 ring-2 ring-brand-500/10 bg-brand-50/10' : 'border-slate-200/90'} shadow-sm flex items-center justify-between gap-3">
+            
+            <!-- Left Info Column -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center flex-wrap gap-1.5 mb-1">
+                <span class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-slate-100 text-slate-600 border border-slate-200">#${item.itemNo}</span>
+                <span class="px-2 py-0.5 text-[11px] font-mono font-semibold rounded bg-slate-100 text-slate-700">${item.code}</span>
+                <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded ${item.part === 'PART1' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}">${item.category}</span>
+                <span class="px-1.5 py-0.5 text-[10px] font-bold uppercase rounded ${item.type === 'EQUIPMENT' ? 'bg-purple-50 text-purple-700' : 'bg-slate-100 text-slate-600'}">${item.type}</span>
+              </div>
+
+              <h3 class="font-bold text-sm sm:text-base text-slate-900 leading-snug break-words">${item.name}</h3>
+
+              <div class="flex items-center flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs">
+                <span class="text-slate-500 font-medium">Unit: <strong class="text-slate-700 uppercase">${item.unit}</strong></span>
+                
+                <button onclick="openItemModal('${item.code}')" class="font-mono font-semibold ${needsPrice ? 'text-amber-600 underline decoration-dotted' : 'text-slate-700'} flex items-center gap-1">
+                  <span>${needsPrice ? 'Set Price (₱0.00)' : formatCurrency(item.price)}</span>
+                  <i class="ph-bold ph-pencil-simple text-xs text-slate-400"></i>
+                </button>
+
+                <span id="linetotal-${item.code}" class="${isSelected ? 'inline-flex' : 'hidden'} items-center font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  Total: ${formatCurrency(lineTotal)}
+                </span>
+
+                ${isLow ? `
+                  <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                    <i class="ph-fill ph-warning"></i> Low Stock
+                  </span>
+                ` : ''}
+              </div>
+
+              ${item.note ? `
+                <div onclick="openItemModal('${item.code}')" class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200/80 text-amber-900 text-xs font-medium cursor-pointer">
+                  <i class="ph-fill ph-map-pin text-amber-600"></i>
+                  <span>${item.note}</span>
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Right Touch Controls Column (iPad Friendly Stepper) -->
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button 
+                onclick="openItemModal('${item.code}')" 
+                title="Assign Room, Min Stock or Edit Price"
+                class="w-10 h-12 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-500 flex items-center justify-center transition"
+              >
+                <i class="ph-bold ph-sliders-horizontal text-lg"></i>
+              </button>
+
+              <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button 
+                  onclick="adjustQty('${item.code}', -1)" 
+                  class="w-11 h-10 rounded-lg bg-white hover:bg-rose-50 active:bg-rose-100 active:scale-95 text-slate-700 hover:text-rose-600 font-bold text-lg shadow-sm flex items-center justify-center transition select-none"
+                >
+                  <i class="ph-bold ph-minus"></i>
+                </button>
+
+                <input 
+                  type="number" 
+                  id="qty-${item.code}"
+                  value="${item.qty}" 
+                  min="0"
+                  onchange="setExactQty('${item.code}', this.value)"
+                  onclick="this.select()"
+                  class="w-14 h-10 text-center bg-transparent font-mono font-extrabold text-base text-slate-900 outline-none"
+                >
+
+                <button 
+                  onclick="adjustQty('${item.code}', 1)" 
+                  class="w-11 h-10 rounded-lg bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold text-lg shadow-sm flex items-center justify-center transition select-none"
+                >
+                  <i class="ph-bold ph-plus"></i>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = html;
+    }
+
+    // =========================================================================
+    // 8. FAST QUANTITY & ITEM UPDATES
+    // =========================================================================
+    function adjustQty(code, delta) {
+      const item = items.find(i => i.code === code);
+      if (!item) return;
+      const newQty = Math.max(0, (item.qty || 0) + delta);
+      updateItemQty(item, newQty);
+    }
+
+    function setExactQty(code, val) {
+      const item = items.find(i => i.code === code);
+      if (!item) return;
+      const parsed = parseInt(val, 10);
+      const newQty = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+      updateItemQty(item, newQty);
+    }
+
+    function updateItemQty(item, newQty) {
+      item.qty = newQty;
+      if (!userState[item.code]) userState[item.code] = {};
+      userState[item.code].qty = newQty;
+      saveState();
+
+      const qtyInput = document.getElementById(`qty-${item.code}`);
+      const card = document.getElementById(`card-${item.code}`);
+      const lineTotalEl = document.getElementById(`linetotal-${item.code}`);
+
+      if (qtyInput) qtyInput.value = newQty;
+
+      if (card) {
+        if (newQty > 0) {
+          card.className = "rounded-2xl bg-white p-3.5 sm:p-4 transition-all border border-brand-500 ring-2 ring-brand-500/10 bg-brand-50/10 shadow-sm flex items-center justify-between gap-3";
+        } else {
+          card.className = "rounded-2xl bg-white p-3.5 sm:p-4 transition-all border border-slate-200/90 shadow-sm flex items-center justify-between gap-3";
+        }
+      }
+
+      if (lineTotalEl) {
+        if (newQty > 0) {
+          lineTotalEl.textContent = `Total: ${formatCurrency(newQty * item.price)}`;
+          lineTotalEl.classList.remove('hidden');
+          lineTotalEl.classList.add('inline-flex');
+        } else {
+          lineTotalEl.classList.add('hidden');
+          lineTotalEl.classList.remove('inline-flex');
+        }
+      }
+
+      if (filterPart === 'SELECTED' && newQty === 0) {
+        renderItems();
+      }
+    }
+
+    function updateDockStats() {
+      let activeCount = 0;
+      let totalUnits = 0;
+      let totalAmount = 0;
+
+      items.forEach(item => {
+        if (item.qty > 0) {
+          activeCount++;
+          totalUnits += item.qty;
+          totalAmount += (item.qty * item.price);
+        }
+      });
+
+      document.getElementById('dockTotalItems').textContent = activeCount;
+      document.getElementById('dockTotalUnits').textContent = totalUnits.toLocaleString();
+      document.getElementById('dockTotalAmount').textContent = formatCurrency(totalAmount);
+      document.getElementById('count-SELECTED').textContent = activeCount;
+      document.getElementById('navBadgeCount').textContent = activeCount;
+    }
+
+    // =========================================================================
+    // 9. SEARCH & FILTER HANDLERS
+    // =========================================================================
+    function handleSearch(val) {
+      searchQuery = val;
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (val.trim().length > 0) {
+        clearBtn.classList.remove('hidden');
+        clearBtn.classList.add('flex');
+      } else {
+        clearBtn.classList.add('hidden');
+        clearBtn.classList.remove('flex');
+      }
+      renderItems();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('searchInput');
+      input.value = '';
+      handleSearch('');
+      input.focus();
+    }
+
+    function setPartFilter(part) {
+      filterPart = part;
+      document.querySelectorAll('.part-tab').forEach(btn => {
+        btn.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+      });
+      const activeBtn = document.getElementById(`tab-${part}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+      }
+      renderItems();
+    }
+
+    function setCategoryFilter(catIdx) {
+      filterCategory = catIdx;
+      renderCategoryPills();
+      renderItems();
+    }
+
+    function resetFilters() {
+      filterPart = 'ALL';
+      filterCategory = 'ALL';
+      clearSearch();
+      setPartFilter('ALL');
+      renderCategoryPills();
+      renderItems();
+    }
+
+    function confirmResetAll() {
+      if (confirm("Are you sure you want to reset all inventory quantities to 0? Your room notes and custom prices will be kept.")) {
+        items.forEach(item => {
+          item.qty = 0;
+          if (userState[item.code]) userState[item.code].qty = 0;
+        });
+        saveState();
+        renderItems();
+        renderDashboard();
+      }
+    }
+
+    // =========================================================================
+    // 10. MODALS (ITEM DETAILS, CUSTOM ITEM, OFFICIAL SUMMARY, SCHOOL INFO)
+    // =========================================================================
+    function openItemModal(code) {
+      const item = items.find(i => i.code === code);
+      if (!item) return;
+      activeModalCode = code;
+
+      document.getElementById('modalItemCode').textContent = item.code;
+      document.getElementById('modalItemTypeBadge').textContent = item.type === 'EQUIPMENT' ? 'Equipment (ICS/PAR)' : 'Consumable (RIS)';
+      document.getElementById('modalItemName').textContent = item.name;
+      document.getElementById('modalItemUnit').textContent = item.unit;
+      document.getElementById('modalItemQty').value = item.qty;
+      document.getElementById('modalItemPrice').value = item.price;
+      document.getElementById('modalItemMinQty').value = item.minQty;
+      document.getElementById('modalItemNote').value = item.note || '';
+
+      document.getElementById('itemModal').classList.remove('hidden');
+    }
+
+    function setQuickNote(roomName) {
+      document.getElementById('modalItemNote').value = roomName;
+    }
+
+    function closeItemModal() {
+      activeModalCode = null;
+      document.getElementById('itemModal').classList.add('hidden');
+    }
+
+    function saveItemModal() {
+      if (!activeModalCode) return;
+      const item = items.find(i => i.code === activeModalCode);
+      if (!item) return;
+
+      const newQty = Math.max(0, parseInt(document.getElementById('modalItemQty').value, 10) || 0);
+      const newPrice = Math.max(0, parseFloat(document.getElementById('modalItemPrice').value) || 0);
+      const newMinQty = Math.max(0, parseInt(document.getElementById('modalItemMinQty').value, 10) || 0);
+      const newNote = document.getElementById('modalItemNote').value.trim();
+
+      item.qty = newQty;
+      item.price = newPrice;
+      item.minQty = newMinQty;
+      item.note = newNote;
+      item.type = classifyItemType(item.catIdx, item.unit, item.price, item.name);
+
+      userState[item.code] = {
+        qty: newQty,
+        customPrice: newPrice,
+        minQty: newMinQty,
+        note: newNote
+      };
+
+      saveState();
+      renderItems();
+      renderDashboard();
+      closeItemModal();
+    }
+
+    // CUSTOM ITEM MODAL
+    function openCustomItemModal() {
+      document.getElementById('customName').value = '';
+      document.getElementById('customUnit').value = 'unit';
+      document.getElementById('customPrice').value = '';
+      document.getElementById('customQty').value = '1';
+      document.getElementById('customNote').value = '';
+      document.getElementById('customItemModal').classList.remove('hidden');
+    }
+
+    function closeCustomItemModal() {
+      document.getElementById('customItemModal').classList.add('hidden');
+    }
+
+    function saveCustomItem() {
+      const name = document.getElementById('customName').value.trim().toUpperCase();
+      if (!name) {
+        alert("Please enter an item description.");
+        return;
+      }
+      const unit = document.getElementById('customUnit').value.trim() || 'unit';
+      const price = Math.max(0, parseFloat(document.getElementById('customPrice').value) || 0);
+      const qty = Math.max(0, parseInt(document.getElementById('customQty').value, 10) || 0);
+      const note = document.getElementById('customNote').value.trim();
+
+      const customNo = 114 + customRawItems.length;
+      const code = `CUSTOM-P2-${String(customNo).padStart(3, '0')}`;
+      const newRaw = [customNo, code, name, unit, price, 24, "PART2"];
+
+      customRawItems.push(newRaw);
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
+
+      userState[code] = {
+        qty: qty,
+        customPrice: price,
+        minQty: 2,
+        note: note
+      };
+
+      rebuildCatalogList();
+      saveState();
+      renderItems();
+      renderDashboard();
+      closeCustomItemModal();
+    }
+
+    // SUMMARY MODAL
+    function openSummaryModal() {
+      updateSummaryMath();
+      document.getElementById('summaryModal').classList.remove('hidden');
+    }
+
+    function closeSummaryModal() {
+      document.getElementById('summaryModal').classList.add('hidden');
+    }
+
+    function updateSummaryMath() {
+      let part1Total = 0;
+      let part2Total = 0;
+      const activeItems = items.filter(i => i.qty > 0);
+
+      activeItems.forEach(item => {
+        const sub = item.qty * item.price;
+        if (item.part === 'PART1') part1Total += sub;
+        else part2Total += sub;
+      });
+
+      const inflationProvision = part1Total * 0.10;
+      const freight = parseFloat(document.getElementById('freightInput').value) || 0;
+      const part1Grand = part1Total + inflationProvision + freight;
+      const overallTotal = part1Grand + part2Total;
+
+      document.getElementById('sumPart1Total').textContent = formatCurrency(part1Total);
+      document.getElementById('sumPart1Inflation').textContent = formatCurrency(inflationProvision);
+      document.getElementById('sumPart1Grand').textContent = formatCurrency(part1Grand);
+      document.getElementById('sumPart2Total').textContent = formatCurrency(part2Total);
+      document.getElementById('sumOverallTotal').textContent = formatCurrency(overallTotal);
+
+      const listContainer = document.getElementById('summaryItemsList');
+      if (activeItems.length === 0) {
+        listContainer.innerHTML = `<div class="p-6 text-center text-xs text-slate-400">No items in inventory yet.</div>`;
+      } else {
+        listContainer.innerHTML = activeItems.map(item => `
+          <div class="p-3 flex items-center justify-between text-xs">
+            <div class="pr-3">
+              <span class="font-mono font-bold text-slate-500">${item.code}</span>
+              <p class="font-bold text-slate-800">${item.name}</p>
+              ${item.note ? `<span class="text-[11px] text-emerald-700 font-medium">Location: ${item.note}</span>` : ''}
+            </div>
+            <div class="text-right shrink-0 font-mono">
+              <span class="font-bold text-slate-900">${item.qty} ${item.unit}</span> × ${formatCurrency(item.price)}
+              <div class="font-extrabold text-brand-600">${formatCurrency(item.qty * item.price)}</div>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // SCHOOL INFO MODAL
+    function openSchoolModal() {
+      document.getElementById('infoSchool').value = schoolInfo.school || '';
+      document.getElementById('infoUacs').value = schoolInfo.uacs || '';
+      document.getElementById('infoCustodian').value = schoolInfo.custodian || '';
+      document.getElementById('infoPosition').value = schoolInfo.position || '';
+      document.getElementById('schoolModal').classList.remove('hidden');
+    }
+
+    function closeSchoolModal() {
+      document.getElementById('schoolModal').classList.add('hidden');
+    }
+
+    function saveSchoolInfo() {
+      schoolInfo = {
+        school: document.getElementById('infoSchool').value.trim(),
+        uacs: document.getElementById('infoUacs').value.trim(),
+        custodian: document.getElementById('infoCustodian').value.trim(),
+        position: document.getElementById('infoPosition').value.trim()
+      };
+      localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+      updateSchoolHeader();
+      renderPrintReport();
+      closeSchoolModal();
+    }
+
+    function updateSchoolHeader() {
+      const label = document.getElementById('headerSchoolName');
+      label.textContent = schoolInfo.school ? schoolInfo.school : 'Set School Info';
+    }
+
+    // =========================================================================
+    // 11. CSV EXPORT & JSON BACKUP / RESTORE
+    // =========================================================================
+    function exportCSV() {
+      const activeItems = items.filter(i => i.qty > 0);
+      if (activeItems.length === 0) {
+        alert("Please add quantities to at least one item before exporting.");
+        return;
+      }
+
+      let csv = [];
+      csv.push(`"GENERAL INVENTORY & APP-CSE 2027 REPORT"`);
+      csv.push(`"School/Office:","${schoolInfo.school || 'N/A'}","Agency/Division:","${schoolInfo.uacs || 'N/A'}"`);
+      csv.push(`"Property Custodian:","${schoolInfo.custodian || 'N/A'}","Position:","${schoolInfo.position || 'N/A'}"`);
+      csv.push(`"Date Exported:","${new Date().toLocaleDateString()}"`);
+      csv.push("");
+      csv.push(`"Part","Item No","Item Code","Item & Specifications","Classification","Category","Unit of Measure","Quantity On-Hand","Min Alert Qty","Stock Status","Unit Price","Total Valuation","Room / Location / Notes"`);
+
+      activeItems.forEach(item => {
+        const total = (item.qty * item.price).toFixed(2);
+        const status = item.qty <= item.minQty ? "LOW STOCK" : "HEALTHY";
+        const safeName = item.name.replace(/"/g, '""');
+        const safeNote = (item.note || 'Unassigned').replace(/"/g, '""');
+        csv.push(`"${item.part}","${item.itemNo}","${item.code}","${safeName}","${item.type}","${item.category}","${item.unit}","${item.qty}","${item.minQty}","${status}","${item.price.toFixed(2)}","${total}","${safeNote}"`);
+      });
+
+      const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `General_Inventory_APP-CSE_${(schoolInfo.school || 'School_Custodian').replace(/\s+/g, '_')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function exportBackupJSON() {
+      const backupPayload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        schoolInfo,
+        userState,
+        customRawItems
+      };
+      const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `CustodianPro_Backup_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function importBackupJSON(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.userState) {
+            userState = data.userState;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
+          }
+          if (data.schoolInfo) {
+            schoolInfo = data.schoolInfo;
+            localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+            updateSchoolHeader();
+          }
+          if (Array.isArray(data.customRawItems)) {
+            customRawItems = data.customRawItems;
+            localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
+          }
+          rebuildCatalogList();
+          updateDockStats();
+          renderItems();
+          renderDashboard();
+          alert("Inventory backup restored successfully!");
+        } catch (err) {
+          alert("Invalid backup JSON file.");
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    // Boot App on Load
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
