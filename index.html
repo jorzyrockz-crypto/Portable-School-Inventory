@@ -607,11 +607,27 @@
           </div>
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Unit Price (₱)</label>
-            <input type="number" id="modalItemPrice" step="0.01" min="0" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-mono font-bold text-base focus:border-brand-500 outline-none">
+            <input type="number" id="modalItemPrice" step="0.01" min="0" oninput="refreshModalTypeUI()" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-mono font-bold text-base focus:border-brand-500 outline-none">
           </div>
           <div>
             <label class="block text-[11px] font-bold uppercase text-amber-700 mb-1">Min Alert Qty</label>
             <input type="number" id="modalItemMinQty" min="0" placeholder="5" class="w-full h-11 px-3 rounded-xl border border-amber-300 bg-amber-50/40 font-mono font-bold text-base focus:border-amber-500 outline-none">
+          </div>
+        </div>
+
+        <!-- Classification: automatic or manual override -->
+        <div>
+          <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Classification</label>
+          <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button type="button" id="modalType-AUTO" onclick="setModalType('AUTO')" class="modal-type-btn h-9 rounded-lg text-xs font-bold transition text-slate-600">
+              Auto <span id="modalTypeAutoHint" class="font-medium opacity-70"></span>
+            </button>
+            <button type="button" id="modalType-EQUIPMENT" onclick="setModalType('EQUIPMENT')" class="modal-type-btn h-9 rounded-lg text-xs font-bold transition text-slate-600">
+              Equipment (ICS/PAR)
+            </button>
+            <button type="button" id="modalType-CONSUMABLE" onclick="setModalType('CONSUMABLE')" class="modal-type-btn h-9 rounded-lg text-xs font-bold transition text-slate-600">
+              Consumable (RIS)
+            </button>
           </div>
         </div>
 
@@ -825,6 +841,14 @@
             <input type="text" id="customNote" placeholder="e.g., Central Stockroom" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
           </div>
         </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Classification</label>
+          <select id="customType" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium bg-white">
+            <option value="AUTO">Auto-detect (by name, unit &amp; price)</option>
+            <option value="EQUIPMENT">Equipment (ICS/PAR)</option>
+            <option value="CONSUMABLE">Consumable (RIS)</option>
+          </select>
+        </div>
       </div>
       <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
         <button onclick="closeCustomItemModal()" class="h-10 px-4 rounded-xl bg-slate-100 text-xs font-bold text-slate-700">Cancel</button>
@@ -868,12 +892,30 @@
 
     // Helper to classify item into "EQUIPMENT" (ICS/PAR) vs "CONSUMABLE" (RIS)
     const EQUIPMENT_CATS = new Set([2, 6, 8, 10, 11, 12]);
+    // Durable property recognised by name, whatever the unit of measure ("piece", "set",
+    // "lot"…) or price – Part II items have no catalog price, so price rules can't catch
+    // them. Matching is case-sensitive on purpose: catalog nouns are UPPERCASE while specs
+    // are mixed case, so "MARKER, Whiteboard" stays a consumable but "WHITEBOARD" does not.
+    const EQUIPMENT_NAME_PATTERN = new RegExp('\\b(' + [
+      'AIR CONDITIONING', 'AIR COOLER', 'AMPLIFIER', 'BLUETOOTH SPEAKER', 'BODY CAM', 'CAMERA',
+      'CABINET', 'CHAIR', 'DASH CAM', 'EXTERNAL DRIVE', 'HEADSET', 'KEYBOARD', 'LAMINATING MACHINE',
+      'LAPTOP', 'MICROPHONE', 'MOBILE PHONE', 'PRINTER', 'ROUTERS?', 'SCANNER', 'SPEAKERPHONE',
+      'STEEL RACK', 'SWITCHES OR HUB', 'TABLET COMPUTER', 'TELEVISION', 'UNINTERRUPTIBLE POWER SUPPLY',
+      'WATER DISPENSER', 'WEBCAM', 'WHITEBOARD', 'WIFI EXTENDER'
+    ].join('|') + ')\\b');
+
     function classifyItemType(catIdx, unit, price, name) {
       if (EQUIPMENT_CATS.has(catIdx)) return "EQUIPMENT";
-      if (unit === "unit" && (price >= 500 || name.includes("AIR CONDITIONING") || name.includes("CAMERA") || name.includes("PRINTER") || name.includes("LAPTOP") || name.includes("TELEVISION") || name.includes("CABINET") || name.includes("CHAIR") || name.includes("DISPENSER") || name.includes("WHITEBOARD") || name.includes("SCANNER") || name.includes("LAMINATING MACHINE") || name.includes("TABLET"))) {
-        return "EQUIPMENT";
-      }
+      if (EQUIPMENT_NAME_PATTERN.test(name)) return "EQUIPMENT";
+      // Small office tools counted per "unit" (e.g. TAPE DISPENSER) stay supplies unless costly.
+      if (unit === "unit" && price >= 500) return "EQUIPMENT";
       return "CONSUMABLE";
+    }
+
+    // Custodian's manual choice wins over the automatic rule.
+    function resolveItemType(item, override) {
+      if (override === 'EQUIPMENT' || override === 'CONSUMABLE') return override;
+      return classifyItemType(item.catIdx, item.unit, item.price, item.name);
     }
 
     // =========================================================================
@@ -1311,7 +1353,8 @@
         const code = raw[1];
         const savedItem = userState[code] || {};
         const price = savedItem.customPrice !== undefined && savedItem.customPrice !== null ? savedItem.customPrice : raw[4];
-        const type = classifyItemType(raw[5], raw[3], price, raw[2]);
+        const typeOverride = savedItem.typeOverride || null;
+        const type = resolveItemType({ catIdx: raw[5], unit: raw[3], price, name: raw[2] }, typeOverride);
         const defaultMin = type === 'EQUIPMENT' ? 2 : 5;
 
         return {
@@ -1326,6 +1369,7 @@
           category: CATEGORIES[raw[5]],
           part: raw[6],
           type: type, // 'EQUIPMENT' or 'CONSUMABLE'
+          typeOverride: typeOverride, // null = automatic
           qty: savedItem.qty || 0,
           minQty: savedItem.minQty !== undefined ? savedItem.minQty : defaultMin,
           note: savedItem.note || "",
@@ -2206,10 +2250,43 @@
       const c = getCondition(item);
       document.getElementById('modalItemRepair').value = c.repair;
       document.getElementById('modalItemUnserv').value = c.unserv;
-      document.getElementById('modalConditionSection').classList.toggle('hidden', item.type !== 'EQUIPMENT');
+      setModalType(item.typeOverride || 'AUTO');
       updateModalConditionPreview();
 
       document.getElementById('itemModal').classList.remove('hidden');
+    }
+
+    let modalTypeChoice = 'AUTO';
+
+    function modalEffectiveType() {
+      const item = items.find(i => i.code === activeModalCode);
+      if (!item) return 'CONSUMABLE';
+      const price = Math.max(0, parseFloat(document.getElementById('modalItemPrice').value) || 0);
+      return resolveItemType({ ...item, price }, modalTypeChoice === 'AUTO' ? null : modalTypeChoice);
+    }
+
+    // Segmented control: Auto / Equipment / Consumable. Shows the condition section for equipment.
+    function setModalType(choice) {
+      modalTypeChoice = choice;
+      document.querySelectorAll('.modal-type-btn').forEach(btn => {
+        const active = btn.id === `modalType-${choice}`;
+        btn.classList.toggle('bg-white', active);
+        btn.classList.toggle('shadow-sm', active);
+        btn.classList.toggle('text-brand-700', active);
+        btn.classList.toggle('text-slate-600', !active);
+      });
+      refreshModalTypeUI();
+    }
+
+    function refreshModalTypeUI() {
+      const item = items.find(i => i.code === activeModalCode);
+      if (!item) return;
+      const price = Math.max(0, parseFloat(document.getElementById('modalItemPrice').value) || 0);
+      const auto = resolveItemType({ ...item, price }, null);
+      document.getElementById('modalTypeAutoHint').textContent = `(${auto === 'EQUIPMENT' ? 'Equip.' : 'Consum.'})`;
+      const type = modalEffectiveType();
+      document.getElementById('modalItemTypeBadge').textContent = type === 'EQUIPMENT' ? 'Equipment (ICS/PAR)' : 'Consumable (RIS)';
+      document.getElementById('modalConditionSection').classList.toggle('hidden', type !== 'EQUIPMENT');
     }
 
     function readModalInt(id) {
@@ -2265,7 +2342,8 @@
       item.price = newPrice;
       item.minQty = newMinQty;
       item.note = newNote;
-      item.type = classifyItemType(item.catIdx, item.unit, item.price, item.name);
+      item.typeOverride = modalTypeChoice === 'AUTO' ? null : modalTypeChoice;
+      item.type = resolveItemType(item, item.typeOverride);
 
       userState[item.code] = {
         qty: newQty,
@@ -2275,6 +2353,7 @@
         repair: newRepair,
         unserv: newUnserv
       };
+      if (item.typeOverride) userState[item.code].typeOverride = item.typeOverride;
       clampCondition(item);
 
       saveState();
@@ -2290,6 +2369,7 @@
       document.getElementById('customPrice').value = '';
       document.getElementById('customQty').value = '1';
       document.getElementById('customNote').value = '';
+      document.getElementById('customType').value = 'AUTO';
       document.getElementById('customItemModal').classList.remove('hidden');
     }
 
@@ -2307,6 +2387,7 @@
       const price = Math.max(0, parseFloat(document.getElementById('customPrice').value) || 0);
       const qty = Math.max(0, parseInt(document.getElementById('customQty').value, 10) || 0);
       const note = document.getElementById('customNote').value.trim();
+      const typeChoice = document.getElementById('customType').value;
 
       const customNo = 114 + customRawItems.length;
       const code = `CUSTOM-P2-${String(customNo).padStart(3, '0')}`;
@@ -2321,6 +2402,7 @@
         minQty: 2,
         note: note
       };
+      if (typeChoice === 'EQUIPMENT' || typeChoice === 'CONSUMABLE') userState[code].typeOverride = typeChoice;
 
       rebuildCatalogList();
       saveState();

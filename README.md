@@ -13,6 +13,14 @@ always add up to the quantity). The split appears on the dashboard ("Equipment C
 in the ledger's *Repair / Unserviceable* tab, in the printed report's *Condition* column, and as
 three extra columns in the CSV export — handy for the RPCPPE physical count and IIRUP disposal.
 
+## Equipment vs. consumable classification
+
+Each item is automatically classified as **Equipment (ICS/PAR)** or **Consumable (RIS)** by
+category, by name (e.g. CHAIR, CABINET, WHITEBOARD, ROUTER, UPS – regardless of unit) and by
+price (anything counted per "unit" costing ₱500 or more). If an item is classified wrongly,
+open it and pick **Equipment** or **Consumable** under *Classification*; choose **Auto** to go
+back to the automatic rule. Custom items can be classified when they are added.
+
 ## Works offline
 
 CustodianPro is an installable Progressive Web App:
