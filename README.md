@@ -5,6 +5,14 @@ optimised for iPad/tablet use. It is a single static page (`index.html`) served 
 
 https://jorzyrockz-crypto.github.io/Portable-School-Inventory/
 
+## Equipment condition tracking
+
+For equipment (ICS/PAR) items, the item editor records how many on-hand units are
+**Serviceable**, **Needs Repair** or **Unserviceable** (serviceable is computed so the three
+always add up to the quantity). The split appears on the dashboard ("Equipment Condition"),
+in the ledger's *Repair / Unserviceable* tab, in the printed report's *Condition* column, and as
+three extra columns in the CSV export — handy for the RPCPPE physical count and IIRUP disposal.
+
 ## Works offline
 
 CustodianPro is an installable Progressive Web App:

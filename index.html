@@ -274,6 +274,35 @@
 
     </div>
 
+    <!-- EQUIPMENT CONDITION STRIP (Serviceable / Needs Repair / Unserviceable) -->
+    <div id="conditionPanel" onclick="filterLedgerAndScroll('CONDITION')" class="hidden bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-rose-300 cursor-pointer shadow-sm transition">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+            <i class="ph-bold ph-wrench text-lg"></i>
+          </div>
+          <div>
+            <h3 class="font-extrabold text-sm text-slate-900 leading-tight">Equipment Condition</h3>
+            <p class="text-[11px] text-slate-500">Physical count of ICS/PAR units &middot; tap to review items needing action</p>
+          </div>
+        </div>
+        <div class="flex items-center flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold text-slate-600">
+          <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>Serviceable <strong id="condServCount" class="font-mono text-slate-900">0</strong></span>
+          <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-orange-400"></span>Needs Repair <strong id="condRepairCount" class="font-mono text-slate-900">0</strong></span>
+          <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-rose-500"></span>Unserviceable <strong id="condUnservCount" class="font-mono text-slate-900">0</strong></span>
+        </div>
+      </div>
+      <div class="h-3 w-full rounded-full bg-slate-100 overflow-hidden flex">
+        <div id="condServBar" class="h-full bg-emerald-500 transition-all duration-300" style="width:0%"></div>
+        <div id="condRepairBar" class="h-full bg-orange-400 transition-all duration-300" style="width:0%"></div>
+        <div id="condUnservBar" class="h-full bg-rose-500 transition-all duration-300" style="width:0%"></div>
+      </div>
+      <p class="text-[11px] text-slate-500 mt-2">
+        <strong id="condServPct" class="text-emerald-700">0%</strong> serviceable &middot;
+        Unserviceable book value: <strong id="condUnservValue" class="font-mono text-rose-700">₱0.00</strong>
+      </p>
+    </div>
+
     <!-- MIDDLE ROW: Stock Health & Storage Location Distribution -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       
@@ -367,6 +396,9 @@
           </button>
           <button onclick="setLedgerFilter('LOW')" id="ledgerTab-LOW" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-amber-700">
             Low Stock Alerts
+          </button>
+          <button onclick="setLedgerFilter('CONDITION')" id="ledgerTab-CONDITION" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-rose-700">
+            Repair / Unserviceable
           </button>
         </div>
       </div>
@@ -488,6 +520,7 @@
           <th class="border border-black p-1.5">Type</th>
           <th class="border border-black p-1.5">Room / Location</th>
           <th class="border border-black p-1.5 text-center">Qty</th>
+          <th class="border border-black p-1.5">Condition</th>
           <th class="border border-black p-1.5 text-right">Unit Cost</th>
           <th class="border border-black p-1.5 text-right">Total Value</th>
         </tr>
@@ -496,6 +529,8 @@
         <!-- Populated dynamically via JS -->
       </tbody>
     </table>
+
+    <p class="text-[10px] mt-1.5">Condition (equipment): S = Serviceable, R = Needs Repair, U = Unserviceable. N/A = consumable (RIS).</p>
 
     <div class="grid grid-cols-2 gap-12 mt-12 text-xs">
       <div>
@@ -568,7 +603,7 @@
         <div class="grid grid-cols-3 gap-2.5">
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">On-Hand (<span id="modalItemUnit">unit</span>)</label>
-            <input type="number" id="modalItemQty" min="0" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-mono font-bold text-base focus:border-brand-500 outline-none">
+            <input type="number" id="modalItemQty" min="0" oninput="updateModalConditionPreview()" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-mono font-bold text-base focus:border-brand-500 outline-none">
           </div>
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Unit Price (₱)</label>
@@ -578,6 +613,41 @@
             <label class="block text-[11px] font-bold uppercase text-amber-700 mb-1">Min Alert Qty</label>
             <input type="number" id="modalItemMinQty" min="0" placeholder="5" class="w-full h-11 px-3 rounded-xl border border-amber-300 bg-amber-50/40 font-mono font-bold text-base focus:border-amber-500 outline-none">
           </div>
+        </div>
+
+        <!-- Physical Condition (Equipment / ICS-PAR only) -->
+        <div id="modalConditionSection" class="hidden rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-[11px] font-bold uppercase text-slate-500 flex items-center gap-1.5">
+              <i class="ph-bold ph-wrench text-rose-600"></i> Physical Condition
+            </label>
+            <span class="text-[11px] text-slate-500">of <strong id="modalCondTotal" class="font-mono text-slate-800">0</strong> on-hand</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div class="rounded-lg bg-white border border-emerald-200 p-2 text-center">
+              <span class="block text-[10px] font-bold uppercase text-emerald-700">Serviceable</span>
+              <span id="modalCondServ" class="block h-9 leading-9 font-mono font-extrabold text-lg text-emerald-700">0</span>
+            </div>
+            <div class="rounded-lg bg-white border border-orange-200 p-2 text-center">
+              <span class="block text-[10px] font-bold uppercase text-orange-700">Needs Repair</span>
+              <div class="flex items-center justify-center gap-1">
+                <button type="button" onclick="stepModalCondition('modalItemRepair', -1)" class="w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
+                <input type="number" id="modalItemRepair" min="0" oninput="updateModalConditionPreview()" class="w-10 h-9 text-center font-mono font-extrabold text-lg text-orange-700 bg-transparent outline-none">
+                <button type="button" onclick="stepModalCondition('modalItemRepair', 1)" class="w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
+              </div>
+            </div>
+            <div class="rounded-lg bg-white border border-rose-200 p-2 text-center">
+              <span class="block text-[10px] font-bold uppercase text-rose-700">Unserviceable</span>
+              <div class="flex items-center justify-center gap-1">
+                <button type="button" onclick="stepModalCondition('modalItemUnserv', -1)" class="w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
+                <input type="number" id="modalItemUnserv" min="0" oninput="updateModalConditionPreview()" class="w-10 h-9 text-center font-mono font-extrabold text-lg text-rose-700 bg-transparent outline-none">
+                <button type="button" onclick="stepModalCondition('modalItemUnserv', 1)" class="w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
+              </div>
+            </div>
+          </div>
+          <p id="modalCondError" class="hidden mt-2 text-[11px] font-semibold text-rose-600 items-center gap-1">
+            <i class="ph-fill ph-warning"></i> Needs Repair + Unserviceable cannot exceed the on-hand quantity.
+          </p>
         </div>
 
         <!-- Quick Room / Storage Location Pills -->
@@ -1196,7 +1266,7 @@
 
     let items = [];
     let customRawItems = [];
-    let userState = {}; // { [code]: { qty: 0, customPrice: null, note: "", minQty: 5 } }
+    let userState = {}; // { [code]: { qty: 0, customPrice: null, note: "", minQty: 5, repair: 0, unserv: 0 } }
     let schoolInfo = { school: "", uacs: "", custodian: "", position: "" };
 
     // View & Filter States
@@ -1258,12 +1328,67 @@
           type: type, // 'EQUIPMENT' or 'CONSUMABLE'
           qty: savedItem.qty || 0,
           minQty: savedItem.minQty !== undefined ? savedItem.minQty : defaultMin,
-          note: savedItem.note || ""
+          note: savedItem.note || "",
+          // Physical condition (equipment): serviceable = qty - repair - unserv
+          repair: Math.max(0, parseInt(savedItem.repair, 10) || 0),
+          unserv: Math.max(0, parseInt(savedItem.unserv, 10) || 0)
         };
       });
 
       document.getElementById('count-ALL').textContent = items.length;
       document.getElementById('kpiTotalCatalogSkus').textContent = items.length;
+    }
+
+    // =========================================================================
+    // EQUIPMENT CONDITION HELPERS (Serviceable / Needs Repair / Unserviceable)
+    // =========================================================================
+    function getCondition(item) {
+      const qty = item.qty || 0;
+      const unserv = Math.min(item.unserv || 0, qty);
+      const repair = Math.min(item.repair || 0, qty - unserv);
+      return { serv: qty - repair - unserv, repair, unserv };
+    }
+
+    function hasConditionIssue(item) {
+      if (item.type !== 'EQUIPMENT' || item.qty <= 0) return false;
+      const c = getCondition(item);
+      return c.repair > 0 || c.unserv > 0;
+    }
+
+    // Keep repair + unserviceable <= qty. When the count drops, units are taken
+    // from serviceable first, then unserviceable, then needs-repair.
+    function clampCondition(item) {
+      let excess = (item.repair || 0) + (item.unserv || 0) - (item.qty || 0);
+      if (excess > 0) {
+        const fromUnserv = Math.min(excess, item.unserv || 0);
+        item.unserv = (item.unserv || 0) - fromUnserv;
+        excess -= fromUnserv;
+        item.repair = Math.max(0, (item.repair || 0) - excess);
+      }
+      if (userState[item.code]) {
+        userState[item.code].repair = item.repair || 0;
+        userState[item.code].unserv = item.unserv || 0;
+      }
+    }
+
+    function conditionText(item) {
+      const c = getCondition(item);
+      const parts = [];
+      if (c.repair) parts.push(`${c.repair} for repair`);
+      if (c.unserv) parts.push(`${c.unserv} unserviceable`);
+      return parts.join(' · ');
+    }
+
+    function conditionChipHTML(item) {
+      if (!hasConditionIssue(item)) return '';
+      const c = getCondition(item);
+      const tone = c.unserv > 0
+        ? 'bg-rose-50 text-rose-700 border-rose-200'
+        : 'bg-orange-50 text-orange-700 border-orange-200';
+      return `
+        <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${tone}">
+          <i class="ph-fill ph-wrench"></i> ${conditionText(item)}
+        </span>`;
     }
 
     function saveState() {
@@ -1389,10 +1514,37 @@
       document.getElementById('kpiLowStockCount').textContent = lowStockCount;
       document.getElementById('kpiUnpricedCount').textContent = `${unpricedActiveCount} SKUs`;
 
+      renderConditionPanel(activeItems);
+
       renderDashboardCategoryBars(totalVal);
       renderDashboardLocations(activeItems);
       renderDashboardLedger();
       renderPrintReport();
+    }
+
+    function renderConditionPanel(activeItems) {
+      const panel = document.getElementById('conditionPanel');
+      let serv = 0, repair = 0, unserv = 0, unservValue = 0;
+      activeItems.filter(i => i.type === 'EQUIPMENT').forEach(item => {
+        const c = getCondition(item);
+        serv += c.serv;
+        repair += c.repair;
+        unserv += c.unserv;
+        unservValue += c.unserv * item.price;
+      });
+      const total = serv + repair + unserv;
+      panel.classList.toggle('hidden', total === 0);
+      if (total === 0) return;
+
+      const pct = n => (n / total) * 100;
+      document.getElementById('condServCount').textContent = serv.toLocaleString();
+      document.getElementById('condRepairCount').textContent = repair.toLocaleString();
+      document.getElementById('condUnservCount').textContent = unserv.toLocaleString();
+      document.getElementById('condServBar').style.width = pct(serv) + '%';
+      document.getElementById('condRepairBar').style.width = pct(repair) + '%';
+      document.getElementById('condUnservBar').style.width = pct(unserv) + '%';
+      document.getElementById('condServPct').textContent = Math.round(pct(serv)) + '%';
+      document.getElementById('condUnservValue').textContent = formatCurrency(unservValue);
     }
 
     function toggleShowAllCategories() {
@@ -1507,6 +1659,7 @@
       if (ledgerFilter === 'EQUIPMENT') list = list.filter(i => i.type === 'EQUIPMENT');
       if (ledgerFilter === 'CONSUMABLE') list = list.filter(i => i.type === 'CONSUMABLE');
       if (ledgerFilter === 'LOW') list = list.filter(i => i.qty <= i.minQty);
+      if (ledgerFilter === 'CONDITION') list = list.filter(hasConditionIssue);
 
       if (q) {
         list = list.filter(i => 
@@ -1557,6 +1710,7 @@
                     <i class="ph-fill ph-check-circle"></i> Healthy
                   </span>
                 `}
+                ${conditionChipHTML(item)}
               </div>
 
               <h4 class="font-bold text-sm text-slate-900 leading-snug">${item.name}</h4>
@@ -1597,6 +1751,14 @@
       }).join('');
     }
 
+    function printConditionCell(item) {
+      if (item.type !== 'EQUIPMENT') return 'N/A';
+      const c = getCondition(item);
+      if (!c.repair && !c.unserv) return 'Serviceable';
+      return [`S: ${c.serv}`, c.repair ? `R: ${c.repair}` : '', c.unserv ? `U: ${c.unserv}` : '']
+        .filter(Boolean).join(' / ');
+    }
+
     function renderPrintReport() {
       const activeItems = items.filter(i => i.qty > 0);
       let part1Val = 0;
@@ -1621,7 +1783,7 @@
 
       const tbody = document.getElementById('printTableBody');
       if (activeItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center">No active inventory items recorded.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center">No active inventory items recorded.</td></tr>`;
         return;
       }
 
@@ -1632,6 +1794,7 @@
           <td class="border border-black p-1.5">${item.type === 'EQUIPMENT' ? 'ICS/PAR' : 'RIS'}</td>
           <td class="border border-black p-1.5">${item.note || 'Unassigned'}</td>
           <td class="border border-black p-1.5 text-center font-mono">${item.qty} ${item.unit}</td>
+          <td class="border border-black p-1.5 whitespace-nowrap">${printConditionCell(item)}</td>
           <td class="border border-black p-1.5 text-right font-mono">${formatCurrency(item.price)}</td>
           <td class="border border-black p-1.5 text-right font-mono font-bold">${formatCurrency(item.qty * item.price)}</td>
         </tr>
@@ -1654,9 +1817,9 @@
         "14111507-PP-M02": { qty: 85, note: "Central Stockroom" },
         "45111609-MM-P01": { qty: 4, note: "ICT / Computer Lab" },
         "45121517-DO-C02": { qty: 2, note: "Audio-Visual Room" },
-        "43211507-DSK001": { qty: 15, note: "ICT / Computer Lab" },
-        "43211503-LAP001": { qty: 6, note: "Faculty Room" },
-        "43212105-PR-L01": { qty: 4, note: "Principal / Admin Office" },
+        "43211507-DSK001": { qty: 15, repair: 2, unserv: 1, note: "ICT / Computer Lab" },
+        "43211503-LAP001": { qty: 6, repair: 1, note: "Faculty Room" },
+        "43212105-PR-L01": { qty: 4, unserv: 1, note: "Principal / Admin Office" },
         "56101504-CM-B01": { qty: 60, note: "Social Hall / Covered Court" },
         "40101604-EF-W01": { qty: 24, note: "Grade 7-10 Classrooms" },
         "40101604-EF-S01": { qty: 3, note: "Faculty Room" },
@@ -1677,12 +1840,16 @@
         if (item) {
           item.qty = data.qty;
           item.note = data.note;
+          item.repair = data.repair || 0;
+          item.unserv = data.unserv || 0;
           if (data.customPrice) item.price = data.customPrice;
           userState[code] = {
             qty: item.qty,
             customPrice: item.price,
             note: item.note,
-            minQty: item.minQty
+            minQty: item.minQty,
+            repair: item.repair,
+            unserv: item.unserv
           };
         }
       });
@@ -1817,6 +1984,8 @@
                     <i class="ph-fill ph-warning"></i> Low Stock
                   </span>
                 ` : ''}
+
+                <span id="cond-${item.code}" class="contents">${conditionChipHTML(item)}</span>
               </div>
 
               ${item.note ? `
@@ -1893,7 +2062,11 @@
       item.qty = newQty;
       if (!userState[item.code]) userState[item.code] = {};
       userState[item.code].qty = newQty;
+      clampCondition(item);
       saveState();
+
+      const condEl = document.getElementById(`cond-${item.code}`);
+      if (condEl) condEl.innerHTML = conditionChipHTML(item);
 
       const qtyInput = document.getElementById(`qty-${item.code}`);
       const card = document.getElementById(`card-${item.code}`);
@@ -1999,7 +2172,13 @@
       if (confirm("Are you sure you want to reset all inventory quantities to 0? Your room notes and custom prices will be kept.")) {
         items.forEach(item => {
           item.qty = 0;
-          if (userState[item.code]) userState[item.code].qty = 0;
+          item.repair = 0;
+          item.unserv = 0;
+          if (userState[item.code]) {
+            userState[item.code].qty = 0;
+            userState[item.code].repair = 0;
+            userState[item.code].unserv = 0;
+          }
         });
         saveState();
         renderItems();
@@ -2024,7 +2203,37 @@
       document.getElementById('modalItemMinQty').value = item.minQty;
       document.getElementById('modalItemNote').value = item.note || '';
 
+      const c = getCondition(item);
+      document.getElementById('modalItemRepair').value = c.repair;
+      document.getElementById('modalItemUnserv').value = c.unserv;
+      document.getElementById('modalConditionSection').classList.toggle('hidden', item.type !== 'EQUIPMENT');
+      updateModalConditionPreview();
+
       document.getElementById('itemModal').classList.remove('hidden');
+    }
+
+    function readModalInt(id) {
+      return Math.max(0, parseInt(document.getElementById(id).value, 10) || 0);
+    }
+
+    function stepModalCondition(id, delta) {
+      const input = document.getElementById(id);
+      input.value = Math.max(0, (parseInt(input.value, 10) || 0) + delta);
+      updateModalConditionPreview();
+    }
+
+    // Live preview of serviceable units; returns false when the split is invalid.
+    function updateModalConditionPreview() {
+      const qty = readModalInt('modalItemQty');
+      const repair = readModalInt('modalItemRepair');
+      const unserv = readModalInt('modalItemUnserv');
+      const invalid = repair + unserv > qty;
+      document.getElementById('modalCondTotal').textContent = qty;
+      document.getElementById('modalCondServ').textContent = Math.max(0, qty - repair - unserv);
+      const err = document.getElementById('modalCondError');
+      err.classList.toggle('hidden', !invalid);
+      err.classList.toggle('flex', invalid);
+      return !invalid;
     }
 
     function setQuickNote(roomName) {
@@ -2045,8 +2254,14 @@
       const newPrice = Math.max(0, parseFloat(document.getElementById('modalItemPrice').value) || 0);
       const newMinQty = Math.max(0, parseInt(document.getElementById('modalItemMinQty').value, 10) || 0);
       const newNote = document.getElementById('modalItemNote').value.trim();
+      const isEquipmentForm = !document.getElementById('modalConditionSection').classList.contains('hidden');
+      const newRepair = isEquipmentForm ? readModalInt('modalItemRepair') : (item.repair || 0);
+      const newUnserv = isEquipmentForm ? readModalInt('modalItemUnserv') : (item.unserv || 0);
+      if (isEquipmentForm && !updateModalConditionPreview()) return;
 
       item.qty = newQty;
+      item.repair = newRepair;
+      item.unserv = newUnserv;
       item.price = newPrice;
       item.minQty = newMinQty;
       item.note = newNote;
@@ -2056,8 +2271,11 @@
         qty: newQty,
         customPrice: newPrice,
         minQty: newMinQty,
-        note: newNote
+        note: newNote,
+        repair: newRepair,
+        unserv: newUnserv
       };
+      clampCondition(item);
 
       saveState();
       renderItems();
@@ -2210,14 +2428,16 @@
       csv.push(`"Property Custodian:","${schoolInfo.custodian || 'N/A'}","Position:","${schoolInfo.position || 'N/A'}"`);
       csv.push(`"Date Exported:","${new Date().toLocaleDateString()}"`);
       csv.push("");
-      csv.push(`"Part","Item No","Item Code","Item & Specifications","Classification","Category","Unit of Measure","Quantity On-Hand","Min Alert Qty","Stock Status","Unit Price","Total Valuation","Room / Location / Notes"`);
+      csv.push(`"Part","Item No","Item Code","Item & Specifications","Classification","Category","Unit of Measure","Quantity On-Hand","Serviceable","Needs Repair","Unserviceable","Min Alert Qty","Stock Status","Unit Price","Total Valuation","Room / Location / Notes"`);
 
       activeItems.forEach(item => {
         const total = (item.qty * item.price).toFixed(2);
         const status = item.qty <= item.minQty ? "LOW STOCK" : "HEALTHY";
         const safeName = item.name.replace(/"/g, '""');
         const safeNote = (item.note || 'Unassigned').replace(/"/g, '""');
-        csv.push(`"${item.part}","${item.itemNo}","${item.code}","${safeName}","${item.type}","${item.category}","${item.unit}","${item.qty}","${item.minQty}","${status}","${item.price.toFixed(2)}","${total}","${safeNote}"`);
+        const c = getCondition(item);
+        const cond = item.type === 'EQUIPMENT' ? [c.serv, c.repair, c.unserv] : ['', '', ''];
+        csv.push(`"${item.part}","${item.itemNo}","${item.code}","${safeName}","${item.type}","${item.category}","${item.unit}","${item.qty}","${cond[0]}","${cond[1]}","${cond[2]}","${item.minQty}","${status}","${item.price.toFixed(2)}","${total}","${safeNote}"`);
       });
 
       const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
