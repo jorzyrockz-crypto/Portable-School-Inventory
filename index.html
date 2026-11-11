@@ -166,6 +166,30 @@
     </div>
   </header>
 
+  <!-- BACKUP REMINDER (data lives only on this device) -->
+  <div id="backupReminder" class="hidden max-w-4xl mx-auto px-4 pt-3 no-print">
+    <div class="rounded-2xl border border-amber-300 bg-amber-50 p-3.5 flex flex-col sm:flex-row sm:items-center gap-3 shadow-sm">
+      <div class="flex items-start gap-3 flex-1 min-w-0">
+        <div class="w-9 h-9 shrink-0 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+          <i class="ph-bold ph-cloud-arrow-up text-xl"></i>
+        </div>
+        <div class="min-w-0">
+          <p class="text-sm font-extrabold text-amber-900">Back up your inventory</p>
+          <p class="text-xs text-amber-800 mt-0.5">
+            <span id="backupReminderText">You have changes that are not in a backup file yet.</span>
+            Counts are stored only on this device &mdash; clearing browser data or losing the device erases them.
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button onclick="snoozeBackupReminder()" class="h-10 px-3.5 rounded-xl bg-white border border-amber-200 text-xs font-bold text-amber-800 active:scale-95 transition">Later</button>
+        <button onclick="exportBackupJSON()" class="h-10 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-xs font-bold text-white shadow-sm flex items-center gap-1.5 active:scale-95 transition">
+          <i class="ph-bold ph-floppy-disk text-base"></i> Back up now
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===================================================================== -->
   <!-- VIEW 1: GENERAL INVENTORY DASHBOARD (Default View)                    -->
   <!-- ===================================================================== -->
@@ -363,8 +387,12 @@
               <i class="ph-bold ph-upload-simple text-amber-600"></i>
               <span>Restore</span>
             </button>
-            <input type="file" id="restoreFileInput" accept=".json" class="hidden" onchange="importBackupJSON(event)">
+            <input type="file" id="restoreFileInput" accept=".json,application/json" class="hidden" onchange="importBackupJSON(event)">
           </div>
+          <p id="backupStatusLine" class="text-[11px] text-slate-500 flex items-center gap-1.5">
+            <i class="ph-bold ph-clock-counter-clockwise"></i>
+            <span id="backupStatusText">Last backup: never</span>
+          </p>
         </div>
       </div>
 
@@ -550,6 +578,7 @@
   <div id="appToast" role="status" aria-live="polite" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-40 items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-2xl no-print">
     <i id="appToastIcon" class="ph-bold ph-check-circle text-lg text-emerald-400"></i>
     <span id="appToastText"></span>
+    <button id="appToastAction" class="hidden ml-2 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-amber-300 font-bold"></button>
   </div>
 
   <!-- BOTTOM FLOATING SUMMARY BAR (iPad Portrait Dock Style) -->
@@ -1437,6 +1466,7 @@
 
     function saveState() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
+      markUnsavedChanges();
       updateDockStats();
       if (activeMainView === 'DASHBOARD') {
         renderDashboard();
@@ -2484,6 +2514,7 @@
         position: document.getElementById('infoPosition').value.trim()
       };
       localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+      markUnsavedChanges();
       updateSchoolHeader();
       renderPrintReport();
       closeSchoolModal();
@@ -2534,6 +2565,7 @@
 
     function exportBackupJSON() {
       const backupPayload = {
+        app: 'CustodianPro',
         version: 1,
         exportedAt: new Date().toISOString(),
         schoolInfo,
@@ -2548,56 +2580,220 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+
+      markBackedUp(Date.now());
+      showToast('Backup file saved – keep a copy off this device', 'ph-floppy-disk');
     }
 
+    // Restore: validate the file, show what it contains, keep a safety copy for "Undo".
     function importBackupJSON(event) {
       const file = event.target.files?.[0];
+      event.target.value = '';
       if (!file) return;
       const reader = new FileReader();
       reader.onload = function(e) {
+        let data;
         try {
-          const data = JSON.parse(e.target.result);
-          if (data.userState) {
-            userState = data.userState;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
-          }
-          if (data.schoolInfo) {
-            schoolInfo = data.schoolInfo;
-            localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
-            updateSchoolHeader();
-          }
-          if (Array.isArray(data.customRawItems)) {
-            customRawItems = data.customRawItems;
-            localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
-          }
-          rebuildCatalogList();
-          updateDockStats();
-          renderItems();
-          renderDashboard();
-          alert("Inventory backup restored successfully!");
+          data = JSON.parse(e.target.result);
         } catch (err) {
-          alert("Invalid backup JSON file.");
+          alert("This file is not a valid backup (it could not be read as JSON).");
+          return;
         }
+        const isBackup = data && typeof data === 'object' && !Array.isArray(data) &&
+          data.userState && typeof data.userState === 'object' && !Array.isArray(data.userState);
+        if (!isBackup) {
+          alert("This file is not a CustodianPro backup. Choose a file named like CustodianPro_Backup_YYYY-MM-DD.json.");
+          return;
+        }
+
+        const incoming = summarizeInventory(data.userState, data.customRawItems);
+        const current = summarizeInventory(userState, customRawItems);
+        const savedOn = data.exportedAt && !isNaN(Date.parse(data.exportedAt))
+          ? new Date(data.exportedAt).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })
+          : 'unknown date';
+        const message =
+          `Restore this backup?\n\n` +
+          `Backup from: ${savedOn}\n` +
+          `School: ${(data.schoolInfo && data.schoolInfo.school) || 'not set'}\n` +
+          `Contains: ${plural(incoming.counted, 'counted item')}, ${plural(incoming.units, 'unit')}` +
+          `${incoming.custom ? `, ${plural(incoming.custom, 'custom item')}` : ''}\n\n` +
+          `This REPLACES what is on this device now (${plural(current.counted, 'counted item')}, ` +
+          `${plural(current.units, 'unit')}). You can undo right after restoring.`;
+        if (!confirm(message)) return;
+
+        const safetyCopy = snapshotData();
+        applyData({
+          userState: data.userState,
+          schoolInfo: data.schoolInfo && typeof data.schoolInfo === 'object' ? data.schoolInfo : schoolInfo,
+          customRawItems: Array.isArray(data.customRawItems) ? data.customRawItems : []
+        });
+        // The device now matches a backup file, so nothing is unsaved.
+        const restoredAt = Date.parse(data.exportedAt);
+        markBackedUp(Math.max(safetyCopy.meta.lastBackupAt || 0, isNaN(restoredAt) ? 0 : restoredAt) || Date.now());
+
+        showToast(`Backup restored (${plural(incoming.counted, 'counted item')})`, 'ph-check-circle', {
+          label: 'Undo',
+          onClick: () => {
+            applyData(safetyCopy);
+            restoreBackupMeta(safetyCopy.meta);
+            showToast('Restore undone – previous data is back', 'ph-arrow-counter-clockwise');
+          }
+        });
       };
       reader.readAsText(file);
-      event.target.value = '';
+    }
+
+    function plural(n, word) {
+      return `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`;
+    }
+
+    function summarizeInventory(state, custom) {
+      const entries = Object.values(state || {}).filter(v => v && (parseInt(v.qty, 10) || 0) > 0);
+      return {
+        counted: entries.length,
+        units: entries.reduce((sum, v) => sum + (parseInt(v.qty, 10) || 0), 0),
+        custom: Array.isArray(custom) ? custom.length : 0
+      };
+    }
+
+    function snapshotData() {
+      return {
+        userState: JSON.parse(JSON.stringify(userState)),
+        schoolInfo: JSON.parse(JSON.stringify(schoolInfo)),
+        customRawItems: JSON.parse(JSON.stringify(customRawItems)),
+        meta: getBackupMeta()
+      };
+    }
+
+    function applyData({ userState: us, schoolInfo: si, customRawItems: cri }) {
+      userState = us || {};
+      schoolInfo = si || { school: "", uacs: "", custodian: "", position: "" };
+      customRawItems = cri || [];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
+      localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
+      updateSchoolHeader();
+      rebuildCatalogList();
+      updateDockStats();
+      renderItems();
+      renderDashboard();
+    }
+
+    // =========================================================================
+    // BACKUP REMINDER (last backup time + changes since then)
+    // =========================================================================
+    const BACKUP_META_KEY = 'custodian_backup_meta_v1';
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const REMIND_AFTER_MS = 7 * DAY_MS;        // since the last backup
+    const FIRST_REMIND_AFTER_MS = 1 * DAY_MS;  // never backed up: unsaved work older than a day
+    const SNOOZE_MS = 1 * DAY_MS;
+
+    function getBackupMeta() {
+      try {
+        const m = JSON.parse(localStorage.getItem(BACKUP_META_KEY)) || {};
+        return { lastBackupAt: m.lastBackupAt || null, dirtySince: m.dirtySince || null, snoozeUntil: m.snoozeUntil || null };
+      } catch (e) {
+        return { lastBackupAt: null, dirtySince: null, snoozeUntil: null };
+      }
+    }
+
+    function setBackupMeta(patch) {
+      localStorage.setItem(BACKUP_META_KEY, JSON.stringify({ ...getBackupMeta(), ...patch }));
+      updateBackupReminder();
+    }
+
+    function restoreBackupMeta(meta) {
+      localStorage.setItem(BACKUP_META_KEY, JSON.stringify(meta || {}));
+      updateBackupReminder();
+    }
+
+    function markUnsavedChanges() {
+      const meta = getBackupMeta();
+      if (!meta.dirtySince) setBackupMeta({ dirtySince: Date.now() });
+      else updateBackupReminder();
+    }
+
+    function markBackedUp(when) {
+      setBackupMeta({ lastBackupAt: when, dirtySince: null, snoozeUntil: null });
+    }
+
+    function snoozeBackupReminder() {
+      setBackupMeta({ snoozeUntil: Date.now() + SNOOZE_MS });
+    }
+
+    function formatTimeAgo(ts) {
+      const diff = Date.now() - ts;
+      const min = Math.round(diff / 60000);
+      if (min < 1) return 'just now';
+      if (min < 60) return `${min} minute${min === 1 ? '' : 's'} ago`;
+      const hrs = Math.round(min / 60);
+      if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+      const days = Math.round(hrs / 24);
+      if (days === 1) return 'yesterday';
+      return `${days} days ago`;
+    }
+
+    function hasAnyInventoryData() {
+      return items.some(i => i.qty > 0) || customRawItems.length > 0 || !!(schoolInfo && schoolInfo.school);
+    }
+
+    function updateBackupReminder() {
+      const meta = getBackupMeta();
+      const now = Date.now();
+      const hasData = hasAnyInventoryData();
+
+      // Status line in Quick Custodian Tools
+      const statusText = document.getElementById('backupStatusText');
+      const statusLine = document.getElementById('backupStatusLine');
+      if (statusText && statusLine) {
+        let text = `Last backup: ${meta.lastBackupAt ? formatTimeAgo(meta.lastBackupAt) : 'never'}`;
+        if (meta.dirtySince && hasData) text += ' · changes not backed up';
+        statusText.textContent = text;
+        const stale = hasData && meta.dirtySince && (!meta.lastBackupAt || now - meta.lastBackupAt >= REMIND_AFTER_MS);
+        statusLine.classList.toggle('text-amber-700', !!stale);
+        statusLine.classList.toggle('font-semibold', !!stale);
+        statusLine.classList.toggle('text-slate-500', !stale);
+      }
+
+      // Banner
+      const banner = document.getElementById('backupReminder');
+      if (!banner) return;
+      let due = false;
+      if (hasData && meta.dirtySince && !(meta.snoozeUntil && now < meta.snoozeUntil)) {
+        due = meta.lastBackupAt
+          ? now - meta.lastBackupAt >= REMIND_AFTER_MS
+          : now - meta.dirtySince >= FIRST_REMIND_AFTER_MS;
+      }
+      banner.classList.toggle('hidden', !due);
+      if (due) {
+        document.getElementById('backupReminderText').textContent = meta.lastBackupAt
+          ? `Last backup was ${formatTimeAgo(meta.lastBackupAt)}, and you have made changes since.`
+          : `You have never made a backup file of this inventory.`;
+      }
     }
 
     // =========================================================================
     // OFFLINE SUPPORT (service worker, persistent storage, connection badge)
     // =========================================================================
-    function showToast(message, icon = 'ph-check-circle') {
+    // action = { label, onClick } adds a button (e.g. "Undo") and keeps the toast up longer.
+    function showToast(message, icon = 'ph-check-circle', action = null) {
       const toast = document.getElementById('appToast');
       if (!toast) return;
+      const hide = () => {
+        toast.classList.add('hidden');
+        toast.classList.remove('flex');
+      };
       document.getElementById('appToastIcon').className = `ph-bold ${icon} text-lg text-emerald-400`;
       document.getElementById('appToastText').textContent = message;
+      const btn = document.getElementById('appToastAction');
+      btn.classList.toggle('hidden', !action);
+      btn.textContent = action ? action.label : '';
+      btn.onclick = action ? () => { hide(); action.onClick(); } : null;
       toast.classList.remove('hidden');
       toast.classList.add('flex');
       clearTimeout(showToast._timer);
-      showToast._timer = setTimeout(() => {
-        toast.classList.add('hidden');
-        toast.classList.remove('flex');
-      }, 4000);
+      showToast._timer = setTimeout(hide, action ? 10000 : 4000);
     }
 
     function updateOnlineBadge() {
@@ -2639,6 +2835,12 @@
     window.addEventListener('DOMContentLoaded', () => {
       initApp();
       initOfflineSupport();
+      updateBackupReminder();
+      // Re-check when the app comes back to the foreground (iPad apps stay open for days).
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') updateBackupReminder();
+      });
+      setInterval(updateBackupReminder, 30 * 60 * 1000);
     });
   </script>
 </body>

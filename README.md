@@ -30,7 +30,10 @@ CustodianPro is an installable Progressive Web App:
 - On iPad/iPhone: open the site in **Safari → Share → Add to Home Screen**.
   On Android/Chrome/Edge: use **Install app** from the browser menu.
 - Inventory data is stored on the device (`localStorage`). Use **Backup Data** regularly –
-  clearing the browser's website data erases it.
+  clearing the browser's website data erases it. The app shows *Last backup: …* under the
+  dashboard tools and a reminder banner when changes haven't been backed up for 7 days
+  (1 day if you have never made a backup). **Restore** shows what a backup contains before
+  replacing anything, and offers **Undo** right after.
 
 ## Development
 
