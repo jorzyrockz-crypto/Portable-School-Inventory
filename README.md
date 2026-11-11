@@ -13,6 +13,14 @@ always add up to the quantity). The split appears on the dashboard ("Equipment C
 in the ledger's *Repair / Unserviceable* tab, in the printed report's *Condition* column, and as
 three extra columns in the CSV export — handy for the RPCPPE physical count and IIRUP disposal.
 
+## Equipment vs. consumable classification
+
+Each item is automatically classified as **Equipment (ICS/PAR)** or **Consumable (RIS)** by
+category, by name (e.g. CHAIR, CABINET, WHITEBOARD, ROUTER, UPS – regardless of unit) and by
+price (anything counted per "unit" costing ₱500 or more). If an item is classified wrongly,
+open it and pick **Equipment** or **Consumable** under *Classification*; choose **Auto** to go
+back to the automatic rule. Custom items can be classified when they are added.
+
 ## Works offline
 
 CustodianPro is an installable Progressive Web App:
@@ -22,7 +30,10 @@ CustodianPro is an installable Progressive Web App:
 - On iPad/iPhone: open the site in **Safari → Share → Add to Home Screen**.
   On Android/Chrome/Edge: use **Install app** from the browser menu.
 - Inventory data is stored on the device (`localStorage`). Use **Backup Data** regularly –
-  clearing the browser's website data erases it.
+  clearing the browser's website data erases it. The app shows *Last backup: …* under the
+  dashboard tools and a reminder banner when changes haven't been backed up for 7 days
+  (1 day if you have never made a backup). **Restore** shows what a backup contains before
+  replacing anything, and offers **Undo** right after.
 
 ## Development
 
