@@ -2,40 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CustodianPro">
+  <meta name="theme-color" content="#4f46e5">
   <title>CustodianPro | General Inventory & APP-CSE 2027</title>
-  
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Phosphor Icons -->
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-          },
-          colors: {
-            brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-              900: '#1e1b4b',
-            }
-          }
-        }
-      }
-    }
-  </script>
+  <!-- Offline-ready PWA: everything below is served locally and precached by sw.js -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+  <link rel="icon" type="image/svg+xml" href="assets/icons/icon.svg">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <!-- Compiled Tailwind + self-hosted Inter / JetBrains Mono + Phosphor icons (npm run build) -->
+  <link rel="stylesheet" href="assets/app.css">
 
   <style>
     /* iPad & Tablet Touch Optimizations */
@@ -65,6 +46,9 @@
     .print-only {
       display: none;
     }
+    /* Installed (standalone) mode on iPad/iPhone: respect notch & home indicator */
+    .safe-top { padding-top: env(safe-area-inset-top); }
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
     @media print {
       .no-print { display: none !important; }
       .print-only { display: block !important; }
@@ -75,7 +59,7 @@
 <body class="text-slate-800 antialiased selection:bg-brand-500 selection:text-white pb-28">
 
   <!-- TOP STICKY NAVIGATION & CONTROLS (Portrait Tablet Optimized) -->
-  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm no-print">
+  <header class="safe-top sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm no-print">
     
     <!-- Top Bar: App Identity & School Actions -->
     <div class="max-w-4xl mx-auto px-4 pt-3 pb-2 flex items-center justify-between gap-3">
@@ -88,7 +72,12 @@
             <h1 class="font-extrabold text-lg tracking-tight text-slate-900 leading-none">CustodianPro</h1>
             <span class="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider bg-brand-50 text-brand-700 rounded-md border border-brand-200">APP-CSE 2027</span>
           </div>
-          <p class="text-xs text-slate-500 mt-1 font-medium">School General Inventory & Supply System</p>
+          <p class="text-xs text-slate-500 mt-1 font-medium flex items-center gap-2">
+            <span>School General Inventory & Supply System</span>
+            <span id="offlineBadge" class="hidden items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold uppercase tracking-wider" title="No internet connection. Your counts are still saved on this device.">
+              <i class="ph-bold ph-wifi-slash"></i> Offline
+            </span>
+          </p>
         </div>
       </div>
 
@@ -522,8 +511,14 @@
     </div>
   </section>
 
+  <!-- TOAST (status messages, e.g. "ready to work offline") -->
+  <div id="appToast" role="status" aria-live="polite" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-40 items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-2xl no-print">
+    <i id="appToastIcon" class="ph-bold ph-check-circle text-lg text-emerald-400"></i>
+    <span id="appToastText"></span>
+  </div>
+
   <!-- BOTTOM FLOATING SUMMARY BAR (iPad Portrait Dock Style) -->
-  <div class="fixed bottom-0 inset-x-0 z-30 bg-slate-900/95 backdrop-blur-md text-white border-t border-slate-800 shadow-2xl no-print">
+  <div class="safe-bottom fixed bottom-0 inset-x-0 z-30 bg-slate-900/95 backdrop-blur-md text-white border-t border-slate-800 shadow-2xl no-print">
     <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
       
       <div class="flex items-center gap-5 sm:gap-6">
@@ -2286,8 +2281,63 @@
       event.target.value = '';
     }
 
+    // =========================================================================
+    // OFFLINE SUPPORT (service worker, persistent storage, connection badge)
+    // =========================================================================
+    function showToast(message, icon = 'ph-check-circle') {
+      const toast = document.getElementById('appToast');
+      if (!toast) return;
+      document.getElementById('appToastIcon').className = `ph-bold ${icon} text-lg text-emerald-400`;
+      document.getElementById('appToastText').textContent = message;
+      toast.classList.remove('hidden');
+      toast.classList.add('flex');
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => {
+        toast.classList.add('hidden');
+        toast.classList.remove('flex');
+      }, 4000);
+    }
+
+    function updateOnlineBadge() {
+      const badge = document.getElementById('offlineBadge');
+      if (!badge) return;
+      const offline = !navigator.onLine;
+      badge.classList.toggle('hidden', !offline);
+      badge.classList.toggle('inline-flex', offline);
+    }
+
+    function initOfflineSupport() {
+      updateOnlineBadge();
+      window.addEventListener('online', updateOnlineBadge);
+      window.addEventListener('offline', updateOnlineBadge);
+
+      // Ask the browser not to evict localStorage under storage pressure.
+      if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persisted().then((already) => {
+          if (!already) navigator.storage.persist().catch(() => {});
+        }).catch(() => {});
+      }
+
+      if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
+      const firstInstall = !navigator.serviceWorker.controller;
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        reg.addEventListener('updatefound', () => {
+          const worker = reg.installing;
+          if (!worker) return;
+          worker.addEventListener('statechange', () => {
+            if (worker.state === 'activated' && firstInstall) {
+              showToast('Ready to work offline on this device', 'ph-wifi-slash');
+            }
+          });
+        });
+      }).catch((err) => console.warn('Service worker registration failed:', err));
+    }
+
     // Boot App on Load
-    window.addEventListener('DOMContentLoaded', initApp);
+    window.addEventListener('DOMContentLoaded', () => {
+      initApp();
+      initOfflineSupport();
+    });
   </script>
 </body>
 </html>
