@@ -5,7 +5,7 @@
  * - Assets (CSS, fonts, icons): cache first – they are versioned via CACHE below.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
-const CACHE = 'custodianpro-9af5e05ee696';
+const CACHE = 'custodianpro-94642d2c777e';
 const PRECACHE_URLS = [
     "./",
     "./index.html",
@@ -24,6 +24,8 @@ const PRECACHE_URLS = [
     "./assets/icons/icon-512.png",
     "./assets/icons/icon.svg",
     "./assets/icons/maskable-512.png",
+    "./assets/vendor/fflate.LICENSE.txt",
+    "./assets/vendor/fflate.js",
     "./assets/vendor/jsQR.LICENSE.txt",
     "./assets/vendor/jsQR.js",
     "./assets/vendor/qrcode.js"

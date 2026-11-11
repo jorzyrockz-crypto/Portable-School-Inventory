@@ -120,6 +120,9 @@ for (const [src, dest] of [
   ['qrcode-generator/dist/qrcode.js', 'qrcode.js'],
   ['jsqr/dist/jsQR.js', 'jsQR.js'],
   ['jsqr/LICENSE', 'jsQR.LICENSE.txt'],
+  // fflate.js – unzips .xlsx files for "Import from Excel"     (MIT, Arjun Barrett)
+  ['fflate/umd/index.js', 'fflate.js'],
+  ['fflate/LICENSE', 'fflate.LICENSE.txt'],
 ]) {
   fs.copyFileSync(path.join(NM, src), path.join(VENDOR, dest));
 }

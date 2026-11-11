@@ -219,9 +219,13 @@
           <i class="ph-fill ph-sparkle"></i> Ready for Inventory Count
         </div>
         <h2 class="text-lg font-extrabold">Your General Inventory is Currently Empty</h2>
-        <p class="text-xs text-indigo-100 max-w-lg">Start adding quantities in the Item Catalog, or load realistic sample school inventory data to explore the dashboard metrics.</p>
+        <p class="text-xs text-indigo-100 max-w-lg">Start adding quantities in the Item Catalog, import your existing Excel/CSV inventory list, or load realistic sample school inventory data to explore the dashboard metrics.</p>
       </div>
-      <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+      <div class="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
+        <button onclick="openImport()" class="flex-1 sm:flex-initial h-11 px-4 rounded-xl bg-white text-brand-700 hover:bg-indigo-50 active:scale-95 font-extrabold text-xs shadow-sm transition flex items-center justify-center gap-1.5">
+          <i class="ph-bold ph-file-arrow-up text-base"></i>
+          <span>Import Excel / CSV</span>
+        </button>
         <button onclick="loadSampleInventory()" class="flex-1 sm:flex-initial h-11 px-4 rounded-xl bg-white text-brand-700 hover:bg-indigo-50 active:scale-95 font-extrabold text-xs shadow-sm transition flex items-center justify-center gap-1.5">
           <i class="ph-bold ph-magic-wand text-base"></i>
           <span>Load Sample Inventory</span>
@@ -313,6 +317,31 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- PHYSICAL COUNT PROGRESS (check off items as they are counted) -->
+    <div id="countPanel" class="hidden bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="w-8 h-8 shrink-0 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+            <i class="ph-bold ph-clipboard-text text-lg"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 id="countTitle" class="font-extrabold text-sm text-slate-900 leading-tight truncate">Physical Count</h3>
+            <p id="countSubtitle" class="text-[11px] text-slate-500">Check off each item as you count it and see what is left.</p>
+          </div>
+        </div>
+        <div id="countActions" class="flex items-center gap-2 shrink-0"></div>
+      </div>
+      <div id="countProgressWrap" class="hidden mt-3">
+        <div class="flex items-baseline justify-between text-xs mb-1">
+          <span class="font-bold text-slate-700"><span id="countDone" class="font-mono">0</span> of <span id="countScope" class="font-mono">0</span> items counted</span>
+          <span id="countPct" class="font-mono font-extrabold text-sky-700">0%</span>
+        </div>
+        <div class="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
+          <div id="countBar" class="h-full bg-sky-500 transition-all duration-300" style="width:0%"></div>
+        </div>
+      </div>
     </div>
 
     <!-- EQUIPMENT CONDITION STRIP (Serviceable / Needs Repair / Unserviceable) -->
@@ -458,9 +487,13 @@
               <span>Restore</span>
             </button>
             <input type="file" id="restoreFileInput" accept=".json,application/json" class="hidden" onchange="importBackupJSON(event)">
-            <button onclick="openHistory()" class="col-span-2 h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition" title="Every change: counts, condition, tags, scans">
+            <button onclick="openImport()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition" title="Import an Excel (.xlsx) or CSV inventory list">
+              <i class="ph-bold ph-file-arrow-up text-sky-600"></i>
+              <span>Import</span>
+            </button>
+            <button onclick="openHistory()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition" title="Every change: counts, condition, tags, scans">
               <i class="ph-bold ph-list-magnifying-glass text-brand-600"></i>
-              <span>Change History</span>
+              <span>History</span>
             </button>
           </div>
           <p id="backupStatusLine" class="text-[11px] text-slate-500 flex items-center gap-1.5">
@@ -501,6 +534,9 @@
           </button>
           <button onclick="setLedgerFilter('CONDITION')" id="ledgerTab-CONDITION" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-rose-700">
             Repair / Unserviceable
+          </button>
+          <button onclick="setLedgerFilter('UNCOUNTED')" id="ledgerTab-UNCOUNTED" class="ledger-tab hidden px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-sky-700">
+            Not Counted
           </button>
         </div>
       </div>
@@ -1002,6 +1038,32 @@
       </div>
     </div>
   </div>
+
+  <!-- MODAL 7: IMPORT FROM EXCEL / CSV -->
+  <div id="importModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[94vh] flex flex-col shadow-2xl border border-slate-200">
+      <div class="p-5 pb-3 border-b border-slate-100 flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
+            <i class="ph-bold ph-file-arrow-up text-sky-600"></i> Import Inventory
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">From an Excel (.xlsx) or CSV file &middot; one row per item</p>
+        </div>
+        <button onclick="closeImport()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+      <div id="importBody" class="flex-1 min-h-0 overflow-y-auto p-5 space-y-4"></div>
+      <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-3">
+        <p id="importFooterNote" class="text-[11px] text-slate-500">You can undo right after importing.</p>
+        <div class="flex gap-2 shrink-0">
+          <button onclick="closeImport()" class="h-11 px-4 rounded-xl bg-slate-100 font-semibold text-xs text-slate-700">Cancel</button>
+          <button id="importApplyBtn" onclick="applyImport()" disabled class="h-11 px-5 rounded-xl bg-brand-600 font-bold text-xs text-white shadow-md disabled:opacity-40 disabled:pointer-events-none">Import</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <input type="file" id="importFileInput" accept=".csv,.xlsx,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden no-print" onchange="handleImportFile(event)">
 
   <!-- MODAL 6: CHANGE HISTORY (audit log, newest first) -->
   <div id="historyModal" class="fixed inset-0 z-[55] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
@@ -1576,6 +1638,7 @@
       }
 
       loadHistory();
+      loadCountSession();
       rebuildCatalogList();
       resetHistoryBase();
       renderCategoryPills();
@@ -1800,6 +1863,7 @@
       document.getElementById('kpiLowStockCount').textContent = lowStockCount;
       document.getElementById('kpiUnpricedCount').textContent = `${unpricedActiveCount} SKUs`;
 
+      renderCountPanel();
       renderConditionPanel(activeItems);
       renderTagsPanel(activeItems);
 
@@ -1947,6 +2011,7 @@
       if (ledgerFilter === 'CONSUMABLE') list = list.filter(i => i.type === 'CONSUMABLE');
       if (ledgerFilter === 'LOW') list = list.filter(i => i.qty <= i.minQty);
       if (ledgerFilter === 'CONDITION') list = list.filter(hasConditionIssue);
+      if (ledgerFilter === 'UNCOUNTED') list = list.filter(i => !isCounted(i.code));
 
       if (q) {
         list = list.filter(i => 
@@ -1980,9 +2045,10 @@
       container.innerHTML = list.map(item => {
         const isLow = item.qty <= item.minQty;
         const lineTotal = item.qty * item.price;
+        const counted = isCounted(item.code);
 
         return `
-          <div class="p-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 transition">
+          <div class="p-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 transition ${counted ? 'bg-sky-50/40' : ''}">
             <div class="flex-1 min-w-0">
               <div class="flex items-center flex-wrap gap-1.5 mb-1">
                 <span class="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">${item.code}</span>
@@ -2016,6 +2082,10 @@
 
             <!-- Right Controls in Ledger -->
             <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
+              ${countSession ? `
+                <button onclick="toggleCounted('${item.code}')" title="${counted ? 'Counted – tap to undo' : 'Mark as counted'}" class="count-check w-9 h-9 shrink-0 rounded-xl flex items-center justify-center transition active:scale-95 ${counted ? 'bg-sky-600 text-white shadow-sm' : 'bg-white border-2 border-dashed border-slate-300 text-slate-300 hover:border-sky-400 hover:text-sky-500'}">
+                  <i class="ph-bold ph-check"></i>
+                </button>` : ''}
               <div class="text-left sm:text-right font-mono">
                 <div class="text-[10px] uppercase font-sans font-bold text-slate-400">Total Value</div>
                 <div class="text-sm font-extrabold text-emerald-700">${formatCurrency(lineTotal)}</div>
@@ -2653,6 +2723,7 @@
       else delete userState[item.code].typeOverride;
       syncUnitCondition(item);
       clampCondition(item);
+      markCounted(item.code);
 
       saveState();
       renderItems();
@@ -2855,7 +2926,8 @@
         schoolInfo,
         userState,
         customRawItems,
-        history: changeHistory
+        history: changeHistory,
+        countSession
       };
       const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -2915,7 +2987,8 @@
           schoolInfo: data.schoolInfo && typeof data.schoolInfo === 'object' ? data.schoolInfo : schoolInfo,
           customRawItems: Array.isArray(data.customRawItems) ? data.customRawItems : [],
           // Older backups have no history: keep this device's log in that case.
-          history: Array.isArray(data.history) ? data.history : safetyCopy.history
+          history: Array.isArray(data.history) ? data.history : safetyCopy.history,
+          countSession: data.countSession && typeof data.countSession === 'object' && data.countSession.counted ? data.countSession : null
         });
         logHistory('system', `Restored backup from ${savedOn}`);
         // The device now matches a backup file, so nothing is unsaved.
@@ -2955,11 +3028,12 @@
         schoolInfo: JSON.parse(JSON.stringify(schoolInfo)),
         customRawItems: JSON.parse(JSON.stringify(customRawItems)),
         history: changeHistory.slice(),
+        countSession: countSession ? JSON.parse(JSON.stringify(countSession)) : null,
         meta: getBackupMeta()
       };
     }
 
-    function applyData({ userState: us, schoolInfo: si, customRawItems: cri, history: hist }) {
+    function applyData({ userState: us, schoolInfo: si, customRawItems: cri, history: hist, countSession: cs }) {
       userState = us || {};
       schoolInfo = si || { school: "", uacs: "", custodian: "", position: "" };
       customRawItems = cri || [];
@@ -2969,6 +3043,11 @@
       if (Array.isArray(hist)) {
         changeHistory = hist.filter(e => e && typeof e.t === 'number' && typeof e.x === 'string');
         persistHistory();
+      }
+      if (cs !== undefined) {
+        countSession = cs || null;
+        persistCountSession();
+        if (!countSession && ledgerFilter === 'UNCOUNTED') ledgerFilter = 'ALL';
       }
       updateSchoolHeader();
       rebuildCatalogList();
@@ -3929,7 +4008,10 @@
         const add = (kind, text, extra) => out.push(historyEntry(kind, text, code, extra));
 
         const pq = parseInt(p.qty, 10) || 0, cq = parseInt(c.qty, 10) || 0;
-        if (pq !== cq) add('count', `Quantity ${pq} → ${cq}`, { from: pq, to: cq });
+        if (pq !== cq) {
+          add('count', `Quantity ${pq} → ${cq}`, { from: pq, to: cq });
+          markCounted(code); // during a physical count, a changed quantity means it was counted
+        }
 
         const defPrice = item ? item.defaultPrice : 0;
         const pp = Number(p.customPrice ?? defPrice), cp = Number(c.customPrice ?? defPrice);
@@ -4126,6 +4208,560 @@
       });
       const school = (schoolInfo.school || 'School').replace(/\s+/g, '_');
       downloadText('\ufeff' + csv.join('\n'), `Change_History_${school}_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8;');
+    }
+
+    // =========================================================================
+    // PHYSICAL COUNT: check items off as they are counted
+    // =========================================================================
+    // countSession = { name, startedAt, counted: { [code]: timestamp } }. Items in scope are
+    // everything on hand plus anything already counted. Changing a quantity or saving the
+    // item form during a count marks the item as counted; the check button toggles it.
+    const COUNT_KEY = 'custodian_count_session_v1';
+    let countSession = null;
+
+    function loadCountSession() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(COUNT_KEY));
+        countSession = saved && typeof saved === 'object' && saved.counted ? saved : null;
+      } catch (e) {
+        countSession = null;
+      }
+    }
+
+    function persistCountSession() {
+      if (countSession) localStorage.setItem(COUNT_KEY, JSON.stringify(countSession));
+      else localStorage.removeItem(COUNT_KEY);
+    }
+
+    function isCounted(code) {
+      return !!(countSession && countSession.counted[code]);
+    }
+
+    function markCounted(code) {
+      if (!countSession || countSession.counted[code]) return;
+      countSession.counted[code] = Date.now();
+      persistCountSession();
+    }
+
+    function countProgress() {
+      const scope = items.filter(i => i.qty > 0 || isCounted(i.code));
+      const counted = scope.filter(i => isCounted(i.code)).length;
+      const todayStart = new Date().setHours(0, 0, 0, 0);
+      const today = Object.values(countSession ? countSession.counted : {}).filter(t => t >= todayStart).length;
+      return { scope, counted, today };
+    }
+
+    function startCount() {
+      const suggested = `Physical count – ${new Date().toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}`;
+      const name = prompt('Name this physical count (shown on the dashboard and in Change History):', suggested);
+      if (name === null) return;
+      countSession = { name: name.trim() || suggested, startedAt: Date.now(), counted: {} };
+      persistCountSession();
+      logHistory('system', `Started ${countSession.name}`);
+      markUnsavedChanges();
+      renderDashboard();
+      showToast('Count started – tap the check button on each item as you count it', 'ph-clipboard-text');
+    }
+
+    function toggleCounted(code) {
+      if (!countSession) return;
+      if (countSession.counted[code]) delete countSession.counted[code];
+      else countSession.counted[code] = Date.now();
+      persistCountSession();
+      markUnsavedChanges();
+      renderDashboard();
+    }
+
+    function finishCount() {
+      if (!countSession) return;
+      const { scope, counted } = countProgress();
+      const missing = scope.filter(i => !isCounted(i.code));
+      const corrections = changeHistory.filter(e => e.k === 'count' && e.t >= countSession.startedAt).length;
+      const message = `Finish “${countSession.name}”?\n\n${counted} of ${scope.length} items counted` +
+        ` · ${plural(corrections, 'quantity change')}.` +
+        (missing.length
+          ? `\n\nNot counted yet (${missing.length}):\n• ${missing.slice(0, 6).map(i => i.name).join('\n• ')}${missing.length > 6 ? '\n• …' : ''}`
+          : '\n\nEvery item has been counted.');
+      if (!confirm(message)) return;
+      logHistory('system', `Finished ${countSession.name}: ${counted} of ${scope.length} items counted, ${plural(corrections, 'quantity change')}`);
+      countSession = null;
+      persistCountSession();
+      markUnsavedChanges();
+      if (ledgerFilter === 'UNCOUNTED') setLedgerFilter('ALL');
+      renderDashboard();
+      showToast('Physical count finished – saved in Change History', 'ph-flag-checkered');
+    }
+
+    function renderCountPanel() {
+      const panel = document.getElementById('countPanel');
+      const hasItems = items.some(i => i.qty > 0);
+      panel.classList.toggle('hidden', !hasItems && !countSession);
+      document.getElementById('ledgerTab-UNCOUNTED').classList.toggle('hidden', !countSession);
+      const actions = document.getElementById('countActions');
+      const wrap = document.getElementById('countProgressWrap');
+      if (!countSession) {
+        document.getElementById('countTitle').textContent = 'Physical Count';
+        document.getElementById('countSubtitle').textContent = 'Check off each item as you count it and see what is left.';
+        wrap.classList.add('hidden');
+        actions.innerHTML = `
+          <button onclick="startCount()" class="h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition">
+            <i class="ph-bold ph-play"></i> Start count
+          </button>`;
+        return;
+      }
+      const { scope, counted, today } = countProgress();
+      const pct = scope.length ? Math.round(counted / scope.length * 100) : 0;
+      document.getElementById('countTitle').textContent = countSession.name;
+      document.getElementById('countSubtitle').textContent =
+        `Started ${formatShortDate(countSession.startedAt)} · ${today} counted today · tap the check button on each ledger row`;
+      document.getElementById('countDone').textContent = counted;
+      document.getElementById('countScope').textContent = scope.length;
+      document.getElementById('countPct').textContent = pct + '%';
+      document.getElementById('countBar').style.width = pct + '%';
+      wrap.classList.remove('hidden');
+      actions.innerHTML = `
+        <button onclick="filterLedgerAndScroll('UNCOUNTED')" class="h-10 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
+          <i class="ph-bold ph-list-checks"></i> Not counted (${scope.length - counted})
+        </button>
+        <button onclick="finishCount()" class="h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition">
+          <i class="ph-bold ph-flag-checkered"></i> Finish
+        </button>`;
+    }
+
+    // =========================================================================
+    // IMPORT FROM EXCEL (.xlsx) / CSV
+    // =========================================================================
+    // 1. Read the file into rows (CSV parser below, or unzip the .xlsx with fflate).
+    // 2. Guess the header row and which column holds what; the user can adjust both.
+    // 3. Match each row to the catalog by item code, then by exact description. Rows
+    //    for the same item are added together; unmatched rows can become custom items.
+    // 4. Apply with one Change History entry and an Undo.
+    const IMPORT_FIELDS = [
+      { key: 'name', label: 'Item description' },
+      { key: 'qty', label: 'Quantity on hand' },
+      { key: 'code', label: 'Item code' },
+      { key: 'unit', label: 'Unit of measure' },
+      { key: 'price', label: 'Unit cost (₱)' },
+      { key: 'loc', label: 'Room / location' },
+      { key: 'repair', label: 'Needs repair (qty)' },
+      { key: 'unserv', label: 'Unserviceable (qty)' }
+    ];
+    // Header → field scores (headers are lower-cased with everything but letters/digits removed).
+    const IMPORT_GUESS = {
+      // In the DepEd RPCI form "Article" is only the group (e.g. "ICT"); the item is in "Description".
+      name: h => /^(itemspecifications|itemandspecifications|description|itemdescription|descriptionspecifications)$/.test(h) ? 4
+        : /^(item|itemname|particulars|name|specifications)$/.test(h) ? 3
+        : /descr|particular|article|specification/.test(h) ? 2 : 0,
+      qty: h => /min|alert|reorder|card|issued|requested|serviceable|repair/.test(h) ? 0
+        : /physical|onhand|counted|percount/.test(h) && /qty|quantity|count|onhand/.test(h) ? 4
+        : /^(qty|quantity|count|balance|stock|onhand|stocks)$/.test(h) ? 3
+        : /qty|quantity|balance/.test(h) ? 2 : 0,
+      code: h => /^(itemcode|code|stockno|stocknumber|sku|catalogcode|uacscode|productcode)$/.test(h) ? 3
+        : /code/.test(h) && !/property|bar|qr/.test(h) ? 1 : 0,
+      unit: h => /price|cost|value/.test(h) ? 0
+        : /^(unit|units|uom|unitofmeasure|unitofmeasurement|unitmeasure|measure)$/.test(h) ? 3 : /uom|unitofmeas/.test(h) ? 2 : 0,
+      price: h => /total|amount/.test(h) && !/unit/.test(h) ? 0
+        : /unitprice|unitcost|unitvalue|priceperunit|costperunit|acquisitioncost/.test(h) ? 3 : /^(price|cost|value)$/.test(h) ? 2 : 0,
+      loc: h => /location|room|whereabouts/.test(h) ? 3 : /^(notes|remarks)$/.test(h) ? 1 : 0,
+      repair: h => /repair/.test(h) ? 3 : 0,
+      unserv: h => /unserviceable/.test(h) ? 3 : 0
+    };
+    let importState = null; // { fileName, rows, headerRow, map, mode, addNew }
+
+    function openImport() {
+      importState = null;
+      renderImport();
+      document.getElementById('importModal').classList.remove('hidden');
+    }
+
+    function closeImport() {
+      importState = null;
+      document.getElementById('importModal').classList.add('hidden');
+    }
+
+    async function handleImportFile(event) {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) return;
+      try {
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b; // "PK" – .xlsx is a zip file
+        if (/\.xls$/i.test(file.name) || (bytes[0] === 0xd0 && bytes[1] === 0xcf)) {
+          alert('Old Excel 97-2003 (.xls) files cannot be read. In Excel, use File › Save As › Excel Workbook (.xlsx) or CSV, then import that file.');
+          return;
+        }
+        const rows = isZip ? await parseXLSX(buffer) : parseCSV(decodeText(bytes));
+        const nonEmpty = rows.filter(r => r.some(v => String(v ?? '').trim()));
+        if (nonEmpty.length < 2) {
+          alert('This file has no rows to import.');
+          return;
+        }
+        const headerRow = guessHeaderRow(rows);
+        importState = { fileName: file.name, rows, headerRow, map: guessMapping(rows[headerRow] || []), mode: 'set', addNew: true };
+        renderImport();
+      } catch (err) {
+        console.warn('Import failed:', err);
+        alert('This file could not be read. Use an Excel .xlsx file or a CSV file (in Excel: File › Save As › CSV UTF-8).');
+      }
+    }
+
+    // CSV from Excel is UTF-8 (with BOM) or, on older Windows setups, Windows-1252.
+    function decodeText(bytes) {
+      try {
+        return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      } catch (e) {
+        return new TextDecoder('windows-1252').decode(bytes);
+      }
+    }
+
+    function parseCSV(text) {
+      text = text.replace(/^\ufeff/, '');
+      const sample = text.split(/\r?\n/).slice(0, 10).join('\n');
+      const delim = [',', ';', '\t'].map(d => [d, sample.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+      const rows = [];
+      let row = [], field = '', quoted = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (quoted) {
+          if (ch === '"') {
+            if (text[i + 1] === '"') { field += '"'; i++; } else quoted = false;
+          } else field += ch;
+        } else if (ch === '"' && field === '') {
+          quoted = true;
+        } else if (ch === delim) {
+          row.push(field); field = '';
+        } else if (ch === '\n' || ch === '\r') {
+          if (ch === '\r' && text[i + 1] === '\n') i++;
+          row.push(field); rows.push(row); row = []; field = '';
+        } else field += ch;
+      }
+      if (field !== '' || row.length) { row.push(field); rows.push(row); }
+      return rows;
+    }
+
+    async function parseXLSX(buffer) {
+      if (typeof fflate === 'undefined') await loadScript('assets/vendor/fflate.js');
+      const files = fflate.unzipSync(new Uint8Array(buffer), {
+        filter: f => /^xl\/(workbook\.xml|_rels\/workbook\.xml\.rels|sharedStrings\.xml|worksheets\/[^/]+\.xml)$/.test(f.name)
+      });
+      const decoder = new TextDecoder();
+      const xml = name => files[name] ? new DOMParser().parseFromString(decoder.decode(files[name]), 'application/xml') : null;
+      const all = (node, tag) => Array.from(node.getElementsByTagNameNS('*', tag));
+
+      // The first sheet in workbook order (sheet1.xml is not always the first tab).
+      let sheetPath = null;
+      const workbook = xml('xl/workbook.xml'), rels = xml('xl/_rels/workbook.xml.rels');
+      if (workbook && rels) {
+        const first = all(workbook, 'sheet')[0];
+        const rid = first && (first.getAttribute('r:id') ||
+          first.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id'));
+        const rel = all(rels, 'Relationship').find(r => r.getAttribute('Id') === rid);
+        if (rel) {
+          const target = rel.getAttribute('Target');
+          sheetPath = target.startsWith('/') ? target.slice(1) : 'xl/' + target.replace(/^\.\//, '');
+        }
+      }
+      if (!sheetPath || !files[sheetPath]) {
+        sheetPath = Object.keys(files).filter(n => n.startsWith('xl/worksheets/')).sort()[0];
+      }
+      if (!sheetPath) throw new Error('No worksheet in file');
+
+      const sst = xml('xl/sharedStrings.xml');
+      const shared = sst ? all(sst, 'si').map(si => all(si, 't').map(t => t.textContent).join('')) : [];
+      const colIndex = ref => {
+        let n = 0;
+        for (const ch of ref.replace(/[^A-Za-z]/g, '').toUpperCase()) n = n * 26 + ch.charCodeAt(0) - 64;
+        return n - 1;
+      };
+      const rows = [];
+      all(xml(sheetPath), 'row').forEach(rowEl => {
+        const r = (parseInt(rowEl.getAttribute('r'), 10) || rows.length + 1) - 1;
+        const row = [];
+        all(rowEl, 'c').forEach((c, idx) => {
+          const ref = c.getAttribute('r');
+          const type = c.getAttribute('t');
+          const v = all(c, 'v')[0];
+          let value = '';
+          if (type === 's') value = shared[parseInt(v && v.textContent, 10)] ?? '';
+          else if (type === 'inlineStr') value = all(c, 't').map(t => t.textContent).join('');
+          else value = v ? v.textContent : '';
+          row[ref ? colIndex(ref) : idx] = value;
+        });
+        rows[r] = Array.from(row, v => v ?? '');
+      });
+      return Array.from(rows, r => r || []);
+    }
+
+    function normHeader(value) {
+      return String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    function guessMapping(header) {
+      const map = {};
+      const used = new Set();
+      IMPORT_FIELDS.forEach(({ key }) => {
+        let best = -1, bestScore = 0;
+        header.forEach((h, col) => {
+          if (used.has(col)) return;
+          const score = IMPORT_GUESS[key](normHeader(h));
+          if (score > bestScore) { bestScore = score; best = col; }
+        });
+        map[key] = best;
+        if (best >= 0) used.add(best);
+      });
+      return map;
+    }
+
+    function guessHeaderRow(rows) {
+      let best = 0, bestScore = 0;
+      rows.slice(0, 25).forEach((row, i) => {
+        const m = guessMapping(row || []);
+        const score = Object.values(m).filter(c => c >= 0).length +
+          (m.qty >= 0 ? 3 : 0) + (m.name >= 0 || m.code >= 0 ? 3 : 0);
+        if (score > bestScore) { bestScore = score; best = i; }
+      });
+      return best;
+    }
+
+    function importNumber(value) {
+      const text = String(value ?? '').replace(/[₱,\s]/g, '').replace(/^php/i, '');
+      if (text === '') return null;
+      const n = Number(text);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function normItemName(value) {
+      return String(value || '').toUpperCase().replace(/\s+/g, ' ').trim().replace(/[\s.,;:]+$/, '');
+    }
+
+    function buildImportPlan() {
+      const st = importState;
+      const m = st.map;
+      const byCode = new Map(items.map(i => [i.code.toUpperCase(), i]));
+      const byName = new Map();
+      items.forEach(i => { const k = normItemName(i.name); if (!byName.has(k)) byName.set(k, i); });
+      const cell = (row, key) => m[key] >= 0 ? String(row[m[key]] ?? '').trim() : '';
+      const rows = [];
+      const targets = new Map();
+
+      st.rows.slice(st.headerRow + 1).forEach((row, i) => {
+        if (!row || !row.some(v => String(v ?? '').trim())) return; // blank line
+        const r = { line: st.headerRow + i + 2, name: cell(row, 'name'), code: cell(row, 'code'), qty: importNumber(cell(row, 'qty')) };
+        const skip = why => { r.status = 'skip'; r.why = why; rows.push(r); };
+        if (!r.name && !r.code) return skip('No description or code');
+        if (/^(sub)?total\b/i.test(r.name)) return skip('Total row');
+        if (r.qty === null || r.qty < 0) return skip('No quantity');
+
+        const item = (r.code && byCode.get(r.code.toUpperCase())) || (r.name && byName.get(normItemName(r.name))) || null;
+        let key;
+        if (item) { r.status = 'match'; r.item = item; key = item.code; }
+        else if (st.addNew && r.name) { r.status = 'new'; key = 'NEW:' + normItemName(r.name); }
+        else return skip(r.name ? 'Not in the catalog' : 'Unknown item code');
+
+        const t = targets.get(key) || { item, name: normItemName(r.name), qty: 0, rows: 0, unit: '', price: null, locs: [], repair: 0, unserv: 0 };
+        t.qty += Math.round(r.qty);
+        t.rows += 1;
+        t.unit = t.unit || cell(row, 'unit');
+        const price = importNumber(cell(row, 'price'));
+        if (price !== null && price > 0 && t.price === null) t.price = price;
+        const loc = cell(row, 'loc');
+        if (loc && !t.locs.includes(loc)) t.locs.push(loc);
+        t.repair += Math.max(0, Math.round(importNumber(cell(row, 'repair')) || 0));
+        t.unserv += Math.max(0, Math.round(importNumber(cell(row, 'unserv')) || 0));
+        targets.set(key, t);
+        rows.push(r);
+      });
+      const list = [...targets.values()];
+      const used = rows.filter(r => r.status !== 'skip').length;
+      return {
+        rows, targets: list,
+        matched: list.filter(t => t.item).length,
+        created: list.filter(t => !t.item).length,
+        skipped: rows.filter(r => r.status === 'skip').length,
+        merged: used - list.length
+      };
+    }
+
+    function setImportOption(key, value) {
+      if (!importState) return;
+      if (key === 'headerRow') {
+        importState.headerRow = parseInt(value, 10) || 0;
+        importState.map = guessMapping(importState.rows[importState.headerRow] || []);
+      } else if (key.startsWith('map:')) {
+        importState.map[key.slice(4)] = parseInt(value, 10);
+      } else {
+        importState[key] = value;
+      }
+      renderImport();
+    }
+
+    function renderImport() {
+      const body = document.getElementById('importBody');
+      const applyBtn = document.getElementById('importApplyBtn');
+      if (!importState) {
+        applyBtn.disabled = true;
+        applyBtn.textContent = 'Import';
+        body.innerHTML = `
+          <button onclick="document.getElementById('importFileInput').click()" class="w-full rounded-2xl border-2 border-dashed border-sky-300 bg-sky-50/50 hover:bg-sky-50 p-8 text-center transition active:scale-[0.99]">
+            <i class="ph-duotone ph-file-arrow-up text-5xl text-sky-500 block mb-2"></i>
+            <span class="block text-sm font-extrabold text-slate-800">Choose an Excel or CSV file</span>
+            <span class="block text-xs text-slate-500 mt-1">.xlsx or .csv &middot; from Files, iCloud Drive, Google Drive or email</span>
+          </button>
+          <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5 text-xs text-slate-600 space-y-1.5">
+            <p class="font-bold text-slate-800">What works</p>
+            <p>&bull; Your own inventory sheet with one row per item: a <strong>description</strong> (or item code) and a <strong>quantity</strong>. Unit, unit cost, room and condition columns are used too.</p>
+            <p>&bull; A CSV exported from CustodianPro (Export CSV), e.g. from another device.</p>
+            <p>&bull; Rows are matched to the catalog by item code or exact description. Others can be added as custom items. You will see a preview before anything changes.</p>
+            <p>&bull; Old <strong>.xls</strong> files: in Excel use File &rsaquo; Save As &rsaquo; .xlsx or CSV first.</p>
+          </div>`;
+        return;
+      }
+      const st = importState;
+      const plan = buildImportPlan();
+      const header = st.rows[st.headerRow] || [];
+      const width = Math.max(...st.rows.slice(st.headerRow, st.headerRow + 50).map(r => (r || []).length), header.length);
+      const colName = c => {
+        let s = '', n = c + 1;
+        while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); }
+        return s;
+      };
+      const colOptions = sel => [`<option value="-1"${sel < 0 ? ' selected' : ''}>— not in file —</option>`]
+        .concat(Array.from({ length: width }, (_, c) =>
+          `<option value="${c}"${sel === c ? ' selected' : ''}>${colName(c)}: ${escapeHTML(String(header[c] ?? '').slice(0, 40) || '(no header)')}</option>`))
+        .join('');
+      const headerChoices = st.rows.slice(0, 25).map((row, i) => {
+        const preview = (row || []).filter(v => String(v ?? '').trim()).slice(0, 4).join(' | ');
+        return preview ? `<option value="${i}"${i === st.headerRow ? ' selected' : ''}>Row ${i + 1}: ${escapeHTML(preview.slice(0, 70))}</option>` : '';
+      }).join('');
+      const missingQty = st.map.qty < 0;
+      const missingId = st.map.name < 0 && st.map.code < 0;
+      const ready = !missingQty && !missingId && plan.targets.length > 0;
+      applyBtn.disabled = !ready;
+      applyBtn.textContent = ready ? `Import ${plural(plan.targets.length, 'item')}` : 'Import';
+
+      const statusChip = r => r.status === 'match'
+        ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700"><i class="ph-bold ph-check"></i> Match</span>`
+        : r.status === 'new'
+          ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-sky-50 text-sky-700"><i class="ph-bold ph-plus"></i> New</span>`
+          : `<span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500"><i class="ph-bold ph-minus"></i> Skip</span>`;
+      const preview = plan.rows.slice(0, 80).map(r => `
+        <tr class="border-b border-slate-100 align-top">
+          <td class="py-1.5 pr-2 font-mono text-[10px] text-slate-400">${r.line}</td>
+          <td class="py-1.5 pr-2">${statusChip(r)}</td>
+          <td class="py-1.5 pr-2 text-xs text-slate-800">${escapeHTML(r.name || r.code)}
+            ${r.status === 'match' && normItemName(r.item.name) !== normItemName(r.name) ? `<span class="block text-[11px] text-emerald-700"><i class="ph-bold ph-arrow-right text-[10px]"></i> ${escapeHTML(r.item.name)}</span>` : ''}
+            ${r.status === 'skip' ? `<span class="block text-[11px] text-slate-400">${escapeHTML(r.why)}</span>` : ''}
+          </td>
+          <td class="py-1.5 text-right font-mono text-xs font-bold text-slate-700">${r.qty === null ? '' : r.qty}</td>
+        </tr>`).join('');
+
+      body.innerHTML = `
+        <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+          <div class="min-w-0 flex items-center gap-2.5">
+            <i class="ph-duotone ph-file-text text-2xl text-sky-600"></i>
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-slate-800 truncate">${escapeHTML(st.fileName)}</p>
+              <p class="text-[11px] text-slate-500">${plural(st.rows.length, 'row')} in the first sheet</p>
+            </div>
+          </div>
+          <button onclick="document.getElementById('importFileInput').click()" class="shrink-0 h-9 px-3 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700">Other file</button>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Header row (column titles)</label>
+          <select onchange="setImportOption('headerRow', this.value)" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium bg-white">${headerChoices}</select>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1.5">Columns</label>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-2">
+            ${IMPORT_FIELDS.map(f => `
+              <label class="block min-w-0">
+                <span class="block text-[11px] font-semibold text-slate-600 mb-0.5">${f.label}${f.key === 'qty' ? ' <span class="text-rose-600">*</span>' : ''}${f.key === 'name' || f.key === 'code' ? ' <span class="text-rose-600">†</span>' : ''}</span>
+                <select onchange="setImportOption('map:${f.key}', this.value)" class="import-map w-full h-9 px-2 rounded-lg border ${st.map[f.key] >= 0 ? 'border-emerald-300 bg-emerald-50/40' : 'border-slate-200 bg-white'} text-xs">${colOptions(st.map[f.key])}</select>
+              </label>`).join('')}
+          </div>
+          <p class="text-[11px] text-slate-500 mt-1.5"><span class="text-rose-600">*</span> required &middot; <span class="text-rose-600">†</span> description or item code (or both)</p>
+          ${missingQty || missingId ? `<p class="mt-2 text-xs font-semibold text-rose-600 flex items-center gap-1"><i class="ph-fill ph-warning"></i> Choose the ${missingQty ? 'quantity' : ''}${missingQty && missingId ? ' and ' : ''}${missingId ? 'description or item code' : ''} column.</p>` : ''}
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Quantities</label>
+            <div class="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <button type="button" onclick="setImportOption('mode', 'set')" class="h-9 rounded-lg text-xs font-bold transition ${st.mode === 'set' ? 'bg-white shadow-sm text-brand-700' : 'text-slate-600'}">Replace</button>
+              <button type="button" onclick="setImportOption('mode', 'add')" class="h-9 rounded-lg text-xs font-bold transition ${st.mode === 'add' ? 'bg-white shadow-sm text-brand-700' : 'text-slate-600'}">Add to current</button>
+            </div>
+          </div>
+          <label class="flex items-start gap-2 rounded-xl border border-slate-200 p-2.5 cursor-pointer">
+            <input type="checkbox" ${st.addNew ? 'checked' : ''} onchange="setImportOption('addNew', this.checked)" class="mt-0.5 w-4 h-4 accent-brand-600">
+            <span class="text-xs text-slate-700"><strong class="block">Add unknown items</strong>as custom items (Part II)</span>
+          </label>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2.5">
+          <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-2.5"><span class="block text-[10px] font-bold uppercase text-emerald-700">Catalog items</span><span id="importMatched" class="font-mono font-extrabold text-lg text-emerald-800">${plan.matched}</span></div>
+          <div class="rounded-xl bg-sky-50 border border-sky-100 p-2.5"><span class="block text-[10px] font-bold uppercase text-sky-700">New custom items</span><span id="importCreated" class="font-mono font-extrabold text-lg text-sky-800">${plan.created}</span></div>
+          <div class="rounded-xl bg-slate-50 border border-slate-200 p-2.5"><span class="block text-[10px] font-bold uppercase text-slate-500">Rows skipped</span><span id="importSkipped" class="font-mono font-extrabold text-lg text-slate-700">${plan.skipped}</span></div>
+        </div>
+        ${plan.merged > 0 ? `<p class="text-[11px] text-slate-500 -mt-2">${plural(plan.merged, 'duplicate row')} for the same item will be added together (e.g. the same item in several rooms).</p>` : ''}
+
+        <div>
+          <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Preview${plan.rows.length > 80 ? ' (first 80 rows)' : ''}</label>
+          <div class="rounded-xl border border-slate-200 px-3 max-h-72 overflow-y-auto">
+            <table class="w-full text-left"><tbody>${preview || '<tr><td class="py-4 text-center text-xs text-slate-400">No rows below the header row.</td></tr>'}</tbody></table>
+          </div>
+        </div>`;
+    }
+
+    function applyImport() {
+      if (!importState) return;
+      const plan = buildImportPlan();
+      if (!plan.targets.length) return;
+      const st = importState;
+      const safety = snapshotData();
+      let raised = 0;
+      plan.targets.forEach(t => {
+        let code;
+        if (t.item) {
+          code = t.item.code;
+        } else {
+          const customNo = 114 + customRawItems.length;
+          code = `CUSTOM-P2-${String(customNo).padStart(3, '0')}`;
+          customRawItems.push([customNo, code, t.name, t.unit || 'unit', t.price || 0, 24, 'PART2']);
+        }
+        const s = userState[code] || (userState[code] = {});
+        const tagged = getUnits(code).length;
+        let qty = st.mode === 'add' ? (parseInt(s.qty, 10) || 0) + t.qty : t.qty;
+        if (qty < tagged) { qty = tagged; raised++; } // can't drop below tagged units
+        s.qty = qty;
+        if (t.price !== null) s.customPrice = t.price;
+        if (t.locs.length) s.note = t.locs.join(', ');
+        if (!tagged && (st.map.repair >= 0 || st.map.unserv >= 0)) {
+          s.unserv = Math.min(t.unserv, qty);
+          s.repair = Math.min(t.repair, qty - s.unserv);
+        }
+      });
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
+      rebuildCatalogList();
+      const fileName = st.fileName;
+      saveStateWith({ summary: { kind: 'system', text:
+        `Imported “${fileName}”: ${plural(plan.matched, 'catalog item')} updated` +
+        `${plan.created ? `, ${plural(plan.created, 'custom item')} added` : ''}` +
+        `${plan.skipped ? `, ${plural(plan.skipped, 'row')} skipped` : ''} (${st.mode === 'add' ? 'added to' : 'replaced'} quantities)` } });
+      renderItems();
+      renderDashboard();
+      closeImport();
+      showToast(`Imported ${plural(plan.targets.length, 'item')}${raised ? ` · ${raised} kept at their tagged-unit count` : ''}`, 'ph-file-arrow-up', {
+        label: 'Undo',
+        onClick: () => {
+          applyData(safety);
+          restoreBackupMeta(safety.meta);
+          logHistory('system', `Undid import of “${fileName}”`);
+          showToast('Import undone', 'ph-arrow-counter-clockwise');
+        }
+      });
     }
 
     // =========================================================================
