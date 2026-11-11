@@ -128,6 +128,36 @@ for (const [src, dest] of [
 }
 
 // ---------------------------------------------------------------------------
+// 4b. Text recognition for "Scan ICS" (Tesseract.js, Apache-2.0). ~7 MB, so it is NOT
+//     precached: the service worker keeps it in its own long-lived cache the first
+//     time someone scans an ICS (and Tesseract keeps the language data in IndexedDB).
+//     The folder name carries the version so a new release never mixes files.
+// ---------------------------------------------------------------------------
+const OCR_VERSION = JSON.parse(read(path.join(NM, 'tesseract.js', 'package.json'))).version;
+const OCR_DIR = path.join(ASSETS, 'ocr');
+fs.rmSync(OCR_DIR, { recursive: true, force: true });
+const OCR = path.join(OCR_DIR, `tesseract-${OCR_VERSION}`);
+// index.html hard-codes the folder (OCR_BASE / OCR_CACHE_NAME) – fail loudly after an upgrade.
+if (!read(path.join(ROOT, 'index.html')).includes(`assets/ocr/tesseract-${OCR_VERSION}/`)) {
+  throw new Error(`index.html: update OCR_BASE and OCR_CACHE_NAME to tesseract ${OCR_VERSION}`);
+}
+fs.mkdirSync(OCR, { recursive: true });
+for (const [src, dest] of [
+  ['tesseract.js/dist/tesseract.min.js', 'tesseract.min.js'],
+  ['tesseract.js/dist/worker.min.js', 'worker.min.js'],
+  ['tesseract.js/LICENSE.md', 'LICENSE.txt'],
+  // LSTM-only engines: one for devices with WebAssembly SIMD (almost every phone since
+  // 2021), one fallback. index.html picks the file itself, so the larger
+  // "relaxed SIMD" builds are not needed.
+  ['tesseract.js-core/tesseract-core-simd-lstm.wasm.js', 'tesseract-core-simd-lstm.wasm.js'],
+  ['tesseract.js-core/tesseract-core-lstm.wasm.js', 'tesseract-core-lstm.wasm.js'],
+  // English model, "best_int" (fast + accurate enough for typed forms)
+  ['@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz', 'eng.traineddata.gz'],
+]) {
+  fs.copyFileSync(path.join(NM, src), path.join(OCR, dest));
+}
+
+// ---------------------------------------------------------------------------
 // 5. Service worker with a precache manifest
 // ---------------------------------------------------------------------------
 const listFiles = (dir) =>
@@ -139,7 +169,7 @@ const listFiles = (dir) =>
 const precache = [
   path.join(ROOT, 'index.html'),
   path.join(ROOT, 'manifest.webmanifest'),
-  ...listFiles(ASSETS),
+  ...listFiles(ASSETS).filter((p) => !p.startsWith(OCR_DIR + path.sep)),
 ].filter((p) => fs.existsSync(p));
 
 const hash = createHash('sha256');
@@ -150,6 +180,7 @@ const urls = ['./', ...precache.map((p) => `./${rel(p)}`)];
 const swTemplate = read(path.join(ROOT, 'src', 'sw.template.js'));
 const sw = swTemplate
   .replace('__CACHE_VERSION__', version)
+  .replace('__OCR_VERSION__', OCR_VERSION)
   .replace('__PRECACHE_URLS__', JSON.stringify(urls, null, 2).replace(/\n/g, '\n  '));
 fs.writeFileSync(path.join(ROOT, 'sw.js'), sw);
 
@@ -157,3 +188,4 @@ const kb = (p) => (fs.statSync(p).size / 1024).toFixed(1) + ' KB';
 console.log(`✓ assets/app.css (${kb(path.join(ASSETS, 'app.css'))})`);
 console.log(`✓ icons: ${usedIcons.size - missing.size} glyphs across ${usedWeights.join(', ')}`);
 console.log(`✓ sw.js  cache version ${version}, ${urls.length} precached URLs`);
+console.log(`✓ assets/ocr/tesseract-${OCR_VERSION} (${(listFiles(OCR).reduce((n, p) => n + fs.statSync(p).size, 0) / 1048576).toFixed(1)} MB, cached on first use)`);

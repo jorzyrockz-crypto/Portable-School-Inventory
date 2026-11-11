@@ -226,6 +226,10 @@
           <i class="ph-bold ph-file-arrow-up text-base"></i>
           <span>Import Excel / CSV</span>
         </button>
+        <button onclick="openIcsScanner()" class="flex-1 sm:flex-initial h-11 px-4 rounded-xl bg-white text-brand-700 hover:bg-indigo-50 active:scale-95 font-extrabold text-xs shadow-sm transition flex items-center justify-center gap-1.5">
+          <i class="ph-bold ph-file-text text-base"></i>
+          <span>Scan ICS</span>
+        </button>
         <button onclick="loadSampleInventory()" class="flex-1 sm:flex-initial h-11 px-4 rounded-xl bg-white text-brand-700 hover:bg-indigo-50 active:scale-95 font-extrabold text-xs shadow-sm transition flex items-center justify-center gap-1.5">
           <i class="ph-bold ph-magic-wand text-base"></i>
           <span>Load Sample Inventory</span>
@@ -423,6 +427,10 @@
           <i class="ph-bold ph-file-csv text-emerald-600"></i>
           <span>Property register (CSV)</span>
         </button>
+        <button onclick="openIcsScanner()" class="h-9 px-3 rounded-xl bg-violet-50 hover:bg-violet-100 active:scale-95 text-violet-700 font-bold text-xs flex items-center gap-1.5 transition" title="Encode a printed ICS from a photo">
+          <i class="ph-bold ph-file-text"></i>
+          <span>Scan ICS</span>
+        </button>
       </div>
     </div>
 
@@ -494,6 +502,10 @@
             <button onclick="openHistory()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition" title="Every change: counts, condition, tags, scans">
               <i class="ph-bold ph-list-magnifying-glass text-brand-600"></i>
               <span>History</span>
+            </button>
+            <button onclick="openIcsScanner()" class="col-span-2 h-10 px-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm" title="Photograph a printed Inventory Custodian Slip to encode it">
+              <i class="ph-bold ph-file-text"></i>
+              <span>Scan ICS (Inventory Custodian Slip)</span>
             </button>
           </div>
           <p id="backupStatusLine" class="text-[11px] text-slate-500 flex items-center gap-1.5">
@@ -1064,6 +1076,32 @@
     </div>
   </div>
   <input type="file" id="importFileInput" accept=".csv,.xlsx,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden no-print" onchange="handleImportFile(event)">
+
+  <!-- MODAL 8: SCAN ICS (photo of an Inventory Custodian Slip → review → save) -->
+  <div id="icsModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[96vh] flex flex-col shadow-2xl border border-slate-200">
+      <div class="p-5 pb-3 border-b border-slate-100 flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
+            <i class="ph-bold ph-file-text text-violet-600"></i> Scan ICS
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">Inventory Custodian Slip &middot; take a photo &middot; check &middot; save</p>
+        </div>
+        <button onclick="closeIcsScanner()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+      <div id="icsBody" class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4"></div>
+      <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-3">
+        <p id="icsFooterNote" class="text-[11px] text-slate-500">Photos are read on this device and are not uploaded.</p>
+        <div class="flex gap-2 shrink-0">
+          <button onclick="closeIcsScanner()" class="h-11 px-4 rounded-xl bg-slate-100 font-semibold text-xs text-slate-700">Cancel</button>
+          <button id="icsSaveBtn" onclick="saveIcs()" class="hidden h-11 px-5 rounded-xl bg-violet-600 font-bold text-xs text-white shadow-md disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1.5">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <input type="file" id="icsPhotoInput" accept="image/*" class="hidden no-print" onchange="handleIcsPhoto(event)">
 
   <!-- MODAL 6: CHANGE HISTORY (audit log, newest first) -->
   <div id="historyModal" class="fixed inset-0 z-[55] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
@@ -3350,16 +3388,18 @@
             </button>
           </div>
           ${condButtonsHTML(code, u.id, u.cond, 'setUnitCond')}
-          <div class="grid grid-cols-3 gap-2 mt-2">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
             ${field('serial', 'Serial No.', 'Optional')}
             ${field('loc', 'Location', item.note || 'Room')}
             ${field('to', 'Assigned to', 'Accountable person')}
+            ${field('ics', 'ICS No.', 'Optional')}
           </div>
           <p class="mt-2 text-[11px] text-slate-500 flex flex-wrap gap-x-3 gap-y-0.5">
             ${u.seen
               ? `<span class="text-emerald-700 font-semibold inline-flex items-center gap-1"><i class="ph-fill ph-seal-check"></i> Verified ${formatShortDate(u.seen)}</span>`
               : `<span class="inline-flex items-center gap-1"><i class="ph-bold ph-seal-question"></i> Not verified yet</span>`}
             <span class="inline-flex items-center gap-1"><i class="ph-bold ph-printer"></i> ${u.printed ? `Label printed ${formatShortDate(u.printed)}` : 'Label not printed'}</span>
+            ${u.icsDate || u.life ? `<span class="inline-flex items-center gap-1"><i class="ph-bold ph-file-text"></i> ${u.icsDate ? `ICS dated ${formatShortDate(u.icsDate + 'T00:00:00')}` : ''}${u.icsDate && u.life ? ' · ' : ''}${u.life ? `useful life ${escapeHTML(u.life)}` : ''}</span>` : ''}
           </p>
         </div>`;
     }
@@ -3433,8 +3473,8 @@
 
     function setUnitField(code, id, key, value) {
       const unit = findUnit(code, id);
-      if (!unit || !['serial', 'loc', 'to'].includes(key)) return;
-      unit[key] = String(value || '').trim();
+      if (!unit || !['serial', 'loc', 'to', 'ics'].includes(key)) return;
+      unit[key] = key === 'ics' ? normalizePropNo(value) : String(value || '').trim();
       saveState();
     }
 
@@ -3552,11 +3592,12 @@
         [q('Date Exported:'), q(new Date().toLocaleDateString('en-PH'))].join(','),
         '',
         ['Property No.', 'Item Code', 'Item & Specifications', 'Category', 'Serial No.', 'Location', 'Assigned To',
-          'Condition', 'Unit Cost', 'Last Verified', 'Label Printed'].map(q).join(',')
+          'Condition', 'Unit Cost', 'Last Verified', 'Label Printed', 'ICS No.', 'ICS Date', 'Est. Useful Life'].map(q).join(',')
       ];
       rows.forEach(({ item, unit }) => csv.push([
         unit.no, item.code, item.name, item.category, unit.serial, unit.loc || item.note, unit.to,
-        (UNIT_COND[unit.cond] || UNIT_COND.S).label, item.price.toFixed(2), date(unit.seen), date(unit.printed)
+        (UNIT_COND[unit.cond] || UNIT_COND.S).label, item.price.toFixed(2), date(unit.seen), date(unit.printed),
+        unit.ics || '', unit.icsDate ? date(unit.icsDate + 'T00:00:00') : '', unit.life || ''
       ].map(q).join(',')));
       const school = (schoolInfo.school || 'School').replace(/\s+/g, '_');
       downloadText('\ufeff' + csv.join('\n'), `Property_Register_${school}_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8;');
@@ -4762,6 +4803,947 @@
           showToast('Import undone', 'ph-arrow-counter-clockwise');
         }
       });
+    }
+
+    // =========================================================================
+    // SCAN ICS (Inventory Custodian Slip, COA Appendix 59) → stock + property units
+    // =========================================================================
+    // 1. Photo of a printed ICS → cleaned up on the device (prepareIcsImage) → read with
+    //    Tesseract.js (downloaded once, ~7 MB, then offline). Or paste text instead
+    //    (Google Lens "Copy text", Samsung "Extract text", or cells copied from Excel).
+    // 2. parseIcsText() turns the text into ICS No., date, received-by and line items.
+    //    Quantity is cross-checked against the money columns (total ÷ unit cost).
+    // 3. The custodian reviews every field, picks the catalog item for each line, then
+    //    saves: quantities are added and each unit gets a property record (Inventory
+    //    Item No., ICS No., accountable person). One history entry + Undo.
+    const OCR_BASE = 'assets/ocr/tesseract-7.0.0/';
+    const OCR_CACHE_NAME = 'custodianpro-ocr-7.0.0';
+    const ICS_UNIT_WORDS = {
+      unit: 'unit', units: 'unit', u: 'unit', pc: 'pc', pcs: 'pcs', pes: 'pcs', pce: 'piece', piece: 'piece', pieces: 'piece',
+      set: 'set', sets: 'set', lot: 'lot', lots: 'lot', box: 'box', boxes: 'box', pack: 'pack', packs: 'pack', pair: 'pair',
+      pairs: 'pair', ream: 'ream', reams: 'ream', roll: 'roll', rolls: 'roll', bottle: 'bottle', bottles: 'bottle',
+      gallon: 'gallon', gallons: 'gallon', can: 'can', cans: 'can', book: 'book', books: 'book', copy: 'copy', copies: 'copy',
+      kit: 'kit', kits: 'kit', bundle: 'bundle', bundles: 'bundle', cart: 'cart', dozen: 'dozen', doz: 'dozen', ea: 'each',
+      each: 'each', sheet: 'sheet', sheets: 'sheet', bag: 'bag', bags: 'bag', pad: 'pad', pads: 'pad', tube: 'tube',
+      meter: 'meter', meters: 'meter', length: 'length', sack: 'sack', jar: 'jar', tin: 'tin', bot: 'bottle', btl: 'bottle'
+    };
+    let icsState = null;   // { stage, file, photoUrl, turns, progress, status, text, header, lines, opts, error }
+    let ocrWorker = null;
+    let ocrWorkerPromise = null;
+    let icsLineSeq = 0;
+
+    // ---- Text → ICS fields ----------------------------------------------------
+    function icsMoney(token) {
+      const t = String(token || '').replace(/^[₱P]/, '').replace(/[,;:]$/, '');
+      if (!/^\d{1,3}(?:[,.]\d{3})*[.,]\d{2}$|^\d+[.,]\d{2}$/.test(t)) return null;
+      // last separator is the decimal point; the rest are thousands separators
+      const n = Number(t.slice(0, -3).replace(/[,.]/g, '') + '.' + t.slice(-2));
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function parseLooseDate(text) {
+      const s = String(text || '');
+      const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      const iso = (y, m, d) => {
+        y = +y; m = +m; d = +d;
+        if (y < 100) y += 2000;
+        if (!(y >= 1990 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return '';
+        return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      };
+      let m = s.match(/\b(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})\b/);
+      if (m) return iso(m[1], m[2], m[3]);
+      m = s.match(/\b(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4}|\d{2})\b/);
+      if (m) return +m[1] > 12 ? iso(m[3], m[2], m[1]) : iso(m[3], m[1], m[2]); // PH forms: MM/DD/YYYY
+      m = s.match(/\b([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})\b/);
+      if (m && months.indexOf(m[1].slice(0, 3).toLowerCase()) >= 0) return iso(m[3], months.indexOf(m[1].slice(0, 3).toLowerCase()) + 1, m[2]);
+      m = s.match(/\b(\d{1,2})[\s-]+([A-Za-z]{3,9})\.?[\s-]+(\d{4})\b/);
+      if (m && months.indexOf(m[2].slice(0, 3).toLowerCase()) >= 0) return iso(m[3], months.indexOf(m[2].slice(0, 3).toLowerCase()) + 1, m[1]);
+      return '';
+    }
+
+    // Property-number-like: letters/digits joined by - or /, with at least 3 digits.
+    const ICS_ITEMNO_RE = /^(?=(?:.*\d){3})[A-Z0-9]{1,12}(?:[-\/][A-Z0-9]{1,12})+$/i;
+    const ICS_LIFE_RE = /(?:^|\s)([0-9Ss]{1,2}|[Oo]ne|[Tt]wo|[Tt]hree|[Ff]ive|[Ss]even|[Tt]en)\s*-?\s*(years?|yrs?|y)\.?$/;
+
+    function icsLife(text) {
+      const m = String(text || '').trim().match(ICS_LIFE_RE);
+      if (!m) return '';
+      const words = { one: 1, two: 2, three: 3, five: 5, seven: 7, ten: 10 };
+      const n = /^\d+$/.test(m[1]) ? +m[1] : words[m[1].toLowerCase()] || (/^[Ss]$/.test(m[1]) ? 5 : NaN);
+      return Number.isFinite(n) && n > 0 ? `${n} year${n === 1 ? '' : 's'}` : '';
+    }
+
+    // "PFX-2026-0101 to 0102", "PFX-2026-0101 - PFX-2026-0105", "A-001, A-002" → list
+    function expandItemNos(text, qty) {
+      const s = normalizePropNo(text);
+      if (!s) return [];
+      const range = s.match(/^([A-Z0-9\-\/]*?)(\d+)(?:\s*(?:TO|THRU|THROUGH)\s*|\s+[-–—]\s+)([A-Z0-9\-\/]*?)(\d+)$/);
+      if (range && (!range[3] || range[3] === range[1])) {
+        const a = parseInt(range[2], 10), b = parseInt(range[4], 10);
+        const width = range[2].length;
+        // "…0101 to 0102" or "…0101 to 02": the end may repeat only the last digits
+        const end = range[4].length < width ? parseInt(range[2].slice(0, width - range[4].length) + range[4], 10) : b;
+        if (end >= a && end - a < 500 && (!qty || end - a + 1 === qty)) {
+          return Array.from({ length: end - a + 1 }, (_, i) => range[1] + String(a + i).padStart(width, '0'));
+        }
+      }
+      return s.split(/\s*[,;]\s*|\s+(?:AND|&)\s+/).map(v => v.replace(/\s+/g, '')).filter(Boolean);
+    }
+
+    function cleanIcsLine(line) {
+      return String(line || '')
+        .replace(/\t/g, '    ')                         // cells copied from Excel
+        .replace(/[|¦\[\]{}]/g, '  ')                   // table borders read as characters
+        .replace(/(^|\s)(?:[—–_~=:;,.'"`!*\\\/-]{1,4}|i|l|ee|EE)(?=\s|$)/g, '$1  ')
+        .replace(/\s+$/, '');
+    }
+
+    function parseIcsText(text) {
+      const rawLines = String(text || '').replace(/\r/g, '').split('\n');
+      const lines = rawLines.map(cleanIcsLine);
+      const all = lines.join('\n');
+      const header = { icsNo: '', entity: '', fund: '', date: '', receivedBy: '', position: '', receivedFrom: '' };
+
+      const rawAll = rawLines.join('\n');
+      let m = all.match(/ICS\s*(?:No|Number|#)?\.?\s*[:.]?\s*([A-Z0-9][A-Z0-9\-\/.]*(?: ?- ?[A-Z0-9]+)*)/i);
+      if (m && /\d/.test(m[1])) header.icsNo = m[1].replace(/\s+/g, '').replace(/[.\-]+$/, '').toUpperCase();
+      m = rawAll.match(/Entity\s*Name\s*[:.]?\s*(.+?)(?:\s{3,}|Fund\s*Cluster|\n|$)/i);
+      if (m) header.entity = m[1].replace(/[|_]+/g, ' ').trim();
+      m = rawAll.match(/Fund\s*Cluster\s*[:.]?\s*(.+?)(?:\s{3,}|ICS|\n|$)/i);
+      if (m) header.fund = m[1].replace(/[|_]+/g, ' ').trim();
+
+      // Table: below the column headings, above "Received from/by" or "nothing follows".
+      let start = lines.findIndex(l => /quantity|description/i.test(l) && !/entity/i.test(l));
+      if (start < 0) start = Math.max(0, lines.findIndex(l => /ICS\s*No/i.test(l)));
+      while (start + 1 < lines.length && /unit\s*cost|total\s*cost|item\s*no|useful\s*life|amount|^\W*$/i.test(lines[start + 1]) &&
+             !lines[start + 1].split(/\s+/).some(t => icsMoney(t) !== null)) start++;
+      let end = lines.findIndex((l, i) => i > start && /received\s*(from|by)|nothing\s*follows|^\s*\**\s*(sub)?total\b/i.test(l));
+      if (end < 0) end = lines.length;
+
+      const items = [];
+      let cur = null;
+      for (let i = start + 1; i < end; i++) {
+        const line = lines[i];
+        if (!line.trim()) continue;
+        const tokens = line.trim().split(/\s+/);
+        const moneyIdx = tokens.map((t, k) => icsMoney(t) !== null ? k : -1).filter(k => k >= 0);
+        const leadQty = /^\d{1,5}$/.test(tokens[0]) ? parseInt(tokens[0], 10) : null;
+        const unitAt = k => ICS_UNIT_WORDS[String(tokens[k] || '').toLowerCase().replace(/[^a-z]/g, '')];
+        const isRow = moneyIdx.length > 0 || (leadQty !== null && unitAt(1));
+
+        if (!isRow) {
+          // A wrapped description line (or the item no. / useful life of the row above)
+          if (!cur) continue;
+          line.trim().split(/\s{3,}/).forEach(seg => {
+            seg = seg.trim();
+            if (!seg) return;
+            const life = icsLife(seg);
+            if (life && !cur.life) { cur.life = life; return; }
+            if (ICS_ITEMNO_RE.test(seg.replace(/\s+/g, '')) || /^(?:to|-)\s*[A-Z0-9\-\/]+$/i.test(seg)) {
+              cur.itemNo = (cur.itemNo ? cur.itemNo + ' ' : '') + seg;
+              return;
+            }
+            if (/^[A-Za-z0-9(]/.test(seg) && (seg.length >= 6 || /\s/.test(seg)) && (seg.match(/[A-Za-z]/g) || []).length >= 3) {
+              cur.desc = (cur.desc + ' ' + seg).trim();
+            }
+          });
+          continue;
+        }
+
+        cur = { id: 'L' + (++icsLineSeq), qty: null, unit: '', unitCost: null, totalCost: null, desc: '', itemNo: '', life: '', notes: [] };
+        let k = 0;
+        if (leadQty !== null) { cur.qty = leadQty; k = 1; }
+        const firstMoney = moneyIdx.length ? moneyIdx[0] : -1;
+        // unit word(s) between quantity and the amounts
+        for (; k < (firstMoney >= 0 ? firstMoney : Math.min(tokens.length, 3)); k++) {
+          const u = unitAt(k);
+          if (u) { cur.unit = u; k++; break; }
+        }
+        if (firstMoney >= 0) {
+          cur.unitCost = icsMoney(tokens[firstMoney]);
+          k = firstMoney + 1;
+          if (moneyIdx[1] === firstMoney + 1) { cur.totalCost = icsMoney(tokens[firstMoney + 1]); k = firstMoney + 2; }
+        }
+        // the rest: description, inventory item no., useful life (columns ≥3 spaces apart)
+        const restStart = (() => {
+          let pos = 0;
+          const trimmed = line.trim();
+          for (let t = 0; t < k; t++) pos = trimmed.indexOf(tokens[t], pos) + tokens[t].length;
+          return trimmed.slice(pos);
+        })();
+        let rest = restStart.trim();
+        const life = icsLife(rest);
+        if (life) { cur.life = life; rest = rest.replace(ICS_LIFE_RE, '').trim(); }
+        const segs = rest.split(/\s{3,}/).map(s => s.trim()).filter(Boolean);
+        if (segs.length > 1) {
+          const itemSegs = [];
+          while (segs.length > 1 && (ICS_ITEMNO_RE.test(segs[segs.length - 1].split(/\s+/)[0]) || /^(?:to|-)\s/i.test(segs[segs.length - 1]))) {
+            itemSegs.unshift(segs.pop());
+          }
+          cur.itemNo = itemSegs.join(' ');
+          cur.desc = segs.join(' ');
+        } else if (segs.length === 1) {
+          // single-spaced text (pasted): take a trailing property-number expression
+          const mm = segs[0].match(/^(.*?)\s+((?=[A-Z0-9\-\/]*\d{3})[A-Z0-9]+(?:[-\/][A-Z0-9]+)+(?:\s*(?:to|-)\s*[A-Z0-9\-\/]+)?)$/);
+          if (mm && /[A-Z]/.test(mm[2]) && mm[1].length >= 3) { cur.desc = mm[1]; cur.itemNo = mm[2]; }
+          else cur.desc = segs[0];
+        }
+        items.push(cur);
+      }
+
+      // Money cross-check: quantity = total ÷ unit cost when that is a whole number.
+      items.forEach(it => {
+        if (it.unitCost && it.totalCost) {
+          const q = it.totalCost / it.unitCost;
+          const whole = Math.round(q);
+          if (whole >= 1 && Math.abs(q - whole) < 0.01) {
+            if (it.qty === null) { it.qty = whole; it.notes.push('Quantity worked out from total ÷ unit cost'); }
+            else if (it.qty !== whole) { it.notes.push(`Read quantity ${it.qty}, but total ÷ unit cost = ${whole} – please check`); it.qty = whole; }
+          }
+        } else if (it.qty && it.totalCost && !it.unitCost) {
+          it.unitCost = Math.round(it.totalCost / it.qty * 100) / 100;
+        } else if (it.qty && it.unitCost && !it.totalCost) {
+          it.totalCost = Math.round(it.qty * it.unitCost * 100) / 100;
+        }
+        if (it.qty === null) { it.qty = 1; it.notes.push('Quantity not found – please check'); }
+        it.desc = it.desc.replace(/\s{2,}/g, ' ').replace(/^[^A-Za-z0-9(]+/, '').trim();
+        it.itemNo = it.itemNo.replace(/\s{2,}/g, ' ').trim();
+      });
+
+      // Signatures: "Received from" (left) and "Received by" (right) blocks.
+      const byIdx = lines.findIndex(l => /received\s*by/i.test(l));
+      if (byIdx >= 0) {
+        const headLine = lines[byIdx];
+        const byCol = headLine.search(/received\s*by/i);
+        const twoCol = /received\s*from/i.test(headLine) && headLine.search(/received\s*from/i) < byCol;
+        const sameLine = headLine.slice(byCol).replace(/received\s*by\s*[:.]?/i, '').trim();
+        const pick = l => {
+          const segs = [];
+          l.replace(/\S+(?:\s{1,2}\S+)*/g, (seg, at) => { segs.push({ seg, at }); return seg; });
+          if (!segs.length) return '';
+          if (!twoCol) return segs.map(s => s.seg).join(' ');
+          if (segs.length > 1) return segs[segs.length - 1].seg;
+          return segs[0].at >= byCol * 0.6 ? segs[0].seg : '';
+        };
+        const isLabel = l => /signature|printed\s*name|position|office\s*$|^\W*date\W*$|designation/i.test(l) && l.replace(/signature over printed name|position\s*\/?\s*office|date/gi, '').replace(/\W/g, '').length < 3;
+        let stage = 'name';
+        if (sameLine && /[A-Za-z]{3}/.test(sameLine) && !/received/i.test(sameLine)) { header.receivedBy = sameLine; stage = 'position'; }
+        for (let i = byIdx + 1; i < Math.min(lines.length, byIdx + 14); i++) {
+          const l = lines[i];
+          if (!l.trim()) continue;
+          if (isLabel(l)) {
+            if (/signature|printed/i.test(l)) stage = 'position';
+            else if (/position|office/i.test(l)) stage = 'date';
+            continue;
+          }
+          const v = pick(l).trim();
+          if (!v) continue;
+          const d = parseLooseDate(v);
+          if (d) { if (!header.date) header.date = d; continue; }
+          if (stage === 'name' && /[A-Za-z]{2}/.test(v)) { header.receivedBy = v; stage = 'position'; }
+          else if (stage === 'position' && /[A-Za-z]{2}/.test(v) && !header.position) { header.position = v; stage = 'date'; }
+        }
+        header.receivedBy = header.receivedBy.replace(/[^A-Za-zÑñ.,\-' ]/g, '').replace(/\s+/g, ' ').trim();
+        header.position = header.position.replace(/[,.;]+$/, '').trim();
+      }
+      if (!header.date) {
+        for (const l of lines) { const d = parseLooseDate(l); if (d) { header.date = d; break; } }
+      }
+      return { header, items };
+    }
+
+    // ---- Matching an ICS description to the catalog ---------------------------
+    const ICS_STOP = new Set(['WITH', 'AND', 'FOR', 'THE', 'OF', 'IN', 'TO', 'A', 'AN', 'PER', 'W', 'ETC', 'SIZE', 'TYPE', 'COLOR']);
+    function icsWords(text) {
+      return String(text || '').toUpperCase().replace(/[^A-Z0-9Ñ]+/g, ' ').split(' ').filter(w => w.length >= 2 && !ICS_STOP.has(w));
+    }
+
+    function suggestIcsMatches(desc, limit = 5) {
+      const d = String(desc || '');
+      if (!d.trim()) return [];
+      const upper = d.toUpperCase();
+      const head = new Set(icsWords(d.split(',')[0]));
+      const allWords = new Set(icsWords(d));
+      const scored = [];
+      items.forEach(item => {
+        if (upper.includes(item.code.toUpperCase())) { scored.push({ item, score: 10 }); return; }
+        if (normItemName(item.name) === normItemName(d)) { scored.push({ item, score: 9 }); return; }
+        const itemHead = icsWords(item.name.split(',')[0]);
+        const itemRest = icsWords(item.name.split(',').slice(1).join(' '));
+        if (!itemHead.length) return;
+        const headHits = itemHead.filter(w => head.has(w) || allWords.has(w)).length;
+        if (!headHits) return;
+        const headAll = itemHead.every(w => head.has(w));
+        const restHits = itemRest.filter(w => allWords.has(w)).length;
+        let score = (headHits / itemHead.length) * 2 + (itemRest.length ? restHits / itemRest.length : 0.5) + (headAll ? 1 : 0);
+        if (item.qty > 0) score += 0.15; // prefer what the school already has
+        scored.push({ item, score });
+      });
+      scored.sort((a, b) => b.score - a.score);
+      return scored.slice(0, limit);
+    }
+
+    function icsDefaultTarget(line) {
+      const best = suggestIcsMatches(line.desc, 1)[0];
+      // whole item name found (noun + most specs) → that item; otherwise a new custom item
+      return best && best.score >= 3.4 ? best.item.code : 'NEW';
+    }
+
+    // ---- Text recognition engine ----------------------------------------------
+    function ocrAbsolute(path) { return new URL(path, location.href).href; }
+
+    async function getOcrWorker(onProgress) {
+      if (ocrWorker) return ocrWorker;
+      if (!ocrWorkerPromise) {
+        ocrWorkerPromise = (async () => {
+          await loadScript(OCR_BASE + 'tesseract.min.js');
+          // WebAssembly SIMD (every Chrome since 2021) → faster engine; otherwise the plain one
+          const simd = WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11]));
+          const worker = await window.Tesseract.createWorker('eng', 1 /* LSTM only */, {
+            workerPath: ocrAbsolute(OCR_BASE + 'worker.min.js'),
+            corePath: ocrAbsolute(OCR_BASE + (simd ? 'tesseract-core-simd-lstm.wasm.js' : 'tesseract-core-lstm.wasm.js')),
+            langPath: ocrAbsolute(OCR_BASE).replace(/\/$/, ''),
+            workerBlobURL: false,
+            logger: m => icsOcrLogger(m)
+          });
+          await worker.setParameters({ tessedit_pageseg_mode: '6', preserve_interword_spaces: '1' });
+          ocrWorker = worker;
+          return worker;
+        })().catch(err => { ocrWorkerPromise = null; throw err; });
+      }
+      return ocrWorkerPromise;
+    }
+
+    function icsOcrLogger(m) {
+      if (!icsState || icsState.stage !== 'reading') return;
+      const labels = {
+        'loading tesseract core': 'Loading the text reader…',
+        'initializing tesseract': 'Starting the text reader…',
+        'loading language traineddata': 'Loading English text model…',
+        'initializing api': 'Starting the text reader…',
+        'recognizing text': 'Reading the ICS…'
+      };
+      if (!labels[m.status]) return;
+      icsState.status = labels[m.status];
+      icsState.progress = m.status === 'recognizing text' ? 0.3 + 0.7 * (m.progress || 0) : 0.05 + 0.25 * (m.progress || 0);
+      updateIcsProgress();
+    }
+
+    async function isOcrDownloaded() {
+      try {
+        if (!('caches' in window)) return false;
+        const cache = await caches.open(OCR_CACHE_NAME);
+        return !!(await cache.match(ocrAbsolute(OCR_BASE + 'worker.min.js')));
+      } catch (e) { return false; }
+    }
+
+    function releaseOcrWorker() {
+      const w = ocrWorker;
+      ocrWorker = null;
+      ocrWorkerPromise = null;
+      if (w) w.terminate().catch(() => {});
+    }
+
+    // ---- Modal flow -----------------------------------------------------------
+    function openIcsScanner() {
+      icsState = { stage: 'start', turns: 0, opts: { addStock: true, makeUnits: true }, showPaste: false, offlineReady: null };
+      document.getElementById('icsModal').classList.remove('hidden');
+      renderIcs();
+      isOcrDownloaded().then(ok => { if (icsState && icsState.stage === 'start') { icsState.offlineReady = ok; renderIcs(); } });
+    }
+
+    function closeIcsScanner(force = false) {
+      if (!force && icsState && icsState.stage === 'review' && icsState.lines.length &&
+          !confirm('Close without saving this ICS?')) return;
+      if (icsState && icsState.photoUrl) URL.revokeObjectURL(icsState.photoUrl);
+      icsState = null;
+      document.getElementById('icsModal').classList.add('hidden');
+      releaseOcrWorker(); // frees ~100 MB on phones; it reloads from cache next time
+    }
+
+    function pickIcsPhoto(useCamera) {
+      const input = document.getElementById('icsPhotoInput');
+      if (useCamera) input.setAttribute('capture', 'environment');
+      else input.removeAttribute('capture');
+      input.value = '';
+      input.click();
+    }
+
+    function handleIcsPhoto(event) {
+      const file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      if (!file || !icsState) return;
+      if (!/^image\//.test(file.type) && !/\.(jpe?g|png|webp|heic|heif|bmp)$/i.test(file.name)) {
+        alert('Please choose a photo (JPG or PNG) of the ICS. For a PDF, take a screenshot of the page first.');
+        return;
+      }
+      if (icsState.photoUrl) URL.revokeObjectURL(icsState.photoUrl);
+      icsState.file = file;
+      icsState.photoUrl = URL.createObjectURL(file);
+      icsState.turns = 0;
+      runIcsOcr();
+    }
+
+    function rotateIcsAndRetry() {
+      if (!icsState || !icsState.file) return;
+      icsState.turns = (icsState.turns + 1) % 4;
+      runIcsOcr();
+    }
+
+    async function runIcsOcr() {
+      const st = icsState;
+      st.stage = 'reading';
+      st.progress = 0.02;
+      st.status = 'Cleaning up the photo…';
+      st.error = '';
+      renderIcs();
+      try {
+        const workerReady = getOcrWorker();
+        await new Promise(r => setTimeout(r, 30)); // let the progress screen paint
+        const { canvas } = await prepareIcsImage(st.file, st.turns);
+        if (icsState !== st) return;
+        if (!navigator.onLine && !ocrWorker && !(await isOcrDownloaded())) {
+          throw new Error('offline-first-use');
+        }
+        const worker = await workerReady;
+        if (icsState !== st) return;
+        st.status = 'Reading the ICS…';
+        updateIcsProgress();
+        const { data } = await worker.recognize(canvas);
+        if (icsState !== st) return;
+        st.previewUrl = canvas.toDataURL('image/jpeg', 0.6);
+        icsLoadText(data.text, 'photo');
+      } catch (err) {
+        if (icsState !== st) return;
+        console.error('ICS OCR failed', err);
+        st.stage = 'start';
+        st.error = String(err && err.message) === 'offline-first-use' || !navigator.onLine
+          ? 'The text reader has not been downloaded yet. Connect to the internet once (about 7 MB), then scanning works offline.'
+          : 'Could not read the photo on this device. Try again, or use “Paste text” below.';
+        renderIcs();
+      }
+    }
+
+    function readPastedIcsText() {
+      const text = document.getElementById('icsPasteText').value;
+      if (!text.trim()) return;
+      icsLoadText(text, 'paste');
+    }
+
+    function icsLoadText(text, source) {
+      const st = icsState;
+      const parsed = parseIcsText(text);
+      st.text = text;
+      st.source = source;
+      st.header = parsed.header;
+      if (!st.header.date) st.header.date = new Date().toISOString().slice(0, 10);
+      st.lines = parsed.items.map(it => ({ ...it, include: true, target: null }));
+      fixIcsItemNoPrefixes(st.lines);
+      st.lines.forEach(l => { l.target = icsDefaultTarget(l); });
+      st.stage = 'review';
+      renderIcs();
+    }
+
+    // OCR often swaps look-alike letters in the prefix (SJNHS → SINHS). If a prefix is one
+    // letter away from the school's prefix or one used elsewhere, use that one and say so.
+    function fixIcsItemNoPrefixes(lines) {
+      const prefixOf = no => (String(no || '').toUpperCase().match(/^([A-Z][A-Z0-9]{1,11})[-\/]/) || [])[1] || '';
+      const counts = new Map();
+      const bump = (p, n) => { if (p) counts.set(p, (counts.get(p) || 0) + n); };
+      bump(propertyPrefix().split('-')[0], 5);
+      allTaggedUnits().forEach(({ unit }) => bump(prefixOf(unit.no), 1));
+      lines.forEach(l => bump(prefixOf(l.itemNo), 1));
+      const oneOff = (a, b) => a.length === b.length && [...a].filter((ch, i) => ch !== b[i]).length === 1;
+      lines.forEach(l => {
+        const p = prefixOf(l.itemNo);
+        if (!p) return;
+        const better = [...counts.entries()].filter(([q, n]) => q !== p && oneOff(p, q) && n > (counts.get(p) || 0))
+          .sort((a, b) => b[1] - a[1])[0];
+        if (!better) return;
+        const fixed = better[0] + l.itemNo.slice(p.length);
+        l.notes.push(`Item no. read as ${l.itemNo}, changed to ${fixed} – please check`);
+        l.itemNo = fixed;
+      });
+    }
+
+    function addIcsLine() {
+      if (!icsState) return;
+      icsState.lines.push({ id: 'L' + (++icsLineSeq), qty: 1, unit: 'unit', unitCost: null, totalCost: null, desc: '', itemNo: '', life: '', notes: [], include: true, target: 'NEW' });
+      renderIcs();
+      const cards = document.querySelectorAll('.ics-line-card');
+      cards[cards.length - 1]?.scrollIntoView({ block: 'center' });
+    }
+
+    function setIcsHeader(key, value) {
+      if (!icsState) return;
+      icsState.header[key] = String(value || '').trim();
+      if (key === 'icsNo') icsState.header.icsNo = icsState.header.icsNo.toUpperCase();
+      renderIcsSummary();
+    }
+
+    function setIcsOpt(key, value) {
+      if (!icsState) return;
+      icsState.opts[key] = !!value;
+      refreshIcs();
+    }
+
+    function setIcsLine(id, key, value) {
+      const line = icsState && icsState.lines.find(l => l.id === id);
+      if (!line) return;
+      if (key === 'qty') line.qty = Math.max(0, parseInt(value, 10) || 0);
+      else if (key === 'unitCost') line.unitCost = value === '' ? null : Math.max(0, Math.round((Number(value) || 0) * 100) / 100);
+      else if (key === 'include') line.include = !!value;
+      else if (key === 'desc') {
+        line.desc = String(value || '').trim();
+        if (line.target === 'NEW' || !line.targetChosen) line.target = icsDefaultTarget(line);
+      } else if (key === 'target') { line.target = value; line.targetChosen = true; }
+      else line[key] = String(value || '').trim();
+      refreshIcs();
+    }
+
+    // Re-render after the tap that caused the change has moved focus, then put the
+    // cursor back where it went (otherwise every edit would close the keyboard).
+    function refreshIcs() {
+      setTimeout(() => {
+        if (!icsState) return;
+        const body = document.getElementById('icsBody');
+        const a = document.activeElement;
+        const key = a && a.dataset ? a.dataset.ics : null;
+        let sel = null;
+        try { if (key && typeof a.selectionStart === 'number') sel = [a.selectionStart, a.selectionEnd]; } catch (e) { sel = null; }
+        const top = body.scrollTop;
+        renderIcs();
+        body.scrollTop = top;
+        const el = key && body.querySelector(`[data-ics="${key}"]`);
+        if (el) {
+          el.focus({ preventScroll: true });
+          if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch (e) { /* number inputs */ }
+        }
+      }, 0);
+    }
+
+    function removeIcsLine(id) {
+      if (!icsState) return;
+      icsState.lines = icsState.lines.filter(l => l.id !== id);
+      refreshIcs();
+    }
+
+    // Everything the save button needs to know, including blocking problems.
+    function buildIcsPlan() {
+      const st = icsState;
+      const lines = st.lines.filter(l => l.include && l.qty > 0 && l.target !== 'SKIP' && (l.desc || l.target !== 'NEW'));
+      st.lines.forEach(l => { l.errors = []; l.nos = null; });
+      const usedNos = new Map();
+      const problems = [];
+      lines.forEach(l => {
+        l.errors = [];
+        if (st.opts.makeUnits) {
+          const nos = expandItemNos(l.itemNo, l.qty);
+          if (nos.length > l.qty) l.errors.push(`${nos.length} inventory item numbers for ${l.qty} ${l.qty === 1 ? 'unit' : 'units'}`);
+          nos.forEach(no => {
+            const dup = findUnitByNo(no);
+            if (dup) l.errors.push(`${no} is already used by ${dup.item.name}`);
+            if (usedNos.has(no)) l.errors.push(`${no} appears twice on this ICS`);
+            usedNos.set(no, l.id);
+          });
+          l.nos = nos;
+        }
+        if (l.errors.length) problems.push(l);
+      });
+      const units = lines.reduce((n, l) => n + l.qty, 0);
+      const value = lines.reduce((n, l) => n + l.qty * (l.unitCost || 0), 0);
+      const dupIcs = st.header.icsNo && allTaggedUnits().some(({ unit }) => normalizePropNo(unit.ics) === normalizePropNo(st.header.icsNo));
+      return { lines, units, value, problems, dupIcs };
+    }
+
+    function updateIcsProgress() {
+      const bar = document.getElementById('icsProgressBar');
+      const label = document.getElementById('icsProgressLabel');
+      if (bar && icsState) bar.style.width = `${Math.round((icsState.progress || 0) * 100)}%`;
+      if (label && icsState) label.textContent = icsState.status || '';
+    }
+
+    function renderIcsSummary() {
+      const btn = document.getElementById('icsSaveBtn');
+      const note = document.getElementById('icsFooterNote');
+      if (!icsState || icsState.stage !== 'review') {
+        btn.classList.add('hidden');
+        note.textContent = 'Photos are read on this device and are not uploaded.';
+        return;
+      }
+      const plan = buildIcsPlan();
+      btn.classList.remove('hidden');
+      btn.disabled = !plan.lines.length || plan.problems.length > 0;
+      btn.innerHTML = `<i class="ph-bold ph-floppy-disk"></i> Save ${plan.lines.length ? plural(plan.units, 'item') : 'ICS'}`;
+      note.textContent = plan.problems.length
+        ? `Fix ${plural(plan.problems.length, 'line')} marked in red first.`
+        : plan.lines.length ? `${plural(plan.lines.length, 'line')} · ₱${plan.value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · you can undo right after saving`
+          : 'Nothing to save yet.';
+      const dupBox = document.getElementById('icsDupWarning');
+      if (dupBox) dupBox.classList.toggle('hidden', !plan.dupIcs);
+    }
+
+    function renderIcs() {
+      const body = document.getElementById('icsBody');
+      const st = icsState;
+      if (!st) return;
+      if (st.stage === 'start') {
+        body.innerHTML = `
+          ${st.error ? `<div class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex gap-2"><i class="ph-bold ph-warning-circle text-base shrink-0"></i><span>${escapeHTML(st.error)}</span></div>` : ''}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button onclick="pickIcsPhoto(true)" class="rounded-2xl border-2 border-dashed border-violet-300 bg-violet-50/60 hover:bg-violet-50 p-6 text-center transition active:scale-[0.99]">
+              <i class="ph-duotone ph-camera text-5xl text-violet-600 block mb-2"></i>
+              <span class="block text-sm font-extrabold text-slate-800">Take photo of ICS</span>
+              <span class="block text-xs text-slate-500 mt-1">Opens the camera</span>
+            </button>
+            <button onclick="pickIcsPhoto(false)" class="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 hover:bg-slate-50 p-6 text-center transition active:scale-[0.99]">
+              <i class="ph-duotone ph-image text-5xl text-slate-500 block mb-2"></i>
+              <span class="block text-sm font-extrabold text-slate-800">Choose a photo</span>
+              <span class="block text-xs text-slate-500 mt-1">From the gallery, a scan, or a screenshot</span>
+            </button>
+          </div>
+          <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5 text-xs text-slate-600 space-y-1.5">
+            <p class="font-bold text-slate-800">For the best result</p>
+            <p>&bull; Lay the ICS flat in good light, with no shadow from the phone.</p>
+            <p>&bull; Fill the screen with the page and hold the phone straight above it. Take one page at a time.</p>
+            <p>&bull; Works with typed or printed ICS. Handwriting is not read reliably.</p>
+            <p class="flex items-center gap-1.5 pt-1 ${st.offlineReady ? 'text-emerald-700' : 'text-slate-500'}">
+              <i class="ph-bold ${st.offlineReady ? 'ph-check-circle' : 'ph-download-simple'}"></i>
+              ${st.offlineReady ? 'Text reader downloaded – scanning works offline.' : 'The first scan downloads the text reader (about 7 MB). After that it works offline.'}
+            </p>
+          </div>
+          <div class="rounded-xl border border-slate-200">
+            <button onclick="icsState.showPaste = !icsState.showPaste; renderIcs()" class="w-full px-3.5 py-3 flex items-center justify-between text-xs font-bold text-slate-700">
+              <span class="flex items-center gap-2"><i class="ph-bold ph-clipboard-text text-slate-500"></i> Paste text instead</span>
+              <i class="ph-bold ${st.showPaste ? 'ph-caret-up' : 'ph-caret-down'}"></i>
+            </button>
+            ${st.showPaste ? `
+            <div class="px-3.5 pb-3.5 space-y-2">
+              <p class="text-[11px] text-slate-500">Copy the ICS text with Google Lens (<em>Select text › Copy</em>) or Samsung <em>Extract text</em>, or copy the cells from the ICS Excel file, then paste here.</p>
+              <textarea id="icsPasteText" rows="7" class="w-full p-2.5 rounded-lg border border-slate-300 text-xs font-mono focus:border-brand-500 outline-none" placeholder="ICS No.: 2026-01-0042&#10;2  unit  43,015.70  86,031.40  LAPTOP COMPUTER, Core i5   SJNHS-2026-0101 to 0102   5 years&#10;Received by: JUAN P. DELA CRUZ"></textarea>
+              <button onclick="readPastedIcsText()" class="h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition"><i class="ph-bold ph-text-aa"></i> Read text</button>
+            </div>` : ''}
+          </div>`;
+        renderIcsSummary();
+        return;
+      }
+      if (st.stage === 'reading') {
+        body.innerHTML = `
+          <div class="flex flex-col items-center text-center py-6 gap-4">
+            ${st.photoUrl ? `<img src="${st.photoUrl}" alt="" class="max-h-56 rounded-xl border border-slate-200 shadow-sm object-contain" style="transform: rotate(${st.turns * 90}deg)">` : ''}
+            <div class="w-full max-w-sm">
+              <div class="h-2.5 rounded-full bg-slate-100 overflow-hidden"><div id="icsProgressBar" class="h-full bg-violet-600 rounded-full transition-all duration-300" style="width:${Math.round((st.progress || 0) * 100)}%"></div></div>
+              <p id="icsProgressLabel" class="text-xs font-semibold text-slate-600 mt-2">${escapeHTML(st.status || '')}</p>
+              <p class="text-[11px] text-slate-400 mt-1">This takes 5–20 seconds on a phone.</p>
+            </div>
+          </div>`;
+        renderIcsSummary();
+        return;
+      }
+
+      // ---- review ----
+      const plan = buildIcsPlan();
+      const h = st.header;
+      const peso = n => n === null || n === undefined ? '' : '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const input = (label, key, value, extra = '') => `
+        <label class="block min-w-0">
+          <span class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">${label}</span>
+          <input ${extra} data-ics="h:${key}" value="${escapeHTML(value || '')}" onchange="setIcsHeader('${key}', this.value)" class="w-full h-10 px-2.5 rounded-lg border border-slate-300 text-sm font-semibold text-slate-800 focus:border-brand-500 outline-none">
+        </label>`;
+      const lineCard = (l, idx) => {
+        const sugg = suggestIcsMatches(l.desc, 5);
+        if (l.target && !['NEW', 'SKIP'].includes(l.target) && !sugg.some(s => s.item.code === l.target)) {
+          const it = items.find(i => i.code === l.target);
+          if (it) sugg.unshift({ item: it, score: 0 });
+        }
+        const opts = sugg.map(s => `<option value="${s.item.code}" ${l.target === s.item.code ? 'selected' : ''}>${escapeHTML(s.item.name.slice(0, 70))}${s.item.qty ? ` (have ${s.item.qty})` : ''}</option>`).join('');
+        const errs = (l.errors || []);
+        const total = l.unitCost ? l.qty * l.unitCost : null;
+        const off = !l.include || l.target === 'SKIP';
+        const nos = st.opts.makeUnits ? (l.nos || expandItemNos(l.itemNo, l.qty)) : [];
+        const lf = (label, key, value, cls = '', type = 'text', extra = '') => `
+          <label class="block min-w-0 ${cls}">
+            <span class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">${label}</span>
+            <input type="${type}" ${extra} data-ics="${l.id}:${key}" value="${escapeHTML(value ?? '')}" onchange="setIcsLine('${l.id}', '${key}', this.value)" class="w-full h-9 px-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-800 focus:border-brand-500 outline-none">
+          </label>`;
+        return `
+          <div class="ics-line-card rounded-xl border p-3 space-y-2 ${errs.length ? 'border-rose-300 bg-rose-50/40' : off ? 'border-slate-200 bg-slate-50 opacity-60' : 'border-slate-200 bg-white'}">
+            <div class="flex items-center gap-2">
+              <input type="checkbox" ${l.include ? 'checked' : ''} onchange="setIcsLine('${l.id}', 'include', this.checked)" class="w-4 h-4 accent-violet-600 shrink-0" aria-label="Include line">
+              <span class="text-[11px] font-bold text-slate-400">Line ${idx + 1}</span>
+              <span class="flex-1"></span>
+              ${total !== null ? `<span class="font-mono text-xs font-bold text-slate-700">${peso(total)}</span>` : ''}
+              <button onclick="removeIcsLine('${l.id}')" title="Remove line" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center"><i class="ph-bold ph-trash"></i></button>
+            </div>
+            <label class="block">
+              <span class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">Description</span>
+              <textarea rows="2" data-ics="${l.id}:desc" onchange="setIcsLine('${l.id}', 'desc', this.value)" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-800 focus:border-brand-500 outline-none">${escapeHTML(l.desc)}</textarea>
+            </label>
+            <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              ${lf('Qty', 'qty', l.qty, '', 'number', 'min="0" inputmode="numeric"')}
+              ${lf('Unit', 'unit', l.unit, '')}
+              ${lf('Unit cost', 'unitCost', l.unitCost === null ? '' : l.unitCost, '', 'number', 'min="0" step="0.01" inputmode="decimal"')}
+              ${lf('Inventory item no.', 'itemNo', l.itemNo, 'col-span-2 sm:col-span-2', 'text', 'autocapitalize="characters" spellcheck="false"')}
+              ${lf('Useful life', 'life', l.life, '')}
+            </div>
+            <label class="block">
+              <span class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">Save to</span>
+              <select data-ics="${l.id}:target" onchange="setIcsLine('${l.id}', 'target', this.value)" class="w-full h-9 px-2 rounded-lg border ${l.target === 'NEW' ? 'border-sky-300 bg-sky-50' : l.target === 'SKIP' ? 'border-slate-200' : 'border-emerald-300 bg-emerald-50'} text-xs font-semibold text-slate-800 outline-none">
+                ${opts ? `<optgroup label="Catalog / your items">${opts}</optgroup>` : ''}
+                <option value="NEW" ${l.target === 'NEW' ? 'selected' : ''}>+ New custom item (use this description)</option>
+                <option value="SKIP" ${l.target === 'SKIP' ? 'selected' : ''}>Don't save this line</option>
+              </select>
+            </label>
+            ${st.opts.makeUnits && !off ? `<p class="text-[11px] text-slate-500 flex items-start gap-1.5"><i class="ph-bold ph-tag text-violet-500 mt-0.5"></i><span>${nos.length
+              ? `Property no. ${escapeHTML(nos[0])}${nos.length > 1 ? ` to ${escapeHTML(nos[nos.length - 1])}` : ''}${nos.length < l.qty ? ` + ${l.qty - nos.length} new number${l.qty - nos.length === 1 ? '' : 's'}` : ''}`
+              : `${plural(l.qty, 'new property number')} will be created`}</span></p>` : ''}
+            ${l.notes.map(n => `<p class="text-[11px] text-amber-700 flex items-start gap-1.5"><i class="ph-bold ph-info mt-0.5"></i><span>${escapeHTML(n)}</span></p>`).join('')}
+            ${errs.map(e => `<p class="text-[11px] font-semibold text-rose-700 flex items-start gap-1.5"><i class="ph-bold ph-warning-circle mt-0.5"></i><span>${escapeHTML(e)}</span></p>`).join('')}
+          </div>`;
+      };
+
+      body.innerHTML = `
+        <div class="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+          ${st.photoUrl ? `<img src="${st.previewUrl || st.photoUrl}" alt="" onclick="window.open(this.src)" class="w-14 h-14 rounded-lg object-cover border border-slate-200 cursor-zoom-in shrink-0">` : `<i class="ph-duotone ph-clipboard-text text-3xl text-slate-400"></i>`}
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-extrabold text-slate-800">${st.lines.length ? `Found ${plural(st.lines.length, 'line')}` : 'No item lines found'}</p>
+            <p class="text-[11px] text-slate-500">Check every field against the paper ICS before saving.</p>
+          </div>
+          <div class="flex flex-col gap-1.5 shrink-0">
+            ${st.file ? `<button onclick="rotateIcsAndRetry()" class="h-8 px-2.5 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1"><i class="ph-bold ph-arrow-clockwise"></i> Rotate &amp; re-read</button>` : ''}
+            <button onclick="icsState.stage='start'; icsState.error=''; renderIcs()" class="h-8 px-2.5 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1"><i class="ph-bold ph-camera"></i> Another photo</button>
+          </div>
+        </div>
+        <div id="icsDupWarning" class="${plan.dupIcs ? '' : 'hidden'} rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex gap-2">
+          <i class="ph-bold ph-warning text-base shrink-0"></i><span><strong>This ICS No. was already encoded.</strong> Saving again would add the items twice.</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2.5">
+          ${input('ICS No.', 'icsNo', h.icsNo, 'autocapitalize="characters" spellcheck="false" placeholder="e.g. 2026-01-0042"')}
+          ${input('Date received', 'date', h.date, 'type="date"')}
+          ${input('Received by (accountable person)', 'receivedBy', h.receivedBy, 'placeholder="Name of end user"')}
+          ${input('Position / office', 'position', h.position, 'placeholder="Optional"')}
+        </div>
+        ${h.entity || h.fund ? `<p class="text-[11px] text-slate-500 -mt-1">${h.entity ? `Entity: <strong>${escapeHTML(h.entity)}</strong>` : ''}${h.entity && h.fund ? ' · ' : ''}${h.fund ? `Fund cluster: ${escapeHTML(h.fund)}` : ''}</p>` : ''}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <label class="flex items-start gap-2.5 rounded-xl border border-slate-200 p-3 cursor-pointer">
+            <input type="checkbox" ${st.opts.addStock ? 'checked' : ''} onchange="setIcsOpt('addStock', this.checked)" class="mt-0.5 w-4 h-4 accent-violet-600">
+            <span class="text-xs"><span class="block font-bold text-slate-800">Add quantities to stock</span><span class="text-slate-500">New deliveries. Untick if the items are already counted in the app and the ICS only assigns them.</span></span>
+          </label>
+          <label class="flex items-start gap-2.5 rounded-xl border border-slate-200 p-3 cursor-pointer">
+            <input type="checkbox" ${st.opts.makeUnits ? 'checked' : ''} onchange="setIcsOpt('makeUnits', this.checked)" class="mt-0.5 w-4 h-4 accent-violet-600">
+            <span class="text-xs"><span class="block font-bold text-slate-800">Create property records</span><span class="text-slate-500">One per unit, with its inventory item no., this ICS No. and the accountable person.</span></span>
+          </label>
+        </div>
+        <div class="space-y-2.5">
+          ${st.lines.map(lineCard).join('') || `<div class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-xs text-slate-500">No item rows were recognised. Try “Rotate &amp; re-read”, retake the photo closer and flatter, or add the lines by hand.</div>`}
+          <button onclick="addIcsLine()" class="w-full h-10 rounded-xl border border-dashed border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1.5"><i class="ph-bold ph-plus"></i> Add a line</button>
+        </div>
+        <details class="rounded-xl border border-slate-200">
+          <summary class="px-3.5 py-2.5 text-xs font-bold text-slate-600 cursor-pointer">Text read from the ${st.source === 'paste' ? 'pasted text' : 'photo'}</summary>
+          <pre class="px-3.5 pb-3 text-[10px] leading-snug text-slate-600 whitespace-pre-wrap break-words font-mono max-h-64 overflow-y-auto">${escapeHTML(st.text || '')}</pre>
+        </details>`;
+      renderIcsSummary();
+    }
+
+    function saveIcs() {
+      if (!icsState || icsState.stage !== 'review') return;
+      const st = icsState;
+      const plan = buildIcsPlan();
+      if (!plan.lines.length || plan.problems.length) return renderIcs();
+      const h = st.header;
+      if (plan.dupIcs && !confirm(`ICS No. ${h.icsNo} was already encoded. Save it again anyway?`)) return;
+      if (st.opts.makeUnits && !h.receivedBy &&
+          !confirm('No “Received by” name. Save the property records without an accountable person?')) return;
+
+      const safety = snapshotData();
+      // 1. new custom items first, so property numbering sees every item
+      plan.lines.forEach(l => {
+        if (l.target !== 'NEW') { l.code = l.target; return; }
+        const head = l.desc.split(',')[0];
+        const name = (head.toUpperCase() + l.desc.slice(head.length)).replace(/\s+/g, ' ').trim().slice(0, 160);
+        const existing = items.find(i => normItemName(i.name) === normItemName(name));
+        if (existing) { l.code = existing.code; return; }
+        const customNo = 114 + customRawItems.length;
+        l.code = `CUSTOM-P2-${String(customNo).padStart(3, '0')}`;
+        customRawItems.push([customNo, l.code, name, (l.unit || 'unit').toLowerCase(), l.unitCost || 0, 24, 'PART2']);
+      });
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
+      rebuildCatalogList();
+
+      // 2. stock, cost, ICS/PAR classification, property records. Numbers printed on the
+      //    ICS are placed first, so generated numbers continue after them, never clash.
+      const now = Date.now();
+      let newUnits = 0;
+      const makeUnit = (l, no) => ({
+        id: newUnitId(), no, serial: '', loc: '', to: h.receivedBy || '', cond: 'S',
+        seen: null, printed: null, added: now, ics: h.icsNo || '', icsDate: h.date || '', life: l.life || ''
+      });
+      plan.lines.forEach(l => {
+        const item = items.find(i => i.code === l.code);
+        const s = userState[l.code] || (userState[l.code] = {});
+        const before = parseInt(s.qty, 10) || 0;
+        if (st.opts.addStock) s.qty = before + l.qty;
+        if (l.unitCost && item && Math.abs(item.price - l.unitCost) > 0.004) s.customPrice = l.unitCost;
+        // Items issued on an ICS are semi-expendable property (ICS/PAR), not supplies.
+        if (item && resolveItemType(item, s.typeOverride) !== 'EQUIPMENT') s.typeOverride = 'EQUIPMENT';
+        if (st.opts.makeUnits) {
+          const created = (l.nos || []).slice(0, l.qty).map(no => makeUnit(l, no));
+          s.units = [...getUnits(l.code), ...created];
+          newUnits += created.length;
+        }
+      });
+      if (st.opts.makeUnits) {
+        plan.lines.forEach(l => {
+          const missing = l.qty - Math.min(l.qty, (l.nos || []).length);
+          const s = userState[l.code];
+          if (missing > 0) {
+            s.units = [...getUnits(l.code), ...nextPropertyNumbers(missing).map(no => makeUnit(l, no))];
+            newUnits += missing;
+          }
+          if ((parseInt(s.qty, 10) || 0) < s.units.length) s.qty = s.units.length; // ICS assigns more than counted
+        });
+      }
+      rebuildCatalogList();
+      const peso = '₱' + plan.value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const label = h.icsNo ? `ICS No. ${h.icsNo}` : 'an ICS';
+      saveStateWith({ summary: { kind: 'tag', code: plan.lines.length === 1 ? plan.lines[0].code : null, text:
+        `Encoded ${label}${h.date ? ` (${formatShortDate(h.date + 'T00:00:00')})` : ''}` +
+        `${h.receivedBy ? ` – received by ${h.receivedBy}` : ''}: ${plural(plan.lines.length, 'line')}, ${plural(plan.units, 'item')}, ${peso}` +
+        `${st.opts.addStock ? '' : ' (assigned existing stock)'}${newUnits ? ` · ${plural(newUnits, 'property record')}` : ''}` } });
+      renderItems();
+      renderDashboard();
+      closeIcsScanner(true);
+      showToast(`Saved ${label}: ${plural(plan.units, 'item')}`, 'ph-file-text', {
+        label: 'Undo',
+        onClick: () => {
+          applyData(safety);
+          restoreBackupMeta(safety.meta);
+          logHistory('system', `Undid encoding of ${label}`);
+          showToast('ICS encoding undone', 'ph-arrow-counter-clockwise');
+        }
+      });
+    }
+
+    // ---- Photo clean-up before text recognition ------------------------------
+    // Phone photos of a form: uneven light, a slight tilt and table borders that confuse
+    // the reader (it drops short cells like "2" or "unit" next to a border). So:
+    // scale → grayscale → straighten → adaptive black/white → erase long ruled lines.
+    async function prepareIcsImage(source, quarterTurns = 0) {
+      const bmp = source instanceof ImageBitmap ? source
+        : await createImageBitmap(source, { imageOrientation: 'from-image' });
+      const turned = quarterTurns % 2 === 1;
+      const srcW = turned ? bmp.height : bmp.width;
+      const srcH = turned ? bmp.width : bmp.height;
+      // ~2200 px across: enough for 9-10 pt print on an A4/Legal page, still fast on a phone
+      const scale = Math.min(3, 2200 / srcW);
+      const W = Math.round(srcW * scale), H = Math.round(srcH * scale);
+
+      const draw = (angle) => {
+        const c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        const g = c.getContext('2d', { willReadFrequently: true });
+        g.fillStyle = '#fff';
+        g.fillRect(0, 0, W, H);
+        g.translate(W / 2, H / 2);
+        g.rotate(angle + quarterTurns * Math.PI / 2);
+        g.scale(scale, scale);
+        g.drawImage(bmp, -bmp.width / 2, -bmp.height / 2);
+        return g.getImageData(0, 0, W, H);
+      };
+      const toGray = (img) => {
+        const d = img.data, out = new Uint8ClampedArray(W * H);
+        for (let i = 0, p = 0; i < out.length; i++, p += 4) out[i] = (d[p] * 299 + d[p + 1] * 587 + d[p + 2] * 114) / 1000;
+        return out;
+      };
+
+      // Adaptive threshold (Bradley): dark if 15% darker than the local mean.
+      const binarize = (gray) => {
+        const integral = new Float64Array((W + 1) * (H + 1));
+        for (let y = 0; y < H; y++) {
+          let row = 0;
+          for (let x = 0; x < W; x++) {
+            row += gray[y * W + x];
+            integral[(y + 1) * (W + 1) + x + 1] = integral[y * (W + 1) + x + 1] + row;
+          }
+        }
+        const r = Math.max(8, Math.round(W / 48));
+        const bin = new Uint8Array(W * H); // 1 = ink
+        for (let y = 0; y < H; y++) {
+          const y0 = Math.max(0, y - r), y1 = Math.min(H, y + r + 1);
+          for (let x = 0; x < W; x++) {
+            const x0 = Math.max(0, x - r), x1 = Math.min(W, x + r + 1);
+            const sum = integral[y1 * (W + 1) + x1] - integral[y0 * (W + 1) + x1] - integral[y1 * (W + 1) + x0] + integral[y0 * (W + 1) + x0];
+            const mean = sum / ((x1 - x0) * (y1 - y0));
+            bin[y * W + x] = gray[y * W + x] < mean * 0.85 && gray[y * W + x] < 200 ? 1 : 0;
+          }
+        }
+        return bin;
+      };
+
+      // Skew: the angle (±6°) whose row profile is "spikiest" – text lines and ruled lines
+      // line up with the rows. Measured on a 1/4-size copy for speed.
+      const estimateSkew = (bin) => {
+        const f = 4, w = Math.floor(W / f), h = Math.floor(H / f);
+        const pts = [];
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (bin[(y * f) * W + x * f]) pts.push(x - w / 2, y - h / 2);
+        if (pts.length < 200) return 0;
+        const score = (a) => {
+          const sin = Math.sin(a), cos = Math.cos(a), rows = new Float64Array(h * 2);
+          for (let i = 0; i < pts.length; i += 2) {
+            const yy = Math.round(pts[i + 1] * cos - pts[i] * sin + h);
+            if (yy >= 0 && yy < rows.length) rows[yy]++;
+          }
+          let s = 0;
+          for (let i = 0; i < rows.length; i++) s += rows[i] * rows[i];
+          return s;
+        };
+        let best = 0, bestScore = -1;
+        for (let deg = -6; deg <= 6; deg += 0.5) { const s = score(deg * Math.PI / 180); if (s > bestScore) { bestScore = s; best = deg; } }
+        for (let deg = best - 0.4; deg <= best + 0.4; deg += 0.1) { const s = score(deg * Math.PI / 180); if (s > bestScore) { bestScore = s; best = deg; } }
+        return -best * Math.PI / 180;
+      };
+
+      let bin = binarize(toGray(draw(0)));
+      const skew = estimateSkew(bin);
+      if (Math.abs(skew) > 0.002) bin = binarize(toGray(draw(skew)));
+
+      // Erase ruled lines: ink runs much longer than any letter (allowing 2-px breaks).
+      const minH = Math.round(W / 22), minV = Math.round(W / 28);
+      const erase = new Uint8Array(W * H);
+      for (let y = 0; y < H; y++) {
+        let start = -1, gap = 0;
+        for (let x = 0; x <= W; x++) {
+          const ink = x < W && bin[y * W + x];
+          if (ink) { if (start < 0) start = x; gap = 0; }
+          else if (start >= 0 && ++gap > 2) {
+            const end = x - gap;
+            if (end - start + 1 >= minH) for (let k = start; k <= end; k++) erase[y * W + k] = 1;
+            start = -1; gap = 0;
+          }
+        }
+      }
+      for (let x = 0; x < W; x++) {
+        let start = -1, gap = 0;
+        for (let y = 0; y <= H; y++) {
+          const ink = y < H && bin[y * W + x];
+          if (ink) { if (start < 0) start = y; gap = 0; }
+          else if (start >= 0 && ++gap > 2) {
+            const end = y - gap;
+            if (end - start + 1 >= minV) for (let k = start; k <= end; k++) erase[k * W + x] = 1;
+            start = -1; gap = 0;
+          }
+        }
+      }
+      const out = new ImageData(W, H);
+      for (let i = 0, p = 0; i < bin.length; i++, p += 4) {
+        const v = bin[i] && !erase[i] ? 0 : 255;
+        out.data[p] = out.data[p + 1] = out.data[p + 2] = v;
+        out.data[p + 3] = 255;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      canvas.getContext('2d').putImageData(out, 0, 0);
+      return { canvas, skewDeg: -skew * 180 / Math.PI };
     }
 
     // =========================================================================

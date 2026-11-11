@@ -84,6 +84,39 @@ Tap **Start count** on the dashboard, give the count a name (e.g. "Year-end coun
 - **Finish** shows which items were missed and writes a summary into Change History.
 - The count survives closing the app and is included in JSON backups.
 
+## Scanning a printed ICS
+
+Encode an approved **Inventory Custodian Slip** (COA Appendix 59) from a photo instead of
+typing it. Tap **Scan ICS (Inventory Custodian Slip)** in *Quick tools* or in the
+*Property Tags* panel, then **Take photo of ICS**.
+
+- The photo is cleaned up on the phone or tablet (straightened, adaptive black and
+  white, table lines removed) and read with [Tesseract.js](https://github.com/naptha/tesseract.js).
+  Nothing is uploaded. The first scan downloads the text reader (about 7 MB); after
+  that, scanning works offline.
+- You get an editable review before anything is saved:
+  - **Header:** ICS No., date received, received by (accountable person) and position.
+  - **Each line:** quantity, unit, unit cost, description, inventory item no. and
+    estimated useful life.
+  - **Save to:** the suggested catalog item, or a new custom item.
+- Quantities are cross-checked with the money columns (total cost ÷ unit cost).
+  Look-alike letters in item-number prefixes (SJNHS / SINHS) are corrected against your
+  property-number prefix. Each line notes anything that was guessed or corrected.
+- **Save** adds the quantities to stock (untick for items already counted that the ICS
+  only assigns). It also creates one property record per unit with the inventory item
+  no. (ranges like `SJNHS-2026-0101 to 0105` are expanded), the ICS No. and date, the
+  useful life, and the person who received it. Units without an item no. get the next
+  numbers in your series. Items on an ICS are marked ICS/PAR (equipment).
+- Re-scanning an ICS No. that was already encoded shows a warning, and inventory item
+  numbers that already exist block saving. One Change History entry is written, with
+  **Undo** right after saving.
+- No camera reading? Under **Paste text instead**, paste text copied with Google Lens
+  (*Select text › Copy*), Samsung *Extract text*, or the cells of the ICS Excel file.
+- Typed or printed ICS work well. Handwriting is not read reliably. Lay the page flat
+  in good light and fill the screen with it.
+
+The property register CSV now also lists ICS No., ICS date and estimated useful life.
+
 ## Equipment vs. consumable classification
 
 Each item is automatically classified as **Equipment (ICS/PAR)** or **Consumable (RIS)** by
