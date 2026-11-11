@@ -3,9 +3,11 @@
  * - Precaches the whole app on first visit, so it opens with no internet.
  * - Page (index.html): network first (3 s timeout), falls back to the cached copy.
  * - Assets (CSS, fonts, icons): cache first – they are versioned via CACHE below.
+ * - Text recognition for "Scan ICS" (assets/ocr/, ~7 MB) is not precached; it is kept
+ *   in its own cache the first time it is used, so app updates don't download it again.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
-const CACHE = 'custodianpro-9af5e05ee696';
+const CACHE = 'custodianpro-b01a8e997095';
 const PRECACHE_URLS = [
     "./",
     "./index.html",
@@ -24,10 +26,13 @@ const PRECACHE_URLS = [
     "./assets/icons/icon-512.png",
     "./assets/icons/icon.svg",
     "./assets/icons/maskable-512.png",
+    "./assets/vendor/fflate.LICENSE.txt",
+    "./assets/vendor/fflate.js",
     "./assets/vendor/jsQR.LICENSE.txt",
     "./assets/vendor/jsQR.js",
     "./assets/vendor/qrcode.js"
   ];
+const OCR_CACHE = 'custodianpro-ocr-7.0.0';
 const NETWORK_TIMEOUT_MS = 3000;
 
 self.addEventListener('install', (event) => {
@@ -42,7 +47,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(
-        keys.filter((k) => k.startsWith('custodianpro-') && k !== CACHE).map((k) => caches.delete(k))
+        keys.filter((k) => k.startsWith('custodianpro-') && k !== CACHE && k !== OCR_CACHE).map((k) => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
@@ -73,7 +78,8 @@ async function handleNavigation(request) {
 }
 
 async function handleAsset(request) {
-  const cache = await caches.open(CACHE);
+  const isOcr = new URL(request.url).pathname.includes('/assets/ocr/');
+  const cache = await caches.open(isOcr ? OCR_CACHE : CACHE);
   const cached = await cache.match(request, { ignoreSearch: true });
   if (cached) return cached;
   const response = await fetch(request);

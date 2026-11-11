@@ -50,6 +50,73 @@ Open it from **Change History** in *Quick Custodian Tools*, or from the clock bu
 editor / *History* in the property-number list to see one item. You can filter by type, search,
 and **Export CSV**. The latest 3,000 changes are kept on the device and included in backups.
 
+## Importing from Excel or CSV
+
+Already keep your inventory in a spreadsheet? Tap **Import** (in *Quick tools*, or
+**Import Excel / CSV** on an empty dashboard) and choose an `.xlsx` or `.csv` file.
+
+- The first sheet is read. Title rows above the column headings are fine — the app
+  finds the header row and guesses which column is the description, quantity, item code,
+  unit, unit cost, room/location and repair/unserviceable counts. Change any of them
+  before importing. The DepEd RPCI layout works as-is (it uses *On Hand Per Count*,
+  not *Balance Per Card*).
+- Rows are matched to the APP-CSE catalog by item code, then by description (case and
+  spacing don't matter). Several rows for the same item, such as one row per room, are
+  added together. Rows that don't match can be added as custom items.
+- **Replace** sets each quantity to the number in the file; **Add to current** adds it
+  to what you already have. Quantities never go below the number of tagged property
+  units.
+- Every import makes one Change History entry, and you can **Undo** it right away.
+- The file is read on the iPad itself and is never uploaded. Old `.xls` (Excel 97-2003)
+  files aren't supported — in Excel use *Save As › Excel Workbook (.xlsx)* or *CSV*.
+- A CSV made with **Export CSV** imports straight back, so it doubles as a simple
+  spreadsheet round trip.
+
+## Physical count progress
+
+Tap **Start count** on the dashboard, give the count a name (e.g. "Year-end count
+2026"), then go around the school checking items off:
+
+- Each ledger row gets a check button. Changing an item's quantity or saving it also
+  marks it as counted.
+- The progress bar shows how many items are counted out of all items you have in
+  stock. **Not counted** filters the ledger to what's left.
+- **Finish** shows which items were missed and writes a summary into Change History.
+- The count survives closing the app and is included in JSON backups.
+
+## Scanning a printed ICS
+
+Encode an approved **Inventory Custodian Slip** (COA Appendix 59) from a photo instead of
+typing it. Tap **Scan ICS (Inventory Custodian Slip)** in *Quick tools* or in the
+*Property Tags* panel, then **Take photo of ICS**.
+
+- The photo is cleaned up on the phone or tablet (straightened, adaptive black and
+  white, table lines removed) and read with [Tesseract.js](https://github.com/naptha/tesseract.js).
+  Nothing is uploaded. The first scan downloads the text reader (about 7 MB); after
+  that, scanning works offline.
+- You get an editable review before anything is saved:
+  - **Header:** ICS No., date received, received by (accountable person) and position.
+  - **Each line:** quantity, unit, unit cost, description, inventory item no. and
+    estimated useful life.
+  - **Save to:** the suggested catalog item, or a new custom item.
+- Quantities are cross-checked with the money columns (total cost ÷ unit cost).
+  Look-alike letters in item-number prefixes (SJNHS / SINHS) are corrected against your
+  property-number prefix. Each line notes anything that was guessed or corrected.
+- **Save** adds the quantities to stock (untick for items already counted that the ICS
+  only assigns). It also creates one property record per unit with the inventory item
+  no. (ranges like `SJNHS-2026-0101 to 0105` are expanded), the ICS No. and date, the
+  useful life, and the person who received it. Units without an item no. get the next
+  numbers in your series. Items on an ICS are marked ICS/PAR (equipment).
+- Re-scanning an ICS No. that was already encoded shows a warning, and inventory item
+  numbers that already exist block saving. One Change History entry is written, with
+  **Undo** right after saving.
+- No camera reading? Under **Paste text instead**, paste text copied with Google Lens
+  (*Select text › Copy*), Samsung *Extract text*, or the cells of the ICS Excel file.
+- Typed or printed ICS work well. Handwriting is not read reliably. Lay the page flat
+  in good light and fill the screen with it.
+
+The property register CSV now also lists ICS No., ICS date and estimated useful life.
+
 ## Equipment vs. consumable classification
 
 Each item is automatically classified as **Equipment (ICS/PAR)** or **Consumable (RIS)** by
