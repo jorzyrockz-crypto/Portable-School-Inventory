@@ -4033,7 +4033,14 @@
     function recordHistory() {
       const ctx = historyContext;
       if (ctx && ctx.summary) {
-        changeHistory.push(historyEntry(ctx.summary.kind, ctx.summary.text, ctx.summary.code || null));
+        const e = historyEntry(ctx.summary.kind, ctx.summary.text, ctx.summary.code || null);
+        if (ctx.summary.track && !e.c) {
+          // Bulk saves (ICS, import) are one entry; keep the item codes for "Recently encoded".
+          const sig = st => st ? `${parseInt(st.qty, 10) || 0}|${(st.units || []).length}|${st.note || ''}` : '0|0|';
+          const touched = Object.keys(userState).filter(code => sig(historyBase[code]) !== sig(userState[code]));
+          if (touched.length) e.cs = touched.slice(0, 50);
+        }
+        changeHistory.push(e);
       } else {
         diffForHistory(historyBase, userState, ctx).forEach(addHistoryEntry);
       }
@@ -4811,7 +4818,7 @@
       localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
       rebuildCatalogList();
       const fileName = st.fileName;
-      saveStateWith({ summary: { kind: 'system', text:
+      saveStateWith({ summary: { kind: 'system', track: true, text:
         `Imported “${fileName}”: ${plural(plan.matched, 'catalog item')} updated` +
         `${plan.created ? `, ${plural(plan.created, 'custom item')} added` : ''}` +
         `${plan.skipped ? `, ${plural(plan.skipped, 'row')} skipped` : ''} (${st.mode === 'add' ? 'added to' : 'replaced'} quantities)` } });
@@ -5030,7 +5037,8 @@
           it.totalCost = Math.round(it.qty * it.unitCost * 100) / 100;
         }
         if (it.qty === null) { it.qty = 1; it.notes.push('Quantity not found – please check'); }
-        it.desc = it.desc.replace(/\s{2,}/g, ' ').replace(/^[^A-Za-z0-9(]+/, '').trim();
+        it.desc = it.desc.replace(/\s{2,}/g, ' ').replace(/^[^A-Za-z0-9(]+/, '').trim()
+          .replace(/([a-z][a-z.)]*)\s+[Il|]$/, '$1'); // table border misread as a letter
         it.itemNo = it.itemNo.replace(/\s{2,}/g, ' ').trim();
       });
 
@@ -5630,7 +5638,7 @@
       rebuildCatalogList();
       const peso = '₱' + plan.value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const label = h.icsNo ? `ICS No. ${h.icsNo}` : 'an ICS';
-      saveStateWith({ summary: { kind: 'tag', code: plan.lines.length === 1 ? plan.lines[0].code : null, text:
+      saveStateWith({ summary: { kind: 'tag', track: true, code: plan.lines.length === 1 ? plan.lines[0].code : null, text:
         `Encoded ${label}${h.date ? ` (${formatShortDate(h.date + 'T00:00:00')})` : ''}` +
         `${h.receivedBy ? ` – received by ${h.receivedBy}` : ''}: ${plural(plan.lines.length, 'line')}, ${plural(plan.units, 'item')}, ${peso}` +
         `${st.opts.addStock ? '' : ' (assigned existing stock)'}${newUnits ? ` · ${plural(newUnits, 'property record')}` : ''}` } });
@@ -5820,10 +5828,13 @@
       const list = [];
       for (let i = changeHistory.length - 1; i >= 0 && list.length < limit; i--) {
         const e = changeHistory[i];
-        if (!e.c || seen.has(e.c) || !['count', 'edit', 'tag', 'condition'].includes(e.k)) continue;
-        seen.add(e.c);
-        const item = items.find(it => it.code === e.c);
-        if (item) list.push({ item, t: e.t });
+        const codes = e.cs || (e.c && ['count', 'edit', 'tag', 'condition'].includes(e.k) ? [e.c] : []);
+        for (const code of codes) {
+          if (seen.has(code) || list.length >= limit) continue;
+          seen.add(code);
+          const item = items.find(it => it.code === code);
+          if (item && item.qty > 0) list.push({ item, t: e.t });
+        }
       }
       return list;
     }
