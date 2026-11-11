@@ -2839,6 +2839,8 @@
       renderItems();
       renderDashboard();
       closeCustomItemModal();
+      showToast(`Added ${name.length > 34 ? name.slice(0, 32) + '…' : name}: ${qty} ${unit}`, 'ph-plus-circle');
+      if (activeMainView === 'HOME') clearHomeSearch(true); // same "save & next" flow as the encode sheet
     }
 
     // SUMMARY MODAL
@@ -5925,6 +5927,8 @@
       const query = homeQuery();
       openCustomItemModal();
       document.getElementById('customName').value = query.toUpperCase();
+      const qty = document.getElementById('customQty');
+      setTimeout(() => { qty.focus(); qty.select(); }, 60); // name is filled in; quantity is next
     }
 
     function homeCountAction() {
@@ -5943,7 +5947,7 @@
     // ---- Encode sheet ---------------------------------------------------------
     function encodeRoomChoices() {
       const counts = new Map();
-      items.forEach(i => { if (i.qty > 0 && i.note && i.note.length <= 40) counts.set(i.note, (counts.get(i.note) || 0) + 1); });
+      items.forEach(i => { if (i.qty > 0 && i.note && i.note.length <= 40 && !/[,;]/.test(i.note)) counts.set(i.note, (counts.get(i.note) || 0) + 1); });
       const list = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([room]) => room).slice(0, 6);
       ['Central Stockroom', 'Faculty Room', 'ICT / Computer Lab', 'Principal / Admin Office', 'School Library', 'School Clinic']
         .forEach(room => { if (list.length < 6 && !list.includes(room)) list.push(room); });
@@ -5956,9 +5960,10 @@
       encodeCode = code;
       document.getElementById('encCode').textContent = item.code;
       document.getElementById('encName').textContent = item.name;
-      document.getElementById('encNow').textContent = item.qty > 0
+      const tagged = getUnits(code).length;
+      document.getElementById('encNow').textContent = (item.qty > 0
         ? `On hand now: ${item.qty} ${item.unit}${item.note ? ` · ${item.note}` : ''}`
-        : 'Not in your inventory yet';
+        : 'Not in your inventory yet') + (tagged ? ` · ${tagged} with property numbers` : '');
       document.getElementById('encUnit').textContent = item.unit;
       const qty = document.getElementById('encQty');
       qty.value = item.qty > 0 ? item.qty : '';
@@ -6006,6 +6011,16 @@
       const raw = document.getElementById('encQty').value.trim();
       const qty = raw === '' ? item.qty : Math.max(0, parseInt(raw, 10) || 0);
       const note = document.getElementById('encNote').value.trim();
+      const tagged = getUnits(item.code).length;
+      if (qty < tagged) {
+        // Keep the sheet open: saving would silently put the count back up to the tagged units.
+        showToast(`${tagged === 1 ? '1 unit has a property number' : `${tagged} units have property numbers`} – the count can't be lower. Remove units under Property Numbers first.`, 'ph-tag');
+        const input = document.getElementById('encQty');
+        input.value = tagged;
+        input.focus();
+        input.select();
+        return;
+      }
       const prev = { qty: item.qty, note: item.note || '' };
       closeEncodeSheet();
       if (qty !== prev.qty || note !== prev.note) {

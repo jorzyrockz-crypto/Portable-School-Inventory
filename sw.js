@@ -7,7 +7,7 @@
  *   in its own cache the first time it is used, so app updates don't download it again.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
-const CACHE = 'custodianpro-5d27cc40bfa0';
+const CACHE = 'custodianpro-4025a85ec8f4';
 const PRECACHE_URLS = [
     "./",
     "./index.html",
