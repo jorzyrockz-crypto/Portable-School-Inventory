@@ -5,6 +5,30 @@ optimised for iPad/tablet use. It is a single static page (`index.html`) served 
 
 https://jorzyrockz-crypto.github.io/Portable-School-Inventory/
 
+## Home screen: encode without distractions
+
+The app opens on **Home**, which only asks one thing: *What are you encoding?*
+
+1. **Type a few letters** of the item name or its stock code. The catalog and your custom items are searched together.
+2. **Tap a result**, or press Enter for the top one. A sheet slides up with a big quantity stepper, the unit and one-tap room chips. The chips are rooms you already use plus common school rooms.
+3. **Save & next** saves the item, shows an **Undo** toast and clears the search, ready for the next item. Pressing Enter in the quantity field also saves. **More details** opens the full item editor for price, condition, units and so on.
+
+If nothing matches, the last row offers to add what you typed as a new custom item.
+
+When the search box is empty, Home shows:
+- three big tiles: **Scan ICS**, **Import** and **Count**. While a count is running, the Count tile shows a progress bar. A **Scan tag** tile appears once you have tagged units.
+- your last 5 **recently encoded** items, which you can tap to edit.
+- one status line with the number of items, total value and last backup. It links to Reports. The backup reminder appears here only when a backup is overdue.
+
+Everything else moved out of the way:
+
+| Where | What |
+| --- | --- |
+| **My Items** tab | your in-stock ledger, plus the physical count checklist while counting |
+| **Catalog** tab | the full APP-CSE catalog with part tabs and category filters |
+| **Reports** tab | valuation, condition, property tags, categories, rooms, print and APP-CSE summary |
+| **☰ More** menu | add custom item, import, scan ICS / QR, print, CSV exports, school info, backup, restore, change history, sample data |
+
 ## Equipment condition tracking
 
 For equipment (ICS/PAR) items, the item editor records how many on-hand units are
