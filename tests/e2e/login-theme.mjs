@@ -98,8 +98,54 @@ try {
   await a.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
 
   out('6 sign out → back to the sign-in screen, same person can sign in again');
-  await ev(a, () => openMoreMenu());
+  // The app's own dialog, tapped for real (no browser "… says" box).
+  const dlgOpen = () => ev(a, () => !document.getElementById('appDialog').classList.contains('hidden'));
+  await ev(a, () => { window.__dialogUI = true; openMoreMenu(); });
   await a.click('#moreSignOut');
+  await until(a, () => !document.getElementById('appDialog').classList.contains('hidden'), 'sign-out dialog');
+  const dlg = await ev(a, () => ({ title: appDialogTitle.innerText, msg: appDialogMsg.innerText, ok: appDialogOk.innerText, cancel: appDialogCancel.innerText,
+    z: +getComputedStyle(document.getElementById('appDialog')).zIndex, focus: document.activeElement && document.activeElement.id }));
+  check(dlg.title === 'Sign out of CustodianPro?' && /stays on this phone/.test(dlg.msg) && dlg.ok === 'Sign out' && dlg.cancel === 'Cancel', 'in-app sign-out dialog: title, explanation, Sign out / Cancel');
+  check(dlg.z > 70, 'dialog sits above sheets and toasts');
+  await sleep(250);
+  check(await ev(a, () => document.activeElement.id) === 'appDialogOk', 'Sign out button has focus (keyboard: Enter)');
+  await a.screenshot({ path: `${SHOTS}/dialog-signout.png` });
+  await a.mouse.click(8, 8); // outside the card
+  await sleep(150);
+  check(await dlgOpen(), 'tapping outside does not close it');
+  await a.click('#appDialogCancel');
+  await sleep(150);
+  check(!(await dlgOpen()) && !(await gated(a)) && await ev(a, () => !!cloud.user), 'Cancel: still signed in');
+  await ev(a, () => { setTheme('dark'); openMoreMenu(); });
+  await a.click('#moreSignOut');
+  await until(a, () => !document.getElementById('appDialog').classList.contains('hidden'), 'dialog again');
+  await sleep(250);
+  check(await ev(a, () => getComputedStyle(appDialogCard).backgroundColor) !== 'rgb(255, 255, 255)', 'dark dialog in dark mode');
+  await a.screenshot({ path: `${SHOTS}/dialog-signout-dark.png` });
+  await a.keyboard.press('Escape');
+  await sleep(150);
+  check(!(await dlgOpen()) && !(await gated(a)), 'Escape cancels');
+  // Prompt with a field, and two at once wait their turn.
+  const answers = await ev(a, async () => {
+    const p1 = appPrompt('Teachers will see this.', 'San Jose NHS', { title: 'Name of your school' });
+    const p2 = appConfirm('Second question', { title: 'Second?' });
+    await new Promise(r => setTimeout(r, 120));
+    const first = appDialogTitle.innerText, val = appDialogInput.value;
+    appDialogInput.value = 'San Jose National High School';
+    appDialogInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    const r1 = await p1;
+    await new Promise(r => setTimeout(r, 60));
+    const second = appDialogTitle.innerText;
+    closeDialog(false);
+    return { first, val, r1, second, r2: await p2, hidden: document.getElementById('appDialog').classList.contains('hidden') };
+  });
+  check(answers.first === 'Name of your school' && answers.val === 'San Jose NHS' && answers.r1 === 'San Jose National High School', 'prompt: filled-in value, Enter answers');
+  check(answers.second === 'Second?' && answers.r2 === false && answers.hidden, 'a second dialog waits for the first, then closes');
+  await ev(a, () => { setTheme('system'); openMoreMenu(); });
+  await a.click('#moreSignOut');
+  await until(a, () => !document.getElementById('appDialog').classList.contains('hidden'), 'dialog for real');
+  await a.click('#appDialogOk');
+  await ev(a, () => { window.__dialogUI = false; });
   await until(a, () => document.documentElement.classList.contains('gated'), 'signed out');
   check(await gated(a), 'sign-in screen after signing out');
   check(await gateStepNow(a) === 'custodian', 'opens on the custodian form');
@@ -154,7 +200,12 @@ try {
   await d.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
   await d.goto(BASE_URL, { waitUntil: 'networkidle0' });
   check(await isDark(d), 'dark phone/computer → dark from the start');
-  check(await ev(d, () => getComputedStyle(document.querySelector('.gate-art')).backgroundImage.includes('login-landscape.webp')), 'landscape art on a wide screen');
+  check(await ev(d, () => getComputedStyle(document.querySelector('.gate-art')).backgroundImage.includes('login-landscape-dark.webp')), 'landscape art on a wide screen (night version in dark mode)');
+  await d.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+  await sleep(300);
+  check(await ev(d, () => getComputedStyle(document.querySelector('.gate-art')).backgroundImage.includes('login-landscape.webp')), 'day version in light mode');
+  await d.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+  await sleep(300);
   await d.screenshot({ path: `${SHOTS}/login-landscape-dark.png` });
   await d.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
   await until(d, () => !document.documentElement.classList.contains('dark'), 'light');

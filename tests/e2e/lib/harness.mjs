@@ -27,7 +27,7 @@ const browsers = [];
 export const errors = [];
 
 // A phone: its own browser (separate storage), Firebase stand-in wired to `backend`.
-export async function openPhone(name, backend, { width = 390, height = 844, dialogs = [] } = {}) {
+export async function openPhone(name, backend, { width = 390, height = 844, dialogs = [], tour = false } = {}) {
   const executablePath = process.env.CHROME_PATH || await chromium.executablePath();
   const browser = await puppeteer.launch({ executablePath, args: process.env.CHROME_PATH ? ['--no-sandbox'] : chromium.args, headless: true });
   browsers.push(browser);
@@ -44,8 +44,18 @@ export async function openPhone(name, backend, { width = 390, height = 844, dial
   });
   page.on('pageerror', e => errors.push(`${name}: ${e}`));
   page.on('console', m => { if (m.type() === 'error') errors.push(`${name}: ${m.text()}`); });
-  // Prompts get dialogs.prompt; confirms get dialogs.confirm (default true). All are logged.
+  // The app's own dialogs (appAlert / appConfirm / appPrompt) are answered here instead of tapped:
+  // prompts get dialogs.prompt, confirms get dialogs.confirm (default true). All are logged.
+  // A suite that wants to tap the real dialog sets window.__dialogUI = true in the page.
+  await page.exposeFunction('__answerDialog', (kind, message) => {
+    dialogs.push(`${kind}: ${String(message).replace(/\n+/g, ' ').slice(0, 160)}`);
+    if (kind === 'prompt') return dialogs.prompt || '';
+    if (kind === 'confirm') return dialogs.confirm !== false;
+    return true;
+  });
+  // A native browser box would be a regression: logged as an error, then answered the same way.
   page.on('dialog', async d => {
+    errors.push(`${name}: native ${d.type()}() box: ${d.message().slice(0, 80)}`);
     dialogs.push(`${d.type()}: ${d.message().slice(0, 80)}`);
     if (d.type() === 'prompt') await d.accept(dialogs.prompt || '');
     else if (d.type() === 'confirm' && dialogs.confirm === false) await d.dismiss();
@@ -59,6 +69,9 @@ export async function openPhone(name, backend, { width = 390, height = 844, dial
     HTMLAnchorElement.prototype.click = function () { if (this.download) window.__downloads.push(this.download); };
     URL.createObjectURL = b => orig.call(URL, b);
   });
+  // The welcome tour (first custodian sign-in) would cover the screen in every suite; only
+  // suites that test it pass { tour: true }.
+  if (!tour) await page.evaluateOnNewDocument(() => { try { if (!localStorage.getItem('cp_welcome_tour_v1')) localStorage.setItem('cp_welcome_tour_v1', 'test'); } catch (e) {} });
   page.dialogs = dialogs;
   return page;
 }

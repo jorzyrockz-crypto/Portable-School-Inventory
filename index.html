@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#122e76">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="332616039419">
+  <meta name="app-version" content="9a6e29f41773">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="Effortless classroom and equipment tracking for school property custodians and teachers: QR property tags, physical count, RIS/ICS releases, supply requests and Appendix 60 purchase requests. Free, works offline on phones and tablets.">
   <meta name="author" content="CustodianPro">
@@ -149,7 +149,34 @@
       @page { margin: 12mm; }
       .acct-page { break-after: page; page-break-after: always; }
       .acct-page:last-child { break-after: auto; page-break-after: auto; }
+      @page wide { size: A4 landscape; margin: 10mm; }
+      .pr-wide { page: wide; }
+      .pr-table tr { break-inside: avoid; }
     }
+    @keyframes dlgIn { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
+    @keyframes dlgNudge { 0%, 100% { transform: none; } 30% { transform: scale(1.02); } 60% { transform: scale(0.99); } }
+    #appDialog:not(.hidden) .dlg-card { animation: dlgIn 0.18s ease-out; }
+    #appDialog .dlg-card.dlg-nudge { animation: dlgNudge 0.25s ease-in-out; }
+    @media (prefers-reduced-motion: reduce) { #appDialog .dlg-card { animation: none !important; } }
+    .pr-form.pr-wide { max-width: 277mm; font-size: 9.5pt; }
+    .pr-wide .pr-table td, .pr-wide .pr-table th { padding: 2pt 3pt; }
+    .pr-dense .pr-table th { font-size: 7.5pt; } .pr-dense .pr-table td { font-size: 8.5pt; } .pr-dense .pr-table td.pr-sn { font-size: 7.5pt; } .pr-dense .pr-table th { font-size: 7pt; padding: 2pt 1.5pt; hyphens: manual; overflow-wrap: normal; }
+    /* Invite poster (A4, faculty room) */
+    .poster { font-family: Inter, Arial, Helvetica, sans-serif; color: #0f172a; max-width: 180mm; margin: 0 auto; text-align: center; padding-top: 6mm; }
+    .poster-kicker { font-size: 13pt; font-weight: 700; color: #4f46e5; text-transform: uppercase; letter-spacing: 1.5pt; margin: 0; }
+    .poster-school { font-size: 30pt; font-weight: 800; line-height: 1.1; margin: 2mm 0 4mm; color: #122e76; }
+    .poster-lead { font-size: 14pt; margin: 0 auto 6mm; max-width: 150mm; color: #334155; }
+    .poster-qr { width: 105mm; height: 105mm; margin: 0 auto; border: 2px solid #122e76; border-radius: 8mm; padding: 4mm; box-sizing: border-box; }
+    .poster-qr svg { width: 100%; height: 100%; display: block; }
+    .poster-scan { font-size: 15pt; font-weight: 800; margin: 4mm 0 6mm; }
+    .poster-steps { list-style: none; padding: 0; margin: 0 auto 6mm; max-width: 150mm; text-align: left; }
+    .poster-steps li { display: flex; align-items: center; gap: 4mm; font-size: 13pt; margin-bottom: 3mm; }
+    .poster-steps b { flex: none; width: 9mm; height: 9mm; border-radius: 50%; background: #122e76; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; }
+    .poster-code { display: inline-flex; flex-direction: column; border: 1.5px dashed #64748b; border-radius: 4mm; padding: 2mm 8mm; }
+    .poster-code span { font-size: 9pt; text-transform: uppercase; letter-spacing: 1pt; color: #64748b; }
+    .poster-code b { font-family: 'JetBrains Mono', monospace; font-size: 16pt; }
+    .poster-link { font-family: 'JetBrains Mono', monospace; font-size: 9pt; color: #475569; margin: 3mm 0 0; word-break: break-all; }
+    .poster-foot { margin-top: 8mm; font-size: 10pt; color: #64748b; display: flex; align-items: center; justify-content: center; gap: 2mm; }
       .more-item { display: flex; width: 100%; align-items: center; gap: 0.75rem; padding: 0.7rem 0.5rem; border-radius: 0.75rem;
       font-size: 0.875rem; font-weight: 600; color: #334155; text-align: left; }
     .more-item:hover, .more-item:active { background: #f1f5f9; }
@@ -186,6 +213,10 @@
       html.dark .bg-\[\#eef3fb\] { background-color: #1b2747; }
       /* QR codes must stay dark-on-white to scan */
       html.dark .keep-light { background-color: #fff; }
+      /* the chosen option of a switch (theme, tabs, filters) lifts clearly off its track */
+      html.dark .seg-on { background-color: #3a4a6b !important; color: #fff !important; box-shadow: 0 0 0 1px rgb(165 180 252 / 0.5), 0 2px 6px rgb(0 0 0 / 0.45) !important; }
+      html.dark .seg-on i { color: #c7d2fe; }
+      html.dark .stage-on { background-color: #1a2644 !important; border-color: #818cf8 !important; box-shadow: 0 0 0 2px rgb(129 140 248 / 0.3) !important; }
     }
 
     /* ---- Sign-in screen (school art: portrait art on tall screens, landscape on wide) ---- */
@@ -214,12 +245,14 @@
       .gate-spacer, #loginGate:not([data-step="welcome"]):not([data-step=""]) .gate-spacer { flex: 0 0 1.25rem; }
     }
     html.dark.gated #loginGate { background: #0b1220; }
-    html.dark .gate-art { filter: brightness(0.5) saturate(0.85); }
-    html.dark .gate-shade { background: linear-gradient(to bottom, rgb(11 18 32 / 0.35), rgb(11 18 32 / 0) 30%, rgb(11 18 32 / 0.75) 100%); }
+    /* night-time versions of the art (same layout, moon instead of sun) */
+    html.dark .gate-art { background-image: url(assets/brand/login-portrait-dark.webp); }
+    html.dark .gate-shade { background: linear-gradient(to bottom, rgb(11 18 32 / 0.2), rgb(11 18 32 / 0) 30%, rgb(11 18 32 / 0.7) 100%); }
     html.dark .gate-name { color: #fff; }
     html.dark .gate-tag { color: #cbd5e1; }
     html.dark .gate-back { background: rgb(18 26 43 / 0.85); color: #e2e8f0; }
     @media (orientation: landscape) {
+      html.dark .gate-art { background-image: url(assets/brand/login-landscape-dark.webp); }
       html.dark .gate-shade { background: linear-gradient(to right, rgb(11 18 32 / 0.9) 0%, rgb(11 18 32 / 0.5) 30rem, rgb(11 18 32 / 0) 42rem); }
     }
 
@@ -231,11 +264,11 @@
         background-repeat: no-repeat; background-size: 100% 100%, 100% auto; background-position: 0 0, center calc(4.5rem - 50vw);
       }
       html.dark body.page-art { --page: 11 18 32; }
-      html.dark body.page-art { background-image: linear-gradient(to bottom, rgb(var(--page) / 0.62) 0, rgb(var(--page) / 0.88) 9rem, rgb(var(--page)) 16rem), url(assets/brand/login-portrait.webp); }
+      html.dark body.page-art { background-image: linear-gradient(to bottom, rgb(var(--page) / 0.4) 0, rgb(var(--page) / 0.8) 9rem, rgb(var(--page)) 16rem), url(assets/brand/login-portrait-dark.webp); }
       @media (orientation: landscape) {
         body.page-art, html.dark body.page-art { background-position: 0 0, center calc(3.5rem - 3vw); }
         body.page-art { background-image: linear-gradient(to bottom, rgb(var(--page) / 0.3) 0, rgb(var(--page) / 0.72) 10rem, rgb(var(--page)) 19rem), url(assets/brand/login-landscape.webp); }
-        html.dark body.page-art { background-image: linear-gradient(to bottom, rgb(var(--page) / 0.62) 0, rgb(var(--page) / 0.88) 10rem, rgb(var(--page)) 19rem), url(assets/brand/login-landscape.webp); }
+        html.dark body.page-art { background-image: linear-gradient(to bottom, rgb(var(--page) / 0.4) 0, rgb(var(--page) / 0.8) 10rem, rgb(var(--page)) 19rem), url(assets/brand/login-landscape-dark.webp); }
       }
       /* the header turns to frosted glass so the art shows through */
       body.page-art > header.safe-top { background-color: rgb(255 255 255 / 0.62); }
@@ -327,7 +360,7 @@
 
         <!-- Segmented View Filter -->
         <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200/70 shrink-0">
-          <button onclick="setPartFilter('ALL')" id="tab-ALL" class="part-tab px-3 py-1.5 rounded-lg text-xs font-bold transition bg-white text-slate-900 shadow-sm">
+          <button onclick="setPartFilter('ALL')" id="tab-ALL" class="part-tab px-3 py-1.5 rounded-lg text-xs font-bold transition bg-white text-slate-900 shadow-sm seg-on">
             All (<span id="count-ALL">0</span>)
           </button>
           <button onclick="setPartFilter('PART1')" id="tab-PART1" class="part-tab px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600">
@@ -654,6 +687,16 @@
       </div>
     </div>
 
+    <!-- GOVERNMENT FORMS (count report, unserviceable, transfers, slips) -->
+    <button id="coaPanel" onclick="openCoa()" class="w-full text-left bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-brand-300 shadow-sm flex items-center gap-3 transition">
+      <div class="w-8 h-8 shrink-0 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-stamp text-lg"></i></div>
+      <div class="min-w-0 flex-1">
+        <h3 class="font-extrabold text-sm text-slate-900 leading-tight">Government forms</h3>
+        <p class="text-[11px] text-slate-500">Physical count (RPCPPE / RPCSP) · unserviceable (IIRUP / IIRUSP) · transfers (PTR / ITR) · slips</p>
+      </div>
+      <i class="ph-bold ph-caret-right text-slate-400"></i>
+    </button>
+
     <!-- MIDDLE ROW: Stock Health & Storage Location Distribution -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       
@@ -744,7 +787,7 @@
 
         <!-- Ledger Filter Tabs -->
         <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar bg-slate-100 p-1 rounded-xl border border-slate-200/70">
-          <button onclick="setLedgerFilter('ALL')" id="ledgerTab-ALL" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition bg-white text-slate-900 shadow-sm">
+          <button onclick="setLedgerFilter('ALL')" id="ledgerTab-ALL" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition bg-white text-slate-900 shadow-sm seg-on">
             All In-Stock
           </button>
           <button onclick="setLedgerFilter('EQUIPMENT')" id="ledgerTab-EQUIPMENT" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-slate-600">
@@ -970,6 +1013,29 @@
   <section id="printPrSection" class="print-only"></section>
 
   <!-- TOAST (status messages, e.g. "ready to work offline") -->
+  <!-- In-app dialog: replaces the browser's alert / confirm / prompt boxes ("… says") -->
+  <div id="appDialog" class="hidden fixed inset-0 z-[80] bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4 no-print" onkeydown="dialogKey(event)" onclick="if (event.target === this) dialogNudge()">
+    <div id="appDialogCard" role="alertdialog" aria-modal="true" aria-labelledby="appDialogTitle" aria-describedby="appDialogMsg" class="dlg-card w-full max-w-sm max-h-[85vh] overflow-y-auto bg-white rounded-3xl shadow-2xl p-5 mb-[env(safe-area-inset-bottom)]">
+      <div class="flex items-start gap-3">
+        <div id="appDialogIcon" class="w-11 h-11 shrink-0 rounded-2xl flex items-center justify-center bg-brand-50 text-brand-600"><i class="ph-bold ph-question text-2xl"></i></div>
+        <div class="min-w-0 flex-1 pt-0.5">
+          <h2 id="appDialogTitle" class="text-base font-extrabold text-slate-900 leading-snug"></h2>
+          <p id="appDialogMsg" class="mt-1 text-sm text-slate-600 leading-relaxed whitespace-pre-line break-words"></p>
+        </div>
+      </div>
+      <div id="appDialogField" class="hidden mt-4">
+        <label id="appDialogLabel" for="appDialogInput" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1"></label>
+        <input id="appDialogInput" type="text" autocomplete="off" class="w-full h-11 px-3 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none">
+        <textarea id="appDialogArea" rows="3" class="hidden w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none resize-none"></textarea>
+        <p id="appDialogHint" class="hidden mt-1 text-xs font-semibold text-rose-600"></p>
+      </div>
+      <div class="mt-5 flex gap-2 sm:justify-end">
+        <button id="appDialogCancel" onclick="closeDialog(false)" class="flex-1 sm:flex-none h-11 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 transition">Cancel</button>
+        <button id="appDialogOk" onclick="closeDialog(true)" class="flex-1 sm:flex-none h-11 px-5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold shadow-sm transition">OK</button>
+      </div>
+    </div>
+  </div>
+
   <div id="appToast" role="status" aria-live="polite" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-[70] items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-2xl no-print">
     <i id="appToastIcon" class="ph-bold ph-check-circle text-lg text-emerald-400"></i>
     <span id="appToastText"></span>
@@ -1022,6 +1088,7 @@
           <button onclick="closeMoreMenu(); openSummaryModal()" class="more-item"><i class="ph-bold ph-receipt text-brand-600"></i> APP-CSE summary</button>
           <button id="moreReqItem" onclick="closeMoreMenu(); openRequestsView()" class="more-item"><i class="ph-bold ph-tray text-amber-600"></i> Supply requests &amp; purchase requests</button>
           <button onclick="closeMoreMenu(); openTeachersView()" class="more-item"><i class="ph-bold ph-users-three text-teal-600"></i> Released to teachers</button>
+          <button id="moreCoaItem" onclick="openCoa()" class="more-item"><i class="ph-bold ph-stamp text-brand-600"></i> Government forms <span class="ml-auto text-[10px] font-bold text-slate-400">RPCPPE · PTR · IIRUP</span></button>
           <button onclick="closeMoreMenu(); printReport()" class="more-item"><i class="ph-bold ph-printer text-slate-600"></i> Print report</button>
           <button onclick="closeMoreMenu(); exportCSV()" class="more-item"><i class="ph-bold ph-download-simple text-emerald-600"></i> Export inventory (CSV)</button>
           <button onclick="closeMoreMenu(); exportRegisterCSV()" class="more-item"><i class="ph-bold ph-file-csv text-emerald-600"></i> Property register (CSV)</button>
@@ -1039,6 +1106,7 @@
           <button onclick="closeMoreMenu(); document.getElementById('restoreFileInput').click()" class="more-item"><i class="ph-bold ph-upload-simple text-amber-600"></i> Restore a backup</button>
           <button onclick="closeMoreMenu(); openHistory()" class="more-item"><i class="ph-bold ph-list-magnifying-glass text-brand-600"></i> Change history</button>
           <button onclick="closeMoreMenu(); loadSampleInventory()" class="more-item"><i class="ph-bold ph-magic-wand text-slate-500"></i> Load sample data</button>
+          <button id="moreTourItem" onclick="openTour()" class="more-item"><i class="ph-bold ph-signpost text-teal-600"></i> Welcome tour</button>
           <button id="moreAboutItem" onclick="closeMoreMenu(); openAbout()" class="more-item"><i class="ph-bold ph-info text-brand-600"></i> About &amp; what’s new <span id="moreUpdateDot" class="hidden ml-auto text-[10px] font-extrabold uppercase tracking-wider text-white bg-amber-500 rounded-full px-2 py-0.5">Update</span></button>
           <p id="backupStatusLine" class="px-2 pt-2 text-[11px] text-slate-500 flex items-center gap-1.5">
             <i class="ph-bold ph-clock-counter-clockwise"></i>
@@ -1195,7 +1263,7 @@
       <div class="px-5 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-slate-100">
         <div class="min-w-0">
           <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2"><i class="ph-bold ph-hand-arrow-up text-emerald-600"></i> Release to teacher</h3>
-          <p class="text-xs text-slate-500">Supplies on a RIS (Appendix 63) · equipment on an ICS (Appendix 59)</p>
+          <p class="text-xs text-slate-500">Supplies on a RIS · equipment on an ICS, or a PAR from ₱50,000</p>
         </div>
         <button onclick="closeRelease()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
@@ -1231,6 +1299,48 @@
         </div>
       </div>
       <div id="relFoot" class="px-5 py-3 border-t border-slate-100 flex items-center gap-2 safe-pad"></div>
+    </div>
+  </div>
+
+  <!-- TRANSFER (PTR / ITR) -->
+  <div id="xferModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print">
+    <div class="bg-white w-full sm:max-w-xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[96vh] flex flex-col">
+      <div class="px-5 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-slate-100">
+        <div class="min-w-0">
+          <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2"><i class="ph-bold ph-arrows-left-right text-brand-600"></i> Transfer property</h3>
+          <p class="text-xs text-slate-500">To another teacher or room · ITR below ₱50,000, PTR from ₱50,000</p>
+        </div>
+        <button onclick="closeTransfer()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="xferBody" class="px-5 py-4 space-y-4 overflow-y-auto"></div>
+      <div id="xferFoot" class="px-5 py-3 border-t border-slate-100 flex items-center gap-2 safe-pad"></div>
+    </div>
+  </div>
+
+  <!-- GOVERNMENT FORMS (count report, unserviceable, slips) -->
+  <div id="coaModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeCoa()">
+    <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[96vh] flex flex-col">
+      <div class="px-5 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-slate-100">
+        <div class="min-w-0">
+          <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2"><i class="ph-bold ph-stamp text-brand-600"></i> <span id="coaTitle">Government forms</span></h3>
+          <p class="text-xs text-slate-500">COA / DepEd forms · filled in from your records, printed on A4</p>
+        </div>
+        <button onclick="closeCoa()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="coaBody" class="px-5 py-4 space-y-3 overflow-y-auto"></div>
+      <div id="coaFoot" class="hidden px-5 py-3 border-t border-slate-100 flex items-center gap-2 safe-pad"></div>
+    </div>
+  </div>
+
+  <!-- WELCOME TOUR (first custodian sign-in) -->
+  <div id="tourModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[96vh] flex flex-col">
+      <div class="px-5 pt-4 flex items-center justify-between gap-3">
+        <div id="tourDots" class="flex items-center gap-1.5" aria-hidden="true"></div>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Getting started</span>
+      </div>
+      <div id="tourBody" class="px-5 py-4 space-y-4 overflow-y-auto"></div>
+      <div id="tourFoot" class="px-5 py-3 border-t border-slate-100 flex items-center gap-2 safe-pad"></div>
     </div>
   </div>
 
@@ -1284,6 +1394,7 @@
         <button onclick="copyInvite()" class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-copy"></i> Copy link</button>
         <button onclick="shareInvite()" class="h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-share-network"></i> Share</button>
       </div>
+      <button id="invitePoster" onclick="printInvitePoster()" class="w-full h-11 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print a poster for the faculty room</button>
       <p class="text-[11px] text-slate-400 text-center">Paste it in your faculty group chat. Teachers only see their own requests; you review every one.</p>
     </div>
   </div>
@@ -2648,11 +2759,11 @@
     function setLedgerFilter(filter) {
       ledgerFilter = filter;
       document.querySelectorAll('.ledger-tab').forEach(btn => {
-        btn.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+        btn.classList.remove('bg-white', 'text-slate-900', 'shadow-sm', 'seg-on');
       });
       const activeBtn = document.getElementById(`ledgerTab-${filter}`);
       if (activeBtn) {
-        activeBtn.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+        activeBtn.classList.add('bg-white', 'text-slate-900', 'shadow-sm', 'seg-on');
       }
       renderDashboardLedger();
     }
@@ -2830,9 +2941,9 @@
     // =========================================================================
     // 6. SAMPLE SCHOOL INVENTORY LOADER (FOR INSTANT DASHBOARD DEMO)
     // =========================================================================
-    function loadSampleInventory() {
+    async function loadSampleInventory() {
       const hasExisting = items.some(i => i.qty > 0);
-      if (hasExisting && !confirm("This will load sample school inventory counts so you can preview the dashboard. Continue?")) {
+      if (hasExisting && !await appConfirm("This will load sample school inventory counts so you can preview the dashboard.", { title: 'Load sample data?', ok: 'Load sample', tone: 'warn' })) {
         return;
       }
 
@@ -3174,11 +3285,11 @@
     function setPartFilter(part) {
       filterPart = part;
       document.querySelectorAll('.part-tab').forEach(btn => {
-        btn.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+        btn.classList.remove('bg-white', 'text-slate-900', 'shadow-sm', 'seg-on');
       });
       const activeBtn = document.getElementById(`tab-${part}`);
       if (activeBtn) {
-        activeBtn.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+        activeBtn.classList.add('bg-white', 'text-slate-900', 'shadow-sm', 'seg-on');
       }
       renderItems();
     }
@@ -3198,10 +3309,10 @@
       renderItems();
     }
 
-    function confirmResetAll() {
+    async function confirmResetAll() {
       const tagCount = allTaggedUnits().length;
       const tagWarning = tagCount ? ` All ${plural(tagCount, 'property number')} will also be removed.` : '';
-      if (confirm(`Are you sure you want to reset all inventory quantities to 0? Your room notes and custom prices will be kept.${tagWarning}`)) {
+      if (await appConfirm(`Every quantity goes back to 0. Your room notes and custom prices are kept.${tagWarning}`, { title: 'Reset all quantities?', ok: 'Reset to 0', tone: 'danger', focusCancel: true })) {
         items.forEach(item => {
           item.qty = 0;
           item.repair = 0;
@@ -3408,7 +3519,7 @@
     function saveCustomItem() {
       const name = document.getElementById('customName').value.trim().toUpperCase();
       if (!name) {
-        alert("Please enter an item description.");
+        appAlert("Please enter an item description.");
         return;
       }
       const unit = document.getElementById('customUnit').value.trim() || 'unit';
@@ -3547,7 +3658,7 @@
     function exportCSV() {
       const activeItems = items.filter(i => i.qty > 0);
       if (activeItems.length === 0) {
-        alert("Please add quantities to at least one item before exporting.");
+        appAlert("Please add quantities to at least one item before exporting.");
         return;
       }
 
@@ -3611,18 +3722,18 @@
       event.target.value = '';
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         let data;
         try {
           data = JSON.parse(e.target.result);
         } catch (err) {
-          alert("This file is not a valid backup (it could not be read as JSON).");
+          appAlert("This file is not a valid backup (it could not be read as JSON).");
           return;
         }
         const isBackup = data && typeof data === 'object' && !Array.isArray(data) &&
           data.userState && typeof data.userState === 'object' && !Array.isArray(data.userState);
         if (!isBackup) {
-          alert("This file is not a CustodianPro backup. Choose a file named like CustodianPro_Backup_YYYY-MM-DD.json.");
+          appAlert("This file is not a CustodianPro backup. Choose a file named like CustodianPro_Backup_YYYY-MM-DD.json.");
           return;
         }
 
@@ -3640,7 +3751,7 @@
           `${incoming.tags ? `, ${plural(incoming.tags, 'property number')}` : ''}\n\n` +
           `This REPLACES what is on this device now (${plural(current.counted, 'counted item')}, ` +
           `${plural(current.units, 'unit')}). You can undo right after restoring.`;
-        if (!confirm(message)) return;
+        if (!await appConfirm(message, { ok: 'Restore', tone: 'warn', icon: 'ph-clock-counter-clockwise' })) return;
 
         const safetyCopy = snapshotData();
         applyData({
@@ -4023,7 +4134,7 @@
             ${field('serial', 'Serial No.', 'Optional')}
             ${field('loc', 'Location', item.note || 'Room')}
             ${field('to', 'Assigned to', 'Accountable person')}
-            ${field('ics', 'ICS No.', 'Optional')}
+            ${field('ics', u.doc && u.doc !== 'ICS' ? `${u.doc} No.` : 'ICS / PAR No.', 'Optional')}
           </div>
           <p class="mt-2 text-[11px] text-slate-500 flex flex-wrap gap-x-3 gap-y-0.5">
             ${u.seen
@@ -4031,8 +4142,9 @@
               : `<span class="inline-flex items-center gap-1"><i class="ph-bold ph-seal-question"></i> Not verified yet</span>`}
             <span class="inline-flex items-center gap-1"><i class="ph-bold ph-printer"></i> ${u.printed ? `Label printed ${formatShortDate(u.printed)}` : 'Label not printed'}</span>
             ${u.toUid ? `<span class="text-teal-700 font-semibold inline-flex items-center gap-1"><i class="ph-bold ph-link"></i> On ${escapeHTML((u.to || 'the teacher').split(' ')[0])}’s list</span>` : ''}
-            ${u.icsDate || u.life ? `<span class="inline-flex items-center gap-1"><i class="ph-bold ph-file-text"></i> ${u.icsDate ? `ICS dated ${formatShortDate(u.icsDate + 'T00:00:00')}` : ''}${u.icsDate && u.life ? ' · ' : ''}${u.life ? `useful life ${escapeHTML(u.life)}` : ''}</span>` : ''}
+            ${u.icsDate || u.life ? `<span class="inline-flex items-center gap-1"><i class="ph-bold ph-file-text"></i> ${u.icsDate ? `${unitDocKind(u)} dated ${formatShortDate(u.icsDate + 'T00:00:00')}` : ''}${u.icsDate && u.life ? ' · ' : ''}${u.life ? `useful life ${escapeHTML(u.life)}` : ''}</span>` : ''}
           </p>
+          ${unitTrailHTML(item, u)}
         </div>`;
     }
 
@@ -4093,7 +4205,7 @@
       const dup = findUnitByNo(no, id);
       if (dup) {
         input.value = unit.no;
-        alert(`${no} is already used by another unit:\n${dup.item.name}`);
+        appAlert(`${no} is already used by another unit:\n${dup.item.name}`);
         return;
       }
       if (no !== unit.no) unit.printed = null; // the old label no longer matches
@@ -4127,12 +4239,13 @@
       if (scanShown && scanShown.id === id) renderScanResult();
     }
 
-    function removeUnitTag(code, id) {
+    async function removeUnitTag(code, id) {
       const item = items.find(i => i.code === code);
       const unit = findUnit(code, id);
       if (!item || !unit) return;
-      const reason = prompt(`Remove unit ${unit.no}?\n\nUse this when the unit was disposed of, transferred or lost. ` +
-        `On-hand quantity goes from ${item.qty} to ${item.qty - 1}.\n\nReason (optional, saved in Change History):`, '');
+      const reason = await appPrompt(`Use this when the unit was disposed of, transferred or lost. ` +
+        `On-hand quantity goes from ${item.qty} to ${item.qty - 1}.`, '',
+        { title: `Remove unit ${unit.no}?`, label: 'Reason (optional, saved in Change History)', placeholder: 'e.g. Disposed – beyond repair', ok: 'Remove unit', tone: 'danger', icon: 'ph-trash' });
       if (reason === null) return;
       const why = reason.trim();
       const removedText = `Removed unit ${unit.no} (${(UNIT_COND[unit.cond] || UNIT_COND.S).label})` +
@@ -4219,7 +4332,7 @@
     function exportRegisterCSV() {
       const rows = allTaggedUnits().sort((a, b) => a.unit.no.localeCompare(b.unit.no, undefined, { numeric: true }));
       if (!rows.length) {
-        alert('No property numbers yet. Tag the units of an equipment item first.');
+        appAlert('No property numbers yet. Tag the units of an equipment item first.');
         return;
       }
       const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -4230,12 +4343,12 @@
         [q('Date Exported:'), q(new Date().toLocaleDateString('en-PH'))].join(','),
         '',
         ['Property No.', 'Item Code', 'Item & Specifications', 'Category', 'Serial No.', 'Location', 'Assigned To',
-          'Condition', 'Unit Cost', 'Last Verified', 'Label Printed', 'ICS No.', 'ICS Date', 'Est. Useful Life'].map(q).join(',')
+          'Condition', 'Unit Cost', 'Last Verified', 'Label Printed', 'ICS/PAR No.', 'Issue Date', 'Est. Useful Life'].map(q).join(',')
       ];
       rows.forEach(({ item, unit }) => csv.push([
         unit.no, item.code, item.name, item.category, unit.serial, unit.loc || item.note, unit.to,
         (UNIT_COND[unit.cond] || UNIT_COND.S).label, item.price.toFixed(2), date(unit.seen), date(unit.printed),
-        unit.ics || '', unit.icsDate ? date(unit.icsDate + 'T00:00:00') : '', unit.life || ''
+        unitDocLabel(unit), unit.icsDate ? date(unit.icsDate + 'T00:00:00') : '', unit.life || ''
       ].map(q).join(',')));
       const school = (schoolInfo.school || 'School').replace(/\s+/g, '_');
       downloadText('\ufeff' + csv.join('\n'), `Property_Register_${school}_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8;');
@@ -4277,7 +4390,7 @@
         try {
           await loadScript('assets/vendor/qrcode.js');
         } catch (e) {
-          alert('The QR code generator could not be loaded. Open the app once while online, then try again.');
+          appAlert('The QR code generator could not be loaded. Open the app once while online, then try again.');
           return;
         }
       }
@@ -4317,9 +4430,9 @@
       printLabels(allTaggedUnits().filter(t => !t.unit.printed));
     }
 
-    function printAllLabels() {
+    async function printAllLabels() {
       const rows = allTaggedUnits();
-      if (rows.length > 30 && !confirm(`Print all ${rows.length} labels?`)) return;
+      if (rows.length > 30 && !await appConfirm(`That is about ${Math.ceil(rows.length / 24)} A4 pages of QR labels.`, { title: `Print all ${rows.length} labels?`, ok: 'Print', icon: 'ph-printer' })) return;
       printLabels(rows);
     }
 
@@ -4877,7 +4990,7 @@
     function exportHistoryCSV() {
       const rows = filteredHistory();
       if (!rows.length) {
-        alert('There are no changes to export in this view.');
+        appAlert('There are no changes to export in this view.');
         return;
       }
       const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -4939,9 +5052,9 @@
       return { scope, counted, today };
     }
 
-    function startCount() {
+    async function startCount() {
       const suggested = `Physical count – ${new Date().toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}`;
-      const name = prompt('Name this physical count (shown on the dashboard and in Change History):', suggested);
+      const name = await appPrompt('Shown on the dashboard and in Change History.', suggested, { title: 'Start a physical count', label: 'Name of this count', ok: 'Start count', tone: 'good', icon: 'ph-clipboard-text' });
       if (name === null) return;
       countSession = { name: name.trim() || suggested, startedAt: Date.now(), counted: {} };
       persistCountSession();
@@ -4961,7 +5074,7 @@
       renderDashboard();
     }
 
-    function finishCount() {
+    async function finishCount() {
       if (!countSession) return;
       const { scope, counted } = countProgress();
       const missing = scope.filter(i => !isCounted(i.code));
@@ -4971,7 +5084,8 @@
         (missing.length
           ? `\n\nNot counted yet (${missing.length}):\n• ${missing.slice(0, 6).map(i => i.name).join('\n• ')}${missing.length > 6 ? '\n• …' : ''}`
           : '\n\nEvery item has been counted.');
-      if (!confirm(message)) return;
+      if (!await appConfirm(message, { ok: 'Finish count', tone: missing.length ? 'warn' : 'good', icon: 'ph-flag-checkered' })) return;
+      if (!countSession) return;
       logHistory('system', `Finished ${countSession.name}: ${counted} of ${scope.length} items counted, ${plural(corrections, 'quantity change')}`);
       countSession = null;
       persistCountSession();
@@ -5077,13 +5191,13 @@
         const bytes = new Uint8Array(buffer);
         const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b; // "PK" – .xlsx is a zip file
         if (/\.xls$/i.test(file.name) || (bytes[0] === 0xd0 && bytes[1] === 0xcf)) {
-          alert('Old Excel 97-2003 (.xls) files cannot be read. In Excel, use File › Save As › Excel Workbook (.xlsx) or CSV, then import that file.');
+          appAlert('Old Excel 97-2003 (.xls) files cannot be read. In Excel, use File › Save As › Excel Workbook (.xlsx) or CSV, then import that file.');
           return;
         }
         const rows = isZip ? await parseXLSX(buffer) : parseCSV(decodeText(bytes));
         const nonEmpty = rows.filter(r => r.some(v => String(v ?? '').trim()));
         if (nonEmpty.length < 2) {
-          alert('This file has no rows to import.');
+          appAlert('This file has no rows to import.');
           return;
         }
         const headerRow = guessHeaderRow(rows);
@@ -5091,7 +5205,7 @@
         renderImport();
       } catch (err) {
         console.warn('Import failed:', err);
-        alert('This file could not be read. Use an Excel .xlsx file or a CSV file (in Excel: File › Save As › CSV UTF-8).');
+        appAlert('This file could not be read. Use an Excel .xlsx file or a CSV file (in Excel: File › Save As › CSV UTF-8).');
       }
     }
 
@@ -5379,8 +5493,8 @@
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Quantities</label>
             <div class="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-              <button type="button" onclick="setImportOption('mode', 'set')" class="h-9 rounded-lg text-xs font-bold transition ${st.mode === 'set' ? 'bg-white shadow-sm text-brand-700' : 'text-slate-600'}">Replace</button>
-              <button type="button" onclick="setImportOption('mode', 'add')" class="h-9 rounded-lg text-xs font-bold transition ${st.mode === 'add' ? 'bg-white shadow-sm text-brand-700' : 'text-slate-600'}">Add to current</button>
+              <button type="button" onclick="setImportOption('mode', 'set')" class="h-9 rounded-lg text-xs font-bold transition ${st.mode === 'set' ? 'bg-white shadow-sm text-brand-700 seg-on' : 'text-slate-600'}">Replace</button>
+              <button type="button" onclick="setImportOption('mode', 'add')" class="h-9 rounded-lg text-xs font-bold transition ${st.mode === 'add' ? 'bg-white shadow-sm text-brand-700 seg-on' : 'text-slate-600'}">Add to current</button>
             </div>
           </div>
           <label class="flex items-start gap-2 rounded-xl border border-slate-200 p-2.5 cursor-pointer">
@@ -5801,9 +5915,9 @@
       isOcrDownloaded().then(ok => { if (icsState && icsState.stage === 'start') { icsState.offlineReady = ok; renderIcs(); } });
     }
 
-    function closeIcsScanner(force = false) {
+    async function closeIcsScanner(force = false) {
       if (!force && icsState && icsState.stage === 'review' && icsState.lines.length &&
-          !confirm('Close without saving this ICS?')) return;
+          !await appConfirm('What you checked on this ICS is lost.', { title: 'Close without saving?', ok: 'Close', cancel: 'Keep editing', tone: 'warn', focusCancel: true })) return;
       if (icsState && icsState.photoUrl) URL.revokeObjectURL(icsState.photoUrl);
       icsState = null;
       document.getElementById('icsModal').classList.add('hidden');
@@ -5823,7 +5937,7 @@
       event.target.value = '';
       if (!file || !icsState) return;
       if (!/^image\//.test(file.type) && !/\.(jpe?g|png|webp|heic|heif|bmp)$/i.test(file.name)) {
-        alert('Please choose a photo (JPG or PNG) of the ICS. For a PDF, take a screenshot of the page first.');
+        appAlert('Please choose a photo (JPG or PNG) of the ICS. For a PDF, take a screenshot of the page first.');
         return;
       }
       if (icsState.photoUrl) URL.revokeObjectURL(icsState.photoUrl);
@@ -6194,15 +6308,16 @@
       renderIcsSummary();
     }
 
-    function saveIcs() {
+    async function saveIcs() {
       if (!icsState || icsState.stage !== 'review') return;
       const st = icsState;
       const plan = buildIcsPlan();
       if (!plan.lines.length || plan.problems.length) return renderIcs();
       const h = st.header;
-      if (plan.dupIcs && !confirm(`ICS No. ${h.icsNo} was already encoded. Save it again anyway?`)) return;
+      if (plan.dupIcs && !await appConfirm(`ICS No. ${h.icsNo} was already encoded. Save it again anyway?`, { title: 'Already encoded', ok: 'Save again', tone: 'warn' })) return;
       if (st.opts.makeUnits && !h.receivedBy &&
-          !confirm('No “Received by” name. Save the property records without an accountable person?')) return;
+          !await appConfirm('Save the property records without an accountable person?', { title: 'No “Received by” name', ok: 'Save anyway', tone: 'warn' })) return;
+      if (icsState !== st) return;
 
       const safety = snapshotData();
       // 1. new custom items first, so property numbering sees every item
@@ -6690,10 +6805,154 @@
     // action = { label, onClick } adds a button (e.g. "Undo") and keeps the toast up longer.
     // Bottom of the screen, unless a sheet or a sticky action button (e.g. Prepare Purchase
     // Request) is there – then just under the header, so the toast never hides a button.
+    // =========================================================================
+    // In-app dialogs: appAlert / appConfirm / appPrompt replace the browser's
+    // alert / confirm / prompt ("custodianpro.vercel.app says"). They look like the
+    // rest of the app, follow light/dark, and return a Promise. One at a time; others wait.
+    // =========================================================================
+    const DIALOG_TONES = {
+      info:    { icon: 'ph-info',          box: 'bg-sky-50 text-sky-600',      ok: 'bg-brand-600 hover:bg-brand-700' },
+      ask:     { icon: 'ph-question',      box: 'bg-brand-50 text-brand-600',  ok: 'bg-brand-600 hover:bg-brand-700' },
+      write:   { icon: 'ph-pencil-simple', box: 'bg-brand-50 text-brand-600',  ok: 'bg-brand-600 hover:bg-brand-700' },
+      warn:    { icon: 'ph-warning',       box: 'bg-amber-50 text-amber-600',  ok: 'bg-amber-600 hover:bg-amber-700' },
+      danger:  { icon: 'ph-warning-circle', box: 'bg-rose-50 text-rose-600',   ok: 'bg-rose-600 hover:bg-rose-700' },
+      good:    { icon: 'ph-check-circle',  box: 'bg-emerald-50 text-emerald-600', ok: 'bg-emerald-600 hover:bg-emerald-700' }
+    };
+    const dialogQueue = [];
+    let dialogNow = null;
+
+    function appDialog(kind, message, opts = {}) {
+      const o = { kind, message: String(message == null ? '' : message), ...opts };
+      if (o.value == null) o.value = '';
+      return new Promise(resolve => {
+        // End-to-end tests answer here instead of tapping (tests/e2e/lib/harness.mjs).
+        if (typeof window.__answerDialog === 'function' && !window.__dialogUI) {
+          Promise.resolve(window.__answerDialog(kind, [o.title, o.message].filter(Boolean).join('\n'), String(o.value))).then(a => {
+            resolve(kind === 'confirm' ? a !== false : kind === 'prompt' ? (a === null || a === false ? null : String(a == null ? '' : a)) : undefined);
+          });
+          return;
+        }
+        dialogQueue.push({ o, resolve });
+        if (!dialogNow) nextDialog();
+      });
+    }
+    const appAlert = (message, opts) => appDialog('alert', message, opts);
+    const appConfirm = (message, opts) => appDialog('confirm', message, opts);
+    const appPrompt = (message, value = '', opts) => appDialog('prompt', message, { ...opts, value });
+    // Anything that still calls appAlert() gets the in-app box too.
+    window.alert = message => { appAlert(message); };
+
+    function nextDialog() {
+      const wrap = document.getElementById('appDialog');
+      const job = dialogQueue.shift();
+      if (!job) {
+        const back = dialogNow && dialogNow.focusBack;
+        dialogNow = null;
+        wrap.classList.add('hidden');
+        if (back && back.isConnected && typeof back.focus === 'function') { try { back.focus({ preventScroll: true }); } catch (e) {} }
+        return;
+      }
+      const prev = dialogNow;
+      dialogNow = job;
+      job.focusBack = prev ? prev.focusBack : document.activeElement;
+      const o = job.o;
+      const tone = DIALOG_TONES[o.tone] || DIALOG_TONES[o.kind === 'alert' ? 'info' : o.kind === 'prompt' ? 'write' : 'ask'];
+      // Title: given, or the first paragraph of the message when it reads like a question/heading.
+      let title = o.title || '', body = o.message;
+      if (!title) {
+        const parts = body.split(/\n\n/);
+        if (parts.length > 1 && parts[0].length <= 90) { title = parts.shift(); body = parts.join('\n\n'); }
+        else if (body.length <= 70 && !body.includes('\n')) { title = body; body = ''; }
+      }
+      const titleEl = document.getElementById('appDialogTitle');
+      titleEl.textContent = title;
+      titleEl.classList.toggle('hidden', !title);
+      const msg = document.getElementById('appDialogMsg');
+      msg.textContent = body;
+      msg.classList.toggle('hidden', !body);
+      msg.classList.toggle('mt-1', !!title);
+      document.getElementById('appDialogIcon').className = `w-11 h-11 shrink-0 rounded-2xl flex items-center justify-center ${tone.box}`;
+      document.getElementById('appDialogIcon').innerHTML = `<i class="ph-bold ${o.icon || tone.icon} text-2xl"></i>`;
+      const ok = document.getElementById('appDialogOk');
+      ok.textContent = o.ok || 'OK';
+      ok.className = `flex-1 sm:flex-none h-11 px-5 rounded-xl ${tone.ok} text-white text-sm font-bold shadow-sm transition`;
+      const cancel = document.getElementById('appDialogCancel');
+      cancel.textContent = o.cancel || 'Cancel';
+      cancel.classList.toggle('hidden', o.kind === 'alert');
+      const field = document.getElementById('appDialogField');
+      field.classList.toggle('hidden', o.kind !== 'prompt');
+      const input = document.getElementById('appDialogInput'), area = document.getElementById('appDialogArea');
+      const box = o.multiline ? area : input;
+      input.classList.toggle('hidden', !!o.multiline);
+      area.classList.toggle('hidden', !o.multiline);
+      document.getElementById('appDialogHint').classList.add('hidden');
+      const label = document.getElementById('appDialogLabel');
+      label.textContent = o.label || '';
+      label.classList.toggle('hidden', !o.label);
+      label.htmlFor = box.id;
+      if (o.kind === 'prompt') {
+        box.value = o.value;
+        box.placeholder = o.placeholder || '';
+        box.readOnly = !!o.readOnly;
+        box.maxLength = o.maxLength || 500;
+      }
+      wrap.classList.remove('hidden');
+      const card = document.getElementById('appDialogCard');
+      card.scrollTop = 0;
+      setTimeout(() => {
+        if (dialogNow !== job) return;
+        if (o.kind === 'prompt') { box.focus(); if (o.readOnly || o.selectAll !== false) box.select(); }
+        else (o.focusCancel ? cancel : ok).focus();
+      }, 30);
+    }
+
+    function closeDialog(yes) {
+      const job = dialogNow;
+      if (!job) return;
+      const o = job.o;
+      let answer;
+      if (o.kind === 'confirm') answer = !!yes;
+      else if (o.kind === 'prompt') {
+        const box = document.getElementById(o.multiline ? 'appDialogArea' : 'appDialogInput');
+        answer = yes ? box.value : null;
+        if (yes && o.required && !answer.trim()) {
+          const hint = document.getElementById('appDialogHint');
+          hint.textContent = typeof o.required === 'string' ? o.required : 'Please fill this in.';
+          hint.classList.remove('hidden');
+          box.focus();
+          return;
+        }
+      }
+      job.resolve(answer);
+      nextDialog();
+    }
+
+    function dialogNudge() { // tapping outside doesn't close it (an accidental tap could lose an answer)
+      const card = document.getElementById('appDialogCard');
+      card.classList.remove('dlg-nudge');
+      void card.offsetWidth;
+      card.classList.add('dlg-nudge');
+    }
+
+    function dialogKey(event) {
+      event.stopPropagation();
+      if (event.key === 'Escape') { event.preventDefault(); closeDialog(false); return; }
+      if (event.key === 'Enter' && event.target.id === 'appDialogInput') { event.preventDefault(); closeDialog(true); return; }
+      if (event.key === 'Tab') { // keep focus inside the dialog
+        const els = [...document.querySelectorAll('#appDialogCard input:not(.hidden), #appDialogCard textarea:not(.hidden), #appDialogCard button:not(.hidden)')]
+          .filter(el => el.offsetParent !== null);
+        if (!els.length) return;
+        const i = els.indexOf(document.activeElement);
+        const next = event.shiftKey ? (i <= 0 ? els.length - 1 : i - 1) : (i === els.length - 1 ? 0 : i + 1);
+        event.preventDefault();
+        els[next].focus();
+      }
+    }
+
     function placeToast() {
       const toast = document.getElementById('appToast');
       if (!toast) return;
-      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel', 'aboutPanel'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
+      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel', 'aboutPanel', 'xferModal', 'coaModal', 'tourModal'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
       const stickyAction = [...document.querySelectorAll('[data-toast-avoid]')].some(el => el.offsetParent !== null);
       const top = sheetOpen || stickyAction || document.documentElement.classList.contains('gated');
       toast.classList.toggle('bottom-24', !top);
@@ -6758,6 +7017,7 @@
           });
         });
         scheduleUpdateChecks();
+        navigator.serviceWorker.ready.then(registerBackgroundUpdateCheck).catch(() => {});
       }).catch((err) => console.warn('Service worker registration failed:', err));
     }
 
@@ -6999,6 +7259,7 @@
     let invUnsubs = [];
     let invRemote = {};
     let invReady = false;
+    let invAsking = false, invMergeAnswer = undefined, invLastMeta = {}; // first-sync merge question
     let invApplying = false;
     let invPushTimer = null;
     const invStatus = { state: 'off', error: '' }; // off | syncing | saving | synced | offline | error
@@ -7113,6 +7374,7 @@
     }
 
     function onInvSnapshot(meta) {
+      invLastMeta = meta;
       if (!invRemote.inventory || !invRemote.catalog || !invRemote.settings) return;
       const metas = Object.values(meta);
       const fromCache = metas.some(m => m.fromCache);
@@ -7120,9 +7382,29 @@
         const firstTime = invSync.schoolId !== reqRole.schoolId;
         // Never merge a brand-new phone against an empty offline cache: wait for the server.
         if (firstTime && fromCache) return;
-        invReady = true;
-        if (firstTime) firstInventoryMerge();
-        else reconcileInventory();
+        if (firstTime) {
+          // The merge question waits for an answer; account changes are applied after it.
+          if (invAsking) return;
+          invReady = true;
+          const answer = invMergeAnswer;
+          invMergeAnswer = undefined;
+          const q = firstInventoryMerge(answer); // with no answer yet it may only return the question
+          if (q && q.ask) {
+            invReady = false;
+            invAsking = true;
+            const session = reqRole.schoolId;
+            appConfirm(q.ask, { title: 'Add this phone’s items?', ok: `Add ${q.n === 1 ? 'it' : 'them'}`, cancel: 'Use the account’s list', icon: 'ph-cloud-arrow-up' }).then(keep => {
+              invAsking = false;
+              if (!reqRole || reqRole.schoolId !== session || invReady) return;
+              invMergeAnswer = keep;
+              onInvSnapshot(invLastMeta);
+            });
+            return;
+          }
+        } else {
+          invReady = true;
+          reconcileInventory();
+        }
       } else {
         reconcileInventory();
       }
@@ -7181,12 +7463,21 @@
     }
 
     // First sync of this phone with this school.
-    function firstInventoryMerge() {
+    // keepAnswer: undefined → ask first (returns 'ask' with the question), true/false → the answer.
+    function firstInventoryMerge(keepAnswer) {
       invSync.synced = {};
       resolveCustomCollisions(remoteInvDocs());
       const local = localInvDocs(), remote = remoteInvDocs();
       const remoteItems = Object.keys(remote).filter(k => k !== 's:info' && remote[k].body);
       const localItems = Object.keys(local).filter(k => k !== 's:info');
+      if (keepAnswer === undefined && remoteItems.length) {
+        const extra = localItems.filter(k => !remote[k]).filter(k => !k.startsWith('i:') || (parseInt(local[k].state.qty, 10) || 0) > 0 || (local[k].state.units || []).length);
+        if (extra.length) {
+          return { ask: `Your account already has the school inventory (${plural(remoteItems.filter(k => k.startsWith('i:')).length, 'item')}).\n\n` +
+            `This phone has ${plural(extra.length, 'item')} that ${extra.length === 1 ? 'is' : 'are'} not in it. Add ${extra.length === 1 ? 'it' : 'them'} to the school inventory?\n\n` +
+            `Use the account’s list: this phone’s list is saved as a backup file first.`, n: extra.length };
+        }
+      }
       invSync = { schoolId: reqRole.schoolId, synced: {}, lastAt: invSync.lastAt || 0 };
       const remoteInfo = remote['s:info'] && remote['s:info'].body;
       if (!remoteItems.length) {
@@ -7201,9 +7492,7 @@
       const meaningful = localOnly.filter(k => !k.startsWith('i:') || (parseInt(local[k].state.qty, 10) || 0) > 0 || (local[k].state.units || []).length);
       let keep = false;
       if (meaningful.length) {
-        keep = confirm(`Your account already has the school inventory (${plural(remoteItems.filter(k => k.startsWith('i:')).length, 'item')}).\n\n` +
-          `This phone has ${plural(meaningful.length, 'item')} that ${meaningful.length === 1 ? 'is' : 'are'} not in it. Add ${meaningful.length === 1 ? 'it' : 'them'} to the school inventory?\n\n` +
-          `OK: add them\nCancel: use only the account’s list (a backup file of this phone’s list is downloaded first)`);
+        keep = !!keepAnswer;
         if (!keep) { try { exportBackupJSON(); } catch (e) {} }
       }
       const apply = Object.entries(remote).filter(([, r]) => r.body).map(([k, r]) => [k, r.body]);
@@ -7484,7 +7773,7 @@
         const n = counts[st.key] || 0;
         const alert = st.key === 'pending' && n;
         return `
-          <button onclick="setReqTab('${st.key}')" aria-current="${on ? 'page' : 'false'}" class="req-stage relative text-left rounded-2xl border p-3 transition ${on ? 'bg-white border-brand-400 ring-2 ring-brand-500/15 shadow-sm' : 'bg-white/60 border-slate-200 hover:bg-white hover:border-slate-300'}">
+          <button onclick="setReqTab('${st.key}')" aria-current="${on ? 'page' : 'false'}" class="req-stage relative text-left rounded-2xl border p-3 transition ${on ? 'bg-white border-brand-400 ring-2 ring-brand-500/15 shadow-sm stage-on' : 'bg-white/60 border-slate-200 hover:bg-white hover:border-slate-300'}">
             <span class="flex items-center justify-between gap-2">
               <span class="w-8 h-8 rounded-lg ${REQ_TONE[st.tone]} flex items-center justify-center"><i class="ph-bold ${st.icon} text-lg"></i></span>
               <span class="text-2xl font-extrabold font-mono ${alert ? 'text-rose-600' : on ? 'text-slate-900' : 'text-slate-400'}">${n}</span>
@@ -7714,7 +8003,7 @@
         schoolId = found.docs[0].id;
         name = found.docs[0].data().name;
       } else {
-        if (!schoolName) schoolName = (prompt('Name of your school (teachers will see this):', schoolInfo.school || '') || '').trim();
+        if (!schoolName) schoolName = ((await appPrompt('Teachers will see this name.', schoolInfo.school || '', { title: 'Name of your school', placeholder: 'e.g. San Jose National High School', ok: 'Continue', icon: 'ph-buildings', maxLength: 120 })) || '').trim();
         if (!schoolName) return fail('No school is linked to this account yet. Enter the school name and try again.');
         const ref = F.doc(F.collection(cloud.db, 'schools'));
         await F.setDoc(ref, { name: schoolName.slice(0, 120), ownerUid: uid, custodians: [uid], createdAt: F.serverTimestamp() });
@@ -7732,23 +8021,23 @@
       subscribeRequests();
       renderRequestsEverywhere();
       showToast(found.docs.length ? `Connected to ${name}` : `${name} is ready · invite your teachers`, 'ph-cloud-check');
-      if (!found.docs.length) openInvite();
+      if (!maybeStartTour(!found.docs.length) && !found.docs.length) openInvite();
     }
 
     async function custodianResetPassword() {
       const email = reqVal('rcEmail');
-      if (!email) { alert('Type your email first, then tap Forgot password.'); return; }
+      if (!email) { appAlert('Type your email first, then tap Forgot password.'); return; }
       try {
         await cloudStart();
         await cloud.sdk.sendPasswordResetEmail(cloud.auth, email);
         showToast(`Password reset email sent to ${email}`, 'ph-envelope');
       } catch (err) {
-        alert(cloudErrorText(err));
+        appAlert(cloudErrorText(err));
       }
     }
 
     async function custodianSignOut() {
-      if (!confirm('Sign out of CustodianPro on this phone? Your inventory stays on this phone and in your school account. Sign in again to keep using it.')) return;
+      if (!await appConfirm('Your inventory stays on this phone and in your school account. Sign in again to keep using it.', { title: 'Sign out of CustodianPro?', ok: 'Sign out', icon: 'ph-sign-out', tone: 'warn' })) return;
       stopRequestSync();
       try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
       cloud.user = null;
@@ -7816,7 +8105,7 @@
       if (!/^[A-Za-z0-9_-]{6,64}$/.test(schoolId)) { showToast('That school code does not look right', 'ph-warning'); return; }
       if (isCustodianDevice() && reqRole.schoolId === schoolId) { showToast('This is your own school’s invite link · share it with your teachers', 'ph-info'); return; }
       if (!edit && isCustodianDevice() &&
-          !confirm(`This device is signed in as the property custodian of ${reqRole.schoolName}. Use it to request supplies as a teacher instead?`)) return;
+          !await appConfirm(`This device is signed in as the property custodian of ${reqRole.schoolName}. Use it to request supplies as a teacher instead?`, { title: 'Join as a teacher?', ok: 'Join as teacher', tone: 'warn' })) return;
       joinState = { schoolId, schoolName: '', edit };
       const me = (isTeacherDevice() && reqRole.me) || {};
       document.getElementById('joinName').value = me.name || '';
@@ -7915,7 +8204,7 @@
     function editMyDetails() { if (isTeacherDevice()) openJoin(reqRole.schoolId, true); }
 
     async function leaveSchool() {
-      if (!confirm(`Stop requesting supplies from ${reqRole.schoolName} on this phone? Your sent requests stay with the custodian.`)) return;
+      if (!await appConfirm(`Your sent requests stay with the custodian of ${reqRole.schoolName}.`, { title: 'Leave this school on this phone?', ok: 'Leave', icon: 'ph-sign-out', tone: 'danger', focusCancel: true })) return;
       stopRequestSync();
       try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
       cloud.user = null;
@@ -7985,8 +8274,8 @@
         </div>`;
     }
 
-    function cancelMyRequest(id) {
-      if (!confirm('Cancel this request?')) return;
+    async function cancelMyRequest(id) {
+      if (!await appConfirm('The custodian sees it as cancelled.', { title: 'Cancel this request?', ok: 'Cancel request', cancel: 'Keep it', tone: 'danger', icon: 'ph-prohibit', focusCancel: true })) return;
       const F = cloud.sdk;
       cloudWrite(F.updateDoc(F.doc(reqCol(), id), { status: 'cancelled', updatedAt: F.serverTimestamp() }), 'Cancelling');
       showToast('Request cancelled', 'ph-prohibit');
@@ -8102,7 +8391,7 @@
       const me = reqDraft.forOther
         ? { name: reqVal('rfName'), position: reqVal('rfPosition'), office: reqVal('rfOffice') }
         : (reqRole.me || {});
-      if (!me.name) { alert('Enter the name of the person requesting.'); document.getElementById('rfName').focus(); return; }
+      if (!me.name) { appAlert('Enter the name of the person requesting.'); document.getElementById('rfName').focus(); return; }
       const F = cloud.sdk;
       const ref = F.doc(reqCol());
       const data = {
@@ -8265,7 +8554,7 @@
         requested: l.requested, approved: l.approved, stock: reviewOnHand(l), prQty: Math.max(0, reviewBuy(l)),
         unitCost: Math.round((l.unitCost || 0) * 100) / 100
       }));
-      if (!lines.some(l => l.approved > 0)) { alert('Approve at least one item, or tap Decline.'); return; }
+      if (!lines.some(l => l.approved > 0)) { appAlert('Approve at least one item, or tap Decline.'); return; }
       const F = cloud.sdk;
       const wasApproved = st.status === 'approved';
       const r = reqList.find(x => x.id === st.id);
@@ -8279,10 +8568,11 @@
       showToast(wasApproved ? 'Changes saved' : `Approved ${r ? r.name.split(' ')[0] + '’s' : 'the'} request · ${buy ? `${plural(buy, 'item')} to purchase` : 'all from stock'}`, 'ph-check-circle');
     }
 
-    function declineRequest() {
+    async function declineRequest() {
       const st = reviewState;
       if (!st) return;
-      const reason = prompt('Reason for declining (the requester will see this):', reqVal('revNote'));
+      const reason = await appPrompt('The requester will see this.', reqVal('revNote'), { title: 'Decline this request?', label: 'Reason', placeholder: 'e.g. Out of stock until next delivery', multiline: true, ok: 'Decline', tone: 'danger', icon: 'ph-x-circle', maxLength: 300 });
+      if (reviewState !== st) return;
       if (reason === null) return;
       const F = cloud.sdk;
       cloudWrite(F.updateDoc(F.doc(reqCol(), st.id), {
@@ -8302,15 +8592,16 @@
 
     // Items bought on a PR arrived: they go into My Items (stock in), and its requests show
     // "Ready" to the teachers until the custodian releases the items to them.
-    function markPrDelivered(prId) {
+    async function markPrDelivered(prId) {
       const pr = prList.find(p => p.id === prId);
       if (!pr || pr.deliveredMs) return;
       const open = reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr');
       const plan = prStockInPlan(pr);
       const fresh = plan.filter(x => !x.item).length;
-      if (!confirm(`Items on PR No. ${pr.prNo} were delivered?\n\n` +
+      if (!await appConfirm(`Items on PR No. ${pr.prNo} were delivered?\n\n` +
         `Adds ${plural(plan.length, 'item')} to the stock in My Items${fresh ? ` (${fresh} new)` : ''}.` +
-        (open.length ? `\n${plural(open.length, 'request')} will show as ready to release (${open.map(r => r.name).join(', ')}).` : ''))) return;
+        (open.length ? `\n${plural(open.length, 'request')} will show as ready to release (${open.map(r => r.name).join(', ')}).` : ''), { ok: 'Mark delivered', tone: 'good', icon: 'ph-package' })) return;
+      if (pr.deliveredMs) return;
       const { added } = stockInPr(pr);
       const F = cloud.sdk;
       const batch = F.writeBatch(cloud.db);
@@ -8415,15 +8706,15 @@
       document.getElementById('prTotal').textContent = `₱${peso2(total)}`;
     }
 
-    function savePr() {
+    async function savePr() {
       if (!prDraft) return;
       const lines = prDraft.lines.filter(l => l.qty > 0 && l.desc.trim())
         .map(l => ({ code: l.code || null, stockNo: l.stockNo.trim(), unit: l.unit.trim(), desc: l.desc.trim(), qty: l.qty, unitCost: Math.round(l.unitCost * 100) / 100 }));
-      if (!lines.length) { alert('The Purchase Request has no items.'); return; }
+      if (!lines.length) { appAlert('The Purchase Request has no items.'); return; }
       const prNo = reqVal('prNo');
-      if (!prNo) { alert('Enter the PR No.'); document.getElementById('prNo').focus(); return; }
-      if (prList.some(p => p.prNo === prNo) && !confirm(`PR No. ${prNo} was already used. Save another PR with the same number?`)) return;
-      if (lines.some(l => !l.unitCost) && !confirm('Some items have no unit cost. Save anyway?')) return;
+      if (!prNo) { appAlert('Enter the PR No.'); document.getElementById('prNo').focus(); return; }
+      if (prList.some(p => p.prNo === prNo) && !await appConfirm(`PR No. ${prNo} was already used. Save another PR with the same number?`, { title: 'PR No. already used', ok: 'Save anyway', tone: 'warn' })) return;
+      if (lines.some(l => !l.unitCost) && !await appConfirm('The total on the Purchase Request will be incomplete.', { title: 'Some items have no unit cost', ok: 'Save anyway', cancel: 'Add costs', tone: 'warn' })) return;
       const F = cloud.sdk;
       const total = Math.round(lines.reduce((n, l) => n + l.qty * l.unitCost, 0) * 100) / 100;
       const data = {
@@ -8513,12 +8804,26 @@
     //   schools/{id}/members/{uid}   written by the teacher's own phone:
     //     { uid, name, position, office, email, joinedMs }
     //   schools/{id}/releases/{id}   written by the custodian only, never deleted:
-    //     { kind: 'RIS' | 'ICS' | 'RETURN', no, date, teacherUid, teacherName, position, office, purpose,
-    //       lines: [{ code, desc, unit, qty, unitCost, units: [{ id, no, serial }] }], total,
-    //       source: 'release' | 'existing' | 'assigned' | 'reassigned', requestId, by, createdMs }
+    //     { kind: 'RIS' | 'ICS' | 'PAR' | 'ITR' | 'PTR' | 'RETURN', no, date, teacherUid, teacherName, position,
+    //       office, purpose, lines: [{ code, desc, unit, qty, unitCost, units: [{ id, no, serial, cond, doc, loc }] }],
+    //       total, source: 'release' | 'existing' | 'assigned' | 'reassigned' | 'transfer' | 'returned' |
+    //       'taken-back' | 'transferred', requestId, by, createdMs }
+    // PAR (Appendix 71): equipment of ₱50,000 and up, instead of an ICS. ITR / PTR (transfers):
+    // { fromUid, fromName, fromPosition, transferType, transferOther, loc, sameHolder } – made out to
+    // the new holder; the old holder gets a RETURN with source 'transferred'. RETURN no = RRSP No.
     // RIS (Appendix 63): supplies leave the stock count. ICS (Appendix 59): equipment stays in
     // My Items and its units show "With <teacher> · ICS no.". RETURN: units taken back or given
     // to someone else. A teacher can read only the releases made out to their own account.
+    // Capitalization threshold (COA Circular 2022-004): ₱50,000 and up is PPE (PAR, PTR,
+    // RPCPPE, IIRUP); below that it is semi-expendable property (ICS, ITR, RPCSP, IIRUSP).
+    const PPE_MIN = 50000;
+    const isPPE = item => Number(item && item.price) >= PPE_MIN;
+    const ISSUE_KINDS = ['ICS', 'PAR', 'ITR', 'PTR'];          // documents that put a unit with someone
+    const isIssueKind = k => ISSUE_KINDS.includes(k);
+    const unitDocKind = u => (u && u.doc) || 'ICS';
+    const unitDocLabel = u => (u && u.ics ? `${unitDocKind(u)} ${u.ics}` : '');
+    const clearUnitHolder = u => { u.to = ''; delete u.toUid; u.ics = ''; delete u.icsDate; delete u.released; delete u.doc; };
+
     let memberList = [];
     let releaseList = [];
     let releasesLoaded = false;
@@ -8562,7 +8867,7 @@
     }
     const relLine = (item, qty, units = []) => ({
       code: item.code, desc: item.name, unit: item.unit, qty, unitCost: Math.round((item.price || 0) * 100) / 100,
-      units: units.map(u => ({ id: u.id, no: u.no || '', serial: u.serial || '' }))
+      units: units.map(u => ({ id: u.id, no: u.no || '', serial: u.serial || '', cond: u.cond || 'S', doc: unitDocLabel(u), docDate: u.icsDate || '', loc: u.loc || '' }))
     });
     const relTotal = lines => Math.round(lines.reduce((n, l) => n + l.qty * (l.unitCost || 0), 0) * 100) / 100;
     function relBase(t, extra) {
@@ -8694,7 +8999,7 @@
       }
       if (newUid) {
         batch.set(F.doc(relCol()), cleanJSON(relBase(match, {
-          kind: 'ICS', source: 'assigned', no: unit.ics || '', date, purpose: '',
+          kind: unitDocKind(unit) === 'PAR' ? 'PAR' : 'ICS', source: 'assigned', no: unit.ics || '', date, purpose: '',
           lines: [relLine(item, 1, [unit])], total: relTotal([relLine(item, 1, [unit])]), createdAt: F.serverTimestamp()
         })));
       }
@@ -8706,7 +9011,7 @@
       const held = getUnits(item.code).filter(u => u.to || u.toUid);
       if (!held.length) return '';
       const names = [...new Set(held.map(unitHolder))];
-      const ics = held.every(u => u.ics && u.ics === held[0].ics) ? ` · ICS ${held[0].ics}` : '';
+      const ics = held.every(u => u.ics && unitDocLabel(u) === unitDocLabel(held[0])) ? ` · ${unitDocLabel(held[0])}` : '';
       const text = names.length === 1 ? `${held.length < item.qty ? `${held.length} with` : 'With'} ${names[0]}${ics}` : `${held.length} with ${names.length} people`;
       const key = names.length === 1 ? personId(held[0].toUid, held[0].to) : null;
       return `<button onclick="${key ? `openTeachersView('${escapeHTML(key).replace(/'/g, '&#39;')}')` : `openUnitsModal('${item.code}')`}" class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border bg-teal-50 text-teal-700 border-teal-200 max-w-full">
@@ -8796,7 +9101,7 @@
             <span class="mx-auto w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="ph-bold ph-check-circle text-3xl"></i></span>
             <p class="text-base font-extrabold text-slate-900">Released to ${escapeHTML(r.teacherName)}</p>
             <p class="text-xs text-slate-500">${r.docs.map(x => `${x.kind} No. <b class="font-mono">${escapeHTML(x.no)}</b> · ${plural(x.lines.length, 'item')}`).join('<br>')}</p>
-            <p class="text-xs text-slate-500">${r.docs.some(x => x.kind === 'RIS') ? 'Supplies were taken out of the stock count. ' : ''}${r.docs.some(x => x.kind === 'ICS') ? `Equipment stays in My Items, shown as with ${escapeHTML(r.teacherName.split(' ')[0])}.` : ''}</p>
+            <p class="text-xs text-slate-500">${r.docs.some(x => x.kind === 'RIS') ? 'Supplies were taken out of the stock count. ' : ''}${r.docs.some(x => isIssueKind(x.kind)) ? `Equipment stays in My Items, shown as with ${escapeHTML(r.teacherName.split(' ')[0])}.` : ''}</p>
           </div>`;
         foot.innerHTML = r.docs.map((x, i) => `<button onclick="printReleaseDone(${i})" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> ${x.kind}</button>`).join('') +
           `<button onclick="closeRelease()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-sm">Done</button>`;
@@ -8822,7 +9127,7 @@
         const max = relMax(item);
         const q = relQty(l);
         const badge = l.equip
-          ? '<span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Equipment · ICS</span>'
+          ? `<span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Equipment · ${isPPE(item) ? 'PAR' : 'ICS'}</span>`
           : '<span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">Supply · RIS</span>';
         let units = '';
         if (l.equip) {
@@ -8862,8 +9167,12 @@
       err.textContent = teamError ? `Teacher list: ${teamError}` : '';
       err.classList.toggle('hidden', !teamError);
 
-      const ris = d.lines.filter(l => !l.equip && relQty(l) > 0), ics = d.lines.filter(l => l.equip && relQty(l) > 0);
-      const docs = [ris.length && `RIS ${nextReleaseNo('RIS', d.date)} · ${ris.length} ${ris.length === 1 ? 'supply' : 'supplies'}`, ics.length && `ICS ${nextReleaseNo('ICS', d.date)} · ${plural(ics.length, 'equipment item')}`].filter(Boolean);
+      const ppeLine = l => isPPE(items.find(i => i.code === l.code));
+      const ris = d.lines.filter(l => !l.equip && relQty(l) > 0), eq = d.lines.filter(l => l.equip && relQty(l) > 0);
+      const ics = eq.filter(l => !ppeLine(l)), par = eq.filter(ppeLine);
+      const docs = [ris.length && `RIS ${nextReleaseNo('RIS', d.date)} · ${ris.length} ${ris.length === 1 ? 'supply' : 'supplies'}`,
+        ics.length && `ICS ${nextReleaseNo('ICS', d.date)} · ${plural(ics.length, 'equipment item')}`,
+        par.length && `PAR ${nextReleaseNo('PAR', d.date)} · ${plural(par.length, 'item')} of ₱50,000 or more`].filter(Boolean);
       document.getElementById('relSummary').innerHTML = docs.length ? `Creates ${docs.map(x => `<b>${escapeHTML(x)}</b>`).join(' and ')}` : 'Nothing to release yet';
       foot.innerHTML = `
         <button onclick="closeRelease()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Cancel</button>
@@ -8914,17 +9223,17 @@
       d.date = document.getElementById('relDate').value || localISODate();
       d.purpose = reqVal('relPurpose').slice(0, 300);
       const t = relTeacher();
-      if (!t || !t.name) { alert('Choose who receives the items.'); return; }
+      if (!t || !t.name) { appAlert('Choose who receives the items.'); return; }
       const lines = d.lines.filter(l => relQty(l) > 0);
       if (!lines.length) return;
       for (const l of lines) {
         const item = items.find(i => i.code === l.code);
-        if (!item || relQty(l) > relMax(item)) { alert(`${item ? item.name : l.code}: only ${item ? relMax(item) : 0} available.`); return; }
+        if (!item || relQty(l) > relMax(item)) { appAlert(`${item ? item.name : l.code}: only ${item ? relMax(item) : 0} available.`); return; }
       }
       const F = cloud.sdk;
       const now = Date.now();
-      const risNo = nextReleaseNo('RIS', d.date), icsNo = nextReleaseNo('ICS', d.date);
-      const ris = [], ics = [];
+      const risNo = nextReleaseNo('RIS', d.date), icsNo = nextReleaseNo('ICS', d.date), parNo = nextReleaseNo('PAR', d.date);
+      const ris = [], ics = [], par = [];
       lines.forEach(l => {
         const item = items.find(i => i.code === l.code);
         const state = userState[item.code] || (userState[item.code] = { qty: item.qty });
@@ -8938,20 +9247,23 @@
         const chosen = getUnits(item.code).filter(u => l.unitIds.includes(u.id));
         const fresh = l.newUnits ? nextPropertyNumbers(l.newUnits).map(no => ({ id: newUnitId(), no, serial: '', loc: '', to: '', cond: 'S', seen: null, printed: null, added: now })) : [];
         state.units = [...getUnits(item.code), ...fresh];
+        const ppe = isPPE(item);
         [...chosen, ...fresh].forEach(u => {
           u.to = t.name;
           if (t.uid) u.toUid = t.uid; else delete u.toUid;
-          u.ics = icsNo;
+          u.ics = ppe ? parNo : icsNo;
+          if (ppe) u.doc = 'PAR'; else delete u.doc;
           u.icsDate = d.date;
           u.released = now;
         });
         syncUnitCondition(item);
-        ics.push(relLine(item, chosen.length + fresh.length, [...chosen, ...fresh]));
+        (ppe ? par : ics).push(relLine(item, chosen.length + fresh.length, [...chosen, ...fresh]));
       });
       const docs = [];
       const base = relBase(t, { date: d.date, purpose: d.purpose, requestId: d.requestId || null, source: 'release' });
       if (ris.length) docs.push({ ...base, kind: 'RIS', no: risNo, lines: ris, total: relTotal(ris) });
       if (ics.length) docs.push({ ...base, kind: 'ICS', no: icsNo, lines: ics, total: relTotal(ics) });
+      if (par.length) docs.push({ ...base, kind: 'PAR', no: parNo, lines: par, total: relTotal(par) });
       saveStateWith({ summary: { kind: 'release', text: `Released to ${t.name}: ${docs.map(x => `${x.kind} ${x.no} (${plural(x.lines.length, 'item')})`).join(', ')}`, track: true } });
 
       const batch = F.writeBatch(cloud.db);
@@ -8970,7 +9282,16 @@
     function printReleaseDone(i) { if (releaseDone && releaseDone.docs[i]) printRelease(releaseDone.docs[i]); }
     function printReleaseById(id) { const r = releaseList.find(x => x.id === id); if (r) printRelease(r); }
     function printRelease(rel) {
-      document.getElementById('printPrSection').innerHTML = rel.kind === 'ICS' ? icsPrintHTML(rel) : risPrintHTML(rel);
+      if (rel.kind === 'RETURN' && rel.source === 'transferred') { // the old holder's copy: print the transfer itself
+        const t = releaseList.find(x => x.id === rel.transferId);
+        if (t) rel = t;
+      }
+      const make = { ICS: icsPrintHTML, PAR: parPrintHTML, ITR: transferPrintHTML, PTR: transferPrintHTML, RETURN: rrspPrintHTML }[rel.kind] || risPrintHTML;
+      printFormHTML(make(rel));
+    }
+    // One or more printed forms (A4). `wide` pages print landscape (count and disposal reports).
+    function printFormHTML(html) {
+      document.getElementById('printPrSection').innerHTML = html;
       document.body.classList.remove('printing-labels');
       document.body.classList.add('printing-pr');
       const done = () => { document.body.classList.remove('printing-pr'); window.removeEventListener('afterprint', done); };
@@ -9078,7 +9399,7 @@
       const supplies = [];
       [...releases].sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0)).forEach(r => {
         (r.lines || []).forEach(l => (l.units || []).forEach(u => {
-          if (r.kind === 'ICS') held.set(u.id, { unit: u, line: l, rel: r });
+          if (isIssueKind(r.kind)) held.set(u.id, { unit: u, line: l, rel: r });
           else if (r.kind === 'RETURN') held.delete(u.id);
         }));
         if (r.kind === 'RIS') supplies.push(r);
@@ -9113,14 +9434,14 @@
 
     function renderTeacherTabs() {
       const h = teacherHoldings(myReleases);
-      const toAck = myReleases.filter(r => (r.kind === 'ICS' || r.kind === 'RIS') && !tAcked(r.id));
+      const toAck = myReleases.filter(r => (isIssueKind(r.kind) || r.kind === 'RIS') && !r.sameHolder && !tAcked(r.id));
       if (!teacherTab) teacherTab = myReleases.length ? 'items' : 'requests';
       const tab = teacherTab;
       document.getElementById('rqTitle').textContent = tab === 'items' ? 'My items' : 'Request supplies';
       ['items', 'requests'].forEach(t => {
         const b = document.getElementById(`rqTab-${t}`);
         const on = t === tab;
-        b.className = `h-11 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 transition ${on ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-800'}`;
+        b.className = `h-11 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 transition ${on ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5 seg-on' : 'text-slate-500 hover:text-slate-800'}`;
         b.setAttribute('aria-selected', on ? 'true' : 'false');
       });
       const n = document.getElementById('rqItemsCount');
@@ -9155,14 +9476,14 @@
       html += `
         <div>
           <div class="flex items-end justify-between gap-2 mb-2 px-1">
-            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Accountable equipment · ICS</h2>
+            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Accountable equipment · ICS / PAR</h2>
             ${h.equipment.length ? `<span class="text-[11px] font-bold text-slate-500">${plural(h.equipment.length, 'item')} · ₱${peso2(value)}</span>` : ''}
           </div>
           <div class="space-y-2">${h.equipment.length ? h.equipment.map(teacherUnitCardHTML).join('') : `
             <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
               <i class="ph-bold ph-desktop-tower text-3xl text-slate-300"></i>
               <p class="mt-1 font-bold text-slate-700 text-sm">No equipment under your name</p>
-              <p>Equipment the property custodian issues to you on an ICS shows here.</p>
+              <p>Equipment the property custodian issues to you on an ICS or PAR shows here.</p>
             </div>`}</div>
         </div>
         <div>
@@ -9194,7 +9515,7 @@
             <div class="min-w-0">
               <p class="text-sm font-extrabold text-slate-900 leading-snug">${escapeHTML(line.desc)}</p>
               <p class="mt-0.5 text-[11px] text-slate-500"><span class="font-mono font-bold text-slate-700">${escapeHTML(unit.no || '—')}</span>${unit.serial ? ` · S/N ${escapeHTML(unit.serial)}` : ''}</p>
-              <p class="text-[11px] text-slate-500">ICS ${rel.no ? escapeHTML(rel.no) : '—'}${rel.date ? ` · ${escapeHTML(formatShortDate(rel.date + 'T00:00:00'))}` : ''}</p>
+              <p class="text-[11px] text-slate-500">${escapeHTML(rel.kind)} ${rel.no ? escapeHTML(rel.no) : '—'}${rel.fromName && !rel.sameHolder ? ` · from ${escapeHTML(rel.fromName)}` : ''}${rel.date ? ` · ${escapeHTML(formatShortDate(rel.date + 'T00:00:00'))}` : ''}</p>
             </div>
             <p class="shrink-0 text-xs font-extrabold font-mono text-slate-700">₱${peso2(line.unitCost)}</p>
           </div>
@@ -9280,7 +9601,7 @@
       const rel = myReleases.find(r => r.id === d.relId);
       if (!rel) return;
       const note = reqVal('trNote').slice(0, 300);
-      if (d.kind === 'problem' && d.reason === 'other' && !note) { alert('Tell the custodian what happened.'); document.getElementById('trNote').focus(); return; }
+      if (d.kind === 'problem' && d.reason === 'other' && !note) { appAlert('Tell the custodian what happened.'); document.getElementById('trNote').focus(); return; }
       let extra = { reason: d.reason, note };
       if (d.unitId) {
         const line = rel.lines.find(l => (l.units || []).some(u => u.id === d.unitId));
@@ -9343,17 +9664,17 @@
         const found = findUnitWithItem(uid);
         if (!found || (found.unit.toUid && found.unit.toUid !== x.uid)) return; // already with someone else
         const { item, unit } = found;
-        unit.to = ''; delete unit.toUid; unit.ics = ''; delete unit.icsDate; delete unit.released;
-        unit.returned = Date.now();
         if (!byItem.has(item.code)) byItem.set(item.code, { item, units: [] });
         byItem.get(item.code).units.push(unit);
       });
+      // The slip shows each unit as it was (ICS/PAR no., condition), so take the lines first.
+      const lines = [...byItem.values()].map(({ item, units }) => relLine(item, units.length, units));
+      byItem.forEach(({ units }) => units.forEach(unit => { clearUnitHolder(unit); unit.returned = Date.now(); }));
       const batch = F.writeBatch(cloud.db);
       if (byItem.size) {
-        const lines = [...byItem.values()].map(({ item, units }) => relLine(item, units.length, units));
         const t = rosterByUid(x.uid) || { uid: x.uid, name: x.name };
         batch.set(F.doc(relCol()), cleanJSON(relBase(t, {
-          kind: 'RETURN', source: 'returned', no: '', date: localISODate(), purpose: x.note || 'Returned by the teacher', reportId: x.id,
+          kind: 'RETURN', source: 'returned', no: nextReleaseNo('RETURN', localISODate()), date: localISODate(), purpose: x.note || 'Returned by the teacher', reportId: x.id,
           lines, total: 0, createdAt: F.serverTimestamp()
         })));
         saveStateWith({ summary: { kind: 'release', text: `${x.name} returned ${lines.map(l => `${l.desc} (${l.units.map(u => u.no).join(', ')})`).join(', ')}`, track: true } });
@@ -9389,10 +9710,10 @@
       showToast(`${reply} · ${x.name.split(' ')[0]} will see it`, 'ph-check-circle');
     }
 
-    function declineTeacherReport(id) {
+    async function declineTeacherReport(id) {
       const x = tReports.find(r => r.id === id);
       if (!x) return;
-      const reason = prompt(`Reason for not accepting the return (${x.name} will see this):`, '');
+      const reason = await appPrompt(`${x.name} will see this.`, '', { title: 'Not accepting the return?', label: 'Reason', placeholder: 'e.g. Please have it repaired first', multiline: true, ok: 'Decline', tone: 'danger', icon: 'ph-x-circle', maxLength: 300 });
       if (reason === null) return;
       const F = cloud.sdk;
       cloudWrite(F.updateDoc(F.doc(tReportCol(), x.id), { status: 'declined', reply: reason.trim().slice(0, 300) || 'Return not accepted', resolvedMs: Date.now() }), 'Updating');
@@ -9427,7 +9748,7 @@
         const records = releaseList.filter(r => personId(r.teacherUid, r.teacherName) === p.key).sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
         const equipment = (unitsOf.get(p.key) || []).sort((a, b) => a.item.name.localeCompare(b.item.name) || String(a.unit.no).localeCompare(String(b.unit.no)));
         const ris = records.filter(r => r.kind === 'RIS');
-        const toConfirm = p.uid ? records.filter(r => (r.kind === 'ICS' || r.kind === 'RIS') && !tReports.some(x => x.kind === 'received' && x.releaseId === r.id)) : [];
+        const toConfirm = p.uid ? records.filter(r => (isIssueKind(r.kind) || r.kind === 'RIS') && !r.sameHolder && !tReports.some(x => x.kind === 'received' && x.releaseId === r.id)) : [];
         const open = p.uid ? tReports.filter(x => x.uid === p.uid && x.status === 'open' && x.kind !== 'received') : [];
         const value = equipment.reduce((n, x) => n + (x.item.price || 0), 0);
         const last = records[0] ? (records[0].createdMs || 0) : 0;
@@ -9539,13 +9860,14 @@
         <div class="mt-3 flex flex-wrap gap-2">
           <button onclick="printAccountability('${escapeHTML(p.key)}')" class="h-10 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print accountability</button>
           ${connected ? `<button onclick="openRelease({ teacherUid: ${p.uid ? `'${p.uid}'` : 'null'} })" class="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release more</button>` : ''}
+          ${connected && p.equipment.length ? `<button id="tvTransfer" onclick="openTransfer({ fromKey: '${escapeHTML(p.key).replace(/'/g, '&#39;')}' })" class="h-10 px-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>` : ''}
         </div>`;
 
       const condChip = u => {
         const c = UNIT_COND[u.cond] || UNIT_COND.S;
         return u.cond && u.cond !== 'S' ? `<span class="inline-flex px-1.5 py-0.5 rounded-md border text-[10px] font-bold ${c.on}">${c.label}</span>` : '';
       };
-      const confirmedUnit = u => p.uid && releaseList.some(r => r.teacherUid === p.uid && r.kind === 'ICS' && r.lines.some(l => (l.units || []).some(x => x.id === u.id)) && tReports.some(x => x.kind === 'received' && x.releaseId === r.id));
+      const confirmedUnit = u => p.uid && releaseList.some(r => r.teacherUid === p.uid && isIssueKind(r.kind) && r.lines.some(l => (l.units || []).some(x => x.id === u.id)) && tReports.some(x => x.kind === 'received' && x.releaseId === r.id));
       let html = '';
       if (p.open.length) html += `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-warning"></i> ${plural(p.open.length, 'open report')} · see <button onclick="openRequestsView()" class="underline font-bold">From teachers</button></p>`;
       html += `
@@ -9556,11 +9878,12 @@
               <div class="p-3 flex items-start gap-3" data-tunit="${unit.id}">
                 <div class="min-w-0 flex-1">
                   <p class="text-sm font-bold text-slate-900 leading-snug">${escapeHTML(item.name)}</p>
-                  <p class="text-[11px] text-slate-500"><span class="font-mono font-bold text-slate-700">${escapeHTML(unit.no || '—')}</span>${unit.serial ? ` · S/N ${escapeHTML(unit.serial)}` : ''}${unit.ics ? ` · ICS ${escapeHTML(unit.ics)}` : ''}${unit.icsDate ? ` · ${escapeHTML(formatShortDate(unit.icsDate + 'T00:00:00'))}` : ''}</p>
+                  <p class="text-[11px] text-slate-500"><span class="font-mono font-bold text-slate-700">${escapeHTML(unit.no || '—')}</span>${unit.serial ? ` · S/N ${escapeHTML(unit.serial)}` : ''}${unit.ics ? ` · ${escapeHTML(unitDocLabel(unit))}` : ''}${unit.icsDate ? ` · ${escapeHTML(formatShortDate(unit.icsDate + 'T00:00:00'))}` : ''}${unit.loc ? ` · ${escapeHTML(unit.loc)}` : ''}</p>
                   <p class="mt-1 flex flex-wrap gap-1">${condChip(unit)}${confirmedUnit(unit) ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold"><i class="ph-bold ph-check-circle"></i> Confirmed</span>' : ''}</p>
                 </div>
                 <div class="shrink-0 text-right space-y-1">
                   <p class="text-xs font-mono font-bold text-slate-700">₱${peso2(item.price)}</p>
+                  ${connected ? `<button onclick="openTransfer({ fromKey: '${escapeHTML(p.key).replace(/'/g, '&#39;')}', unitIds: ['${unit.id}'] })" class="text-[11px] font-bold text-slate-500 hover:text-brand-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>` : ''}
                   <button onclick="takeBackUnit('${item.code}', '${unit.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrow-u-down-left"></i> Take back</button>
                 </div>
               </div>`).join('') : '<p class="p-4 text-xs text-slate-500 text-center">No equipment under this name.</p>'}
@@ -9584,7 +9907,9 @@
           </div>
         </div>`;
       if (p.records.length) {
-        const label = r => r.kind === 'RETURN' ? (r.source === 'returned' ? 'Returned' : r.source === 'taken-back' ? 'Taken back' : 'Reassigned') : r.source === 'existing' ? 'Linked (assigned before joining)' : r.source === 'assigned' ? 'Assigned' : 'Released';
+        const label = r => r.kind === 'RETURN' ? (r.source === 'returned' ? 'Returned' : r.source === 'taken-back' ? 'Taken back' : r.source === 'transferred' ? 'Transferred out' : 'Reassigned')
+          : r.source === 'transfer' ? (r.sameHolder ? 'Moved' : `Transferred in${r.fromName ? ` from ${r.fromName}` : ''}`)
+          : r.source === 'existing' ? 'Linked (assigned before joining)' : r.source === 'assigned' ? 'Assigned' : 'Released';
         html += `
           <div>
             <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">History</h2>
@@ -9593,11 +9918,14 @@
                 <li class="p-3 flex items-start gap-3">
                   <span class="w-8 h-8 shrink-0 rounded-lg ${r.kind === 'RETURN' ? 'bg-slate-100 text-slate-500' : r.kind === 'RIS' ? 'bg-indigo-50 text-indigo-600' : 'bg-blue-50 text-blue-600'} flex items-center justify-center"><i class="ph-bold ${r.kind === 'RETURN' ? 'ph-arrow-u-down-left' : 'ph-hand-arrow-up'}"></i></span>
                   <span class="min-w-0 flex-1">
-                    <span class="block text-xs font-bold text-slate-900">${label(r)} · ${escapeHTML(r.kind === 'RETURN' ? '' : `${r.kind} ${r.no || ''}`)}</span>
+                    <span class="block text-xs font-bold text-slate-900">${escapeHTML(label(r))}${relDocName(r) ? ` · ${escapeHTML(relDocName(r))}` : ''}</span>
                     <span class="block text-[11px] text-slate-600 line-clamp-2">${r.lines.map(l => `${l.qty} ${escapeHTML(l.desc)}${(l.units || []).length ? ` (${escapeHTML(l.units.map(u => u.no).join(', '))})` : ''}`).join(' · ')}</span>
                     ${r.purpose ? `<span class="block text-[11px] text-slate-400 truncate">${escapeHTML(r.purpose)}</span>` : ''}
                   </span>
-                  <span class="shrink-0 text-[11px] text-slate-400">${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span>
+                  <span class="shrink-0 text-right">
+                    <span class="block text-[11px] text-slate-400">${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span>
+                    ${relPrintable(r) ? `<button onclick="printReleaseById('${r.id}')" class="mt-1 ml-auto w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Print ${escapeHTML(relDocName(r) || r.kind)}"><i class="ph-bold ph-printer"></i></button>` : ''}
+                  </span>
                 </li>`).join('')}
             </ol>
           </div>`;
@@ -9607,22 +9935,23 @@
 
     // The custodian takes an item back (e.g. teacher transferred): back in stock, unassigned,
     // and a return record for the teacher's list.
-    function takeBackUnit(code, unitId) {
+    async function takeBackUnit(code, unitId) {
       const item = items.find(i => i.code === code);
       const unit = item && getUnits(code).find(u => u.id === unitId);
       if (!unit) return;
       const holder = unitHolder(unit);
-      if (!confirm(`Take back ${item.name} (${unit.no || 'no property no.'}) from ${holder}?\n\nIt goes back to stock, not assigned to anyone.`)) return;
+      if (!await appConfirm(`It goes back to stock, not assigned to anyone. An RRSP is made for ${holder}.`, { title: `Take back ${item.name} (${unit.no || 'no property no.'}) from ${holder}?`, ok: 'Take back', tone: 'warn', icon: 'ph-arrow-u-down-left' })) return;
+      if (unitHolder(unit) !== holder) return;
       const uid = unit.toUid || null;
       const line = relLine(item, 1, [unit]);
-      unit.to = ''; delete unit.toUid; unit.ics = ''; delete unit.icsDate; delete unit.released;
+      clearUnitHolder(unit);
       unit.returned = Date.now();
       saveStateWith({ summary: { kind: 'release', code, text: `Took back ${unit.no || item.name} from ${holder}` } });
       if (isCustodianDevice() && cloud.user) {
         const F = cloud.sdk;
         const t = rosterByUid(uid) || { uid, name: holder };
         cloudWrite(F.setDoc(F.doc(relCol()), cleanJSON(relBase(t, {
-          kind: 'RETURN', source: 'taken-back', no: '', date: localISODate(), purpose: 'Taken back by the property custodian',
+          kind: 'RETURN', source: 'taken-back', no: nextReleaseNo('RETURN', localISODate()), date: localISODate(), purpose: 'Taken back by the property custodian',
           lines: [line], total: 0, createdAt: F.serverTimestamp()
         }))), 'Saving the return');
       }
@@ -9647,18 +9976,18 @@
       const d = prDefaults();
       const today = new Date().toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
       const condText = u => (UNIT_COND[u.cond] || UNIT_COND.S).label;
-      const eqRows = p.equipment.map(({ item, unit }) => `<tr><td class="pr-sn">${e(unit.ics)}</td><td class="c" style="font-size:9pt">${e(unit.icsDate ? new Date(unit.icsDate + 'T00:00:00').toLocaleDateString('en-PH') : '')}</td><td class="pr-sn">${e(unit.no)}</td><td>${e(item.name)}${unit.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(unit.serial)}</span>` : ''}</td><td class="c" style="font-size:9pt">${e(condText(unit))}</td><td class="r">${peso2(item.price)}</td></tr>`).join('');
+      const eqRows = p.equipment.map(({ item, unit }) => `<tr><td class="pr-sn">${e(unitDocLabel(unit))}</td><td class="c" style="font-size:9pt">${e(unit.icsDate ? new Date(unit.icsDate + 'T00:00:00').toLocaleDateString('en-PH') : '')}</td><td class="pr-sn">${e(unit.no)}</td><td>${e(item.name)}${unit.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(unit.serial)}</span>` : ''}</td><td class="c" style="font-size:9pt">${e(condText(unit))}</td><td class="r">${peso2(item.price)}</td></tr>`).join('');
       const risRows = p.ris.flatMap(r => r.lines.map((l, i) => `<tr><td class="pr-sn">${i ? '' : e(r.no)}</td><td class="c" style="font-size:9pt">${i ? '' : e(r.date ? new Date(r.date + 'T00:00:00').toLocaleDateString('en-PH') : '')}</td><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td><td>${e(l.desc)}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td></tr>`)).join('');
       return `
         <div class="pr-form acct-page">
           <h1 style="margin-bottom:2pt">SUMMARY OF ACCOUNTABILITY</h1>
-          <p style="text-align:center;margin:0 0 10pt">Semi-expendable property and supplies issued · as of ${e(today)}</p>
+          <p style="text-align:center;margin:0 0 10pt">Property and supplies issued · as of ${e(today)}</p>
           <div class="pr-top"><span>Entity Name: <b>${e(d.entity || schoolInfo.school)}</b></span><span>Fund Cluster: <b>${e(d.fund)}</b></span></div>
           <div class="pr-top"><span>Accountable person: <b>${e(p.name).toUpperCase()}</b></span><span>Position/Office: <b>${e([p.position, p.office].filter(Boolean).join(', '))}</b></span></div>
-          <p style="font-weight:700;margin:8pt 0 3pt">A. Equipment issued on ICS (${p.equipment.length})</p>
+          <p style="font-weight:700;margin:8pt 0 3pt">A. Equipment issued on ICS / PAR (${p.equipment.length})</p>
           <table class="pr-table">
             <colgroup><col style="width:13%"><col style="width:13%"><col style="width:18%"><col style="width:30%"><col style="width:13%"><col style="width:13%"></colgroup>
-            <tr><th>ICS No.</th><th>Date</th><th>Inventory Item No.</th><th>Description</th><th>Condition</th><th>Unit Cost</th></tr>
+            <tr><th>ICS / PAR No.</th><th>Date</th><th>Inventory Item No.</th><th>Description</th><th>Condition</th><th>Unit Cost</th></tr>
             ${eqRows || '<tr><td colspan="6" class="c"><i>None</i></td></tr>'}
             <tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(p.value)}</b></td></tr>
           </table>
@@ -9676,6 +10005,790 @@
             <tr><td class="c"><br><span style="font-size:8.5pt">Date</span></td><td class="c"><br><span style="font-size:8.5pt">Date</span></td></tr>
           </table>
         </div>`;
+    }
+
+    // =========================================================================
+    // GOVERNMENT FORMS beyond RIS and ICS (all printed on plain A4, filled in from the app)
+    //   PAR    Appendix 71  Property Acknowledgment Receipt · release of equipment ₱50,000 and up
+    //   PTR    Appendix 76  Property Transfer Report · PPE moved to another person or room
+    //   ITR    Annex A.5    Inventory Transfer Report (COA Circular 2022-004) · same, below ₱50,000
+    //   RRSP   Annex A.6    Receipt of Returned Semi-expendable Property · returns and take-backs
+    //   RPCPPE Appendix 73  / RPCSP Annex A.8 · physical count, from the scans and checks recorded
+    //   IIRUP  Appendix 74  / IIRUSP Annex A.10 · unserviceable property (units marked Unserviceable)
+    // =========================================================================
+    const relDocName = r => (r.kind === 'RETURN' ? (r.no ? `RRSP ${r.no}` : (r.transferNo || '')) : `${r.kind} ${r.no || ''}`.trim());
+    const relPrintable = r => r.kind !== 'RETURN' || r.source === 'returned' || r.source === 'taken-back'
+      || (r.source === 'transferred' && releaseList.some(x => x.id === r.transferId));
+    const fDate = iso => (iso ? new Date(iso + 'T00:00:00').toLocaleDateString('en-PH') : '');
+    const fBox = on => `<span style="display:inline-block;width:9pt;height:9pt;border:1px solid #000;vertical-align:-1pt;margin-right:3pt;text-align:center;line-height:8pt">${on ? '<svg viewBox="0 0 16 16" width="8" height="8"><path d="M2.5 8.5l3.5 3.5 7.5-8" fill="none" stroke="#000" stroke-width="2.6"/></svg>' : ''}</span>`;
+    const headName = () => prDefaults().apprName || schoolInfo.head || schoolInfo.principal || '';
+    const headDesig = () => prDefaults().apprDesig || 'School Head';
+    const unitSubline = u => [u.no, u.serial && `S/N ${u.serial}`].filter(Boolean).join(' · ');
+
+    // ---- A unit's accountability history (who had it, transfers, returns) ----------------
+    function unitTrail(unitId) {
+      return releaseList.filter(r => !(r.kind === 'RETURN' && r.source === 'transferred') && (r.lines || []).some(l => (l.units || []).some(u => u.id === unitId)))
+        .sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
+    }
+    function trailText(r) {
+      if (r.kind === 'RETURN') return r.source === 'returned' ? `Returned by ${r.teacherName}` : r.source === 'taken-back' ? `Taken back from ${r.teacherName}` : `No longer with ${r.teacherName}`;
+      if (r.source === 'transfer') return r.sameHolder ? `Moved${r.loc ? ` to ${r.loc}` : ''} · still with ${r.teacherName}` : `Transferred${r.fromName ? ` from ${r.fromName}` : ''} to ${r.teacherName}${r.loc ? ` · ${r.loc}` : ''}`;
+      if (r.source === 'existing') return `Linked to ${r.teacherName}’s account`;
+      return `${r.source === 'assigned' ? 'Assigned' : 'Issued'} to ${r.teacherName}`;
+    }
+    function unitTrailHTML(item, u) {
+      const trail = isCustodianDevice() ? unitTrail(u.id) : [];
+      const canMove = isCustodianDevice() && cloud.user && (u.to || u.toUid);
+      if (!trail.length && !canMove) return '';
+      const key = canMove ? personId(u.toUid, u.to) : '';
+      return `
+          <div class="mt-2 flex flex-wrap items-start gap-2">
+            ${trail.length ? `<details class="unit-trail flex-1 min-w-0 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-1.5">
+              <summary class="text-[11px] font-bold text-slate-600 cursor-pointer select-none"><i class="ph-bold ph-path"></i> Accountability history (${trail.length})</summary>
+              <ol class="mt-1.5 space-y-1">${trail.map(r => `
+                <li class="flex items-start gap-2 text-[11px] text-slate-600">
+                  <span class="shrink-0 w-20 text-slate-400">${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span>
+                  <span class="min-w-0 flex-1"><b class="text-slate-800">${escapeHTML(relDocName(r) || r.kind)}</b> · ${escapeHTML(trailText(r))}</span>
+                  ${relPrintable(r) ? `<button onclick="printReleaseById('${r.id}')" class="shrink-0 text-slate-400 hover:text-slate-700" aria-label="Print"><i class="ph-bold ph-printer"></i></button>` : ''}
+                </li>`).join('')}</ol>
+            </details>` : '<span class="flex-1"></span>'}
+            ${canMove ? `<button onclick="closeUnitsModal(); openTransfer({ fromKey: '${escapeHTML(key).replace(/'/g, '&#39;')}', unitIds: ['${u.id}'] })" class="shrink-0 h-8 px-2.5 rounded-lg bg-white border border-slate-200 hover:border-brand-300 text-[11px] font-bold text-slate-600 flex items-center gap-1"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>` : ''}
+          </div>`;
+    }
+
+    // ---- Appendix 71 · Property Acknowledgment Receipt -----------------------------------
+    function parPrintHTML(r) {
+      const e = v => escapeHTML(v || '');
+      const d = prDefaults();
+      const rows = r.lines.map(l => {
+        const serials = (l.units || []).map(u => u.serial).filter(Boolean);
+        return `<tr><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td>
+          <td>${e(l.desc)}${serials.length ? `<br><span style="font-size:8.5pt">S/N: ${e(serials.join(', '))}</span>` : ''}</td>
+          <td class="pr-sn">${e((l.units || []).map(u => u.no).join(', '))}</td><td class="c" style="font-size:9pt">${e(fDate(r.date))}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td></tr>`;
+      }).join('');
+      const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 10 - r.lines.length));
+      return `
+        <div class="pr-form">
+          <div class="pr-appx">Appendix 71</div>
+          <h1>PROPERTY ACKNOWLEDGMENT RECEIPT</h1>
+          <div class="pr-top"><span>Entity Name: <b>${e(d.entity || schoolInfo.school)}</b></span><span></span></div>
+          <div class="pr-top"><span>Fund Cluster: <b>${e(d.fund)}</b></span><span>PAR No.: <b>${e(r.no)}</b></span></div>
+          <table class="pr-table">
+            <colgroup><col style="width:9%"><col style="width:8%"><col style="width:35%"><col style="width:18%"><col style="width:13%"><col style="width:17%"></colgroup>
+            <tr><th>Quantity</th><th>Unit</th><th>Description</th><th>Property Number</th><th>Date Acquired</th><th>Amount</th></tr>
+            ${rows}${blanks}
+            <tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(r.total)}</b></td></tr>
+          </table>
+          <table class="pr-table" style="border-top:0">
+            <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+            <tr><td><i>Received by:</i></td><td><i>Issued by:</i></td></tr>
+            <tr><td class="pr-sig"></td><td class="pr-sig"></td></tr>
+            <tr><td class="c"><b>${e(r.teacherName).toUpperCase()}</b><br><span style="font-size:8.5pt">Signature over Printed Name of End User</span></td><td class="c"><b>${e(schoolInfo.custodian).toUpperCase()}</b><br><span style="font-size:8.5pt">Signature over Printed Name of Supply and/or Property Custodian</span></td></tr>
+            <tr><td class="c">${e([r.position, r.office].filter(Boolean).join(', '))}<br><span style="font-size:8.5pt">Position/Office</span></td><td class="c">${e(schoolInfo.position || 'Property Custodian')}<br><span style="font-size:8.5pt">Position/Office</span></td></tr>
+            <tr><td class="c"><br><span style="font-size:8.5pt">Date</span></td><td class="c">${e(longDate(r.date))}<br><span style="font-size:8.5pt">Date</span></td></tr>
+          </table>
+        </div>`;
+    }
+
+    // ---- Appendix 76 PTR / Annex A.5 ITR ------------------------------------------------
+    const XFER_TYPES = [['donation', 'Donation'], ['reassignment', 'Reassignment'], ['relocate', 'Relocate'], ['others', 'Others (Specify)']];
+    function transferPrintHTML(r) {
+      const e = v => escapeHTML(v || '');
+      const d = prDefaults();
+      const ppe = r.kind === 'PTR';
+      const units = r.lines.flatMap(l => (l.units || []).map(u => ({ l, u })));
+      const rows = units.map(({ l, u }) => ppe
+        ? `<tr><td class="c" style="font-size:9pt"></td><td class="pr-sn">${e(u.no)}</td><td>${e(l.desc)}${u.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(u.serial)}</span>` : ''}</td><td class="r">${peso2(l.unitCost)}</td><td class="c" style="font-size:9pt">${e((UNIT_COND[u.cond] || UNIT_COND.S).label)}</td></tr>`
+        : `<tr><td class="c" style="font-size:9pt"></td><td class="pr-sn">${e(u.no)}</td><td class="pr-sn">${e(u.doc)}${u.docDate ? `<br>${e(fDate(u.docDate))}` : ''}</td><td>${e(l.desc)}${u.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(u.serial)}</span>` : ''}</td><td class="r">${peso2(l.unitCost)}</td><td class="c" style="font-size:9pt">${e((UNIT_COND[u.cond] || UNIT_COND.S).label)}</td></tr>`).join('');
+      const cols = ppe ? 5 : 6;
+      const blanks = `<tr class="pr-blank">${'<td></td>'.repeat(cols)}</tr>`.repeat(Math.max(0, 8 - units.length));
+      const type = XFER_TYPES.map(([k, label]) => `<span style="margin-right:12pt">${fBox(r.transferType === k)}${label}${k === 'others' && r.transferType === 'others' && r.transferOther ? `: <u>${e(r.transferOther)}</u>` : k === 'others' ? ' ______' : ''}</span>`).join('');
+      const toName = r.teacherName, fromName = r.fromName || schoolInfo.custodian;
+      return `
+        <div class="pr-form">
+          <div class="pr-appx">${ppe ? 'Appendix 76' : 'Annex A.5'}</div>
+          <h1>${ppe ? 'PROPERTY TRANSFER REPORT' : 'INVENTORY TRANSFER REPORT'}</h1>
+          <div class="pr-top"><span>Entity Name: <b>${e(d.entity || schoolInfo.school)}</b></span><span>Fund Cluster: <b>${e(d.fund)}</b></span></div>
+          <table class="pr-table">
+            <colgroup><col style="width:62%"><col style="width:38%"></colgroup>
+            <tr><td>From Accountable Officer/Agency/Fund Cluster: <b>${e(fromName)}</b>${r.fromPosition ? `, ${e(r.fromPosition)}` : ''}</td><td>${r.kind} No.: <b>${e(r.no)}</b></td></tr>
+            <tr><td>To Accountable Officer/Agency/Fund Cluster: <b>${e(toName)}</b>${r.position ? `, ${e(r.position)}` : ''}${r.loc ? ` · ${e(r.loc)}` : ''}</td><td>Date: <b>${e(longDate(r.date))}</b></td></tr>
+            <tr><td colspan="2">Transfer Type: <i>(check only one)</i><br>${type}</td></tr>
+          </table>
+          <table class="pr-table" style="border-top:0">
+            ${ppe
+              ? `<colgroup><col style="width:13%"><col style="width:20%"><col style="width:37%"><col style="width:14%"><col style="width:16%"></colgroup>
+                 <tr><th>Date Acquired</th><th>Property No.</th><th>Description</th><th>Amount</th><th>Condition of PPE</th></tr>`
+              : `<colgroup><col style="width:11%"><col style="width:17%"><col style="width:16%"><col style="width:30%"><col style="width:12%"><col style="width:14%"></colgroup>
+                 <tr><th>Date Acquired</th><th>Item No.</th><th>ICS No./Date</th><th>Description</th><th>Amount</th><th>Condition of Inventory</th></tr>`}
+            ${rows}${blanks}
+            <tr><td colspan="${cols}" class="pr-purpose">Reason/s for Transfer: ${e(r.purpose)}</td></tr>
+          </table>
+          <table class="pr-table" style="border-top:0">
+            <colgroup><col style="width:16%"><col style="width:28%"><col style="width:28%"><col style="width:28%"></colgroup>
+            <tr><td></td><td><i>Approved by:</i></td><td><i>Released/Issued by:</i></td><td><i>Received by:</i></td></tr>
+            <tr><td>Signature:</td><td class="pr-sig"></td><td class="pr-sig"></td><td class="pr-sig"></td></tr>
+            <tr><td>Printed Name:</td><td class="c"><b>${e(headName()).toUpperCase()}</b></td><td class="c"><b>${e(fromName).toUpperCase()}</b></td><td class="c"><b>${e(toName).toUpperCase()}</b></td></tr>
+            <tr><td>Designation:</td><td class="c">${e(headDesig())}</td><td class="c">${e(r.fromName ? r.fromPosition : (schoolInfo.position || 'Property Custodian'))}</td><td class="c">${e(r.position)}</td></tr>
+            <tr><td>Date:</td><td class="c"></td><td class="c">${e(longDate(r.date))}</td><td></td></tr>
+          </table>
+        </div>`;
+    }
+
+    // ---- Annex A.6 · Receipt of Returned Semi-expendable Property ------------------------
+    function rrspPrintHTML(r) {
+      const e = v => escapeHTML(v || '');
+      const d = prDefaults();
+      const units = r.lines.flatMap(l => ((l.units || []).length ? l.units : [{}]).map(u => ({ l, u })));
+      const rows = units.map(({ l, u }) => `<tr><td>${e(l.desc)}${unitSubline(u) ? `<br><span style="font-size:8.5pt">${e(unitSubline(u))}</span>` : ''}</td><td class="c">${u.id ? 1 : l.qty}</td><td class="pr-sn">${e(u.doc)}</td><td>${e(r.teacherName)}</td><td style="font-size:9pt">${e([(UNIT_COND[u.cond] || UNIT_COND.S).label, r.purpose].filter(Boolean).join(' · '))}</td></tr>`).join('');
+      const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 8 - units.length));
+      return `
+        <div class="pr-form">
+          <div class="pr-appx">Annex A.6</div>
+          <h1>RECEIPT OF RETURNED SEMI-EXPENDABLE PROPERTY</h1>
+          <div class="pr-top"><span>Entity Name: <b>${e(d.entity || schoolInfo.school)}</b></span><span>Date: <b>${e(longDate(r.date))}</b></span></div>
+          <div class="pr-top"><span>Fund Cluster: <b>${e(d.fund)}</b></span><span>RRSP No.: <b>${e(r.no)}</b></span></div>
+          <p style="margin:6pt 0">This is to acknowledge receipt of the returned Semi-expendable Property</p>
+          <table class="pr-table">
+            <colgroup><col style="width:38%"><col style="width:10%"><col style="width:17%"><col style="width:17%"><col style="width:18%"></colgroup>
+            <tr><th>Item Description</th><th>Quantity</th><th>ICS No.</th><th>End-user</th><th>Remarks</th></tr>
+            ${rows}${blanks}
+          </table>
+          <table class="pr-table" style="border-top:0">
+            <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+            <tr><td><i>Returned by:</i></td><td><i>Received by:</i></td></tr>
+            <tr><td class="pr-sig"></td><td class="pr-sig"></td></tr>
+            <tr><td class="c"><b>${e(r.teacherName).toUpperCase()}</b><br><span style="font-size:8.5pt">End User</span></td><td class="c"><b>${e(schoolInfo.custodian).toUpperCase()}</b><br><span style="font-size:8.5pt">${e(schoolInfo.position || 'Head, Property and/or Supply Division/Unit')}</span></td></tr>
+            <tr><td class="c"><br><span style="font-size:8.5pt">Date</span></td><td class="c">${e(longDate(r.date))}<br><span style="font-size:8.5pt">Date</span></td></tr>
+          </table>
+        </div>`;
+    }
+
+    // ---- Transfer to another teacher or room (PTR / ITR) -----------------------------------
+    let xfer = null; // { fromKey, unitIds: Set, to, otherName, otherPos, loc, type, other, purpose, date, done }
+    const xferHolders = () => accountabilityPeople().filter(p => p.equipment.length);
+
+    function openTransfer(opts = {}) {
+      if (!isCustodianDevice() || !cloud.user) { showToast('Sign in as the property custodian to transfer items', 'ph-info'); return; }
+      const holders = xferHolders();
+      if (!holders.length) { showToast('No equipment is with a teacher yet · release items first', 'ph-info'); return; }
+      const fromKey = opts.fromKey && holders.some(p => p.key === opts.fromKey) ? opts.fromKey : holders.length === 1 ? holders[0].key : '';
+      xfer = { fromKey, unitIds: new Set(opts.unitIds || []), to: '', otherName: '', otherPos: '', loc: '', type: 'reassignment', other: '', purpose: '', date: localISODate(), done: null };
+      document.getElementById('xferModal').classList.remove('hidden');
+      placeToast();
+      renderTransfer();
+    }
+    function closeTransfer() {
+      xfer = null;
+      document.getElementById('xferModal').classList.add('hidden');
+      placeToast();
+    }
+    function xferSet(key, value, rerender = false) { if (!xfer) return; xfer[key] = value; if (rerender) renderTransfer(); }
+    function xferFrom(key) { xfer.fromKey = key; xfer.unitIds = new Set(); if (xfer.to === key) xfer.to = ''; renderTransfer(); }
+    function xferToggle(id) { xfer.unitIds.has(id) ? xfer.unitIds.delete(id) : xfer.unitIds.add(id); renderTransfer(); }
+    function xferAll(on) {
+      const from = xferHolders().find(p => p.key === xfer.fromKey);
+      xfer.unitIds = new Set(on && from ? from.equipment.map(x => x.unit.id) : []);
+      renderTransfer();
+    }
+    function xferTarget(from) {
+      if (!from) return null;
+      if (xfer.to === '__same') return { uid: from.uid || null, name: from.name, position: from.position || '', office: from.office || '', same: true };
+      if (xfer.to === '__other') {
+        const name = xfer.otherName.trim();
+        if (!name) return null;
+        const same = personKey(name) === personKey(from.name) && !from.uid;
+        return { uid: null, name, position: xfer.otherPos.trim(), office: '', same };
+      }
+      const t = rosterByUid(xfer.to);
+      return t ? { ...t, same: t.uid === from.uid } : null;
+    }
+
+    function renderTransfer() {
+      if (!xfer) return;
+      const body = document.getElementById('xferBody');
+      const foot = document.getElementById('xferFoot');
+      if (xfer.done) {
+        const r = xfer.done;
+        body.innerHTML = `
+          <div class="py-6 text-center space-y-2">
+            <span class="mx-auto w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="ph-bold ph-check-circle text-3xl"></i></span>
+            <p class="text-base font-extrabold text-slate-900">${r.same ? `Moved${r.loc ? ` to ${escapeHTML(r.loc)}` : ''}` : `Transferred to ${escapeHTML(r.toName)}`}</p>
+            <p class="text-xs text-slate-500">${r.docs.map(x => `${x.kind} No. <b class="font-mono">${escapeHTML(x.no)}</b> · ${plural(x.lines.reduce((n, l) => n + l.qty, 0), 'item')}`).join('<br>')}</p>
+            <p class="text-xs text-slate-500">Each unit’s history shows the move. Print the form for signatures.</p>
+          </div>`;
+        foot.innerHTML = r.docs.map((x, i) => `<button onclick="printTransferDone(${i})" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> ${x.kind}</button>`).join('') +
+          `<button onclick="closeTransfer()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-sm">Done</button>`;
+        return;
+      }
+      const holders = xferHolders();
+      const from = holders.find(p => p.key === xfer.fromKey) || null;
+      const roster = teacherRoster().filter(t => !from || t.uid !== from.uid);
+      const chosen = from ? from.equipment.filter(x => xfer.unitIds.has(x.unit.id)) : [];
+      const locs = [...new Set(allTaggedUnits().map(x => x.unit.loc).concat(items.map(i => i.note)).filter(Boolean))].sort();
+      const target = xferTarget(from);
+      const ppeN = chosen.filter(x => isPPE(x.item)).length, seN = chosen.length - ppeN;
+      const summary = [seN && `ITR ${nextReleaseNo('ITR', xfer.date)} · ${plural(seN, 'item')}`, ppeN && `PTR ${nextReleaseNo('PTR', xfer.date)} · ${plural(ppeN, 'item')} of ₱50,000 or more`].filter(Boolean);
+      const ready = chosen.length && target && (!target.same || xfer.loc.trim());
+      body.innerHTML = `
+        <label class="block text-[11px] font-bold uppercase text-slate-500">From (now accountable)
+          <select id="xferFrom" onchange="xferFrom(this.value)" class="pr-in">
+            <option value="" ${from ? '' : 'selected'} disabled>Choose who has the items…</option>
+            ${holders.map(p => `<option value="${escapeHTML(p.key)}" ${from && p.key === from.key ? 'selected' : ''}>${escapeHTML(p.name)} · ${plural(p.equipment.length, 'unit')}</option>`).join('')}
+          </select>
+        </label>
+        ${from ? `
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <p class="text-[11px] font-bold uppercase text-slate-500">Items to transfer · ${chosen.length} of ${from.equipment.length}</p>
+            <button onclick="xferAll(${chosen.length < from.equipment.length})" class="text-[11px] font-bold text-brand-700">${chosen.length < from.equipment.length ? 'Select all' : 'Clear'}</button>
+          </div>
+          <div id="xferUnits" class="rounded-xl border border-slate-200 divide-y divide-slate-100 max-h-56 overflow-y-auto">
+            ${from.equipment.map(({ item, unit }) => {
+              const on = xfer.unitIds.has(unit.id);
+              return `<button type="button" onclick="xferToggle('${unit.id}')" data-xunit="${unit.id}" aria-pressed="${on}" class="w-full text-left px-3 py-2 flex items-center gap-3 ${on ? 'bg-brand-50/60' : ''}">
+                <span class="w-5 h-5 shrink-0 rounded-md border-2 flex items-center justify-center ${on ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300'}">${on ? '<i class="ph-bold ph-check text-xs"></i>' : ''}</span>
+                <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900 truncate">${escapeHTML(item.name)}</span>
+                  <span class="block text-[11px] text-slate-500"><span class="font-mono">${escapeHTML(unit.no || '—')}</span>${unit.loc ? ` · ${escapeHTML(unit.loc)}` : ''} · ${isPPE(item) ? 'PTR' : 'ITR'}</span></span>
+                <span class="shrink-0 text-[11px] font-mono text-slate-600">₱${peso2(item.price)}</span>
+              </button>`;
+            }).join('')}
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold uppercase text-slate-500">To
+            <select id="xferTo" onchange="xferSet('to', this.value, true)" class="pr-in">
+              <option value="" ${xfer.to ? '' : 'selected'} disabled>Choose the new accountable person…</option>
+              ${roster.map(t => `<option value="${escapeHTML(t.uid)}" ${t.uid === xfer.to ? 'selected' : ''}>${escapeHTML(t.name)}${t.position || t.office ? ` · ${escapeHTML(t.position || t.office)}` : ''}</option>`).join('')}
+              <option value="__other" ${xfer.to === '__other' ? 'selected' : ''}>Someone else (type the name)…</option>
+              <option value="__same" ${xfer.to === '__same' ? 'selected' : ''}>Same person · new room only</option>
+            </select>
+          </label>
+          <div class="${xfer.to === '__other' ? '' : 'hidden'} mt-2 grid grid-cols-2 gap-2">
+            <input id="xferOtherName" type="text" value="${escapeHTML(xfer.otherName)}" oninput="xferSet('otherName', this.value)" onchange="renderTransfer()" placeholder="Full name" class="pr-in mt-0">
+            <input id="xferOtherPos" type="text" value="${escapeHTML(xfer.otherPos)}" oninput="xferSet('otherPos', this.value)" placeholder="Position, e.g. Teacher I" class="pr-in mt-0">
+          </div>
+        </div>
+        <label class="block text-[11px] font-bold uppercase text-slate-500">New room / location ${xfer.to === '__same' ? '' : '<span class="normal-case font-semibold text-slate-400">(optional)</span>'}
+          <input id="xferLoc" type="text" list="xferLocList" value="${escapeHTML(xfer.loc)}" oninput="xferSet('loc', this.value)" onchange="renderTransfer()" placeholder="e.g. Room 12 · Grade 7 Sampaguita" class="pr-in">
+          <datalist id="xferLocList">${locs.map(l => `<option value="${escapeHTML(l)}"></option>`).join('')}</datalist>
+        </label>
+        <div>
+          <p class="text-[11px] font-bold uppercase text-slate-500 mb-1.5">Transfer type</p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 rounded-xl bg-slate-100">
+            ${XFER_TYPES.map(([k, label]) => `<button type="button" data-xtype="${k}" onclick="xferSet('type', '${k}', true)" class="h-9 rounded-lg text-xs font-bold transition ${xfer.type === k ? 'bg-white text-slate-900 shadow-sm seg-on' : 'text-slate-500 hover:text-slate-800'}">${label.replace(' (Specify)', '')}</button>`).join('')}
+          </div>
+          ${xfer.type === 'others' ? `<input id="xferOther" type="text" value="${escapeHTML(xfer.other)}" oninput="xferSet('other', this.value)" placeholder="Specify" class="pr-in">` : ''}
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <label class="sm:col-span-2 text-[11px] font-bold uppercase text-slate-500">Reason for transfer<input id="xferPurpose" type="text" value="${escapeHTML(xfer.purpose)}" oninput="xferSet('purpose', this.value)" placeholder="e.g. Teacher moved to Grade 8" class="pr-in"></label>
+          <label class="text-[11px] font-bold uppercase text-slate-500">Date<input id="xferDate" type="date" value="${escapeHTML(xfer.date)}" onchange="xferSet('date', this.value || localISODate(), true)" class="pr-in"></label>
+        </div>
+        <p id="xferSummary" class="text-xs text-slate-600">${summary.length ? `Creates ${summary.map(x => `<b>${escapeHTML(x)}</b>`).join(' and ')}` : 'Tick the items to transfer.'}${target && target.same && !xfer.loc.trim() ? ' · type the new room' : ''}</p>` : ''}`;
+      foot.innerHTML = `
+        <button onclick="closeTransfer()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Cancel</button>
+        <button id="xferSave" onclick="confirmTransfer()" ${ready ? '' : 'disabled'} class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white font-extrabold text-sm flex items-center justify-center gap-2"><i class="ph-bold ph-arrows-left-right text-lg"></i> Transfer</button>`;
+    }
+
+    function confirmTransfer() {
+      if (!xfer || !cloud.user) return;
+      const from = xferHolders().find(p => p.key === xfer.fromKey);
+      const target = xferTarget(from);
+      const chosen = from ? from.equipment.filter(x => xfer.unitIds.has(x.unit.id)) : [];
+      const loc = xfer.loc.trim().slice(0, 80);
+      if (!chosen.length || !target) return;
+      if (target.same && !loc) { appAlert('Type the new room or location.'); return; }
+      const F = cloud.sdk;
+      const batch = F.writeBatch(cloud.db);
+      const date = xfer.date || localISODate();
+      const now = Date.now();
+      const docs = [];
+      [['ITR', chosen.filter(x => !isPPE(x.item))], ['PTR', chosen.filter(x => isPPE(x.item))]].forEach(([kind, list]) => {
+        if (!list.length) return;
+        const no = nextReleaseNo(kind, date);
+        const byItem = new Map();
+        list.forEach(({ item, unit }) => { if (!byItem.has(item.code)) byItem.set(item.code, { item, units: [] }); byItem.get(item.code).units.push(unit); });
+        const lines = [...byItem.values()].map(({ item, units }) => relLine(item, units.length, units)); // as they were
+        const doc = relBase(target, {
+          kind, no, date, source: 'transfer', purpose: xfer.purpose.trim().slice(0, 300), transferType: xfer.type, transferOther: xfer.type === 'others' ? xfer.other.trim().slice(0, 80) : '',
+          fromUid: from.uid || null, fromName: from.name, fromPosition: from.position || '', loc, sameHolder: !!target.same, lines, total: relTotal(lines)
+        });
+        const ref = F.doc(relCol());
+        batch.set(ref, cleanJSON({ ...doc, createdAt: F.serverTimestamp() }));
+        if (!target.same) {
+          batch.set(F.doc(relCol()), cleanJSON(relBase(from, {
+            kind: 'RETURN', source: 'transferred', no: '', transferNo: `${kind} ${no}`, transferId: ref.id, date,
+            purpose: `Transferred to ${target.name} · ${kind} ${no}`, lines, total: 0, createdAt: F.serverTimestamp()
+          })));
+        }
+        list.forEach(({ unit }) => {
+          unit.to = target.name;
+          if (target.uid) unit.toUid = target.uid; else delete unit.toUid;
+          unit.ics = no; unit.doc = kind; unit.icsDate = date; unit.released = now;
+          if (loc) unit.loc = loc;
+        });
+        docs.push({ ...doc, id: ref.id });
+      });
+      saveStateWith({ summary: { kind: 'release', text: `${target.same ? `Moved ${from.name}’s items to ${loc}` : `Transferred from ${from.name} to ${target.name}`}: ${docs.map(x => `${x.kind} ${x.no}`).join(', ')}`, track: true } });
+      cloudWrite(batch.commit(), 'Saving the transfer');
+      xfer.done = { toName: target.name, same: !!target.same, loc, docs };
+      renderTransfer();
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+      if (activeMainView === 'ITEMS') renderDashboardLedger();
+    }
+    function printTransferDone(i) { if (xfer && xfer.done && xfer.done.docs[i]) printRelease(xfer.done.docs[i]); }
+
+    // ---- Forms hub: physical count, unserviceable, slips -----------------------------------
+    const COA_KEY = 'custodian_coa_forms_v1';
+    let coaPage = 'home';
+    let coaOpts = (() => { try { return JSON.parse(localStorage.getItem(COA_KEY) || '{}') || {}; } catch (e) { return {}; } })();
+    let coaSlipKind = 'ALL';
+    const coaYearStart = () => `${new Date().getFullYear()}-01-01`;
+    const isoMs = iso => (iso ? new Date(iso + 'T00:00:00').getTime() : 0);
+
+    function coaVal(key) {
+      const d = prDefaults();
+      const defaults = {
+        countType: 'ppe', unservType: 'ppe', asAt: localISODate(), since: coaYearStart(), fund: d.fund || '',
+        officer: schoolInfo.custodian || '', desig: schoolInfo.position || 'Property Custodian', assumed: '',
+        committee: '', head: headName(), coaRep: '', station: schoolInfo.school || '', inspector: '', witness: '', propType: ''
+      };
+      return coaOpts[key] !== undefined && coaOpts[key] !== '' ? coaOpts[key] : (defaults[key] ?? '');
+    }
+    function coaRead() {
+      document.querySelectorAll('#coaBody [data-coa]').forEach(el => { coaOpts[el.dataset.coa] = el.value.trim(); });
+      coaSave();
+    }
+    function coaSave() { // "As at" is today unless changed while the sheet is open
+      const keep = { ...coaOpts };
+      delete keep.asAt;
+      localStorage.setItem(COA_KEY, JSON.stringify(keep));
+    }
+    function openCoa(page = 'home') {
+      closeMoreMenu();
+      coaPage = page;
+      document.getElementById('coaModal').classList.remove('hidden');
+      placeToast();
+      renderCoa();
+    }
+    function closeCoa() { document.getElementById('coaModal').classList.add('hidden'); placeToast(); }
+    function coaGo(page) { if (document.querySelector('#coaBody [data-coa]')) coaRead(); coaPage = page; renderCoa(); document.getElementById('coaBody').scrollTop = 0; }
+    function coaSetOpt(key, value) { coaRead(); coaOpts[key] = value; coaSave(); renderCoa(); }
+
+    function countRows(ppe, sinceMs) {
+      const rows = [];
+      const countedAt = code => (countSession && countSession.counted && countSession.counted[code]) || 0;
+      items.filter(i => relIsEquip(i) && isPPE(i) === ppe)
+        .sort((a, b) => String(a.category || '').localeCompare(String(b.category || '')) || a.name.localeCompare(b.name))
+        .forEach(item => {
+          const units = getUnits(item.code).slice().sort((a, b) => String(a.no).localeCompare(String(b.no), undefined, { numeric: true }));
+          const itemCounted = countedAt(item.code) >= sinceMs && countedAt(item.code) > 0;
+          units.forEach(unit => {
+            const found = (unit.seen || 0) >= sinceMs || itemCounted;
+            const holder = unitHolder(unit);
+            rows.push({ item, unit, card: 1, count: found ? 1 : 0,
+              remarks: [!found && 'Not found in the count', unit.cond && unit.cond !== 'S' && UNIT_COND[unit.cond].label, holder && `With ${holder}`, unit.loc].filter(Boolean).join(' · ') });
+          });
+          const untagged = Math.max(0, (item.qty || 0) - units.length);
+          if (untagged) rows.push({ item, unit: null, card: untagged, count: itemCounted ? untagged : null, remarks: itemCounted ? 'No property number yet' : 'Not counted yet · no property number' });
+        });
+      return rows;
+    }
+
+    function unservRows(ppe) {
+      const rows = [];
+      items.filter(i => relIsEquip(i) && isPPE(i) === ppe).sort((a, b) => a.name.localeCompare(b.name)).forEach(item => {
+        const units = getUnits(item.code);
+        if (units.length) units.filter(u => u.cond === 'U').forEach(unit => rows.push({ item, unit, qty: 1 }));
+        else if (getCondition(item).unserv > 0) rows.push({ item, unit: null, qty: getCondition(item).unserv });
+      });
+      return rows;
+    }
+
+    function coaField(key, label, opts = {}) {
+      const v = escapeHTML(opts.value !== undefined ? opts.value : coaVal(key));
+      const cls = opts.span ? 'sm:col-span-2' : '';
+      return opts.area
+        ? `<label class="${cls} block text-[11px] font-bold uppercase text-slate-500">${label}<textarea data-coa="${key}" rows="3" placeholder="${escapeHTML(opts.ph || '')}" class="pr-in h-auto py-2 normal-case">${v}</textarea></label>`
+        : `<label class="${cls} block text-[11px] font-bold uppercase text-slate-500">${label}<input data-coa="${key}" type="${opts.type || 'text'}" value="${v}" placeholder="${escapeHTML(opts.ph || '')}" class="pr-in"></label>`;
+    }
+    const coaSeg = (key, options) => `<div class="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100">${options.map(([k, label, sub]) => `
+      <button type="button" data-coa-opt="${key}:${k}" onclick="coaSetOpt('${key}', '${k}')" class="rounded-lg py-1.5 text-xs font-bold leading-tight transition ${coaVal(key) === k ? 'bg-white text-slate-900 shadow-sm seg-on' : 'text-slate-500 hover:text-slate-800'}">${label}<span class="block text-[10px] font-semibold opacity-70">${sub}</span></button>`).join('')}</div>`;
+
+    function renderCoa() {
+      const body = document.getElementById('coaBody');
+      const foot = document.getElementById('coaFoot');
+      const title = document.getElementById('coaTitle');
+      const back = `<button onclick="coaGo('home')" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-caret-left"></i> All forms</button>`;
+      foot.classList.toggle('hidden', coaPage === 'home' || coaPage === 'slips');
+      if (coaPage === 'count') {
+        title.textContent = 'Physical count report';
+        const ppe = coaVal('countType') === 'ppe';
+        const rows = countRows(ppe, isoMs(coaVal('since')));
+        const card = rows.reduce((n, r) => n + r.card, 0);
+        const counted = rows.filter(r => r.count !== null).reduce((n, r) => n + r.count, 0);
+        const missing = rows.filter(r => r.count !== null && r.count < r.card);
+        const notCounted = rows.filter(r => r.count === null);
+        body.innerHTML = `${back}
+          ${coaSeg('countType', [['ppe', 'RPCPPE', '₱50,000 and up'], ['sep', 'RPCSP', 'below ₱50,000']])}
+          <div id="coaCountStats" class="grid grid-cols-3 gap-2 text-center">
+            <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${card}</p><p class="text-[10px] font-bold uppercase text-slate-400">Per card</p></div>
+            <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-emerald-700">${counted}</p><p class="text-[10px] font-bold uppercase text-slate-400">Counted</p></div>
+            <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono ${missing.length ? 'text-rose-600' : 'text-slate-900'}">${missing.length}</p><p class="text-[10px] font-bold uppercase text-slate-400">Not found</p></div>
+          </div>
+          ${!rows.length ? `<p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">No equipment ${ppe ? 'of ₱50,000 or more' : 'below ₱50,000'} in My Items.</p>` : ''}
+          ${missing.length ? `<div class="rounded-xl bg-rose-50 border border-rose-200 px-3 py-2 text-[11px] text-rose-800"><b>Not found since ${escapeHTML(formatShortDate(coaVal('since') + 'T00:00:00'))}:</b> ${missing.slice(0, 8).map(r => escapeHTML(r.unit ? r.unit.no : r.item.name)).join(', ')}${missing.length > 8 ? ` +${missing.length - 8} more` : ''}. Scan their tags (Scan Tags) or check the item during the count to mark them found.</div>` : ''}
+          ${notCounted.length ? `<p class="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800">${plural(notCounted.length, 'item')} without property numbers ${notCounted.length === 1 ? 'is' : 'are'} not counted yet · the count column stays blank for writing in.</p>` : ''}
+          <p class="text-[11px] text-slate-500">Built from the counts already recorded: a unit counts as found when its QR tag was scanned, or its item was checked in the physical count, on or after “Counted since”.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            ${coaField('asAt', 'As at', { type: 'date' })}
+            ${coaField('since', 'Counted since', { type: 'date' })}
+            ${coaField('propType', 'Type of property', { ph: ppe ? 'e.g. ICT Equipment' : 'e.g. Semi-expendable ICT Equipment', span: true })}
+            ${coaField('fund', 'Fund cluster', { ph: 'e.g. 01' })}
+            ${coaField('assumed', 'Accountability assumed on', { type: 'date' })}
+            ${coaField('officer', 'Accountable officer')}
+            ${coaField('desig', 'Designation')}
+            ${coaField('committee', 'Inventory Committee · chair first, one per line', { area: true, span: true, ph: 'Chair\nMember\nMember' })}
+            ${coaField('head', 'Approved by (head of school)')}
+            ${coaField('coaRep', 'COA representative')}
+          </div>`;
+        foot.innerHTML = `<button onclick="coaGo('home')" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Back</button>
+          <button id="coaPrint" onclick="printCountReport()" ${rows.length ? '' : 'disabled'} class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white font-extrabold text-sm flex items-center justify-center gap-2"><i class="ph-bold ph-printer text-lg"></i> Print ${ppe ? 'RPCPPE' : 'RPCSP'}</button>`;
+        return;
+      }
+      if (coaPage === 'unserv') {
+        title.textContent = 'Unserviceable property';
+        const ppe = coaVal('unservType') === 'ppe';
+        const rows = unservRows(ppe);
+        const total = rows.reduce((n, r) => n + r.qty * (r.item.price || 0), 0);
+        body.innerHTML = `${back}
+          ${coaSeg('unservType', [['ppe', 'IIRUP', '₱50,000 and up'], ['sep', 'IIRUSP', 'below ₱50,000']])}
+          <div id="coaUnservList" class="rounded-xl border border-slate-200 divide-y divide-slate-100">
+            ${rows.length ? rows.map(r => `<div class="px-3 py-2 flex items-center gap-3"><span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900 truncate">${escapeHTML(r.item.name)}</span><span class="block text-[11px] text-slate-500 font-mono">${escapeHTML(r.unit ? r.unit.no : `${r.qty} untagged`)}</span></span><span class="shrink-0 text-[11px] font-mono text-slate-600">₱${peso2(r.qty * (r.item.price || 0))}</span></div>`).join('')
+              : `<p class="px-3 py-4 text-center text-xs text-slate-500">Nothing is marked Unserviceable ${ppe ? 'among items of ₱50,000 or more' : 'below ₱50,000'}. Mark units under Property Numbers, or when a teacher reports a problem.</p>`}
+          </div>
+          ${rows.length ? `<p class="text-xs text-slate-600"><b>${plural(rows.reduce((n, r) => n + r.qty, 0), 'unit')}</b> · total cost <b class="font-mono">₱${peso2(total)}</b></p>` : ''}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            ${coaField('asAt', 'As at', { type: 'date' })}
+            ${coaField('fund', 'Fund cluster', { ph: 'e.g. 01' })}
+            ${coaField('officer', 'Accountable officer')}
+            ${coaField('desig', 'Designation')}
+            ${coaField('station', 'Station', { span: true })}
+            ${coaField('head', 'Approved by (head of school)')}
+            ${coaField('inspector', 'Inspection officer')}
+            ${coaField('witness', 'Witness to disposal')}
+          </div>`;
+        foot.innerHTML = `<button onclick="coaGo('home')" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Back</button>
+          <button id="coaPrint" onclick="printUnservReport()" ${rows.length ? '' : 'disabled'} class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white font-extrabold text-sm flex items-center justify-center gap-2"><i class="ph-bold ph-printer text-lg"></i> Print ${ppe ? 'IIRUP' : 'IIRUSP'}</button>`;
+        return;
+      }
+      if (coaPage === 'slips') {
+        title.textContent = 'Slips & receipts';
+        const kinds = ['ALL', 'RIS', 'ICS', 'PAR', 'ITR', 'PTR', 'RRSP'];
+        const kindOf = r => (r.kind === 'RETURN' ? (r.no ? 'RRSP' : '') : r.kind);
+        const list = releaseList.filter(r => kindOf(r) && relPrintable(r) && !(r.kind === 'RETURN' && r.source === 'transferred') && (coaSlipKind === 'ALL' || kindOf(r) === coaSlipKind));
+        body.innerHTML = `${back}
+          <div class="flex flex-wrap gap-1.5">${kinds.map(k => `<button onclick="coaSlipKind='${k}'; renderCoa()" data-slip-kind="${k}" class="h-8 px-3 rounded-lg border text-[11px] font-bold ${coaSlipKind === k ? 'bg-slate-900 border-slate-900 text-white seg-on' : 'bg-white border-slate-200 text-slate-600'}">${k === 'ALL' ? 'All' : k}</button>`).join('')}</div>
+          <div id="coaSlips" class="rounded-xl border border-slate-200 divide-y divide-slate-100">
+            ${list.length ? list.slice(0, 80).map(r => `<div class="px-3 py-2 flex items-center gap-3">
+              <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900">${escapeHTML(relDocName(r))} <span class="font-semibold text-slate-400">· ${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span></span>
+                <span class="block text-[11px] text-slate-500 truncate">${escapeHTML(r.kind === 'RETURN' ? `From ${r.teacherName}` : r.source === 'transfer' ? trailText(r) : `To ${r.teacherName}`)} · ${escapeHTML(relNotifSummary(r))}</span></span>
+              <button onclick="printReleaseById('${r.id}')" class="shrink-0 w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Print ${escapeHTML(relDocName(r))}"><i class="ph-bold ph-printer"></i></button>
+            </div>`).join('') : `<p class="px-3 py-4 text-center text-xs text-slate-500">${cloud.user ? 'No slips yet. They are made when you release, transfer or take back items.' : 'Sign in to see the slips saved for your school.'}</p>`}
+          </div>`;
+        return;
+      }
+      title.textContent = 'Government forms';
+      const eqUnits = allTaggedUnits().filter(x => relIsEquip(x.item));
+      const seenYear = eqUnits.filter(x => (x.unit.seen || 0) >= isoMs(coaYearStart())).length;
+      const unserv = unservRows(true).concat(unservRows(false)).reduce((n, r) => n + r.qty, 0);
+      const card = (id, icon, tint, name, forms, sub, action) => `
+        <button id="${id}" onclick="${action}" class="w-full text-left rounded-2xl border border-slate-200 bg-white hover:border-brand-300 p-3 flex items-center gap-3">
+          <span class="w-10 h-10 shrink-0 rounded-xl ${tint} flex items-center justify-center"><i class="ph-bold ${icon} text-xl"></i></span>
+          <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">${name} <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">${forms}</span></span><span class="block text-[11px] text-slate-500 leading-snug">${sub}</span></span>
+          <i class="ph-bold ph-caret-right text-slate-400"></i>
+        </button>`;
+      body.innerHTML = `
+        ${card('coaGoCount', 'ph-clipboard-text', 'bg-sky-50 text-sky-600', 'Physical count report', 'RPCPPE · RPCSP', `${seenYear} of ${eqUnits.length} tagged units counted this year · from your scans and checks`, "coaGo('count')")}
+        ${card('coaGoUnserv', 'ph-wrench', 'bg-rose-50 text-rose-600', 'Unserviceable property', 'IIRUP · IIRUSP', `${plural(unserv, 'unit')} marked Unserviceable · for inspection and disposal`, "coaGo('unserv')")}
+        ${card('coaGoTransfer', 'ph-arrows-left-right', 'bg-brand-50 text-brand-600', 'Transfer property', 'PTR · ITR', 'To another teacher or room · kept in each unit’s history', 'closeCoa(); openTransfer()')}
+        ${card('coaGoSlips', 'ph-files', 'bg-emerald-50 text-emerald-600', 'Slips & receipts', 'RIS · ICS · PAR · RRSP', 'Print again any slip saved for your school', "coaGo('slips')")}
+        <p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[11px] text-slate-600 flex gap-2"><i class="ph-bold ph-info text-sm text-brand-600"></i><span><b>PAR and ICS</b> print when you release equipment: items worth ₱50,000 or more go on a PAR (Appendix 71), the rest on an ICS. Returns and take-backs get an RRSP number.</span></p>`;
+    }
+
+    function coaSignBlock(cells) {
+      return `<table class="pr-table" style="margin-top:8pt"><colgroup>${cells.map(() => `<col style="width:${100 / cells.length}%">`).join('')}</colgroup>
+        <tr>${cells.map(c => `<td><i>${c.label}</i>${c.note ? `<br><span style="font-size:8pt">${c.note}</span>` : ''}</td>`).join('')}</tr>
+        <tr>${cells.map(c => `<td class="pr-sig" style="vertical-align:bottom;text-align:center">${c.names.map(n => `<b>${escapeHTML(n).toUpperCase()}</b>`).join('<br><br>')}</td>`).join('')}</tr>
+        <tr>${cells.map(c => `<td class="c" style="font-size:8pt">${c.under}</td>`).join('')}</tr></table>`;
+    }
+
+    function printCountReport() {
+      coaRead();
+      const ppe = coaVal('countType') === 'ppe';
+      const rows = countRows(ppe, isoMs(coaVal('since')));
+      if (!rows.length) return;
+      const e = v => escapeHTML(v || '');
+      const body = rows.map(r => {
+        const diff = r.count === null ? null : r.count - r.card;
+        return `<tr><td style="font-size:8.5pt">${e(r.item.category || 'Equipment')}</td><td>${e(r.item.name)}${r.unit && r.unit.serial ? `<br><span style="font-size:8pt">S/N: ${e(r.unit.serial)}</span>` : ''}</td>
+          <td class="pr-sn">${e(r.unit ? r.unit.no : '')}</td><td class="c">${e(r.item.unit)}</td><td class="r">${peso2(r.item.price)}</td>
+          <td class="c">${r.card}</td><td class="c">${r.count === null ? '' : r.count}</td><td class="c">${diff || ''}</td><td class="r">${diff ? peso2(diff * (r.item.price || 0)) : ''}</td>
+          <td style="font-size:8.5pt">${e(r.remarks)}</td></tr>`;
+      }).join('');
+      const committee = coaVal('committee').split(/\n+/).map(x => x.trim()).filter(Boolean);
+      const school = prDefaults().entity || schoolInfo.school;
+      printFormHTML(`
+        <div class="pr-form pr-wide">
+          <div class="pr-appx">${ppe ? 'Appendix 73' : 'Annex A.8'}</div>
+          <h1 style="margin-bottom:2pt">REPORT ON THE PHYSICAL COUNT OF ${ppe ? 'PROPERTY, PLANT AND EQUIPMENT' : 'SEMI-EXPENDABLE PROPERTY'}</h1>
+          <p style="text-align:center;margin:0"><u>&nbsp;${e(coaVal('propType') || (ppe ? 'Property, Plant and Equipment' : 'Semi-expendable Property'))}&nbsp;</u></p>
+          <p style="text-align:center;margin:0 0 3pt;font-size:8.5pt">(Type of ${ppe ? 'Property, Plant and Equipment' : 'Semi-expendable Property'})</p>
+          <p style="text-align:center;margin:0 0 8pt">As at <b>${e(longDate(coaVal('asAt')))}</b></p>
+          <div class="pr-top"><span>Fund Cluster: <b>${e(coaVal('fund'))}</b></span><span></span></div>
+          <p style="margin:0 0 6pt">For which <b><u>${e(coaVal('officer'))}</u></b>, <u>${e(coaVal('desig'))}</u>, <u>${e(school)}</u> is accountable, having assumed such accountability on <u>${e(longDate(coaVal('assumed'))) || '&nbsp;'.repeat(24)}</u>.</p>
+          <table class="pr-table">
+            <colgroup><col style="width:10%"><col style="width:20%"><col style="width:12%"><col style="width:6%"><col style="width:8%"><col style="width:7%"><col style="width:7%"><col style="width:6%"><col style="width:8%"><col style="width:16%"></colgroup>
+            <tr><th rowspan="2">Article</th><th rowspan="2">Description</th><th rowspan="2">${ppe ? 'Property Number' : 'Semi-expendable Property No.'}</th><th rowspan="2">Unit of Measure</th><th rowspan="2">Unit Value</th>
+              <th rowspan="2">${ppe ? 'Quantity per Property Card' : 'Balance Per Card (Quantity)'}</th><th rowspan="2">${ppe ? 'Quantity per Physical Count' : 'On Hand Per Count (Quantity)'}</th><th colspan="2">Shortage/Overage</th><th rowspan="2">Remarks</th></tr>
+            <tr><th>Quantity</th><th>Value</th></tr>
+            ${body}
+          </table>
+          ${coaSignBlock([
+            { label: 'Certified Correct by:', names: committee.length ? committee : [''], under: 'Signature over Printed Name of Inventory Committee Chair and Members' },
+            { label: 'Approved by:', names: [coaVal('head')], under: 'Signature over Printed Name of Head of Agency/Entity or Authorized Representative' },
+            { label: 'Verified by:', names: [coaVal('coaRep')], under: 'Signature over Printed Name of COA Representative' }
+          ])}
+        </div>`);
+    }
+
+    function printUnservReport() {
+      coaRead();
+      const ppe = coaVal('unservType') === 'ppe';
+      const rows = unservRows(ppe);
+      if (!rows.length) return;
+      const e = v => escapeHTML(v || '');
+      const body = rows.map(r => {
+        const total = r.qty * (r.item.price || 0);
+        const lead = `<td class="c" style="font-size:8.5pt">${e(r.unit && r.unit.icsDate ? fDate(r.unit.icsDate) : '')}</td><td>${e(r.item.name)}${r.unit && r.unit.serial ? `<br><span style="font-size:8pt">S/N: ${e(r.unit.serial)}</span>` : ''}</td><td class="pr-sn">${e(r.unit ? r.unit.no : '')}</td><td class="c">${r.qty}</td><td class="r">${peso2(r.item.price)}</td><td class="r">${peso2(total)}</td>`;
+        const remark = `<td style="font-size:8pt">${e(r.unit ? [unitHolder(r.unit) && `With ${unitHolder(r.unit)}`, r.unit.loc].filter(Boolean).join(' · ') : '')}</td>`;
+        return `<tr>${lead}${ppe ? '<td></td><td></td><td></td>' : ''}${remark}${'<td></td>'.repeat(8)}</tr>`;
+      }).join('');
+      const cols = ppe ? 18 : 15;
+      const blanks = `<tr class="pr-blank">${'<td></td>'.repeat(cols)}</tr>`.repeat(Math.max(0, 5 - rows.length));
+      const totalCost = rows.reduce((n, r) => n + r.qty * (r.item.price || 0), 0);
+      const invCols = ppe ? 10 : 7;
+      printFormHTML(`
+        <div class="pr-form pr-wide pr-dense">
+          <div class="pr-appx">${ppe ? 'Appendix 74' : 'Annex A.10'}</div>
+          <h1 style="margin-bottom:2pt">INVENTORY AND INSPECTION REPORT OF UNSERVICEABLE ${ppe ? 'PROPERTY' : 'SEMI-EXPENDABLE PROPERTY'}</h1>
+          <p style="text-align:center;margin:0 0 6pt">As at <b>${e(longDate(coaVal('asAt')))}</b></p>
+          <div class="pr-top"><span>Entity Name: <b>${e(prDefaults().entity || schoolInfo.school)}</b></span><span>Fund Cluster: <b>${e(coaVal('fund'))}</b></span></div>
+          <table style="width:100%;margin:4pt 0 6pt;text-align:center;font-size:9pt"><tr><td><b><u>${e(coaVal('officer'))}</u></b><br>(Name of Accountable Officer)</td><td><b><u>${e(coaVal('desig'))}</u></b><br>(Designation)</td><td><b><u>${e(coaVal('station'))}</u></b><br>(Station)</td></tr></table>
+          <table class="pr-table">
+            <colgroup>${(ppe ? [5,12,9,3,6,6,6,6,6,6,4,4.5,6,5,4.5,4.5,2.5,4] : [6,18,11,3.5,7,7,12,4.5,5,5.5,5.5,4.5,4.5,3,3]).map(w => `<col style="width:${w}%">`).join('')}</colgroup>
+            <tr><th colspan="${invCols}">INVENTORY</th><th colspan="5">INSPECTION and DISPOSAL</th><th rowspan="2">Apprais&shy;ed Value</th><th colspan="2">RECORD OF SALES</th></tr>
+            <tr><th>Date Acquired</th><th>Particulars/ Articles</th><th>${ppe ? 'Property No.' : 'Semi-expendable Property No.'}</th><th>Qty</th><th>Unit Cost</th><th>Total Cost</th>
+              ${ppe ? '<th>Accumu&shy;lated Depre&shy;ciation</th><th>Accumu&shy;lated Impair&shy;ment Losses</th><th>Carrying Amount</th>' : ''}<th>Remarks</th>
+              <th>Sale</th><th>Transfer</th><th>Destruc&shy;tion</th><th>Others (Specify)</th><th>Total</th><th>OR No.</th><th>Amount</th></tr>
+            ${body}${blanks}
+            <tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(totalCost)}</b></td><td colspan="${cols - 6}"></td></tr>
+          </table>
+          <table class="pr-table" style="margin-top:8pt">
+            <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+            <tr><td style="font-size:8.5pt">I HEREBY request inspection and disposition, pursuant to Section 79 of PD 1445, of the property enumerated above.</td>
+              <td style="font-size:8.5pt">I CERTIFY that I have inspected each and every article enumerated in this report, and that the disposition made thereof was, in my judgment, the best for the public interest.</td></tr>
+            <tr><td style="padding:0"><table style="width:100%;border-collapse:collapse"><tr><td style="width:50%;border:0;border-right:1px solid #000"><i>Requested by:</i></td><td style="width:50%;border:0"><i>Approved by:</i></td></tr>
+              <tr><td class="pr-sig" style="border:0;border-right:1px solid #000;vertical-align:bottom;text-align:center"><b>${e(coaVal('officer')).toUpperCase()}</b></td><td class="pr-sig" style="border:0;vertical-align:bottom;text-align:center"><b>${e(coaVal('head')).toUpperCase()}</b></td></tr>
+              <tr><td class="c" style="border:0;border-right:1px solid #000;font-size:8pt">(Signature over Printed Name of Accountable Officer)<br>${e(coaVal('desig'))}</td><td class="c" style="border:0;font-size:8pt">(Signature over Printed Name of Authorized Official)<br>${e(headDesig())}</td></tr></table></td>
+              <td style="padding:0"><table style="width:100%;border-collapse:collapse"><tr><td style="width:50%;border:0;border-right:1px solid #000"></td><td style="width:50%;border:0;font-size:8.5pt">I CERTIFY that I have witnessed the disposition of the articles enumerated on this report this ____ day of __________, _____.</td></tr>
+              <tr><td class="pr-sig" style="border:0;border-right:1px solid #000;vertical-align:bottom;text-align:center"><b>${e(coaVal('inspector')).toUpperCase()}</b></td><td class="pr-sig" style="border:0;vertical-align:bottom;text-align:center"><b>${e(coaVal('witness')).toUpperCase()}</b></td></tr>
+              <tr><td class="c" style="border:0;border-right:1px solid #000;font-size:8pt">(Signature over Printed Name of Inspection Officer)</td><td class="c" style="border:0;font-size:8pt">(Signature over Printed Name of Witness)</td></tr></table></td></tr>
+          </table>
+        </div>`);
+    }
+
+    // ---- Invite poster for the faculty room -------------------------------------------------
+    async function printInvitePoster() {
+      if (!isCustodianDevice() || !reqRole) return;
+      try { if (typeof qrcode !== 'function') await loadScript('assets/vendor/qrcode.js'); }
+      catch (e) { appAlert('The QR code needs the app to be opened online once.'); return; }
+      const link = inviteLink();
+      const school = reqRole.schoolName || schoolInfo.school || 'our school';
+      const e = v => escapeHTML(v || '');
+      printFormHTML(`
+        <div class="poster">
+          <p class="poster-kicker">For teachers of</p>
+          <h1 class="poster-school">${e(school)}</h1>
+          <p class="poster-lead">Request school supplies and see the equipment issued to you – right on your phone.</p>
+          <div class="poster-qr">${qrSVG(link)}</div>
+          <p class="poster-scan">Scan with your phone camera</p>
+          <ol class="poster-steps">
+            <li><b>1</b><span>Scan the code, or open the link below.</span></li>
+            <li><b>2</b><span>Choose <i>Teacher</i>, then type your name and position.</span></li>
+            <li><b>3</b><span>Send requests, and tap <i>Received</i> when items reach you.</span></li>
+          </ol>
+          <div class="poster-code"><span>School code</span><b>${e(reqRole.schoolId)}</b></div>
+          <p class="poster-link">${e(link)}</p>
+          <p class="poster-foot"><img src="assets/icons/icon-192.png" alt="" width="22" height="22"> CustodianPro · ask ${e(schoolInfo.custodian || 'the property custodian')} for help</p>
+        </div>`);
+    }
+
+    // ---- Welcome tour: first sign-in as the property custodian ----------------------------
+    // School info → add items (import / scan ICS / catalog / sample) → invite teachers.
+    // The key does not start with "custodian_": that prefix marks a phone as used before.
+    const TOUR_KEY = 'cp_welcome_tour_v1';
+    let tourStep = 0;
+    let tourPick = '';
+    const TOUR_PICKS = [
+      ['import', 'ph-file-arrow-up', 'bg-sky-50 text-sky-600', 'Import Excel / CSV', 'Your existing inventory sheet'],
+      ['ics', 'ph-file-text', 'bg-violet-50 text-violet-600', 'Scan printed ICS', 'Take a photo; the app reads it'],
+      ['catalog', 'ph-books', 'bg-brand-50 text-brand-600', 'Pick from the catalog', 'APP-CSE items, count as you go'],
+      ['sample', 'ph-magic-wand', 'bg-slate-100 text-slate-500', 'Look around first', 'Load sample data to try things']
+    ];
+    function maybeStartTour(newSchool) {
+      if (localStorage.getItem(TOUR_KEY) || !isCustodianDevice()) return false;
+      const hasItems = Object.keys(userState || {}).some(c => (parseInt(userState[c].qty, 10) || 0) > 0);
+      if (!newSchool && hasItems && schoolInfo.custodian) { localStorage.setItem(TOUR_KEY, 'skipped'); return false; }
+      openTour();
+      return true;
+    }
+    function openTour() {
+      closeMoreMenu();
+      tourStep = 0;
+      tourPick = '';
+      document.getElementById('tourModal').classList.remove('hidden');
+      placeToast();
+      renderTour();
+    }
+    function closeTour(done = false) {
+      localStorage.setItem(TOUR_KEY, done ? 'done' : 'skipped');
+      document.getElementById('tourModal').classList.add('hidden');
+      placeToast();
+    }
+    function tourNext() {
+      if (tourStep === 0) saveTourSchool();
+      if (tourStep < 2) { tourStep += 1; renderTour(); return; }
+      const pick = tourPick;
+      closeTour(true);
+      if (pick === 'import') openImport();
+      else if (pick === 'ics') openIcsScanner();
+      else if (pick === 'catalog') switchMainView('CATALOG');
+      else if (pick === 'sample') loadSampleInventory();
+      else showToast('All set · add items any time from More', 'ph-check-circle');
+    }
+    function tourBack() { if (tourStep > 0) { tourStep -= 1; renderTour(); } }
+    function tourChoose(k) { tourPick = tourPick === k ? '' : k; renderTour(); }
+    function saveTourSchool() {
+      const next = { ...schoolInfo };
+      [['tourSchool', 'school'], ['tourCustodian', 'custodian'], ['tourPosition', 'position'], ['tourHead', 'head']].forEach(([id, k]) => {
+        const el = document.getElementById(id);
+        if (el) next[k] = el.value.trim();
+      });
+      if (!['school', 'custodian', 'position', 'head'].some(k => (next[k] || '') !== (schoolInfo[k] || ''))) return;
+      schoolInfo = next;
+      localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo)); scheduleInventorySync();
+      logHistory('system', 'School info filled in (welcome tour)');
+      markUnsavedChanges();
+      updateSchoolHeader();
+      renderPrintReport();
+    }
+
+    async function renderTour() {
+      const body = document.getElementById('tourBody');
+      const foot = document.getElementById('tourFoot');
+      document.getElementById('tourDots').innerHTML = [0, 1, 2].map(i => `<span class="h-1.5 rounded-full transition-all ${i === tourStep ? 'w-6 bg-brand-600' : i < tourStep ? 'w-1.5 bg-brand-300' : 'w-1.5 bg-slate-200'}"></span>`).join('');
+      document.getElementById('tourModal').dataset.step = String(tourStep);
+      const head = (icon, tint, title, sub) => `
+        <div class="flex items-start gap-3">
+          <span class="w-11 h-11 shrink-0 rounded-xl ${tint} flex items-center justify-center"><i class="ph-bold ${icon} text-2xl"></i></span>
+          <div class="min-w-0"><h3 class="text-lg font-extrabold text-slate-900 leading-tight">${title}</h3><p class="text-xs text-slate-500 mt-0.5">${sub}</p></div>
+        </div>`;
+      if (tourStep === 0) {
+        const f = (id, label, val, ph) => `<label class="block text-[11px] font-bold uppercase text-slate-500">${label}<input id="${id}" type="text" value="${escapeHTML(val || '')}" placeholder="${escapeHTML(ph)}" class="pr-in"></label>`;
+        body.innerHTML = `
+          ${head('ph-buildings', 'bg-brand-50 text-brand-600', 'Welcome! First, your school', 'These names go on every slip and report you print: RIS, ICS, PAR, transfers, count reports.')}
+          <div class="space-y-3">
+            ${f('tourSchool', 'School name', schoolInfo.school || (reqRole && reqRole.schoolName), 'e.g. Cebu City National High School')}
+            ${f('tourCustodian', 'Your name (property custodian)', schoolInfo.custodian, 'e.g. Maria L. Santos')}
+            <div class="grid grid-cols-2 gap-2">
+              ${f('tourPosition', 'Your position', schoolInfo.position, 'e.g. Administrative Officer II')}
+              ${f('tourHead', 'School head', schoolInfo.head, 'Principal’s name')}
+            </div>
+          </div>`;
+        foot.innerHTML = `
+          <button onclick="closeTour()" class="h-12 px-4 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-800">Skip tour</button>
+          <button id="tourNext" onclick="tourNext()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-sm flex items-center justify-center gap-2">Next <i class="ph-bold ph-arrow-right"></i></button>`;
+        return;
+      }
+      if (tourStep === 1) {
+        body.innerHTML = `
+          ${head('ph-package', 'bg-emerald-50 text-emerald-600', 'Add your items', 'How would you like to start? Pick one; it opens when you finish. You can use the others any time from More.')}
+          <div class="space-y-2">${TOUR_PICKS.map(([k, icon, tint, title, sub]) => {
+            const on = tourPick === k;
+            return `<button type="button" data-tour-pick="${k}" aria-pressed="${on}" onclick="tourChoose('${k}')" class="w-full text-left rounded-2xl border-2 p-3 flex items-center gap-3 transition ${on ? 'border-brand-500 bg-brand-50/60 stage-on' : 'border-slate-200 bg-white hover:border-slate-300'}">
+              <span class="w-10 h-10 shrink-0 rounded-xl ${tint} flex items-center justify-center"><i class="ph-bold ${icon} text-xl"></i></span>
+              <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">${title}</span><span class="block text-[11px] text-slate-500">${sub}</span></span>
+              <span class="w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center ${on ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300'}">${on ? '<i class="ph-bold ph-check text-[10px]"></i>' : ''}</span>
+            </button>`;
+          }).join('')}</div>`;
+        foot.innerHTML = `
+          <button onclick="tourBack()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Back</button>
+          <button id="tourNext" onclick="tourNext()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-sm flex items-center justify-center gap-2">${tourPick ? 'Next' : 'Decide later'} <i class="ph-bold ph-arrow-right"></i></button>`;
+        return;
+      }
+      const pick = TOUR_PICKS.find(p => p[0] === tourPick);
+      const canInvite = isCustodianDevice() && reqRole && reqRole.schoolId;
+      body.innerHTML = `
+        ${head('ph-users-three', 'bg-teal-50 text-teal-600', 'Invite your teachers', 'They scan this with their phone camera to request supplies and to see the items released to them.')}
+        ${canInvite ? `
+          <div class="flex items-center gap-4">
+            <div id="tourQr" class="keep-light w-32 h-32 shrink-0 rounded-2xl border border-slate-200 p-2 bg-white flex items-center justify-center text-[10px] text-slate-400">QR code</div>
+            <div class="min-w-0 space-y-2">
+              <div><p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">School code</p><p class="text-sm font-mono font-bold text-slate-900 break-all">${escapeHTML(reqRole.schoolId)}</p></div>
+              <button onclick="openInvite()" class="h-9 px-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-share-network"></i> Share link</button>
+              <button id="tourPoster" onclick="printInvitePoster()" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print poster</button>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-500">Put the poster up in the faculty room, or paste the link in your group chat. You review every request.</p>`
+          : '<p class="text-xs text-slate-500">Sign in to get your school’s invite link.</p>'}`;
+      foot.innerHTML = `
+        <button onclick="tourBack()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Back</button>
+        <button id="tourNext" onclick="tourNext()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-sm flex items-center justify-center gap-2"><i class="ph-bold ph-check"></i> ${pick ? `Finish · ${pick[3]}` : 'Finish'}</button>`;
+      if (canInvite) {
+        try {
+          if (typeof qrcode !== 'function') await loadScript('assets/vendor/qrcode.js');
+          const box = document.getElementById('tourQr');
+          if (box && tourStep === 2) box.innerHTML = qrSVG(inviteLink());
+        } catch (e) { /* offline before the first visit: the code is still shown */ }
+      }
+    }
+
+    // ---- Update check while the app is closed (Periodic Background Sync) --------------------
+    // Android Chrome, installed app: Chrome wakes sw.js now and then (about twice a day, more
+    // for apps used often); it downloads a new version and shows a phone notification. No server.
+    const BG_SYNC_TAG = 'app-update-check';
+    let bgSyncState = 'unsupported'; // 'unsupported' | 'off' | 'on'
+    async function registerBackgroundUpdateCheck(reg) {
+      try {
+        if (!reg || !('periodicSync' in reg) || !navigator.permissions) { bgSyncState = 'unsupported'; return; }
+        const perm = await navigator.permissions.query({ name: 'periodic-background-sync' });
+        if (perm.state !== 'granted') { bgSyncState = 'off'; return; }
+        await reg.periodicSync.register(BG_SYNC_TAG, { minInterval: 12 * 60 * 60 * 1000 });
+        bgSyncState = 'on';
+      } catch (e) {
+        bgSyncState = 'off';
+      } finally {
+        if (typeof renderAbout === 'function') renderAbout();
+      }
+    }
+    function bgSyncNoteHTML() {
+      const text = bgSyncState === 'on'
+        ? 'Also checks while the app is closed, and tells you with a phone notification.'
+        : bgSyncState === 'off'
+          ? (isInstalledApp() ? 'Chrome has not allowed checks while the app is closed yet · it does once the app is used regularly.' : 'Install the app on an Android phone to be told about updates while it is closed.')
+          : '';
+      return text ? `<p id="aboutBgSync" data-state="${bgSyncState}" class="text-[11px] text-slate-500 flex items-start gap-1.5 -mt-2 px-1"><i class="ph-bold ${bgSyncState === 'on' ? 'ph-moon-stars text-brand-600' : 'ph-info'} text-sm"></i><span>${text}</span></p>` : '';
     }
 
     // ---- Items delivered on a PR → stock in ---------------------------------------------
@@ -9827,7 +10940,9 @@
       if (!isTeacherDevice()) return;
       notifCheck('releases', myReleases.map(r => ({
         key: 'rl:' + r.id, sig: 'seen',
-        make: () => (r.kind === 'ICS' || r.kind === 'RIS')
+        make: () => r.sameHolder ? null : (r.kind === 'ITR' || r.kind === 'PTR')
+          ? { title: 'Items transferred to you', body: `${r.kind} ${r.no || ''}${r.fromName ? ` · from ${r.fromName}` : ''} · ${relNotifSummary(r)} · tap Received when you have them`, icon: 'ph-arrows-left-right', tone: 'teal', go: 'teacher-items' }
+          : (isIssueKind(r.kind) || r.kind === 'RIS')
           ? { title: 'New items released to you', body: `${r.kind} ${r.no || ''} · ${relNotifSummary(r)} · tap Received when you have them`, icon: 'ph-hand-arrow-down', tone: 'teal', go: 'teacher-items' }
           : null
       })), fromCacheOf(meta));
@@ -10042,6 +11157,7 @@
       if ('serviceWorker' in navigator) {
         // A tapped phone notification focuses this window and says which one it was.
         navigator.serviceWorker.addEventListener('message', e => {
+          if (e.data && e.data.type === 'launch' && e.data.go) { runLaunchURL(new URL(`?go=${encodeURIComponent(e.data.go)}`, location.href)); return; }
           if (!e.data || e.data.type !== 'open-notification') return;
           if (e.data.nid) openNotif(e.data.nid); else openNotifPanel();
         });
@@ -10121,7 +11237,8 @@
         // Teachers and custodians see different screens; wait until the role is known.
         if (go === 'items' || go === 'requests') await waitFor(() => !!reqRole, 1500);
         const teacher = isTeacherDevice();
-        if (go === 'scan-ics' && !teacher) openIcsScanner();
+        if (go === 'about') openAbout();
+        else if (go === 'scan-ics' && !teacher) openIcsScanner();
         else if (go === 'count' && !teacher) { switchMainView('HOME'); homeCountAction(); }
         else if (go === 'items') {
           if (teacher) { switchMainView('REQUESTER'); setTeacherTab('items'); } else switchMainView('ITEMS');
@@ -10154,6 +11271,14 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-coa-forms', date: 'Nov 2026', title: 'Government forms, transfers and a welcome tour', points: [
+        'Equipment worth ₱50,000 or more is released on a PAR; the rest stays on an ICS. Take-backs print an RRSP.',
+        'Transfer equipment to another teacher or room: an ITR (or PTR from ₱50,000) prints, the new holder confirms it, and each unit keeps its history.',
+        'Reports → Government forms: year-end physical count (RPCPPE / RPCSP) from your scans, unserviceable property (IIRUP / IIRUSP) and every slip to reprint.',
+        'A short welcome after the first sign-in: school info, how to add items, and a QR poster to invite teachers.',
+        'Dark mode: the selected option stands out and the school picture turns to night. Installed on Android, the app can check for updates while closed.',
+        'Questions like “Sign out?” now appear in CustodianPro’s own style instead of the browser’s “… says” box.'
+      ] },
       { id: '2026-11-signin-dark', date: 'Nov 2026', title: 'Sign-in screen and dark mode', points: [
         'Every phone now signs in: property custodians with Google or email, teachers with the invite link or school code. The inventory already on your phone is kept.',
         'A school picture on the sign-in screen and behind the top of Home.',
@@ -10255,10 +11380,10 @@
       showToast('Update when you’re ready: tap Restart in the title bar or More → About', 'ph-clock');
     }
 
-    function applyUpdate() {
+    async function applyUpdate() {
       const busy = [...document.querySelectorAll('.fixed.inset-0:not(.hidden)')]
-        .filter(el => !['notifPanel', 'aboutPanel', 'moreMenu'].includes(el.id));
-      if (busy.length && !confirm('Restart now to update?\n\nThe form that is open will close. Anything you have not saved in it yet is lost.')) return;
+        .filter(el => !['notifPanel', 'aboutPanel', 'moreMenu', 'appDialog'].includes(el.id));
+      if (busy.length && !await appConfirm('The form that is open will close. Anything you have not saved in it yet is lost.', { title: 'Restart now to update?', ok: 'Restart', cancel: 'Later', icon: 'ph-arrow-clockwise' })) return;
       if (notifScope()) {
         loadNotifs().items.forEach(n => { if (n.go === 'update') n.read = true; });
         saveNotifs();
@@ -10306,6 +11431,7 @@
           <p class="text-sm text-slate-500 mt-0.5">Effortless classroom &amp; equipment tracking for property custodians and teachers. Works offline.</p>
         </div>
         ${status}
+        ${bgSyncNoteHTML()}
         <div>
           <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">What’s new</p>
           <div class="space-y-3">${WHATS_NEW.slice(0, 3).map((r, i) => `
@@ -10330,7 +11456,7 @@
         try { await navigator.share(data); return; } catch (e) { if (e && e.name === 'AbortError') return; }
       }
       try { await navigator.clipboard.writeText(url); showToast('Link copied · paste it in Messenger or Viber', 'ph-link'); }
-      catch (e) { prompt('Copy this link:', url); }
+      catch (e) { appPrompt('Select the link and copy it.', url, { title: 'Copy this link', ok: 'Done', readOnly: true, icon: 'ph-link', tone: 'info' }); }
     }
 
     function initAppUpdates() {
@@ -10388,7 +11514,7 @@
       document.querySelectorAll('[data-theme-switch]').forEach(el => {
         el.innerHTML = `<div role="radiogroup" aria-label="Appearance" class="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100">${opts.map(([key, icon, label]) => `
           <button type="button" role="radio" aria-checked="${pref === key}" data-theme-opt="${key}" onclick="setTheme('${key}')"
-            class="h-9 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${pref === key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}"><i class="ph-bold ${icon}"></i> ${label}</button>`).join('')}</div>`;
+            class="h-9 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${pref === key ? 'bg-white text-slate-900 shadow-sm seg-on' : 'text-slate-500 hover:text-slate-800'}"><i class="ph-bold ${icon}"></i> ${label}</button>`).join('')}</div>`;
       });
     }
     function initTheme() {

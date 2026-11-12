@@ -31,12 +31,28 @@ inventory, or are merged with it (the merge question explains the choice).
 Without a Firebase project (`firebase-config.js` set to `null`) there is nobody to sign in with,
 so the app stays the local-only inventory with no sign-in screen.
 
+## Welcome tour
+
+After a property custodian's first sign-in (a new school), a three-step welcome replaces the bare invite sheet:
+
+1. **Your school:** school name, the custodian's name and position, and the school head. These go on every printed form.
+2. **Add your items:** import Excel/CSV, scan a printed ICS, pick from the catalog, or look around with sample data. The choice opens when the tour ends.
+3. **Invite your teachers:** the QR code and school code, **Share link** and **Print poster**: an A4 poster with a big QR code and three steps for the faculty room (also in the invite sheet).
+
+It is shown once per phone. **More → Welcome tour** opens it again.
+
+## Questions and messages
+
+Every question and message (*Sign out of CustodianPro?*, *Take back …?*, *Reason for declining*, *Restart now to update?* …) opens in the app's own dialog instead of the browser's “custodianpro.vercel.app says” box. Each one has a clear title and named buttons (**Sign out** / **Cancel**, **Restart** / **Later**), follows light/dark, and works with the keyboard (Enter, Escape, Tab). Tapping outside doesn't close it, so a stray tap can't lose an answer.
+
+In code, use `appAlert(message, opts)`, `await appConfirm(message, opts)` and `await appPrompt(message, value, opts)` (`opts`: `title`, `ok`, `cancel`, `tone` = `ask`/`warn`/`danger`/`good`/`info`, `icon`, `label`, `placeholder`, `multiline`, `required`). Never use `alert` / `confirm` / `prompt`: the end-to-end tests report a native box as an error.
+
 ## Light and dark
 
 The app follows the phone's light or dark setting. **More → Appearance** (teachers: at the
 bottom of their screen) switches between **System**, **Light** and **Dark**. The choice is
 applied before the first paint, so there is no white flash when opening the app at night.
-Printed forms always use the light look.
+Printed forms always use the light look. In dark mode the sign-in screen and the strip behind Home use a night version of the school picture, and the selected option of every switch (System/Light/Dark, My Items/Requests, transfer type…) is a lighter raised pill.
 
 Dark colours are generated, not hand-written: `scripts/dark-theme.mjs` reads the Tailwind
 colour classes in `index.html` (`bg-white`, `text-slate-900`, `bg-amber-50`,
@@ -241,7 +257,8 @@ Teachers who join with the invite link are listed automatically (their phone sen
 - **From My Items:** the green hand button on an item. Or tap **Release** at the top of Supply requests.
 - **Supplies** go on a **RIS** (Requisition and Issue Slip, Appendix 63) and leave the stock count.
 - **Equipment** goes on an **ICS** (Inventory Custodian Slip, Appendix 59). It stays in My Items, and each unit shows *With Ana Reyes · ICS 2026-11-001*. Pick which property numbers to hand over. Units without one get the next number automatically.
-- Numbers run per month (`2026-11-001`, …), separately for RIS and ICS. Both slips print from the done screen.
+- **Equipment worth ₱50,000 or more** (PPE under COA Circular 2022-004) goes on a **PAR** (Property Acknowledgment Receipt, Appendix 71) instead. One release can create an ICS and a PAR; each line says which slip it goes on, and the unit shows *With Ana Reyes · PAR 2026-11-001*.
+- Numbers run per month (`2026-11-001`, …), separately for RIS, ICS, PAR, ITR, PTR and RRSP. The slips print from the done screen.
 - Someone without an account (e.g. utility staff) can be typed in. The slip still prints.
 
 **Items delivered** on a Purchase Request now adds the items to the stock in My Items. Items that weren't in My Items yet are added as new items. The requests then show *Ready* to the teacher until you release them.
@@ -251,6 +268,28 @@ Teachers who join with the invite link are listed automatically (their phone sen
 Every release, assignment and return is kept as a record under the school (`releases`), and nothing is ever deleted. A teacher can read only the records made out to their own account. Teachers can't see the school inventory or the list of other teachers.
 
 > Publish the updated [`firestore.rules`](firestore.rules) again after updating. The new parts are `members` and `releases`.
+
+## Transfers between teachers and rooms
+
+**Transfer** on a person's page (or on a unit in Property Numbers) moves equipment to another teacher, or to a new room with the same teacher:
+
+- Tick the units, pick the new accountable person (or *Same person, new room*), the new room, the transfer type (**Donation**, **Reassignment**, **Relocate**, **Others**) and the reason.
+- Items below ₱50,000 go on an **ITR** (Inventory Transfer Report, Annex A.5), items of ₱50,000 and up on a **PTR** (Property Transfer Report, Appendix 76). Each line keeps the unit's earlier ICS/PAR no.; the school head signs as *Approved by*.
+- The new holder gets a notification and confirms the slip under **New from the property custodian**. The old holder's list drops the units and their history shows *Transferred out*. A room change alone isn't a new item to confirm.
+- Every unit in Property Numbers has an **Accountability history**: issued, transferred, moved and returned, with the slip numbers.
+- **Take back** and accepted returns print an **RRSP** (Receipt of Returned Semi-Expendable Property, Annex A.6) with its own number.
+
+## Government forms
+
+**Reports → Government forms** (also in **More**) fills the year-end COA/DepEd forms from what the app already knows, printed on A4 (the wide ones in landscape):
+
+| Form | What it uses |
+| --- | --- |
+| **RPCPPE** (Appendix 73) / **RPCSP** (Annex A.8) – physical count | Each tagged unit counts as found when its QR was scanned or it was checked in the physical count since the chosen date. Shortage quantity and value, holder and room in Remarks. |
+| **IIRUP** (Appendix 74) / **IIRUSP** (Annex A.10) – unserviceable property | Units marked *Unserviceable* in Property Numbers, with blank inspection, disposal and sales columns to fill in by hand. |
+| **Slips & receipts** | Every RIS, ICS, PAR, ITR, PTR and RRSP made, filtered by form, to print again. |
+
+The inventory committee, COA representative, fund cluster and similar names are remembered for next year; *As at* is always today unless changed.
 
 ## A teacher's My Items
 
@@ -314,6 +353,8 @@ A new version downloads in the background (checked when the app opens, when it c
 - **In the app.** A bar under the header (**Restart** or **Later**), an item in the bell, a phone notification if those are on and the app is in the background, and an *Update* tag on **More → About & what's new**.
 - **Afterwards.** *Updated ·* with **What's new** appears once. **More → About & what's new** shows the version, a **Check for updates** button, the latest changes (`WHATS_NEW` in `index.html`; add an entry for each noticeable release) and **Share app link**.
 
+- **While the app is closed.** On Android, once CustodianPro is installed and used now and then, Chrome lets it check about every 12 hours (Periodic Background Sync; no server needed). A new version is downloaded and announced once with a phone notification, *CustodianPro update ready*; tapping it opens About. **More → About** says whether this is on. Other browsers (iPhone, Firefox) check the next time the app opens.
+
 `npm run build` writes the version into `index.html` (`<meta name="app-version">`, the same value as the `sw.js` cache version). A new service worker that brings the version already running is not announced.
 
 ## Works offline
@@ -373,6 +414,7 @@ node project-switch.mjs               # moving to another Firebase project keeps
 node notifications.mjs                # bell, phone notifications, shortcuts, install bar
 node app-updates.mjs                  # update notices (title bar), Restart, What's new (own server)
 node login-theme.mjs                  # sign-in screen, teacher code / invite link, sign out, light/dark
+node coa-forms.mjs                    # welcome tour, poster, PAR, ITR/PTR transfers, RRSP, RPCPPE/IIRUP, background update check
 # or: npm test (all suites)
 ```
 
