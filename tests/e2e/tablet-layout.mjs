@@ -45,6 +45,34 @@ try {
     if (close) await ev(t, s => eval(s), close);
   }
 
+  out('2b tablet: finger-sized buttons, tabs and chips (UI review finding 5)');
+  // Every visible button / tab / select on these screens is at least 40 px tall; the small round
+  // ✕ buttons are 40 px circles. The notification switches keep their size (bigger hit area).
+  const tooSmall = () => ev(t, () => [...document.querySelectorAll('button:not(.notif-sw), [role=tab], select')].filter(el => {
+    const r = el.getBoundingClientRect();
+    return r.width && r.height && el.offsetParent && r.bottom > 0 && r.height < 40;
+  }).map(el => `${Math.round(el.getBoundingClientRect().height)}px ${(el.getAttribute('aria-label') || el.innerText).trim().slice(0, 30)}`));
+  for (const [w, h] of [[800, 1280], [660, 1024]]) {
+    await t.setViewport({ width: w, height: h, deviceScaleFactor: 1.5, isMobile: true, hasTouch: true });
+    for (const [open, close] of [['switchMainView("ITEMS")', ''], ['switchMainView("CATALOG")', ''], ['switchMainView("REPORTS")', ''], ['openHistory()', 'closeHistory()'], ['openItemModal(items.find(i => i.qty > 0).code)', 'closeItemModal()'], ['openNotifPanel()', 'closeNotifPanel()'], ['openMoreMenu()', 'closeMoreMenu()']]) {
+      await ev(t, s => eval(s), open);
+      await sleep(300);
+      const bad = await tooSmall();
+      check(!bad.length, `${w} px · ${open}: every button at least 40 px tall${bad.length ? ' — ' + bad.slice(0, 4).join(', ') : ''}`);
+      if (w === 800 && /ItemModal/.test(open)) await t.screenshot({ path: `${SHOTS}/tablet-targets-item.png` });
+      if (close) await ev(t, s => eval(s), close);
+    }
+  }
+  const chipH = () => ev(t, () => { openHistory(); const b = [...document.querySelectorAll('#historyModal button')].find(e => e.offsetParent && /^All$/.test(e.innerText.trim())); const h = b ? b.getBoundingClientRect().height : 0; closeHistory(); return h; });
+  await t.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await sleep(200);
+  check(await chipH() === 32, 'phone: history filter chip unchanged (32 px)');
+  await t.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+  await sleep(200);
+  check(await chipH() === 32, 'computer: history filter chip unchanged (32 px)');
+  await t.setViewport({ width: 800, height: 1280, deviceScaleFactor: 1.5, isMobile: true, hasTouch: true });
+  await sleep(200);
+
   out('3 phones and computers are unchanged');
   await t.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await sleep(200);
