@@ -119,8 +119,30 @@ try {
 
   out('6 Catalog');
   await ev(a, () => switchMainView('CATALOG'));
-  await screen(a, 'Catalog', ['Total:']);
-  check(await ev(a, () => new Set([...document.querySelectorAll('.part-tab')].map(t => Math.round(t.getBoundingClientRect().top))).size) === 1, 'All / Part I / Part II / Stock on one line');
+  await screen(a, 'Catalog');
+  const cat = await ev(a, () => [...document.querySelectorAll('#itemsContainer .cat-row')].slice(0, 12).map(r => ({
+    h: r.getBoundingClientRect().height, right: r.getBoundingClientRect().right,
+    steps: [...r.querySelectorAll('.cat-step button')].map(b => (b.getAttribute('aria-label') || '') + ':' + Math.round(b.getBoundingClientRect().height))
+  })));
+  check(cat.length >= 10, `Catalog: one row per item (${cat.length})`);
+  check(cat.every(r => r.h <= 100 && r.right <= 390), 'Catalog rows are compact and fit the screen');
+  check(cat.every(r => r.steps.join() === 'One less:40,One more:40'), `each row has a named − / + at least 40 px (${cat[0]?.steps.join(' ')})`);
+  check(await ev(a, () => !document.getElementById('categoryPills') && document.getElementById('catCategorySelect').options.length === CATEGORIES.length + 1), 'categories are in a drop-down, not a sideways-scrolling strip');
+  const added = await ev(a, () => items.find(i => i.qty === 0 && i.price > 0 && !i.note).code);
+  await a.click(`#card-${added} .cat-plus`);
+  check(await ev(a, c => { const r = document.getElementById(`card-${c}`); return items.find(i => i.code === c).qty === 1 && r.classList.contains('is-on') && /₱/.test(document.getElementById(`flags-${c}`).innerText) && document.activeElement === r.querySelector('.cat-plus'); }, added), '+ adds one, shows the total and keeps the finger on the button');
+  await a.click(`#card-${added} .cat-minus`);
+  check(await ev(a, c => items.find(i => i.code === c).qty === 0 && !document.getElementById(`card-${c}`).classList.contains('is-on'), added), '− takes it back off');
+  await ev(a, () => { const s = document.getElementById('catCategorySelect'); s.value = '0'; s.dispatchEvent(new Event('change')); });
+  check(await ev(a, () => [...document.querySelectorAll('.cat-row')].every(r => items.find(i => i.code === r.dataset.code).catIdx === 0) && !!document.getElementById('clearCatFilterBtn').offsetParent), 'choosing a category filters the list and shows a chip to clear it');
+  await screen(a, 'Catalog with a category');
+  await ev(a, () => setCategoryFilter('ALL'));
+  await a.click('#itemsContainer .cat-row .cat-main');
+  await sleep(300);
+  check(await ev(a, () => !document.getElementById('itemModal').classList.contains('hidden')), 'tapping the name opens room · price · minimum stock');
+  await ev(a, () => closeItemModal());
+  await a.screenshot({ path: `${SHOTS}/phone-catalog.png` });
+  check(await ev(a, () => new Set([...document.querySelectorAll('.part-tab')].map(t => Math.round(t.getBoundingClientRect().top))).size) === 1, 'All / Part I / Part II / In stock on one line');
   check(await ev(a, () => [...document.querySelectorAll('.part-tab')].every(t => t.getBoundingClientRect().height <= 40)), 'tab labels do not wrap');
 
   out('7 Reports');

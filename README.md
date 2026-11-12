@@ -64,7 +64,7 @@ colour classes in `index.html` (`bg-white`, `text-slate-900`, `bg-amber-50`,
 CustodianPro is laid out for a 360–430 px phone first and widens on tablets and computers:
 
 - Pop-ups become **bottom sheets** below 640 px (the `.sheet-sm` class on the overlay): full width, rounded top, buttons above the home indicator.
-- Lists stack on a phone: **Inventory** rows are one tidy line per item (see below); **Catalog** cards put the stepper under the item name.
+- Lists stack on a phone: **Inventory** rows are one tidy line per item (see below); **Catalog** rows are one line per item with a small − qty + on the right.
 - Every tap target is at least 32 px (most 40 px); headers wrap their buttons onto a second row instead of squeezing the title.
 - Toasts sit above the bottom tabs, move to the top while a sheet is open (also when the sheet opens after the toast), and go to the bottom on the sign-in screen so the logo stays visible.
 - `tests/e2e/phone-layout.mjs` checks this at 390 × 844: no sideways scrolling, no small buttons, sheets anchored to the bottom, full peso amounts on Reports.
@@ -80,6 +80,28 @@ The custodian's list of everything the school has (quantity above 0). It was cal
 - **Tap a row** for the **item sheet** (a bottom sheet on phones): on hand, unit cost and total value; a low-stock note; the quantity stepper; room, category, condition, property numbers and who has the units (each name opens that teacher's page); and **Release · Edit details · History** at the bottom.
 - **During a physical count** each row has a check button on the left (tap to mark counted without opening the item), and the sheet has **Mark as counted**, which returns to the list.
 - `tests/e2e/phone-layout.mjs` checks the rows, chips, sheet and count mode at 390 px; `release.mjs` and `teachers-overview.mjs` use the sheet for Release and the teacher links.
+
+## Catalog
+
+The full APP-CSE catalog (361 items plus custom ones), where quantities are entered quickly. It has the same look as Inventory:
+
+- **Top:** a search box (name, code, room) and a **Category** drop-down with how many items each category has. That one control replaced a strip of 30 category pills that ran off the screen.
+- **Chips** below, which wrap like Inventory's: *All (count) · Part I (PS-DBM) · Part II (Other) · In stock (count)*.
+- Under the header: *N items* or *Showing X of N*, a chip with the chosen category (tap ✕ to clear it), and **Reset quantities**.
+- **One row per item:**
+  - the name (2 lines at most);
+  - *price / unit · code* (a missing price shows *Set price*), plus the category on wider screens;
+  - up to three small labels: the total value and the room when it is in stock, and low stock or repair when needed;
+  - on the right, a compact **− qty +** (40 px buttons named *One less* / *One more*). The quantity can also be typed.
+- Items in stock have a light tint and a brand-colour bar on the left.
+- **Tap the name** to open the item details: room, unit price, minimum stock.
+- **−** and **+** update the row in place, so the list doesn't jump and the button you tapped keeps focus.
+- `tests/e2e/phone-layout.mjs` checks at 390 px that:
+  - the rows are compact;
+  - every row has the − / + buttons;
+  - the categories are in the drop-down;
+  - + and − update the row;
+  - tapping a name opens the details.
 
 ## Sharing and link previews
 
@@ -123,7 +145,7 @@ Everything else moved out of the way:
 | Where | What |
 | --- | --- |
 | **Inventory** tab | everything the school has (quantity above 0): search, filter chips, tap an item for its sheet; the physical count checklist while counting |
-| **Catalog** tab | the full APP-CSE catalog with part tabs and category filters |
+| **Catalog** tab | the full APP-CSE catalog: search, category drop-down, part / in-stock chips, one row per item with − qty + |
 | **Reports** tab | valuation, condition, property tags, categories, rooms, print and APP-CSE summary |
 | **☰ More** menu | add custom item, import, scan ICS / QR, print, CSV exports, school info, backup, restore, change history, sample data |
 
