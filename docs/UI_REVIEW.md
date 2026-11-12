@@ -46,6 +46,8 @@ Nothing on any screen scrolls sideways, and no ids are duplicated.
 
 > **Update (Nov 2026):** *My Items* was renamed **Inventory** and redesigned (one row per item, tap for an item sheet). That fixes the cut-off My Items tabs (10: the filter chips now wrap), the grey strip (11) and the unnamed −/+ on My Items rows (3: the steppers moved into the item sheet as *One less / One more*). Catalog parts of 3 and 10 are still open.
 
+> **Update (Nov 2026, Catalog):** the Catalog got the same treatment: one row per item with a compact − qty + whose buttons are named *One less / One more* (fixes the Catalog part of 3), and a Category drop-down instead of the sideways-scrolling pills (fixes the Catalog part of 10). The grey "SHOWING 361 OF 361 ITEMS" line is now "361 items" in darker sentence-case text (16).
+
 ## Details and suggested fixes
 
 ### 1. Orange buttons (High)
