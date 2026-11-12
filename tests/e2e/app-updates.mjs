@@ -166,7 +166,7 @@ try {
   check(await ev(p, () => document.querySelector('#aboutPanel img').naturalWidth) === 1024, 'banner works offline (precached webp)');
   await p.setOfflineMode(false);
   const meta = await ev(p, () => Object.fromEntries([...document.querySelectorAll('meta[property^="og:"], meta[name^="twitter:"]')].map(m => [m.getAttribute('property') || m.name, m.content])));
-  const OG = 'https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-12';
+  const OG = 'https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-13';
   check(meta['og:image'] === OG && meta['og:image:secure_url'] === OG && meta['twitter:image'] === OG && meta['og:image:type'] === 'image/png', 'og:image / X card: the banner (og-image.png)');
   check(meta['og:image:width'] === '1200' && meta['og:image:height'] === '630' && meta['twitter:card'] === 'summary_large_image', '1200×630, large preview card');
   check(meta['og:title'] === 'CustodianPro – School Inventory' && meta['twitter:title'] === meta['og:title'] && /property custodians/.test(meta['og:description']) && meta['og:url'] === 'https://custodianpro.vercel.app/' && meta['og:locale'] === 'en_PH', 'title, description, address, locale');

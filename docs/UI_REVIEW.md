@@ -44,6 +44,8 @@ Nothing on any screen scrolls sideways, and no ids are duplicated.
 | 15 | Computers use the phone layout | 1280 px: narrow centred column, a 4-tab bar at the bottom, Home much narrower than the header | Low (design) |
 | 16 | Light grey text on light grey cards (4.34:1) | `text-slate-500` on `bg-slate-100` (header school line on the art, "SHOWING 361 OF 361 ITEMS", Home status) | Low |
 
+> **Update (Nov 2026):** *My Items* was renamed **Inventory** and redesigned (one row per item, tap for an item sheet). That fixes the cut-off My Items tabs (10: the filter chips now wrap), the grey strip (11) and the unnamed −/+ on My Items rows (3: the steppers moved into the item sheet as *One less / One more*). Catalog parts of 3 and 10 are still open.
+
 ## Details and suggested fixes
 
 ### 1. Orange buttons (High)
@@ -93,6 +95,7 @@ About 20 elements per list screen are 10 px.
 ### 10–16 (Low)
 - **10. Tabs that scroll sideways:** add a right-edge fade (`mask-image`) on scrollable tab rows.
 - **11. Grey strip above My Items:** remove `pt-4` on `#viewItems` below 640 px, or give the strip the header colour.
+  - **Fixed (Nov 2026)** in the Inventory redesign: the list starts right under the header on phones.
 - **12. Home status line:** let it wrap to 2 lines, or shorten "syncing to your account" to an icon.
 - **13. Toast button wraps:** add `whitespace-nowrap shrink-0` to the toast action.
 - **14. About wording:** reuse the new sharing text: *Property and supplies for school custodians and teachers: QR tags, physical count, ICS/PAR/RIS, COA forms and supply requests.*

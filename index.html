@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="e611f7175b2e">
+  <meta name="app-version" content="34700b1f79de">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -28,18 +28,18 @@
   <meta property="og:url" content="https://custodianpro.vercel.app/">
   <meta property="og:title" content="CustodianPro – School Inventory">
   <meta property="og:description" content="Property and supplies for school property custodians and teachers: QR tags, physical count, ICS/PAR/RIS, COA forms and supply requests. Free, works offline.">
-  <meta property="og:image" content="https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-12">
-  <meta property="og:image:secure_url" content="https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-12">
+  <meta property="og:image" content="https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-13">
+  <meta property="og:image:secure_url" content="https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-13">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="CustodianPro School Inventory: the app on two phones (My Items and Home) with QR property tags and physical count, ICS, PAR, RIS, ITR and year-end COA forms, and supply requests from teachers. Free, works offline.">
+  <meta property="og:image:alt" content="CustodianPro School Inventory: the app on two phones (Inventory and Home) with QR property tags and physical count, ICS, PAR, RIS, ITR and year-end COA forms, and supply requests from teachers. Free, works offline.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="CustodianPro – School Inventory">
   <meta name="twitter:description" content="Property and supplies for school custodians and teachers: QR tags, physical count, ICS/PAR/RIS, COA forms and supply requests. Free, works offline.">
-  <meta name="twitter:image" content="https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-12">
-  <meta name="twitter:image:alt" content="CustodianPro School Inventory: the app on two phones (My Items and Home) with QR property tags and physical count, ICS, PAR, RIS, ITR and year-end COA forms, and supply requests from teachers. Free, works offline.">
-  <link rel="image_src" href="https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-12">
+  <meta name="twitter:image" content="https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-13">
+  <meta name="twitter:image:alt" content="CustodianPro School Inventory: the app on two phones (Inventory and Home) with QR property tags and physical count, ICS, PAR, RIS, ITR and year-end COA forms, and supply requests from teachers. Free, works offline.">
+  <link rel="image_src" href="https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-13">
   <!-- Search engines: what this web app is -->
   <script type="application/ld+json">
   {
@@ -49,7 +49,7 @@
     "alternateName": "CustodianPro",
     "url": "https://custodianpro.vercel.app/",
     "description": "School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.",
-    "image": "https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-12",
+    "image": "https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-13",
     "screenshot": [
       "https://custodianpro.vercel.app/assets/screenshots/phone-home.png",
       "https://custodianpro.vercel.app/assets/screenshots/phone-items.png",
@@ -213,6 +213,25 @@
     .poster-code b { font-family: 'JetBrains Mono', monospace; font-size: 16pt; }
     .poster-link { font-family: 'JetBrains Mono', monospace; font-size: 9pt; color: #475569; margin: 3mm 0 0; word-break: break-all; }
     .poster-foot { margin-top: 8mm; font-size: 10pt; color: #64748b; display: flex; align-items: center; justify-content: center; gap: 2mm; }
+      /* Inventory list: filter chips, tappable rows, small status labels */
+      .ledger-tab { display: inline-flex; align-items: center; gap: 0.3rem; height: 2.25rem; padding: 0 0.8rem; border-radius: 9999px;
+        border: 1px solid #e2e8f0; background: #fff; color: #334155; font-size: 0.75rem; font-weight: 700; white-space: nowrap; transition: background-color .15s, color .15s; }
+      .ledger-tab:hover { background: #f8fafc; }
+      .ledger-tab.hidden { display: none; }
+      .ledger-tab.seg-on { background: #4338ca; border-color: #4338ca; color: #fff; }
+      .ledger-tab.seg-on i { color: #fff; }
+      .ledger-tab .ledger-n { font-family: "JetBrains Mono Variable", "JetBrains Mono", monospace; font-weight: 700; opacity: 0.75; }
+      .ledger-tab .ledger-n:empty { display: none; }
+      .inv-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.8rem 1rem; cursor: pointer; transition: background-color .15s; }
+      .inv-row:hover { background: #f8fafc; } .inv-row:active { background: #f1f5f9; }
+      .inv-row:focus-visible { outline: 2px solid #6366f1; outline-offset: -2px; }
+      .inv-name { font-weight: 700; font-size: 0.875rem; line-height: 1.3; color: #0f172a; overflow-wrap: anywhere;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .inv-name-full { overflow-wrap: anywhere; }
+      .inv-flag { display: inline-flex; align-items: center; gap: 0.25rem; min-width: 0; max-width: 100%; height: 1.375rem; padding: 0 0.45rem;
+        border-radius: 0.4rem; font-size: 0.6875rem; font-weight: 700; }
+      .inv-flag i { flex: none; }
+      @media (min-width: 640px) { .inv-row { padding: 0.8rem 1.25rem; } }
       .more-item { display: flex; width: 100%; align-items: center; gap: 0.75rem; padding: 0.7rem 0.5rem; border-radius: 0.75rem;
       font-size: 0.875rem; font-weight: 600; color: #334155; text-align: left; }
     .more-item:hover, .more-item:active { background: #f1f5f9; }
@@ -243,6 +262,10 @@
     @media screen {
       html.dark body { background-color: #0b1220; }
       html.dark .more-item { color: #cbd5e1; }
+      html.dark .ledger-tab { background: #121a2b; border-color: #243044; color: #cbd5e1; }
+      html.dark .ledger-tab:hover { background: #172033; }
+      html.dark .inv-row:hover { background: #172033; } html.dark .inv-row:active { background: #1c2638; }
+      html.dark .inv-name { color: #f1f5f9; }
       html.dark .more-item:hover, html.dark .more-item:active { background: #1c2638; }
       html.dark .pr-in { background: #0e1626; border-color: #334155; color: #f1f5f9; }
       html.dark :where(input:not([type=checkbox], [type=radio], [type=range], [type=color]), select, textarea) { background-color: #0e1626; }
@@ -785,11 +808,11 @@
   </section>
 
   <!-- ===================================================================== -->
-  <!-- VIEW 1: MY ITEMS (what the school has; physical count runs here)      -->
+  <!-- VIEW 1: INVENTORY (what the school has; physical count runs here)     -->
   <!-- ===================================================================== -->
-  <section id="viewItems" class="hidden max-w-4xl mx-auto px-4 pt-4 space-y-4 no-print">
+  <section id="viewItems" class="hidden max-w-4xl mx-auto px-4 sm:pt-4 sm:space-y-4 no-print">
     <!-- PHYSICAL COUNT PROGRESS (check off items as they are counted) -->
-    <div id="countPanel" class="hidden bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm">
+    <div id="countPanel" class="hidden bg-white p-4 -mx-4 sm:mx-0 rounded-none sm:rounded-2xl border-b sm:border border-slate-200/90 shadow-sm">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2 min-w-[13rem] flex-1">
           <div class="w-8 h-8 shrink-0 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
@@ -813,70 +836,55 @@
       </div>
     </div>
 
-    <!-- BOTTOM SECTION: GENERAL INVENTORY MASTER LEDGER -->
+    <!-- INVENTORY: everything the school has (quantity above 0). Tap an item for its details. -->
     <div id="masterLedgerSection" class="bg-white -mx-4 sm:mx-0 rounded-none sm:rounded-2xl border-y sm:border border-slate-200/90 shadow-sm overflow-hidden">
-      
-      <!-- Ledger Header & Filter Pills -->
-      <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div class="shrink-0">
-          <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
-            <i class="ph-bold ph-clipboard-text text-brand-600 text-lg"></i>
-            <span class="whitespace-nowrap">My Items</span>
-            <span id="invSyncChip" class="hidden"></span>
-          </h3>
-        </div>
-
-        <!-- Ledger Filter Tabs -->
-        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar bg-slate-100 p-1 rounded-xl border border-slate-200/70">
-          <button onclick="setLedgerFilter('ALL')" id="ledgerTab-ALL" class="ledger-tab px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition bg-white text-slate-900 shadow-sm seg-on">
-            All In-Stock
-          </button>
-          <button onclick="setLedgerFilter('EQUIPMENT')" id="ledgerTab-EQUIPMENT" class="ledger-tab px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-slate-600">
-            Equipment (ICS/PAR)
-          </button>
-          <button onclick="setLedgerFilter('CONSUMABLE')" id="ledgerTab-CONSUMABLE" class="ledger-tab px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-slate-600">
-            Consumables (RIS)
-          </button>
-          <button onclick="setLedgerFilter('LOW')" id="ledgerTab-LOW" class="ledger-tab px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-amber-700">
-            Low Stock Alerts
-          </button>
-          <button onclick="setLedgerFilter('CONDITION')" id="ledgerTab-CONDITION" class="ledger-tab px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-rose-700">
-            Repair / Unserviceable
-          </button>
-          <button onclick="setLedgerFilter('UNCOUNTED')" id="ledgerTab-UNCOUNTED" class="ledger-tab hidden px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-sky-700">
-            Not Counted
+      <div class="p-4 sm:p-5 border-b border-slate-200 space-y-3">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h3 class="font-extrabold text-lg text-slate-900 flex items-center flex-wrap gap-x-2 gap-y-1">
+              <span>Inventory</span>
+              <span id="invSyncChip" class="hidden"></span>
+            </h3>
+            <p id="invSummary" class="text-xs text-slate-600 mt-0.5">No items yet</p>
+          </div>
+          <button onclick="switchMainView('CATALOG')" class="shrink-0 h-10 px-3 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold flex items-center gap-1.5">
+            <i class="ph-bold ph-plus"></i> Add items
           </button>
         </div>
-      </div>
-
-      <!-- Ledger Search & Sort Bar -->
-      <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2">
-        <div class="relative w-full sm:w-72">
-          <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-          <input 
-            type="text" 
-            id="ledgerSearchInput"
-            oninput="renderDashboardLedger()"
-            placeholder="Filter by item, code, or room..." 
-            class="w-full h-10 sm:h-9 pl-8 pr-3 bg-white rounded-lg border border-slate-200 text-sm sm:text-xs font-medium outline-none focus:border-brand-500"
-          >
+        <div class="flex items-center gap-2">
+          <div class="relative flex-1 min-w-0">
+            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base pointer-events-none"></i>
+            <input type="search" id="ledgerSearchInput" oninput="renderDashboardLedger()" enterkeyhint="search" autocomplete="off" spellcheck="false"
+              placeholder="Search items" aria-label="Search your inventory by name, code, room, property number or teacher"
+              class="w-full h-11 pl-9 pr-3 bg-slate-50 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:border-brand-500 focus:bg-white">
+          </div>
+          <label class="relative shrink-0" title="Sort">
+            <span class="sr-only">Sort by</span>
+            <i class="ph-bold ph-sort-ascending absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+            <select id="ledgerSortSelect" onchange="renderDashboardLedger()" class="h-11 pl-8 pr-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none max-w-[9.5rem]">
+              <option value="VALUE_DESC">Highest value</option>
+              <option value="NAME_ASC">Name A–Z</option>
+              <option value="ROOM">Room</option>
+              <option value="QTY_DESC">Most quantity</option>
+              <option value="QTY_ASC">Least quantity</option>
+            </select>
+          </label>
         </div>
-        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <label class="text-[11px] font-bold uppercase text-slate-400">Sort By:</label>
-          <select id="ledgerSortSelect" onchange="renderDashboardLedger()" class="h-9 px-2.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 outline-none">
-            <option value="VALUE_DESC">Highest Value (₱)</option>
-            <option value="QTY_DESC">Highest Quantity</option>
-            <option value="QTY_ASC">Lowest Quantity First</option>
-            <option value="NAME_ASC">Alphabetical (A-Z)</option>
-          </select>
+        <!-- Filter chips: they wrap onto a second line instead of scrolling sideways -->
+        <div class="flex flex-wrap gap-1.5" role="group" aria-label="Show">
+          <button onclick="setLedgerFilter('ALL')" id="ledgerTab-ALL" aria-pressed="true" class="ledger-tab seg-on">All <span class="ledger-n"></span></button>
+          <button onclick="setLedgerFilter('EQUIPMENT')" id="ledgerTab-EQUIPMENT" aria-pressed="false" class="ledger-tab">Equipment <span class="ledger-n"></span></button>
+          <button onclick="setLedgerFilter('CONSUMABLE')" id="ledgerTab-CONSUMABLE" aria-pressed="false" class="ledger-tab">Consumables <span class="ledger-n"></span></button>
+          <button onclick="setLedgerFilter('LOW')" id="ledgerTab-LOW" aria-pressed="false" class="ledger-tab"><i class="ph-fill ph-warning text-amber-500"></i> Low stock <span class="ledger-n"></span></button>
+          <button onclick="setLedgerFilter('CONDITION')" id="ledgerTab-CONDITION" aria-pressed="false" class="ledger-tab"><i class="ph-fill ph-wrench text-rose-500"></i> Needs repair <span class="ledger-n"></span></button>
+          <button onclick="setLedgerFilter('WITH')" id="ledgerTab-WITH" aria-pressed="false" class="ledger-tab"><i class="ph-fill ph-user-circle text-teal-600"></i> With teachers <span class="ledger-n"></span></button>
+          <button onclick="setLedgerFilter('UNCOUNTED')" id="ledgerTab-UNCOUNTED" aria-pressed="false" class="ledger-tab hidden"><i class="ph-bold ph-clipboard-text text-sky-600"></i> Not counted <span class="ledger-n"></span></button>
         </div>
       </div>
 
-      <!-- Ledger Table / List -->
       <div id="dashboardLedgerContainer" class="divide-y divide-slate-100">
-        <!-- Populated dynamically via JS -->
+        <!-- Populated by renderDashboardLedger() -->
       </div>
-
     </div>
 
   </section>
@@ -1093,8 +1101,8 @@
       </button>
       <button onclick="switchMainView('ITEMS')" data-view="ITEMS" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
-        <i class="ph-bold ph-clipboard-text text-[22px]"></i>
-        <span class="flex items-center gap-1">My Items <span id="navBadgeCount" class="px-1.5 rounded-full bg-brand-100 text-brand-700 font-mono text-[10px]">0</span></span>
+        <i class="ph-bold ph-package text-[22px]"></i>
+        <span class="flex items-center gap-1">Inventory <span id="navBadgeCount" class="px-1.5 rounded-full bg-brand-100 text-brand-700 font-mono text-[10px]">0</span></span>
       </button>
       <button onclick="switchMainView('CATALOG')" data-view="CATALOG" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
@@ -1465,6 +1473,55 @@
           <svg viewBox="0 0 48 48" class="w-5 h-5 shrink-0" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Continue with Google
         </button>
         <p class="text-[11px] text-slate-400 text-center">Optional · keeps your requests if you change phones</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ITEM SHEET: one item from the Inventory list (details + actions). Bottom sheet on phones. -->
+  <div id="itemSheet" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" role="dialog" aria-modal="true" aria-labelledby="isName"
+    onclick="if (event.target === this) closeItemSheet()" onkeydown="if (event.key === 'Escape') closeItemSheet()">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col safe-bottom overflow-hidden">
+      <div class="flex items-start gap-3 p-5 pb-3">
+        <span id="isIcon"></span>
+        <div class="flex-1 min-w-0">
+          <h3 id="isName" class="font-extrabold text-base text-slate-900 leading-snug inv-name-full"></h3>
+          <p id="isMeta" class="text-xs text-slate-600 mt-0.5"></p>
+        </div>
+        <button id="isClose" onclick="closeItemSheet()" class="w-10 h-10 shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div class="flex-1 min-h-0 overflow-y-auto px-5 pb-4 space-y-3">
+        <div id="isStats" class="grid grid-cols-[auto_1fr_1fr] gap-2"></div>
+        <div id="isAlert"></div>
+        <!-- Quantity -->
+        <div class="rounded-2xl border border-slate-200 p-3">
+          <div class="flex items-center gap-3">
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-bold text-slate-800">Quantity on hand</p>
+              <p id="isQtyNote" class="text-[11px] text-slate-600 mt-0.5"></p>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button onclick="adjustQty(sheetCode, -1)" class="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 flex items-center justify-center" aria-label="One less"><i class="ph-bold ph-minus"></i></button>
+              <div class="w-14 text-center leading-tight">
+                <span id="isQty" class="block font-mono font-extrabold text-lg text-slate-900"></span>
+                <span id="isUnit" class="block text-[11px] font-semibold text-slate-500"></span>
+              </div>
+              <button onclick="adjustQty(sheetCode, 1)" class="w-11 h-11 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white flex items-center justify-center" aria-label="One more"><i class="ph-bold ph-plus"></i></button>
+            </div>
+          </div>
+          <button id="isCount" onclick="itemSheetCounted()" class="hidden mt-3"></button>
+        </div>
+        <div id="isRows" class="divide-y divide-slate-100"></div>
+      </div>
+      <div class="flex gap-2 p-4 border-t border-slate-200 bg-slate-50">
+        <button id="isRelease" onclick="itemSheetGo('release')" class="flex-1 h-14 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex flex-col items-center justify-center gap-0.5">
+          <i class="ph-bold ph-hand-arrow-up text-lg"></i> Release
+        </button>
+        <button onclick="itemSheetGo('edit')" class="flex-1 h-14 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 text-xs font-bold flex flex-col items-center justify-center gap-0.5">
+          <i class="ph-bold ph-pencil-simple text-lg"></i> Edit details
+        </button>
+        <button onclick="itemSheetGo('history')" class="flex-1 h-14 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 text-xs font-bold flex flex-col items-center justify-center gap-0.5">
+          <i class="ph-bold ph-clock-counter-clockwise text-lg"></i> History
+        </button>
       </div>
     </div>
   </div>
@@ -2558,7 +2615,7 @@
         renderPrintReport();
         renderHome();
       } else {
-        renderDashboard(); // also refreshes Home, My Items and the print report
+        renderDashboard(); // also refreshes Home, Inventory and the print report
       }
     }
 
@@ -2800,134 +2857,245 @@
     function setLedgerFilter(filter) {
       ledgerFilter = filter;
       document.querySelectorAll('.ledger-tab').forEach(btn => {
-        btn.classList.remove('bg-white', 'text-slate-900', 'shadow-sm', 'seg-on');
+        const on = btn.id === `ledgerTab-${filter}`;
+        btn.classList.toggle('seg-on', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
-      const activeBtn = document.getElementById(`ledgerTab-${filter}`);
-      if (activeBtn) {
-        activeBtn.classList.add('bg-white', 'text-slate-900', 'shadow-sm', 'seg-on');
-      }
       renderDashboardLedger();
     }
+
+    // ---- Inventory (the custodian's list of what the school has) ------------------------------
+    // One tidy row per item: name, code · room, at most two status labels, quantity and value.
+    // Tapping a row opens the item sheet (quantity, release, property numbers, edit, history), so
+    // a count can't be changed by accident while scrolling.
+    const isHeldItem = item => getUnits(item.code).some(u => u.to || u.toUid);
+    const LEDGER_FILTERS = {
+      ALL: () => true,
+      EQUIPMENT: i => i.type === 'EQUIPMENT',
+      CONSUMABLE: i => i.type === 'CONSUMABLE',
+      LOW: i => i.qty <= i.minQty,
+      CONDITION: i => hasConditionIssue(i),
+      WITH: i => isHeldItem(i),
+      UNCOUNTED: i => !isCounted(i.code)
+    };
+
+    // Status labels for an item, most important first: [tone, icon, text].
+    function itemFlags(item) {
+      const out = [];
+      if (hasConditionIssue(item)) out.push([getCondition(item).unserv > 0 ? 'rose' : 'orange', 'ph-wrench', conditionText(item)]);
+      if (item.qty <= item.minQty) out.push(['amber', 'ph-warning', `Low stock · min ${item.minQty}`]);
+      const held = getUnits(item.code).filter(u => u.to || u.toUid);
+      if (held.length) {
+        const names = [...new Set(held.map(unitHolder))];
+        out.push(['teal', 'ph-user-circle', names.length === 1 ? `${held.length < item.qty ? `${held.length} with ` : 'With '}${names[0]}` : `${held.length} with ${names.length} people`]);
+      }
+      const tagged = getUnits(item.code).length;
+      if (tagged) out.push(['violet', 'ph-tag', `${tagged}/${item.qty} tagged`]);
+      return out;
+    }
+    const FLAG_TONES = {
+      rose: 'bg-rose-50 text-rose-700', orange: 'bg-orange-50 text-orange-700', amber: 'bg-amber-50 text-amber-800',
+      teal: 'bg-teal-50 text-teal-700', violet: 'bg-violet-50 text-violet-700', slate: 'bg-slate-100 text-slate-700'
+    };
+    const flagHTML = ([tone, icon, text]) =>
+      `<span class="inv-flag ${FLAG_TONES[tone]}"><i class="ph-fill ${icon}"></i><span class="truncate">${escapeHTML(text)}</span></span>`;
+    const itemTypeIcon = item => item.type === 'EQUIPMENT'
+      ? { icon: 'ph-desktop-tower', tone: 'bg-blue-50 text-blue-600', label: 'Equipment (ICS/PAR)' }
+      : { icon: 'ph-package', tone: 'bg-indigo-50 text-indigo-600', label: 'Consumable (RIS)' };
 
     function renderDashboardLedger() {
       const container = document.getElementById('dashboardLedgerContainer');
       const q = (document.getElementById('ledgerSearchInput')?.value || '').toLowerCase().trim();
       const sortBy = document.getElementById('ledgerSortSelect')?.value || 'VALUE_DESC';
+      const stocked = items.filter(i => i.qty > 0);
 
-      let list = items.filter(i => i.qty > 0);
+      // Summary line and the count on each chip
+      const total = stocked.reduce((s, i) => s + i.qty * i.price, 0);
+      document.getElementById('invSummary').textContent = stocked.length
+        ? `${plural(stocked.length, 'item')} · ${formatCurrency(total)}`
+        : 'No items yet';
+      Object.entries(LEDGER_FILTERS).forEach(([key, fn]) => {
+        const n = key === 'ALL' ? stocked.length : stocked.filter(fn).length;
+        const chip = document.getElementById(`ledgerTab-${key}`);
+        if (!chip) return;
+        chip.querySelector('.ledger-n').textContent = n;
+        // Quiet filters with nothing in them are hidden (the one in use always stays visible)
+        if (!['ALL', 'EQUIPMENT', 'CONSUMABLE', 'UNCOUNTED'].includes(key)) chip.classList.toggle('hidden', !n && ledgerFilter !== key);
+      });
 
-      if (ledgerFilter === 'EQUIPMENT') list = list.filter(i => i.type === 'EQUIPMENT');
-      if (ledgerFilter === 'CONSUMABLE') list = list.filter(i => i.type === 'CONSUMABLE');
-      if (ledgerFilter === 'LOW') list = list.filter(i => i.qty <= i.minQty);
-      if (ledgerFilter === 'CONDITION') list = list.filter(hasConditionIssue);
-      if (ledgerFilter === 'UNCOUNTED') list = list.filter(i => !isCounted(i.code));
-
+      let list = stocked.filter(LEDGER_FILTERS[ledgerFilter] || LEDGER_FILTERS.ALL);
       if (q) {
-        list = list.filter(i => 
-          i.name.toLowerCase().includes(q) || 
-          i.code.toLowerCase().includes(q) || 
+        list = list.filter(i =>
+          i.name.toLowerCase().includes(q) ||
+          i.code.toLowerCase().includes(q) ||
           i.category.toLowerCase().includes(q) ||
-          i.note.toLowerCase().includes(q) ||
-          getUnits(i.code).some(u => u.no.toLowerCase().includes(q) || (u.serial || '').toLowerCase().includes(q))
+          (i.note || '').toLowerCase().includes(q) ||
+          getUnits(i.code).some(u => u.no.toLowerCase().includes(q) || (u.serial || '').toLowerCase().includes(q) || unitHolder(u).toLowerCase().includes(q))
         );
       }
-
       list.sort((a, b) => {
         if (sortBy === 'VALUE_DESC') return (b.qty * b.price) - (a.qty * a.price);
         if (sortBy === 'QTY_DESC') return b.qty - a.qty;
         if (sortBy === 'QTY_ASC') return a.qty - b.qty;
-        if (sortBy === 'NAME_ASC') return a.name.localeCompare(b.name);
-        return 0;
+        if (sortBy === 'ROOM') return (a.note || '\uffff').localeCompare(b.note || '\uffff') || a.name.localeCompare(b.name);
+        return a.name.localeCompare(b.name);
       });
 
-      if (list.length === 0) {
+      if (!list.length) {
+        const empty = !stocked.length;
         container.innerHTML = `
-          <div class="p-10 text-center">
-            <i class="ph-duotone ph-package text-4xl text-slate-300 mb-2 block"></i>
-            <p class="text-sm font-bold text-slate-700">No active inventory items match this view</p>
-            <p class="text-xs text-slate-400 mt-1">Switch to the Item Catalog to add quantities or load sample inventory data above.</p>
-          </div>
-        `;
-        return;
+          <div class="px-6 py-10 text-center">
+            <i class="ph-duotone ph-package text-4xl text-slate-400 mb-2 block"></i>
+            <p class="text-sm font-bold text-slate-800">${empty ? 'Your inventory is empty' : 'Nothing matches'}</p>
+            <p class="text-xs text-slate-600 mt-1 max-w-xs mx-auto">${empty
+              ? 'Add what the school has: scan an ICS or import your Excel list from Home, or pick items in the Catalog.'
+              : 'Try another word, or show all items.'}</p>
+            <div class="mt-4 flex justify-center gap-2">${empty
+              ? `<button onclick="switchMainView('HOME')" class="h-10 px-4 rounded-xl bg-brand-600 text-white text-xs font-bold">Go to Home</button>
+                 <button onclick="switchMainView('CATALOG')" class="h-10 px-4 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">Open Catalog</button>`
+              : `<button onclick="document.getElementById('ledgerSearchInput').value = ''; setLedgerFilter('ALL')" class="h-10 px-4 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">Show all items</button>`}</div>
+          </div>`;
+      } else {
+        container.innerHTML = list.map(item => {
+          const counted = isCounted(item.code);
+          const t = itemTypeIcon(item);
+          const flags = itemFlags(item);
+          const code = escapeHTML(item.code);
+          const lead = countSession
+            ? `<button data-code="${code}" onclick="event.stopPropagation(); toggleCounted(this.dataset.code)" aria-pressed="${counted}" aria-label="${counted ? 'Counted, tap to undo' : 'Mark as counted'}"
+                class="count-check w-11 h-11 shrink-0 rounded-xl flex items-center justify-center transition active:scale-95 ${counted ? 'bg-sky-600 text-white shadow-sm' : 'bg-white border-2 border-dashed border-slate-300 text-slate-400'}">
+                <i class="ph-bold ph-check text-lg"></i></button>`
+            : `<span class="w-11 h-11 shrink-0 rounded-xl ${t.tone} flex items-center justify-center" title="${t.label}"><i class="ph-duotone ${t.icon} text-2xl"></i></span>`;
+          return `
+            <div class="inv-row ${counted ? 'bg-sky-50/40' : ''}" role="button" tabindex="0" data-code="${code}"
+              onclick="openItemSheet(this.dataset.code)" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openItemSheet(this.dataset.code); }"
+              aria-label="${escapeHTML(item.name)}, ${item.qty} ${escapeHTML(item.unit)}, ${formatCurrency(item.qty * item.price)}">
+              ${lead}
+              <div class="flex-1 min-w-0">
+                <p class="inv-name">${escapeHTML(item.name)}</p>
+                <p class="text-xs text-slate-600 truncate mt-0.5">${item.note ? escapeHTML(item.note) : '<span class="text-slate-500 italic">No room yet</span>'} · <span class="font-mono">${code}</span></p>
+                ${flags.length ? `<div class="flex flex-wrap items-center gap-1 mt-1.5 min-w-0">${flags.slice(0, 2).map(flagHTML).join('')}${flags.length > 2 ? `<span class="inv-flag ${FLAG_TONES.slate} shrink-0">+${flags.length - 2}</span>` : ''}</div>` : ''}
+              </div>
+              <div class="shrink-0 text-right">
+                <p class="font-mono font-extrabold text-base text-slate-900 leading-tight">${item.qty}<span class="ml-1 font-sans text-xs font-semibold text-slate-500">${escapeHTML(item.unit)}</span></p>
+                <p class="font-mono text-xs font-bold text-emerald-700 mt-0.5 whitespace-nowrap">${formatCurrency(item.qty * item.price)}</p>
+              </div>
+              <i class="ph-bold ph-caret-right text-slate-400 shrink-0 -mr-1" aria-hidden="true"></i>
+            </div>`;
+        }).join('');
       }
+      if (sheetCode) renderItemSheet();
+    }
 
-      container.innerHTML = list.map(item => {
-        const isLow = item.qty <= item.minQty;
-        const lineTotal = item.qty * item.price;
-        const counted = isCounted(item.code);
+    // ---- Item sheet: everything about one item, opened from the Inventory list ----------------
+    let sheetCode = null;
+    function openItemSheet(code) {
+      if (!items.some(i => i.code === code)) return;
+      sheetCode = code;
+      renderItemSheet();
+      document.getElementById('itemSheet').classList.remove('hidden');
+      placeToast();
+      setTimeout(() => document.getElementById('isClose').focus({ preventScroll: true }), 50);
+    }
+    function closeItemSheet() {
+      sheetCode = null;
+      document.getElementById('itemSheet').classList.add('hidden');
+      placeToast();
+    }
+    // Actions that open another pop-up close this sheet first.
+    function itemSheetGo(action) {
+      const code = sheetCode;
+      if (!code) return;
+      if (action === 'history') return openHistory(code); // shows on top of the sheet
+      closeItemSheet();
+      if (action === 'edit') openItemModal(code);
+      else if (action === 'units') openUnitsModal(code);
+      else if (action === 'release') openReleaseForItem(code);
+    }
+    function itemSheetCounted() {
+      if (!sheetCode || !countSession) return;
+      const was = isCounted(sheetCode);
+      toggleCounted(sheetCode);
+      if (!was) closeItemSheet();
+    }
 
-        return `
-          <div class="p-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 transition ${counted ? 'bg-sky-50/40' : ''}">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center flex-wrap gap-1.5 mb-1">
-                <span class="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">${item.code}</span>
-                <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded ${item.type === 'EQUIPMENT' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}">
-                  ${item.type === 'EQUIPMENT' ? 'Equipment (ICS/PAR)' : 'Consumable (RIS)'}
-                </span>
-                ${isLow ? `
-                  <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
-                    <i class="ph-fill ph-warning"></i> Low Stock (Min: ${item.minQty})
-                  </span>
-                ` : `
-                  <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">
-                    <i class="ph-fill ph-check-circle"></i> Healthy
-                  </span>
-                `}
-                ${conditionChipHTML(item)}
-                ${tagChipHTML(item)}
-                ${withTeacherChipHTML(item)}
-              </div>
+    function renderItemSheet() {
+      const item = items.find(i => i.code === sheetCode);
+      if (!item) return closeItemSheet();
+      const t = itemTypeIcon(item);
+      const units = getUnits(item.code);
+      const held = units.filter(u => u.to || u.toUid);
+      const c = getCondition(item);
+      const low = item.qty > 0 && item.qty <= item.minQty;
+      const set = (id, html) => { document.getElementById(id).innerHTML = html; };
+      set('isIcon', `<i class="ph-duotone ${t.icon} text-2xl"></i>`);
+      document.getElementById('isIcon').className = `w-12 h-12 shrink-0 rounded-2xl ${t.tone} flex items-center justify-center`;
+      document.getElementById('isName').textContent = item.name;
+      document.getElementById('isMeta').innerHTML = `<span class="font-mono break-all">${escapeHTML(item.code)}</span> · ${t.label}`;
+      set('isStats', [
+        ['On hand', `${item.qty} <span class="font-sans text-xs font-semibold text-slate-500">${escapeHTML(item.unit)}</span>`, 'text-slate-900'],
+        ['Unit cost', formatCurrency(item.price), 'text-slate-900'],
+        ['Total value', formatCurrency(item.qty * item.price), 'text-emerald-700']
+      ].map(([k, v, tone]) => `
+        <div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 min-w-0">
+          <p class="text-[11px] font-bold uppercase tracking-wide text-slate-600">${k}</p>
+          <p class="font-mono font-extrabold text-[13px] ${tone} mt-0.5 whitespace-nowrap">${v}</p>
+        </div>`).join(''));
+      set('isAlert', low ? `<div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2 text-xs font-semibold flex items-center gap-2">
+          <i class="ph-fill ph-warning text-base"></i> Low stock: ${item.qty} left, the alert is set at ${item.minQty}.</div>` : '');
 
-              <h4 class="font-bold text-sm text-slate-900 leading-snug">${item.name}</h4>
+      // Detail lines: room, category, condition, property numbers, who has it
+      const line = (icon, label, value, onclick = '') => `
+        <${onclick ? `button type="button" onclick="${onclick}"` : 'div'} class="w-full flex items-center gap-3 px-1 py-2.5 text-left ${onclick ? 'rounded-xl hover:bg-slate-50 active:bg-slate-100' : ''}">
+          <i class="ph-bold ${icon} text-lg text-slate-500 shrink-0"></i>
+          <span class="text-xs font-semibold text-slate-600 w-24 shrink-0">${label}</span>
+          <span class="flex-1 min-w-0 text-sm font-semibold text-slate-800 break-words">${value}</span>
+          ${onclick ? '<i class="ph-bold ph-caret-right text-slate-400 shrink-0"></i>' : ''}
+        </${onclick ? 'button' : 'div'}>`;
+      const rows = [
+        line('ph-map-pin', 'Room', item.note ? escapeHTML(item.note) : '<span class="text-brand-700">Set a room</span>', "itemSheetGo('edit')"),
+        line('ph-folder', 'Category', escapeHTML(item.category))
+      ];
+      if (item.type === 'EQUIPMENT') {
+        rows.push(line('ph-wrench', 'Condition', !c.repair && !c.unserv ? 'All serviceable'
+          : [`${c.serv} serviceable`, c.repair ? `<span class="text-orange-700">${c.repair} for repair</span>` : '', c.unserv ? `<span class="text-rose-700">${c.unserv} unserviceable</span>` : ''].filter(Boolean).join(' · ')));
+      }
+      if (item.type === 'EQUIPMENT' || units.length) {
+        rows.push(line('ph-qr-code', 'Property nos.', units.length ? `${units.length} of ${item.qty} tagged` : '<span class="text-brand-700">None yet · add numbers and print QR labels</span>', "itemSheetGo('units')"));
+      }
+      if (held.length) {
+        const byPerson = new Map();
+        held.forEach(u => {
+          const key = personId(u.toUid, u.to);
+          const g = byPerson.get(key) || { name: unitHolder(u), units: [] };
+          g.units.push(u);
+          byPerson.set(key, g);
+        });
+        const people = [...byPerson.entries()].map(([key, g]) => {
+          const docs = [...new Set(g.units.map(unitDocLabel).filter(Boolean))];
+          return `<button type="button" onclick="closeItemSheet(); openTeachersView('${escapeHTML(key).replace(/'/g, '&#39;')}')"
+            class="w-full flex items-center gap-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 px-3 py-2 text-left">
+            <i class="ph-fill ph-user-circle text-lg shrink-0"></i>
+            <span class="flex-1 min-w-0 text-sm font-semibold"><span class="block truncate">${escapeHTML(g.name)}</span>
+            <span class="block text-xs font-medium text-teal-700">${plural(g.units.length, 'unit')}${docs.length ? ` · ${escapeHTML(docs.join(', '))}` : ''}</span></span>
+            <i class="ph-bold ph-caret-right shrink-0"></i></button>`;
+        }).join('');
+        rows.push(`<div class="px-1 py-2.5"><p class="text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-3"><i class="ph-bold ph-users-three text-lg text-slate-500"></i> With teachers</p><div class="space-y-1.5">${people}</div></div>`);
+      }
+      set('isRows', rows.join(''));
 
-              <div class="flex items-center flex-wrap gap-3 mt-1 text-xs text-slate-500">
-                <span>Category: <strong class="text-slate-700">${item.category}</strong></span>
-                <span>Unit Cost: <strong class="font-mono text-slate-700">${formatCurrency(item.price)}</strong></span>
-                <button onclick="openItemModal('${item.code}')" class="inline-flex items-center gap-1 min-h-9 sm:min-h-0 px-2.5 sm:px-0 rounded-lg sm:rounded-none bg-brand-50 sm:bg-transparent text-brand-700 sm:text-brand-600 font-semibold hover:underline">
-                  <i class="ph-fill ph-map-pin"></i>
-                  <span>${item.note ? item.note : 'Assign Room / Location'}</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Right Controls in Ledger -->
-            <div class="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-2 sm:gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
-              ${countSession ? `
-                <button onclick="toggleCounted('${item.code}')" title="${counted ? 'Counted – tap to undo' : 'Mark as counted'}" class="count-check w-9 h-9 shrink-0 rounded-xl flex items-center justify-center transition active:scale-95 ${counted ? 'bg-sky-600 text-white shadow-sm' : 'bg-white border-2 border-dashed border-slate-300 text-slate-300 hover:border-sky-400 hover:text-sky-500'}">
-                  <i class="ph-bold ph-check"></i>
-                </button>` : ''}
-              <div class="text-left sm:text-right font-mono">
-                <div class="text-[10px] uppercase font-sans font-bold text-slate-400">Total Value</div>
-                <div class="text-sm font-extrabold text-emerald-700">${formatCurrency(lineTotal)}</div>
-              </div>
-
-              <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
-                <button onclick="adjustQty('${item.code}', -1)" class="w-10 h-9 sm:w-9 sm:h-8 rounded-lg bg-white hover:bg-rose-50 active:scale-95 text-slate-700 font-bold flex items-center justify-center shadow-sm">
-                  <i class="ph-bold ph-minus text-xs"></i>
-                </button>
-                <span class="w-14 text-center font-mono font-extrabold text-xs text-slate-900">${item.qty} <span class="text-[10px] font-normal text-slate-500">${item.unit}</span></span>
-                <button onclick="adjustQty('${item.code}', 1)" class="w-10 h-9 sm:w-9 sm:h-8 rounded-lg bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold flex items-center justify-center shadow-sm">
-                  <i class="ph-bold ph-plus text-xs"></i>
-                </button>
-              </div>
-
-              <div class="flex items-center gap-2 w-full sm:w-auto">
-              ${item.type === 'EQUIPMENT' || getUnits(item.code).length ? `
-                <button onclick="openUnitsModal('${item.code}')" title="Property numbers & QR labels" aria-label="Property numbers and QR labels" class="flex-1 sm:flex-none h-10 sm:w-9 sm:h-9 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center gap-1.5">
-                  <i class="ph-bold ph-qr-code text-base sm:text-sm"></i><span class="sm:hidden">Property nos.</span>
-                </button>` : ''}
-              ${isCustodianDevice() ? `
-                <button onclick="openReleaseForItem('${item.code}')" title="Release to a teacher" aria-label="Release to a teacher" class="flex-1 sm:flex-none h-10 sm:w-9 sm:h-9 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold flex items-center justify-center gap-1.5">
-                  <i class="ph-bold ph-hand-arrow-up text-base sm:text-sm"></i><span class="sm:hidden">Release</span>
-                </button>` : ''}
-              <button onclick="openItemModal('${item.code}')" title="Edit item" aria-label="Edit item" class="flex-1 sm:flex-none h-10 sm:w-9 sm:h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center gap-1.5">
-                <i class="ph-bold ph-pencil-simple text-base sm:text-sm"></i><span class="sm:hidden">Edit</span>
-              </button>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
+      // Quantity stepper (same rules as before: not below the units with property numbers)
+      document.getElementById('isQty').textContent = item.qty;
+      document.getElementById('isUnit').textContent = item.unit;
+      document.getElementById('isQtyNote').textContent = units.length ? `${plural(units.length, 'unit')} with property numbers: the count can't go lower.` : 'Changes are saved right away and kept in History.';
+      const countBtn = document.getElementById('isCount');
+      countBtn.classList.toggle('hidden', !countSession);
+      if (countSession) {
+        const done = isCounted(item.code);
+        countBtn.innerHTML = done ? '<i class="ph-bold ph-arrow-counter-clockwise"></i> Counted · undo' : '<i class="ph-bold ph-check"></i> Mark as counted';
+        countBtn.className = `w-full h-12 rounded-xl text-sm font-bold flex items-center justify-center gap-2 ${done ? 'bg-slate-100 text-slate-700' : 'bg-sky-600 hover:bg-sky-700 text-white'}`;
+      }
+      document.getElementById('isRelease').classList.toggle('hidden', !isCustodianDevice());
     }
 
     function printConditionCell(item) {
@@ -6717,7 +6885,7 @@
         showToast('Encode your items first, then count them', 'ph-info');
         return;
       }
-      startCount(); // switches to My Items when the count starts
+      startCount(); // switches to Inventory when the count starts
     }
 
     // ---- Encode sheet ---------------------------------------------------------
@@ -6995,7 +7163,7 @@
     function placeToast() {
       const toast = document.getElementById('appToast');
       if (!toast) return;
-      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel', 'aboutPanel', 'xferModal', 'coaModal', 'tourModal'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
+      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel', 'aboutPanel', 'xferModal', 'coaModal', 'tourModal', 'itemSheet'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
       const stickyAction = [...document.querySelectorAll('[data-toast-avoid]')].some(el => el.offsetParent !== null);
       const gated = document.documentElement.classList.contains('gated');
       const top = !gated && (sheetOpen || stickyAction);
@@ -7011,7 +7179,7 @@
       if (!toast || watchToastPlacement.done) return;
       watchToastPlacement.done = true;
       const mo = new MutationObserver(() => { if (!toast.classList.contains('hidden')) placeToast(); });
-      ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel', 'aboutPanel', 'xferModal', 'coaModal', 'tourModal']
+      ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel', 'aboutPanel', 'xferModal', 'coaModal', 'tourModal', 'itemSheet']
         .forEach(id => { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class'] }); });
       mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     }
@@ -7306,7 +7474,7 @@
     }
 
     // ---- School inventory in the cloud (custodian devices) -----------------------------
-    // My Items, custom catalog items and school info are saved under the school in Firestore,
+    // Inventory, custom catalog items and school info are saved under the school in Firestore,
     // one document per item, so the same inventory is on every device the custodian signs
     // in on. The phone stays the working copy (localStorage); Firestore's offline queue
     // sends edits whenever there is signal. Nothing is deleted online: removed items become
@@ -7545,7 +7713,7 @@
         if (remoteInfo && !(schoolInfo && schoolInfo.school)) applyRemoteInventory([['s:info', remoteInfo]]);
         pushInventory(true);
         const n = Object.keys(userState).filter(c => (parseInt(userState[c].qty, 10) || 0) > 0).length;
-        if (n) showToast(`My Items saved to your account · ${plural(n, 'item')}`, 'ph-cloud-check');
+        if (n) showToast(`Inventory saved to your account · ${plural(n, 'item')}`, 'ph-cloud-check');
         return;
       }
       const localOnly = localItems.filter(k => !remote[k]);
@@ -8650,7 +8818,7 @@
       showToast('Marked as supplied from stock', 'ph-package');
     }
 
-    // Items bought on a PR arrived: they go into My Items (stock in), and its requests show
+    // Items bought on a PR arrived: they go into Inventory (stock in), and its requests show
     // "Ready" to the teachers until the custodian releases the items to them.
     async function markPrDelivered(prId) {
       const pr = prList.find(p => p.id === prId);
@@ -8659,7 +8827,7 @@
       const plan = prStockInPlan(pr);
       const fresh = plan.filter(x => !x.item).length;
       if (!await appConfirm(`Items on PR No. ${pr.prNo} were delivered?\n\n` +
-        `Adds ${plural(plan.length, 'item')} to the stock in My Items${fresh ? ` (${fresh} new)` : ''}.` +
+        `Adds ${plural(plan.length, 'item')} to your inventory${fresh ? ` (${fresh} new)` : ''}.` +
         (open.length ? `\n${plural(open.length, 'request')} will show as ready to release (${open.map(r => r.name).join(', ')}).` : ''), { ok: 'Mark delivered', tone: 'good', icon: 'ph-package' })) return;
       if (pr.deliveredMs) return;
       const { added } = stockInPr(pr);
@@ -8872,7 +9040,7 @@
     // { fromUid, fromName, fromPosition, transferType, transferOther, loc, sameHolder } – made out to
     // the new holder; the old holder gets a RETURN with source 'transferred'. RETURN no = RRSP No.
     // RIS (Appendix 63): supplies leave the stock count. ICS (Appendix 59): equipment stays in
-    // My Items and its units show "With <teacher> · ICS no.". RETURN: units taken back or given
+    // Inventory and its units show "With <teacher> · ICS no.". RETURN: units taken back or given
     // to someone else. A teacher can read only the releases made out to their own account.
     // Capitalization threshold (COA Circular 2022-004): ₱50,000 and up is PPE (PAR, PTR,
     // RPCPPE, IIRUP); below that it is semi-expendable property (ICS, ITR, RPCSP, IIRUSP).
@@ -9161,7 +9329,7 @@
             <span class="mx-auto w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="ph-bold ph-check-circle text-3xl"></i></span>
             <p class="text-base font-extrabold text-slate-900">Released to ${escapeHTML(r.teacherName)}</p>
             <p class="text-xs text-slate-500">${r.docs.map(x => `${x.kind} No. <b class="font-mono">${escapeHTML(x.no)}</b> · ${plural(x.lines.length, 'item')}`).join('<br>')}</p>
-            <p class="text-xs text-slate-500">${r.docs.some(x => x.kind === 'RIS') ? 'Supplies were taken out of the stock count. ' : ''}${r.docs.some(x => isIssueKind(x.kind)) ? `Equipment stays in My Items, shown as with ${escapeHTML(r.teacherName.split(' ')[0])}.` : ''}</p>
+            <p class="text-xs text-slate-500">${r.docs.some(x => x.kind === 'RIS') ? 'Supplies were taken out of the stock count. ' : ''}${r.docs.some(x => isIssueKind(x.kind)) ? `Equipment stays in Inventory, shown as with ${escapeHTML(r.teacherName.split(' ')[0])}.` : ''}</p>
           </div>`;
         foot.innerHTML = r.docs.map((x, i) => `<button onclick="printReleaseDone(${i})" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> ${x.kind}</button>`).join('') +
           `<button onclick="closeRelease()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-sm">Done</button>`;
@@ -9221,7 +9389,7 @@
       document.getElementById('relLines').innerHTML = d.lines.length ? d.lines.map(lineHTML).join('') : `
         <div class="rounded-xl border border-dashed border-slate-300 p-4 text-center text-xs text-slate-500">Add the items you are handing over.</div>`;
       const miss = document.getElementById('relMissing');
-      miss.innerHTML = d.missing.length ? `<i class="ph-bold ph-warning"></i> Not in stock in My Items: ${d.missing.map(escapeHTML).join(' · ')}` : '';
+      miss.innerHTML = d.missing.length ? `<i class="ph-bold ph-warning"></i> Not in your inventory: ${d.missing.map(escapeHTML).join(' · ')}` : '';
       miss.classList.toggle('hidden', !d.missing.length);
       const err = document.getElementById('relError');
       err.textContent = teamError ? `Teacher list: ${teamError}` : '';
@@ -9784,7 +9952,7 @@
     // ---- Released to teachers (custodian overview) ------------------------------------------
     // One line per accountable person: teachers who joined, anyone something was released to,
     // and names typed or scanned under "Assigned to" (no account needed). Equipment comes from
-    // My Items (the units' "Assigned to"), so it is right even for items assigned before the
+    // Inventory (the units' "Assigned to"), so it is right even for items assigned before the
     // app was used; supplies and history come from the release records.
     let teachersSel = null;     // person key shown in detail, or null for the list
     let teachersQuery = '';
@@ -10496,7 +10664,7 @@
             <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-emerald-700">${counted}</p><p class="text-[10px] font-bold uppercase text-slate-400">Counted</p></div>
             <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono ${missing.length ? 'text-rose-600' : 'text-slate-900'}">${missing.length}</p><p class="text-[10px] font-bold uppercase text-slate-400">Not found</p></div>
           </div>
-          ${!rows.length ? `<p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">No equipment ${ppe ? 'of ₱50,000 or more' : 'below ₱50,000'} in My Items.</p>` : ''}
+          ${!rows.length ? `<p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">No equipment ${ppe ? 'of ₱50,000 or more' : 'below ₱50,000'} in your inventory.</p>` : ''}
           ${missing.length ? `<div class="rounded-xl bg-rose-50 border border-rose-200 px-3 py-2 text-[11px] text-rose-800"><b>Not found since ${escapeHTML(formatShortDate(coaVal('since') + 'T00:00:00'))}:</b> ${missing.slice(0, 8).map(r => escapeHTML(r.unit ? r.unit.no : r.item.name)).join(', ')}${missing.length > 8 ? ` +${missing.length - 8} more` : ''}. Scan their tags (Scan Tags) or check the item during the count to mark them found.</div>` : ''}
           ${notCounted.length ? `<p class="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800">${plural(notCounted.length, 'item')} without property numbers ${notCounted.length === 1 ? 'is' : 'are'} not counted yet · the count column stays blank for writing in.</p>` : ''}
           <p class="text-[11px] text-slate-500">Built from the counts already recorded: a unit counts as found when its QR tag was scanned, or its item was checked in the physical count, on or after “Counted since”.</p>
@@ -11334,6 +11502,11 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-inventory', date: 'Nov 2026', title: 'My Items is now Inventory', points: [
+        'A cleaner list: one row per item with its room, quantity and value, and at most two labels (low stock, for repair, with a teacher…).',
+        'Tap an item for everything about it: quantity, property numbers, who has it, and Release · Edit details · History.',
+        'Filters (Equipment, Consumables, Low stock, Needs repair, With teachers) show how many items each has and no longer scroll off the screen.'
+      ] },
       { id: '2026-11-tablet-size', date: 'Nov 2026', title: 'Bigger on tablets', points: [
         'On a tablet, the installed app now fills the screen with larger text and buttons, instead of a small column in the middle.'
       ] },

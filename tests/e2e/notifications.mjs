@@ -242,7 +242,7 @@ try {
   check(await ev(a, () => location.search === ''), 'custodian ?go=requests → Supply requests (address cleaned)');
   await a.goto(BASE_URL + '?go=items', { waitUntil: 'networkidle0' });
   await until(a, () => activeMainView === 'ITEMS', 'shortcut items', 5000);
-  check(true, 'custodian ?go=items → My Items');
+  check(true, 'custodian ?go=items → Inventory');
   await t.goto(BASE_URL + '?go=items', { waitUntil: 'networkidle0' });
   await until(t, () => activeMainView === 'REQUESTER' && teacherTab === 'items', 'teacher shortcut', 5000);
   check(true, 'teacher ?go=items → her My items');
