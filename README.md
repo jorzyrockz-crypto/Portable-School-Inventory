@@ -83,17 +83,19 @@ The custodian's list of everything the school has (quantity above 0). It was cal
 
 ## Catalog
 
-The full APP-CSE catalog (361 items plus custom ones), where quantities are entered quickly. It has the same look as Inventory:
+The full APP-CSE catalog (361 items plus custom ones), where quantities are entered quickly. It uses the same card, colours and white rows as Inventory, and sits below the top bar, not inside it:
 
-- **Top:** a search box (name, code, room) and a **Category** drop-down with how many items each category has. That one control replaced a strip of 30 category pills that ran off the screen.
+- **Card header:**
+  - *Catalog*, with *N items · N in stock* (or *Showing X of N* while filtering) and a chip showing the chosen category (tap ✕ to clear it);
+  - **Custom item** on the right, where Inventory has *Add items*;
+  - a search box (name, code, room) and a **Category** drop-down with how many items each category has. That one control replaced a strip of 30 category pills that ran off the screen.
 - **Chips** below, which wrap like Inventory's: *All (count) · Part I (PS-DBM) · Part II (Other) · In stock (count)*.
-- Under the header: *N items* or *Showing X of N*, a chip with the chosen category (tap ✕ to clear it), and **Reset quantities**.
+- **Reset all quantities** is at the end of the list. It is rarely needed and asks for confirmation first.
 - **One row per item:**
   - the name (2 lines at most);
   - *price / unit · code* (a missing price shows *Set price*), plus the category on wider screens;
   - up to three small labels: the total value and the room when it is in stock, and low stock or repair when needed;
-  - on the right, a compact **− qty +** (40 px buttons named *One less* / *One more*). The quantity can also be typed.
-- Items in stock have a light tint and a brand-colour bar on the left.
+  - on the right, a compact **− qty +** (40 px buttons named *One less* / *One more*; + is light indigo like *Add items*). The quantity can also be typed and is greyed out at 0.
 - **Tap the name** to open the item details: room, unit price, minimum stock.
 - **−** and **+** update the row in place, so the list doesn't jump and the button you tapped keeps focus.
 - `tests/e2e/phone-layout.mjs` checks at 390 px that:

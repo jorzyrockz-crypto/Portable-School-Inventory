@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="0624f856dd2c">
+  <meta name="app-version" content="a1e8d8e0f4fc">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -238,27 +238,26 @@
         border-radius: 0.4rem; font-size: 0.6875rem; font-weight: 700; }
       .inv-flag i { flex: none; }
       @media (min-width: 640px) { .inv-row { padding: 0.8rem 1.25rem; } }
-      /* Catalog rows: tap the name for details, small − qty + on the right; items in stock get a
-         tinted background and a brand bar on the left */
+      /* Catalog rows: same white rows as Inventory; tap the name for details, small − qty + on the
+         right (the quantity is greyed out at 0) */
       .cat-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.75rem 0.55rem 0.25rem; transition: background-color .15s; }
-      .cat-row.is-on { background: rgb(238 242 255 / 0.55); box-shadow: inset 3px 0 0 #4f46e5; }
       .cat-main { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 0.75rem; text-align: left;
         padding: 0.25rem 0.25rem 0.25rem 0.75rem; min-height: 3rem; border-radius: 0.75rem; }
       @media (hover: hover) { .cat-main:hover { background: rgb(241 245 249 / 0.7); } }
       .cat-main:focus-visible { outline: 2px solid #6366f1; outline-offset: -2px; }
-      .cat-step { flex: none; display: flex; align-items: center; padding: 0.125rem; border-radius: 0.8rem; background: #f1f5f9; border: 1px solid #e2e8f0; }
+      .cat-step { flex: none; display: flex; align-items: center; padding: 0.125rem; border-radius: 0.8rem; background: #f8fafc; border: 1px solid #e2e8f0; }
       .cat-step button { width: 2.5rem; height: 2.5rem; border-radius: 0.65rem; display: flex; align-items: center; justify-content: center;
         font-size: 1rem; user-select: none; transition: transform .1s, background-color .15s; }
       .cat-step button:active { transform: scale(0.94); }
       .cat-minus { background: #fff; color: #334155; box-shadow: 0 1px 2px rgb(15 23 42 / 0.08); }
       @media (hover: hover) { .cat-minus:hover { background: #fff1f2; color: #e11d48; } }
-      .cat-plus { background: #4f46e5; color: #fff; box-shadow: 0 1px 2px rgb(15 23 42 / 0.12); }
-      @media (hover: hover) { .cat-plus:hover { background: #4338ca; } }
+      .cat-plus { background: #eef2ff; color: #4338ca; }
+      @media (hover: hover) { .cat-plus:hover { background: #e0e7ff; } }
       .cat-qty { width: 2.75rem; height: 2.5rem; text-align: center; background: transparent; outline: none; color: #0f172a;
         font-family: "JetBrains Mono Variable", "JetBrains Mono", monospace; font-weight: 800; font-size: 0.95rem; -moz-appearance: textfield; }
       .cat-qty::-webkit-outer-spin-button, .cat-qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
       .cat-row:not(.is-on) .cat-qty { color: #94a3b8; }
-      @media (min-width: 640px) { .cat-row { padding: 0.55rem 1rem 0.55rem 0.5rem; } .cat-qty { width: 3.25rem; } }
+      @media (min-width: 640px) { .cat-row { padding: 0.55rem 1.25rem 0.55rem 0.5rem; } .cat-qty { width: 3.25rem; } }
       .more-item { display: flex; width: 100%; align-items: center; gap: 0.75rem; padding: 0.7rem 0.5rem; border-radius: 0.75rem;
       font-size: 0.875rem; font-weight: 600; color: #334155; text-align: left; }
     .more-item:hover, .more-item:active { background: #f1f5f9; }
@@ -293,13 +292,13 @@
       html.dark .ledger-tab:hover { background: #172033; }
       html.dark .inv-row:hover { background: #172033; } html.dark .inv-row:active { background: #1c2638; }
       html.dark .inv-name { color: #f1f5f9; }
-      html.dark .cat-row.is-on { background: rgb(79 70 229 / 0.12); box-shadow: inset 3px 0 0 #818cf8; }
+      html.dark .cat-plus { background: rgb(99 102 241 / 0.2); color: #c7d2fe; }
       @media (hover: hover) { html.dark .cat-main:hover { background: #172033; } }
-      html.dark .cat-step { background: #0b1220; border-color: #243044; }
+      html.dark .cat-step { background: rgb(23 32 51); border-color: #243044; }
       html.dark .cat-minus { background: #1c2638; color: #e2e8f0; }
       @media (hover: hover) { html.dark .cat-minus:hover { background: #3b1d2a; color: #fda4af; } }
-      html.dark .cat-qty { color: #f1f5f9; }
-      html.dark .cat-row:not(.is-on) .cat-qty { color: #64748b; }
+      html.dark .cat-step .cat-qty { color: #f1f5f9; background: transparent; border-color: transparent; }
+      html.dark .cat-row:not(.is-on) .cat-step .cat-qty { color: #64748b; }
       html.dark .more-item:hover, html.dark .more-item:active { background: #1c2638; }
       html.dark .pr-in { background: #0e1626; border-color: #334155; color: #f1f5f9; }
       html.dark :where(input:not([type=checkbox], [type=radio], [type=range], [type=color]), select, textarea) { background-color: #0e1626; }
@@ -438,36 +437,6 @@
       </div>
     </div>
 
-    <!-- CATALOG-ONLY CONTROLS: search + category drop-down, then chips that wrap (same look as Inventory) -->
-    <div id="catalogHeaderControls" class="hidden border-t border-slate-100">
-      <div class="max-w-4xl mx-auto px-4 py-2.5 space-y-2">
-        <div class="flex items-center gap-2">
-          <div class="relative flex-1 min-w-0">
-            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base pointer-events-none"></i>
-            <input type="text" id="searchInput" oninput="handleSearch(this.value)" enterkeyhint="search" autocomplete="off" spellcheck="false"
-              placeholder="Search items" aria-label="Search the catalog by name, code or room"
-              class="w-full h-11 pl-9 pr-10 bg-slate-50 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:border-brand-500 focus:bg-white">
-            <button id="clearSearchBtn" onclick="clearSearch()" aria-label="Clear search" class="hidden absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full text-slate-500 hover:bg-slate-200 items-center justify-center">
-              <i class="ph-bold ph-x text-sm"></i>
-            </button>
-          </div>
-          <label class="relative shrink-0" title="Category">
-            <span class="sr-only">Category</span>
-            <i class="ph-bold ph-funnel absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
-            <select id="catCategorySelect" onchange="setCategoryFilter(this.value === 'ALL' ? 'ALL' : Number(this.value))"
-              class="h-11 pl-8 pr-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none w-[9.5rem] sm:w-60">
-              <option value="ALL">All categories</option>
-            </select>
-          </label>
-        </div>
-        <div class="flex flex-wrap gap-1.5" role="group" aria-label="Show">
-          <button onclick="setPartFilter('ALL')" id="tab-ALL" aria-pressed="true" class="part-tab ledger-tab seg-on">All <span id="count-ALL" class="ledger-n">0</span></button>
-          <button onclick="setPartFilter('PART1')" id="tab-PART1" aria-pressed="false" class="part-tab ledger-tab" title="Part I: common-use supplies available at PS-DBM">Part I<span class="hidden sm:inline font-semibold opacity-75"> (PS-DBM)</span></button>
-          <button onclick="setPartFilter('PART2')" id="tab-PART2" aria-pressed="false" class="part-tab ledger-tab" title="Part II: other items not available at PS-DBM">Part II<span class="hidden sm:inline font-semibold opacity-75"> (Other)</span></button>
-          <button onclick="setPartFilter('SELECTED')" id="tab-SELECTED" aria-pressed="false" class="part-tab ledger-tab"><i class="ph-fill ph-check-circle text-emerald-600"></i> In stock <span id="count-SELECTED" class="ledger-n">0</span></button>
-        </div>
-      </div>
-    </div>
   </header>
 
   <!-- Install as an app (shown when Chrome offers it, until installed or dismissed) -->
@@ -913,44 +882,76 @@
   <!-- ===================================================================== -->
   <!-- VIEW 2: ITEM CATALOG & COUNTER (Full 323 APP-CSE Items)               -->
   <!-- ===================================================================== -->
-  <main id="viewCatalog" class="hidden max-w-4xl mx-auto px-4 pt-4 no-print">
-    
-    <!-- Results line: how many items show, the chosen category (tap to clear), reset -->
-    <div class="flex items-center justify-between gap-2 mb-2.5 px-1">
-      <div class="flex items-center gap-2 min-w-0">
-        <p id="resultsStatus" class="text-xs font-semibold text-slate-600 whitespace-nowrap">Showing all items</p>
-        <button id="clearCatFilterBtn" onclick="setCategoryFilter('ALL')" aria-label="Show all categories" class="hidden h-8 min-w-0 px-2.5 text-[11px] font-bold bg-brand-50 text-brand-700 rounded-lg items-center gap-1">
-          <span id="activeCatLabel" class="truncate">Category</span>
-          <i class="ph-bold ph-x shrink-0"></i>
+  <main id="viewCatalog" class="hidden max-w-4xl mx-auto px-4 sm:pt-8 no-print">
+    <!-- One card like Inventory: title + summary + Custom item, search + category, chips, then the rows -->
+    <div id="catalogSection" class="bg-white -mx-4 sm:mx-0 rounded-none sm:rounded-2xl border-y sm:border border-slate-200/90 shadow-sm overflow-hidden">
+      <div class="p-4 sm:p-5 border-b border-slate-200 space-y-3">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h3 class="font-extrabold text-lg text-slate-900">Catalog</h3>
+            <div class="flex items-center flex-wrap gap-x-2 gap-y-1 mt-0.5">
+              <p id="resultsStatus" class="text-xs text-slate-600">Showing all items</p>
+              <button id="clearCatFilterBtn" onclick="setCategoryFilter('ALL')" aria-label="Show all categories" class="hidden h-8 min-w-0 max-w-full px-2.5 text-[11px] font-bold bg-brand-50 text-brand-700 rounded-lg items-center gap-1">
+                <span id="activeCatLabel" class="truncate">Category</span>
+                <i class="ph-bold ph-x shrink-0"></i>
+              </button>
+            </div>
+          </div>
+          <button onclick="openCustomItemModal()" class="shrink-0 h-10 px-3 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold flex items-center gap-1.5">
+            <i class="ph-bold ph-plus"></i> Custom item
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="relative flex-1 min-w-0">
+            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base pointer-events-none"></i>
+            <input type="text" id="searchInput" oninput="handleSearch(this.value)" enterkeyhint="search" autocomplete="off" spellcheck="false"
+              placeholder="Search items" aria-label="Search the catalog by name, code or room"
+              class="w-full h-11 pl-9 pr-10 bg-slate-50 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:border-brand-500 focus:bg-white">
+            <button id="clearSearchBtn" onclick="clearSearch()" aria-label="Clear search" class="hidden absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full text-slate-500 hover:bg-slate-200 items-center justify-center">
+              <i class="ph-bold ph-x text-sm"></i>
+            </button>
+          </div>
+          <label class="relative shrink-0" title="Category">
+            <span class="sr-only">Category</span>
+            <i class="ph-bold ph-funnel absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+            <select id="catCategorySelect" onchange="setCategoryFilter(this.value === 'ALL' ? 'ALL' : Number(this.value))"
+              class="h-11 pl-8 pr-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none w-[9.5rem] sm:w-56">
+              <option value="ALL">All categories</option>
+            </select>
+          </label>
+        </div>
+        <!-- Chips: they wrap instead of scrolling sideways (same style as Inventory) -->
+        <div class="flex flex-wrap gap-1.5" role="group" aria-label="Show">
+          <button onclick="setPartFilter('ALL')" id="tab-ALL" aria-pressed="true" class="part-tab ledger-tab seg-on">All <span id="count-ALL" class="ledger-n">0</span></button>
+          <button onclick="setPartFilter('PART1')" id="tab-PART1" aria-pressed="false" class="part-tab ledger-tab" title="Part I: common-use supplies available at PS-DBM">Part I<span class="hidden sm:inline font-semibold opacity-75"> (PS-DBM)</span></button>
+          <button onclick="setPartFilter('PART2')" id="tab-PART2" aria-pressed="false" class="part-tab ledger-tab" title="Part II: other items not available at PS-DBM">Part II<span class="hidden sm:inline font-semibold opacity-75"> (Other)</span></button>
+          <button onclick="setPartFilter('SELECTED')" id="tab-SELECTED" aria-pressed="false" class="part-tab ledger-tab"><i class="ph-fill ph-check-circle text-emerald-600"></i> In stock <span id="count-SELECTED" class="ledger-n">0</span></button>
+        </div>
+      </div>
+
+      <!-- One row per catalog item: name, price per unit · code, a few labels, and a small − qty + -->
+      <div id="itemsContainer" class="divide-y divide-slate-100">
+        <!-- Populated dynamically via JS -->
+      </div>
+
+      <!-- Nothing matches -->
+      <div id="emptyState" class="hidden px-6 py-10 text-center">
+        <i class="ph-duotone ph-magnifying-glass text-4xl text-slate-400 mb-2 block"></i>
+        <p class="text-sm font-bold text-slate-800">Nothing matches</p>
+        <p class="text-xs text-slate-600 mt-1 max-w-xs mx-auto">Try another word or category, or add it as a custom item.</p>
+        <div class="mt-4 flex justify-center gap-2">
+          <button onclick="resetFilters()" class="h-10 px-4 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">Show all items</button>
+          <button onclick="openCustomItemModal()" class="h-10 px-4 rounded-xl bg-brand-50 text-brand-700 text-xs font-bold">Add a custom item</button>
+        </div>
+      </div>
+
+      <!-- Rarely needed and can't be undone easily: kept at the end of the list -->
+      <div class="px-4 sm:px-5 py-2 border-t border-slate-200 flex justify-end">
+        <button onclick="confirmResetAll()" class="h-10 px-2 -mr-2 text-xs font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1">
+          <i class="ph-bold ph-arrow-counter-clockwise"></i> Reset all quantities
         </button>
       </div>
-      <button onclick="confirmResetAll()" class="shrink-0 h-9 -my-2 px-1 text-xs font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1">
-        <i class="ph-bold ph-arrow-counter-clockwise"></i> Reset quantities
-      </button>
     </div>
-
-    <!-- One row per catalog item: name, price per unit · code, a few labels, and a small − qty + -->
-    <div id="itemsContainer" class="bg-white -mx-4 sm:mx-0 rounded-none sm:rounded-2xl border-y sm:border border-slate-200/90 shadow-sm overflow-hidden divide-y divide-slate-100">
-      <!-- Populated dynamically via JS -->
-    </div>
-
-    <!-- Empty State -->
-    <div id="emptyState" class="hidden bg-white rounded-2xl border border-slate-200 p-12 text-center my-6">
-      <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
-        <i class="ph-duotone ph-magnifying-glass text-3xl"></i>
-      </div>
-      <h3 class="text-base font-bold text-slate-800">No matching items found</h3>
-      <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Try adjusting your search query or switching your category filter.</p>
-      <div class="mt-4 flex items-center justify-center gap-2">
-        <button onclick="resetFilters()" class="px-4 py-2 bg-brand-600 text-white text-xs font-bold rounded-xl shadow-sm active:scale-95 transition">
-          Show All Items
-        </button>
-        <button onclick="openCustomItemModal()" class="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl active:scale-95 transition">
-          + Add Custom Item
-        </button>
-      </div>
-    </div>
-
   </main>
 
   <!-- ===================================================================== -->
@@ -2655,7 +2656,6 @@
       activeMainView = viewName;
       Object.entries(MAIN_VIEWS).forEach(([key, id]) =>
         document.getElementById(id).classList.toggle('hidden', key !== viewName));
-      document.getElementById('catalogHeaderControls').classList.toggle('hidden', viewName !== 'CATALOG');
       document.querySelectorAll('#tabBar .tab-btn').forEach(btn => {
         const on = btn.dataset.view === viewName;
         btn.classList.toggle('text-brand-600', on);
@@ -3318,7 +3318,7 @@
       return `
         <div id="card-${code}" class="cat-row ${on ? 'is-on' : ''}" data-code="${code}">
           <button type="button" class="cat-main" onclick="openItemModal(this.parentElement.dataset.code)" aria-label="${name}: room, price and minimum stock">
-            <span class="hidden sm:flex w-10 h-10 shrink-0 rounded-xl ${t.tone} items-center justify-center" title="${t.label}"><i class="ph-duotone ${t.icon} text-xl"></i></span>
+            <span class="hidden sm:flex w-11 h-11 shrink-0 rounded-xl ${t.tone} items-center justify-center" title="${t.label}"><i class="ph-duotone ${t.icon} text-2xl"></i></span>
             <span class="flex-1 min-w-0 block">
               <span class="inv-name">${name}</span>
               <span class="block text-xs text-slate-600 truncate mt-0.5"><span class="font-mono font-semibold ${needsPrice ? 'text-amber-700 underline decoration-dotted' : 'text-slate-800'}">${needsPrice ? 'Set price' : formatCurrency(item.price)}</span> / ${escapeHTML(item.unit.toLowerCase())} · <span class="font-mono">${code}</span><span class="hidden sm:inline"> · ${escapeHTML(item.category)}</span></span>
@@ -3340,8 +3340,9 @@
       const emptyState = document.getElementById('emptyState');
       const statusEl = document.getElementById('resultsStatus');
 
+      const inStock = items.filter(i => i.qty > 0).length;
       statusEl.textContent = filtered.length === items.length
-        ? `${plural(items.length, 'item')}`
+        ? `${plural(items.length, 'item')} · ${inStock} in stock`
         : `Showing ${filtered.length} of ${items.length}`;
       updateDockStats();
 
