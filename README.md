@@ -230,6 +230,27 @@ The custodian sees open reports at the top of **Supply requests** under **From t
 
 Teachers create only their own reports and read only their own. Only the custodian can resolve them (`teacherReports` in `firestore.rules`).
 
+## Released to teachers (overview)
+
+**More → Released to teachers** (or **Teachers** on Supply requests) lists everyone who holds something:
+- teachers who joined;
+- anyone items were released to;
+- names typed or scanned under *Assigned to*. These show as *No account*, and appear even if you never signed in.
+
+Each person shows their equipment units and value, plus *to confirm* (slips they haven't marked Received) and *open* reports. Search by name, item, property number or serial.
+
+A person's page lists:
+- **Accountable equipment:** taken from My Items. It shows condition, ICS no., and *Confirmed* when the teacher tapped Received. **Take back** returns a unit to stock unassigned and keeps a return record.
+- **Supplies received (RIS):** with a reprint button for each slip.
+- **History:** releases, assignments, links and returns.
+
+**Print accountability** gives a *Summary of Accountability* for one person. **Print all** gives one page per person. Each summary covers:
+- equipment on ICS (ICS no., date, inventory item no., description and serial, condition, unit cost and total);
+- supplies on RIS;
+- signature lines for *Certified correct* (the teacher) and *Verified by* (the custodian).
+
+The *With …* chip on an item in My Items opens that person's page.
+
 ## Works offline
 
 CustodianPro is an installable Progressive Web App:
@@ -276,6 +297,7 @@ cd tests/e2e && npm install
 node inventory-sync.mjs               # My Items saved to the account
 node release.mjs                      # teachers, RIS/ICS releases, stock in
 node teacher-items.mjs                # a teacher's My Items, reports and returns
+node teachers-overview.mjs            # released-to-teachers overview, take back, accountability print
 # or: npm test (all suites)
 ```
 

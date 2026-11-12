@@ -145,7 +145,7 @@ try {
   await ev(a, () => switchMainView('ITEMS'));
   await sleep(300);
   const chipText = await ev(a, code => {
-    const row = [...document.querySelectorAll('#masterLedgerSection button')].find(b => b.getAttribute('onclick') === `openUnitsModal('${code}')` && /With|with/.test(b.innerText));
+    const row = [...document.querySelectorAll('#masterLedgerSection button')].find(b => /^openTeachersView\(/.test(b.getAttribute('onclick') || '') && /With|with/.test(b.innerText));
     return row ? row.innerText.trim() : '';
   }, pick.equip.code);
   check(chipText.includes('Ana Reyes') && chipText.includes(`ICS ${ym}-001`), `chip: “${chipText}”`);
@@ -238,7 +238,9 @@ try {
   check(d2.length === 2 && d2.every(l => l.q > 0), 'both delivered items prefilled (new item matched by name)');
   await a.click('#relSaveBtn');
   await until(a, id => reqList.some(r => r.id === id && r.status === 'released'), 'released 2', 8000, req2);
-  check(await ev(a, c => items.find(i => i.code === c).qty, lowItem.code) === 0, 'released supplies left the stock');
+  await until(a, c => items.find(i => i.code === c).qty === 0, 'stock updated', 5000, lowItem.code).catch(() => {});
+  const leftQty = await ev(a, c => items.find(i => i.code === c).qty, lowItem.code);
+  check(leftQty === 0, `released supplies left the stock (qty ${leftQty})`);
   await ev(a, () => closeRelease());
 
   out('9 release to someone without an account');

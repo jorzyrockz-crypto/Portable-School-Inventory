@@ -75,6 +75,8 @@
       body.printing-pr #printReportSection, body.printing-pr #printLabelsSection { display: none !important; }
       body:not(.printing-pr) #printPrSection { display: none !important; }
       @page { margin: 12mm; }
+      .acct-page { break-after: page; page-break-after: always; }
+      .acct-page:last-child { break-after: auto; page-break-after: auto; }
     }
       .more-item { display: flex; width: 100%; align-items: center; gap: 0.75rem; padding: 0.7rem 0.5rem; border-radius: 0.75rem;
       font-size: 0.875rem; font-weight: 600; color: #334155; text-align: left; }
@@ -646,11 +648,17 @@
       <span id="reqViewStatus" class="shrink-0 mt-6 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold"></span>
       <div id="reqViewActions" class="hidden shrink-0 flex items-center gap-1.5 pt-5">
         <button onclick="openInvite()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-user-plus text-brand-600"></i> Invite</button>
-        <button onclick="openRelease()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-teal-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up text-teal-600"></i> Release</button>
+<button onclick="openTeachersView()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-teal-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-users-three text-teal-600"></i> Teachers</button>
         <button onclick="openRequestForm()" class="h-9 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-plus"></i> New</button>
       </div>
     </div>
     <div id="reqViewBody" class="space-y-3"></div>
+  </section>
+
+  <!-- RELEASED TO TEACHERS (custodian): who holds what, accountability print -->
+  <section id="viewTeachers" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
+    <div id="tvHead"></div>
+    <div id="tvBody" class="space-y-4"></div>
   </section>
 
   <!-- REQUEST SUPPLIES (teacher phones): only their own requests -->
@@ -803,6 +811,7 @@
           <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Reports &amp; files</p>
           <button onclick="closeMoreMenu(); openSummaryModal()" class="more-item"><i class="ph-bold ph-receipt text-brand-600"></i> APP-CSE summary</button>
           <button id="moreReqItem" onclick="closeMoreMenu(); openRequestsView()" class="more-item"><i class="ph-bold ph-tray text-amber-600"></i> Supply requests &amp; purchase requests</button>
+          <button onclick="closeMoreMenu(); openTeachersView()" class="more-item"><i class="ph-bold ph-users-three text-teal-600"></i> Released to teachers</button>
           <button onclick="closeMoreMenu(); printReport()" class="more-item"><i class="ph-bold ph-printer text-slate-600"></i> Print report</button>
           <button onclick="closeMoreMenu(); exportCSV()" class="more-item"><i class="ph-bold ph-download-simple text-emerald-600"></i> Export inventory (CSV)</button>
           <button onclick="closeMoreMenu(); exportRegisterCSV()" class="more-item"><i class="ph-bold ph-file-csv text-emerald-600"></i> Property register (CSV)</button>
@@ -2159,7 +2168,7 @@
     // =========================================================================
     // 4. VIEW NAVIGATION (DASHBOARD <-> CATALOG)
     // =========================================================================
-    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester' };
+    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester', TEACHERS: 'viewTeachers' };
 
     function switchMainView(viewName) {
       if (viewName === 'DASHBOARD') viewName = 'REPORTS'; // old name
@@ -2183,6 +2192,7 @@
       else renderDashboard();
       if (viewName === 'REQUESTS') renderRequestsView();
       if (viewName === 'REQUESTER') renderRequesterView();
+      if (viewName === 'TEACHERS') renderTeachersView();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -2215,6 +2225,7 @@
     function renderDashboard() {
       const activeItems = items.filter(i => i.qty > 0);
       renderHome();
+      if (activeMainView === 'TEACHERS' && typeof renderTeachersView === 'function') renderTeachersView();
 
       // Compute KPIs
       let totalVal = 0;
@@ -7073,6 +7084,7 @@
       renderHomeReqCard();
       if (activeMainView === 'REQUESTS') renderRequestsView();
       if (activeMainView === 'REQUESTER') renderRequesterView();
+      if (activeMainView === 'TEACHERS') renderTeachersView();
     }
 
     const reqLinesOf = r => (r.review && Array.isArray(r.review.lines) ? r.review.lines : (r.lines || []));
@@ -8310,6 +8322,7 @@
       linkTypedNamesToTeachers();
       refreshTeacherNameList();
       if (releaseDraft) renderRelease();
+      if (activeMainView === 'TEACHERS') renderTeachersView();
     }
 
     // Teacher phones keep their name card in the roster (written once, and when it changes).
@@ -8416,7 +8429,8 @@
       const names = [...new Set(held.map(unitHolder))];
       const ics = held.every(u => u.ics && u.ics === held[0].ics) ? ` · ICS ${held[0].ics}` : '';
       const text = names.length === 1 ? `${held.length < item.qty ? `${held.length} with` : 'With'} ${names[0]}${ics}` : `${held.length} with ${names.length} people`;
-      return `<button onclick="openUnitsModal('${item.code}')" class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border bg-teal-50 text-teal-700 border-teal-200 max-w-full">
+      const key = names.length === 1 ? personId(held[0].toUid, held[0].to) : null;
+      return `<button onclick="${key ? `openTeachersView('${escapeHTML(key).replace(/'/g, '&#39;')}')` : `openUnitsModal('${item.code}')`}" class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border bg-teal-50 text-teal-700 border-teal-200 max-w-full">
           <i class="ph-bold ph-user-circle"></i> <span class="truncate">${escapeHTML(text)}</span></button>`;
     }
 
@@ -9103,6 +9117,284 @@
       cloudWrite(F.updateDoc(F.doc(tReportCol(), x.id), { status: 'declined', reply: reason.trim().slice(0, 300) || 'Return not accepted', resolvedMs: Date.now() }), 'Updating');
       tReports = tReports.map(r => (r.id === id ? { ...r, status: 'declined' } : r));
       renderRequestsEverywhere();
+    }
+
+    // ---- Released to teachers (custodian overview) ------------------------------------------
+    // One line per accountable person: teachers who joined, anyone something was released to,
+    // and names typed or scanned under "Assigned to" (no account needed). Equipment comes from
+    // My Items (the units' "Assigned to"), so it is right even for items assigned before the
+    // app was used; supplies and history come from the release records.
+    let teachersSel = null;     // person key shown in detail, or null for the list
+    let teachersQuery = '';
+
+    const personId = (uid, name) => (uid ? uid : 'n:' + (personKey(name) || String(name || '').trim().toLowerCase()));
+
+    function accountabilityPeople() {
+      const map = new Map();
+      const add = (key, p) => { if (!map.has(key)) map.set(key, { key, uid: null, name: '', position: '', office: '', joined: false, ...p }); return map.get(key); };
+      (isCustodianDevice() ? teacherRoster() : []).forEach(t => add(t.uid, { uid: t.uid, name: t.name, position: t.position || '', office: t.office || '', joined: !!t.joined }));
+      releaseList.forEach(r => { if (r.teacherName) add(personId(r.teacherUid, r.teacherName), { uid: r.teacherUid || null, name: r.teacherName, position: r.position || '', office: r.office || '' }); });
+      const unitsOf = new Map();
+      items.forEach(item => getUnits(item.code).forEach(unit => {
+        if (!unit.to && !unit.toUid) return;
+        const key = personId(unit.toUid, unit.to);
+        add(key, { uid: unit.toUid || null, name: unit.to || 'Teacher' });
+        if (!unitsOf.has(key)) unitsOf.set(key, []);
+        unitsOf.get(key).push({ item, unit });
+      }));
+      return [...map.values()].map(p => {
+        const records = releaseList.filter(r => personId(r.teacherUid, r.teacherName) === p.key).sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
+        const equipment = (unitsOf.get(p.key) || []).sort((a, b) => a.item.name.localeCompare(b.item.name) || String(a.unit.no).localeCompare(String(b.unit.no)));
+        const ris = records.filter(r => r.kind === 'RIS');
+        const toConfirm = p.uid ? records.filter(r => (r.kind === 'ICS' || r.kind === 'RIS') && !tReports.some(x => x.kind === 'received' && x.releaseId === r.id)) : [];
+        const open = p.uid ? tReports.filter(x => x.uid === p.uid && x.status === 'open' && x.kind !== 'received') : [];
+        const value = equipment.reduce((n, x) => n + (x.item.price || 0), 0);
+        const last = records[0] ? (records[0].createdMs || 0) : 0;
+        return { ...p, records, equipment, ris, toConfirm, open, value, last };
+      }).sort((a, b) => (b.equipment.length + b.records.length > 0) - (a.equipment.length + a.records.length > 0) || a.name.localeCompare(b.name));
+    }
+
+    function openTeachersView(key = null) {
+      teachersSel = key;
+      switchMainView('TEACHERS');
+    }
+    function setTeachersQuery(v) { teachersQuery = v; renderTeachersList(); }
+
+    function renderTeachersView() {
+      const head = document.getElementById('tvHead');
+      const body = document.getElementById('tvBody');
+      if (!head) return;
+      const people = accountabilityPeople();
+      const person = teachersSel && people.find(p => p.key === teachersSel);
+      if (teachersSel && !person) teachersSel = null;
+      if (!person) {
+        // Typing in the search box: refresh the list only, so the keyboard stays open.
+        if (document.activeElement && document.activeElement.id === 'tvSearch') { renderTeachersList(people); return; }
+        const withItems = people.filter(p => p.equipment.length);
+        const units = withItems.reduce((n, p) => n + p.equipment.length, 0);
+        const value = withItems.reduce((n, p) => n + p.value, 0);
+        head.innerHTML = `
+          <button onclick="switchMainView('${isCustodianDevice() ? 'REQUESTS' : 'HOME'}')" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-1"><i class="ph-bold ph-caret-left"></i> ${isCustodianDevice() ? 'Supply requests' : 'Home'}</button>
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h1 class="text-xl font-extrabold text-slate-900">Released to teachers</h1>
+              <p class="text-xs text-slate-500">${people.length} ${people.length === 1 ? 'person' : 'people'} · ${plural(units, 'equipment unit')} · ₱${peso2(value)}</p>
+            </div>
+            <div class="shrink-0 flex items-center gap-1.5 pt-1">
+              <button onclick="printAccountability()" ${withItems.length || people.some(p => p.ris.length) ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print all</button>
+              ${isCustodianDevice() && cloud.user ? `<button onclick="openRelease()" class="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release</button>` : ''}
+            </div>
+          </div>
+          <div class="relative mt-3">
+            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input id="tvSearch" type="search" value="${escapeHTML(teachersQuery)}" oninput="setTeachersQuery(this.value)" placeholder="Find a teacher, item or property no." class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-brand-500 outline-none">
+          </div>`;
+        renderTeachersList(people);
+        return;
+      }
+      renderTeacherDetail(person);
+    }
+
+    function renderTeachersList(people = accountabilityPeople()) {
+      const body = document.getElementById('tvBody');
+      const q = teachersQuery.trim().toLowerCase();
+      const list = !q ? people : people.filter(p => [p.name, p.position, p.office].some(v => String(v || '').toLowerCase().includes(q)) ||
+        p.equipment.some(({ item, unit }) => item.name.toLowerCase().includes(q) || String(unit.no || '').toLowerCase().includes(q) || String(unit.serial || '').toLowerCase().includes(q)));
+      if (!people.length) {
+        body.innerHTML = `
+          <div class="rounded-2xl bg-white border border-slate-200 p-6 text-center">
+            <i class="ph-bold ph-users-three text-3xl text-slate-300"></i>
+            <p class="mt-1 text-sm font-bold text-slate-700">No one yet</p>
+            <p class="text-xs text-slate-500">Teachers appear here when they join with your invite link, when you release items to them, or when you fill in “Assigned to” under Property Numbers.</p>
+          </div>`;
+        return;
+      }
+      body.innerHTML = list.length ? list.map(p => {
+        const chips = [
+          p.toConfirm.length && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold"><i class="ph-bold ph-hourglass-medium"></i> ${p.toConfirm.length} to confirm</span>`,
+          p.open.length && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold"><i class="ph-bold ph-warning"></i> ${p.open.length} open</span>`,
+          !p.uid && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 text-[10px] font-bold">No account</span>`
+        ].filter(Boolean).join('');
+        return `
+          <button onclick="openTeachersView('${escapeHTML(p.key)}')" class="w-full text-left rounded-2xl bg-white border border-slate-200 hover:border-slate-300 shadow-sm p-3 flex items-center gap-3">
+            <span class="w-10 h-10 shrink-0 rounded-full ${p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-sm font-extrabold">${escapeHTML(personInitials(p.name))}</span>
+            <span class="min-w-0 flex-1">
+              <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(p.name)}</span>
+              <span class="block text-[11px] text-slate-500 truncate">${escapeHTML([p.position, p.office].filter(Boolean).join(' · ') || (p.uid ? 'Teacher' : 'Typed under Assigned to'))}</span>
+              ${chips ? `<span class="mt-1 flex flex-wrap gap-1">${chips}</span>` : ''}
+            </span>
+            <span class="shrink-0 text-right">
+              <span class="block text-sm font-extrabold font-mono text-slate-900">${p.equipment.length}</span>
+              <span class="block text-[10px] font-bold uppercase text-slate-400">${p.equipment.length === 1 ? 'unit' : 'units'}</span>
+              ${p.value ? `<span class="block text-[11px] font-mono text-slate-500">₱${peso2(p.value)}</span>` : ''}
+            </span>
+          </button>`;
+      }).join('') : `<p class="text-center text-xs text-slate-500 py-6">No one matches “${escapeHTML(teachersQuery)}”.</p>`;
+    }
+
+    function personInitials(name) {
+      const w = String(name || '').replace(/[^A-Za-zÀ-ÿ\s]/g, ' ').split(/\s+/).filter(x => x.length > 1 && !NAME_SKIP.has(x.toLowerCase()));
+      return ((w[0] || '?')[0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase();
+    }
+
+    function renderTeacherDetail(p) {
+      const head = document.getElementById('tvHead');
+      const body = document.getElementById('tvBody');
+      const connected = isCustodianDevice() && cloud.user;
+      head.innerHTML = `
+        <button onclick="openTeachersView(null)" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-1"><i class="ph-bold ph-caret-left"></i> All teachers</button>
+        <div class="flex items-start gap-3">
+          <span class="w-12 h-12 shrink-0 rounded-full ${p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-base font-extrabold">${escapeHTML(personInitials(p.name))}</span>
+          <div class="min-w-0 flex-1">
+            <h1 class="text-xl font-extrabold text-slate-900 leading-tight">${escapeHTML(p.name)}</h1>
+            <p class="text-xs text-slate-500">${escapeHTML([p.position, p.office].filter(Boolean).join(' · ') || '—')}${p.uid ? ' · <span class="text-teal-700 font-bold">has the app</span>' : ' · no account'}</p>
+          </div>
+        </div>
+        <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+          <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${p.equipment.length}</p><p class="text-[10px] font-bold uppercase text-slate-400">Equipment</p></div>
+          <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">₱${Math.round(p.value).toLocaleString('en-PH')}</p><p class="text-[10px] font-bold uppercase text-slate-400">Value</p></div>
+          <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${p.ris.length}</p><p class="text-[10px] font-bold uppercase text-slate-400">RIS slips</p></div>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button onclick="printAccountability('${escapeHTML(p.key)}')" class="h-10 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print accountability</button>
+          ${connected ? `<button onclick="openRelease({ teacherUid: ${p.uid ? `'${p.uid}'` : 'null'} })" class="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release more</button>` : ''}
+        </div>`;
+
+      const condChip = u => {
+        const c = UNIT_COND[u.cond] || UNIT_COND.S;
+        return u.cond && u.cond !== 'S' ? `<span class="inline-flex px-1.5 py-0.5 rounded-md border text-[10px] font-bold ${c.on}">${c.label}</span>` : '';
+      };
+      const confirmedUnit = u => p.uid && releaseList.some(r => r.teacherUid === p.uid && r.kind === 'ICS' && r.lines.some(l => (l.units || []).some(x => x.id === u.id)) && tReports.some(x => x.kind === 'received' && x.releaseId === r.id));
+      let html = '';
+      if (p.open.length) html += `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-warning"></i> ${plural(p.open.length, 'open report')} · see <button onclick="openRequestsView()" class="underline font-bold">From teachers</button></p>`;
+      html += `
+        <div>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Accountable equipment</h2>
+          <div class="rounded-2xl bg-white border border-slate-200 shadow-sm divide-y divide-slate-100">
+            ${p.equipment.length ? p.equipment.map(({ item, unit }) => `
+              <div class="p-3 flex items-start gap-3" data-tunit="${unit.id}">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-bold text-slate-900 leading-snug">${escapeHTML(item.name)}</p>
+                  <p class="text-[11px] text-slate-500"><span class="font-mono font-bold text-slate-700">${escapeHTML(unit.no || '—')}</span>${unit.serial ? ` · S/N ${escapeHTML(unit.serial)}` : ''}${unit.ics ? ` · ICS ${escapeHTML(unit.ics)}` : ''}${unit.icsDate ? ` · ${escapeHTML(formatShortDate(unit.icsDate + 'T00:00:00'))}` : ''}</p>
+                  <p class="mt-1 flex flex-wrap gap-1">${condChip(unit)}${confirmedUnit(unit) ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold"><i class="ph-bold ph-check-circle"></i> Confirmed</span>' : ''}</p>
+                </div>
+                <div class="shrink-0 text-right space-y-1">
+                  <p class="text-xs font-mono font-bold text-slate-700">₱${peso2(item.price)}</p>
+                  <button onclick="takeBackUnit('${item.code}', '${unit.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrow-u-down-left"></i> Take back</button>
+                </div>
+              </div>`).join('') : '<p class="p-4 text-xs text-slate-500 text-center">No equipment under this name.</p>'}
+          </div>
+        </div>
+        <div>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Supplies received · RIS</h2>
+          <div class="rounded-2xl bg-white border border-slate-200 shadow-sm divide-y divide-slate-100">
+            ${p.ris.length ? p.ris.map(r => {
+              const ok = tReports.some(x => x.kind === 'received' && x.releaseId === r.id);
+              return `
+              <div class="p-3">
+                <div class="flex items-center justify-between gap-2">
+                  <p class="text-xs font-bold text-slate-900">RIS No. <span class="font-mono">${escapeHTML(r.no || '')}</span> · ${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</p>
+                  <span class="flex items-center gap-1.5">${p.uid ? (ok ? '<span class="text-[10px] font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Confirmed</span>' : '<span class="text-[10px] font-bold text-amber-700">Not confirmed yet</span>') : ''}
+                    <button onclick="printReleaseById('${r.id}')" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Print RIS"><i class="ph-bold ph-printer"></i></button></span>
+                </div>
+                <p class="text-[11px] text-slate-600">${r.lines.map(l => `${l.qty} ${escapeHTML(l.unit || '')} ${escapeHTML(l.desc)}`).join(' · ')}</p>
+              </div>`;
+            }).join('') : '<p class="p-4 text-xs text-slate-500 text-center">No supplies released yet.</p>'}
+          </div>
+        </div>`;
+      if (p.records.length) {
+        const label = r => r.kind === 'RETURN' ? (r.source === 'returned' ? 'Returned' : r.source === 'taken-back' ? 'Taken back' : 'Reassigned') : r.source === 'existing' ? 'Linked (assigned before joining)' : r.source === 'assigned' ? 'Assigned' : 'Released';
+        html += `
+          <div>
+            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">History</h2>
+            <ol class="rounded-2xl bg-white border border-slate-200 shadow-sm divide-y divide-slate-100">
+              ${p.records.map(r => `
+                <li class="p-3 flex items-start gap-3">
+                  <span class="w-8 h-8 shrink-0 rounded-lg ${r.kind === 'RETURN' ? 'bg-slate-100 text-slate-500' : r.kind === 'RIS' ? 'bg-indigo-50 text-indigo-600' : 'bg-blue-50 text-blue-600'} flex items-center justify-center"><i class="ph-bold ${r.kind === 'RETURN' ? 'ph-arrow-u-down-left' : 'ph-hand-arrow-up'}"></i></span>
+                  <span class="min-w-0 flex-1">
+                    <span class="block text-xs font-bold text-slate-900">${label(r)} · ${escapeHTML(r.kind === 'RETURN' ? '' : `${r.kind} ${r.no || ''}`)}</span>
+                    <span class="block text-[11px] text-slate-600 line-clamp-2">${r.lines.map(l => `${l.qty} ${escapeHTML(l.desc)}${(l.units || []).length ? ` (${escapeHTML(l.units.map(u => u.no).join(', '))})` : ''}`).join(' · ')}</span>
+                    ${r.purpose ? `<span class="block text-[11px] text-slate-400 truncate">${escapeHTML(r.purpose)}</span>` : ''}
+                  </span>
+                  <span class="shrink-0 text-[11px] text-slate-400">${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span>
+                </li>`).join('')}
+            </ol>
+          </div>`;
+      }
+      body.innerHTML = html;
+    }
+
+    // The custodian takes an item back (e.g. teacher transferred): back in stock, unassigned,
+    // and a return record for the teacher's list.
+    function takeBackUnit(code, unitId) {
+      const item = items.find(i => i.code === code);
+      const unit = item && getUnits(code).find(u => u.id === unitId);
+      if (!unit) return;
+      const holder = unitHolder(unit);
+      if (!confirm(`Take back ${item.name} (${unit.no || 'no property no.'}) from ${holder}?\n\nIt goes back to stock, not assigned to anyone.`)) return;
+      const uid = unit.toUid || null;
+      const line = relLine(item, 1, [unit]);
+      unit.to = ''; delete unit.toUid; unit.ics = ''; delete unit.icsDate; delete unit.released;
+      unit.returned = Date.now();
+      saveStateWith({ summary: { kind: 'release', code, text: `Took back ${unit.no || item.name} from ${holder}` } });
+      if (isCustodianDevice() && cloud.user) {
+        const F = cloud.sdk;
+        const t = rosterByUid(uid) || { uid, name: holder };
+        cloudWrite(F.setDoc(F.doc(relCol()), cleanJSON(relBase(t, {
+          kind: 'RETURN', source: 'taken-back', no: '', date: localISODate(), purpose: 'Taken back by the property custodian',
+          lines: [line], total: 0, createdAt: F.serverTimestamp()
+        }))), 'Saving the return');
+      }
+      renderTeachersView();
+      showToast(`${unit.no || item.name} is back in stock`, 'ph-arrow-u-down-left');
+    }
+
+    // Summary of accountability: one page per person (all, or the one selected).
+    function printAccountability(key = null) {
+      const people = accountabilityPeople().filter(p => (key ? p.key === key : p.equipment.length || p.ris.length));
+      if (!people.length) return;
+      document.getElementById('printPrSection').innerHTML = people.map(accountabilityPrintHTML).join('');
+      document.body.classList.remove('printing-labels');
+      document.body.classList.add('printing-pr');
+      const done = () => { document.body.classList.remove('printing-pr'); window.removeEventListener('afterprint', done); };
+      window.addEventListener('afterprint', done);
+      setTimeout(() => window.print(), 50);
+    }
+
+    function accountabilityPrintHTML(p) {
+      const e = v => escapeHTML(v || '');
+      const d = prDefaults();
+      const today = new Date().toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
+      const condText = u => (UNIT_COND[u.cond] || UNIT_COND.S).label;
+      const eqRows = p.equipment.map(({ item, unit }) => `<tr><td class="pr-sn">${e(unit.ics)}</td><td class="c" style="font-size:9pt">${e(unit.icsDate ? new Date(unit.icsDate + 'T00:00:00').toLocaleDateString('en-PH') : '')}</td><td class="pr-sn">${e(unit.no)}</td><td>${e(item.name)}${unit.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(unit.serial)}</span>` : ''}</td><td class="c" style="font-size:9pt">${e(condText(unit))}</td><td class="r">${peso2(item.price)}</td></tr>`).join('');
+      const risRows = p.ris.flatMap(r => r.lines.map((l, i) => `<tr><td class="pr-sn">${i ? '' : e(r.no)}</td><td class="c" style="font-size:9pt">${i ? '' : e(r.date ? new Date(r.date + 'T00:00:00').toLocaleDateString('en-PH') : '')}</td><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td><td>${e(l.desc)}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td></tr>`)).join('');
+      return `
+        <div class="pr-form acct-page">
+          <h1 style="margin-bottom:2pt">SUMMARY OF ACCOUNTABILITY</h1>
+          <p style="text-align:center;margin:0 0 10pt">Semi-expendable property and supplies issued · as of ${e(today)}</p>
+          <div class="pr-top"><span>Entity Name: <b>${e(d.entity || schoolInfo.school)}</b></span><span>Fund Cluster: <b>${e(d.fund)}</b></span></div>
+          <div class="pr-top"><span>Accountable person: <b>${e(p.name).toUpperCase()}</b></span><span>Position/Office: <b>${e([p.position, p.office].filter(Boolean).join(', '))}</b></span></div>
+          <p style="font-weight:700;margin:8pt 0 3pt">A. Equipment issued on ICS (${p.equipment.length})</p>
+          <table class="pr-table">
+            <colgroup><col style="width:13%"><col style="width:13%"><col style="width:18%"><col style="width:30%"><col style="width:13%"><col style="width:13%"></colgroup>
+            <tr><th>ICS No.</th><th>Date</th><th>Inventory Item No.</th><th>Description</th><th>Condition</th><th>Unit Cost</th></tr>
+            ${eqRows || '<tr><td colspan="6" class="c"><i>None</i></td></tr>'}
+            <tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(p.value)}</b></td></tr>
+          </table>
+          <p style="font-weight:700;margin:10pt 0 3pt">B. Supplies issued on RIS (${p.ris.length})</p>
+          <table class="pr-table">
+            <colgroup><col style="width:13%"><col style="width:13%"><col style="width:8%"><col style="width:10%"><col style="width:43%"><col style="width:13%"></colgroup>
+            <tr><th>RIS No.</th><th>Date</th><th>Qty</th><th>Unit</th><th>Description</th><th>Amount</th></tr>
+            ${risRows || '<tr><td colspan="6" class="c"><i>None</i></td></tr>'}
+          </table>
+          <table class="pr-table" style="margin-top:14pt">
+            <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+            <tr><td><i>Certified correct:</i></td><td><i>Verified by:</i></td></tr>
+            <tr><td class="pr-sig"></td><td class="pr-sig"></td></tr>
+            <tr><td class="c"><b>${e(p.name).toUpperCase()}</b><br><span style="font-size:8.5pt">Accountable person</span></td><td class="c"><b>${e(schoolInfo.custodian).toUpperCase()}</b><br><span style="font-size:8.5pt">${e(schoolInfo.position || 'Property Custodian')}</span></td></tr>
+            <tr><td class="c"><br><span style="font-size:8.5pt">Date</span></td><td class="c"><br><span style="font-size:8.5pt">Date</span></td></tr>
+          </table>
+        </div>`;
     }
 
     // ---- Items delivered on a PR → stock in ---------------------------------------------
