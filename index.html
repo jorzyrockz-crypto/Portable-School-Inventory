@@ -657,16 +657,23 @@
   <section id="viewRequester" class="hidden max-w-xl mx-auto px-4 pt-5 space-y-5 no-print">
     <div>
       <p id="rqHello" class="text-sm text-slate-500"></p>
-      <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Request supplies</h1>
+      <h1 id="rqTitle" class="text-2xl font-extrabold text-slate-900 tracking-tight">Request supplies</h1>
       <p id="rqSchool" class="text-xs text-slate-500"></p>
     </div>
+    <div role="tablist" aria-label="My items or requests" class="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-200/70">
+      <button id="rqTab-items" role="tab" onclick="setTeacherTab('items')"><i class="ph-bold ph-backpack text-base"></i> My Items <span id="rqItemsCount" class="hidden"></span><span id="rqItemsDot" class="hidden w-2 h-2 rounded-full bg-emerald-500"></span></button>
+      <button id="rqTab-requests" role="tab" onclick="setTeacherTab('requests')"><i class="ph-bold ph-paper-plane-tilt text-base"></i> Requests</button>
+    </div>
+    <p id="rqSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
+    <div id="rqItemsPane" class="hidden space-y-5"></div>
+    <div id="rqRequestsPane" class="space-y-5">
     <button onclick="openRequestForm()" class="w-full h-16 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-extrabold text-base shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition">
       <i class="ph-bold ph-plus-circle text-2xl"></i> New supply request
     </button>
-    <p id="rqSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
     <div>
       <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">My requests</h2>
       <div id="rqList" class="space-y-2"></div>
+    </div>
     </div>
     <div id="rqAccount" class="text-[11px] -mb-2"></div>
     <div class="flex items-center justify-between gap-3 text-xs pb-6">
@@ -973,6 +980,21 @@
         </div>
       </div>
       <div id="relFoot" class="px-5 py-3 border-t border-slate-100 flex items-center gap-2 safe-pad"></div>
+    </div>
+  </div>
+
+  <!-- TEACHER: report a problem / return an item -->
+  <div id="tReportModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeTeacherReport()">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <h3 id="trTitle" class="font-extrabold text-base text-slate-900">Report a problem</h3>
+        <button onclick="closeTeacherReport()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="trItem" class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2"></div>
+      <div id="trReasons" class="grid grid-cols-2 gap-2"></div>
+      <textarea id="trNote" rows="3" maxlength="300" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none"></textarea>
+      <p id="trHint" class="text-[11px] text-slate-500 -mt-2"></p>
+      <button id="trSend" onclick="sendTeacherReport()" class="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm flex items-center justify-center gap-2"><i class="ph-bold ph-paper-plane-tilt"></i> Send to the property custodian</button>
     </div>
   </div>
 
@@ -6413,7 +6435,7 @@
     function placeToast() {
       const toast = document.getElementById('appToast');
       if (!toast) return;
-      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
+      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
       const stickyAction = [...document.querySelectorAll('[data-toast-avoid]')].some(el => el.offsetParent !== null);
       const top = sheetOpen || stickyAction;
       toast.classList.toggle('bottom-24', !top);
@@ -6653,6 +6675,7 @@
       reqUnsubs.forEach(off => { try { off(); } catch (e) {} });
       reqUnsubs = [];
       memberList = []; releaseList = []; releasesLoaded = false; teamError = '';
+      myReleases = []; tReports = [];
       stopInventorySync();
     }
 
@@ -6678,6 +6701,7 @@
         startInventorySync();
       } else {
         upsertMyMember();
+        subscribeTeacherItems(F);
       }
     }
 
@@ -7062,11 +7086,12 @@
       if (!sub) return;
       const pending = reqList.filter(r => r.status === 'pending').length;
       const toBuy = reqList.filter(r => r.status === 'approved' && reqBuyLines(r).length).length;
+      const fromTeachers = isCustodianDevice() ? openTeacherReports().length : 0;
       let text;
       if (!cloudConfigured()) text = 'Teachers request supplies from their phones · set up';
       else if (!isCustodianDevice()) text = 'Connect to receive teachers’ requests';
       else if (cloud.state === 'ready' && !cloud.user) text = 'Signed out · sign in to see requests';
-      else if (pending || toBuy) text = [pending && `${pending} waiting for review`, toBuy && `${toBuy} approved to purchase`].filter(Boolean).join(' · ');
+      else if (pending || toBuy || fromTeachers) text = [pending && `${pending} waiting for review`, toBuy && `${toBuy} approved to purchase`, fromTeachers && `${fromTeachers} from teachers`].filter(Boolean).join(' · ');
       else text = cloud.state === 'loading' ? 'Connecting…' : 'No new requests';
       sub.textContent = text;
       const badge = document.getElementById('homeReqBadge');
@@ -7115,6 +7140,7 @@
       let html = `
         ${cloud.error ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2">${escapeHTML(cloud.error)}</p>` : ''}
         ${!navigator.onLine ? `<p class="rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-cloud-slash"></i> Offline · showing saved requests. Your changes are sent when you reconnect.</p>` : ''}
+        ${teacherInboxHTML()}
         ${reqFlowHTML(counts)}
         <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1 pt-1">${REQ_STAGES.find(st => st.key === reqTab).title}</h2>`;
 
@@ -7606,6 +7632,7 @@
       reqRole = null;
       saveReqRole();
       reqList = [];
+      teacherTab = null;
       switchMainView('HOME');
       updateSchoolHeader();
     }
@@ -7628,6 +7655,7 @@
       sync.innerHTML = msg ? `<i class="ph-bold ${cloud.error ? 'ph-warning text-rose-500' : 'ph-cloud-slash'}"></i> ${escapeHTML(msg)}` : '';
       sync.classList.toggle('hidden', !msg);
       sync.classList.toggle('flex', !!msg);
+      renderTeacherTabs();
       const list = document.getElementById('rqList');
       list.innerHTML = reqList.length ? reqList.map(teacherReqCardHTML).join('') : `
         <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
@@ -8272,6 +8300,10 @@
         if (!(snap.metadata && snap.metadata.fromCache)) releasesLoaded = true;
         onTeamChange();
       }, soft('releases')));
+      reqUnsubs.push(F.onSnapshot(tReportCol(), snap => {
+        tReports = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+        renderRequestsEverywhere();
+      }, soft('teacher reports')));
     }
 
     function onTeamChange() {
@@ -8719,6 +8751,358 @@
             <tr><td class="c">${e(longDate(r.date))}<br><span style="font-size:8.5pt">Date</span></td><td class="c"><br><span style="font-size:8.5pt">Date</span></td></tr>
           </table>
         </div>`;
+    }
+
+    // ---- A teacher's My Items ------------------------------------------------------------
+    // Built from the releases made out to this teacher (they cannot read the school
+    // inventory): equipment they are accountable for (ICS minus returns) and supplies they
+    // received (RIS). Teachers answer with reports the custodian sees under "From teachers":
+    //   schools/{id}/teacherReports/{id}  written by the teacher, resolved by the custodian:
+    //     { uid, name, kind: 'received' | 'problem' | 'return', releaseId, releaseNo, code, desc,
+    //       units: [{ id, no }], reason, note, status: 'open' | 'done' | 'declined',
+    //       resolution, reply, createdMs }
+    let myReleases = [];        // teacher phone: releases made out to me
+    let tReports = [];          // teacher: my reports · custodian: every teacher's reports
+    let teacherTab = null;      // 'items' | 'requests'
+    let tReportDraft = null;
+
+    const T_REASONS = {
+      equip: [
+        ['repair', 'Needs repair', 'ph-wrench'], ['unserv', 'Not working · beyond repair', 'ph-x-circle'],
+        ['lost', 'Lost or missing', 'ph-question'], ['other', 'Something else', 'ph-chat-text']
+      ],
+      supply: [
+        ['short', 'Fewer than released', 'ph-minus-circle'], ['damaged', 'Damaged', 'ph-warning'],
+        ['wrong', 'Wrong item', 'ph-swap'], ['other', 'Something else', 'ph-chat-text']
+      ]
+    };
+    const tReasonLabel = key => ([...T_REASONS.equip, ...T_REASONS.supply].find(r => r[0] === key) || [key, key])[1];
+    function tReportCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'teacherReports'); }
+
+    // What a teacher holds now: ICS units minus later returns; RIS slips newest first.
+    function teacherHoldings(releases) {
+      const held = new Map();
+      const supplies = [];
+      [...releases].sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0)).forEach(r => {
+        (r.lines || []).forEach(l => (l.units || []).forEach(u => {
+          if (r.kind === 'ICS') held.set(u.id, { unit: u, line: l, rel: r });
+          else if (r.kind === 'RETURN') held.delete(u.id);
+        }));
+        if (r.kind === 'RIS') supplies.push(r);
+      });
+      return { equipment: [...held.values()], supplies: supplies.reverse() };
+    }
+    const tAcked = relId => tReports.some(x => x.kind === 'received' && x.releaseId === relId) || (typeof ackSent !== 'undefined' && ackSent.has(relId));
+    function tLatestFor(unitId) {
+      return tReports.filter(x => x.kind !== 'received' && (x.units || []).some(u => u.id === unitId))
+        .sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0))[0] || null;
+    }
+
+    function subscribeTeacherItems(F) {
+      const soft = what => err => { console.warn(what, err); };
+      reqUnsubs.push(F.onSnapshot(F.query(relCol(), F.where('teacherUid', '==', cloud.user.uid)), { includeMetadataChanges: true }, snap => {
+        myReleases = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+        renderRequestsEverywhere();
+      }, soft('my releases')));
+      reqUnsubs.push(F.onSnapshot(F.query(tReportCol(), F.where('uid', '==', cloud.user.uid)), { includeMetadataChanges: true }, snap => {
+        tReports = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
+        renderRequestsEverywhere();
+      }, soft('my reports')));
+    }
+
+    function setTeacherTab(tab) {
+      teacherTab = tab;
+      renderRequesterView();
+      window.scrollTo({ top: 0 });
+    }
+
+    function renderTeacherTabs() {
+      const h = teacherHoldings(myReleases);
+      const toAck = myReleases.filter(r => (r.kind === 'ICS' || r.kind === 'RIS') && !tAcked(r.id));
+      if (!teacherTab) teacherTab = myReleases.length ? 'items' : 'requests';
+      const tab = teacherTab;
+      document.getElementById('rqTitle').textContent = tab === 'items' ? 'My items' : 'Request supplies';
+      ['items', 'requests'].forEach(t => {
+        const b = document.getElementById(`rqTab-${t}`);
+        const on = t === tab;
+        b.className = `h-11 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 transition ${on ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-800'}`;
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      const n = document.getElementById('rqItemsCount');
+      n.textContent = h.equipment.length || '';
+      n.className = h.equipment.length ? 'min-w-5 h-5 px-1.5 rounded-full bg-slate-200 text-slate-700 text-[11px] font-bold inline-flex items-center justify-center' : 'hidden';
+      document.getElementById('rqItemsDot').classList.toggle('hidden', !toAck.length);
+      document.getElementById('rqItemsPane').classList.toggle('hidden', tab !== 'items');
+      document.getElementById('rqRequestsPane').classList.toggle('hidden', tab !== 'requests');
+      if (tab === 'items') renderTeacherItems(h, toAck);
+    }
+
+    function renderTeacherItems(h, toAck) {
+      const pane = document.getElementById('rqItemsPane');
+      const date = iso => (iso ? formatShortDate(iso + 'T00:00:00') : '');
+      const value = h.equipment.reduce((n, x) => n + (x.line.unitCost || 0), 0);
+      let html = '';
+      if (toAck.length) {
+        html += `
+          <div class="rounded-2xl bg-emerald-50 border border-emerald-200 p-3 space-y-2">
+            <p class="text-xs font-extrabold text-emerald-900 flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-down"></i> New from the property custodian</p>
+            ${toAck.map(r => `
+              <div class="rounded-xl bg-white border border-emerald-100 p-3 flex items-center gap-3">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-bold text-slate-900">${escapeHTML(r.kind)} ${r.no ? `No. <span class="font-mono">${escapeHTML(r.no)}</span>` : ''} · ${escapeHTML(date(r.date))}</p>
+                  <p class="text-[11px] text-slate-600 line-clamp-2">${r.lines.map(l => `${l.qty} ${escapeHTML(l.unit || '')} ${escapeHTML(l.desc)}`).join(' · ')}</p>
+                </div>
+                <button onclick="ackRelease('${r.id}')" class="shrink-0 h-10 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-check"></i> Received</button>
+              </div>`).join('')}
+            <p class="text-[11px] text-emerald-800">Check the items first. Tap <b>Received</b> to let the custodian know you have them.</p>
+          </div>`;
+      }
+      html += `
+        <div>
+          <div class="flex items-end justify-between gap-2 mb-2 px-1">
+            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Accountable equipment · ICS</h2>
+            ${h.equipment.length ? `<span class="text-[11px] font-bold text-slate-500">${plural(h.equipment.length, 'item')} · ₱${peso2(value)}</span>` : ''}
+          </div>
+          <div class="space-y-2">${h.equipment.length ? h.equipment.map(teacherUnitCardHTML).join('') : `
+            <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
+              <i class="ph-bold ph-desktop-tower text-3xl text-slate-300"></i>
+              <p class="mt-1 font-bold text-slate-700 text-sm">No equipment under your name</p>
+              <p>Equipment the property custodian issues to you on an ICS shows here.</p>
+            </div>`}</div>
+        </div>
+        <div>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Supplies received · RIS</h2>
+          <div class="space-y-2">${h.supplies.length ? h.supplies.map(teacherRisCardHTML).join('') : `
+            <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
+              <i class="ph-bold ph-package text-3xl text-slate-300"></i>
+              <p class="mt-1 font-bold text-slate-700 text-sm">No supplies yet</p>
+              <p>Supplies released to you are listed here. Ask for more under <button onclick="setTeacherTab('requests')" class="font-bold text-amber-700 underline">Requests</button>.</p>
+            </div>`}</div>
+        </div>`;
+      pane.innerHTML = html;
+    }
+
+    function teacherUnitCardHTML(x) {
+      const { unit, line, rel } = x;
+      const last = tLatestFor(unit.id);
+      const open = last && last.status === 'open';
+      const recent = last && Date.now() - (last.resolvedMs || last.createdMs || 0) < 30 * 86400000;
+      let chip = '';
+      if (last && open) chip = last.kind === 'return'
+        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold"><i class="ph-bold ph-${last.sending ? 'cloud-arrow-up' : 'hourglass-medium'}"></i> ${last.sending ? 'Sending…' : 'Return requested · waiting for the custodian'}</span>`
+        : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-bold"><i class="ph-bold ph-${last.sending ? 'cloud-arrow-up' : 'warning'}"></i> ${last.sending ? 'Sending…' : `Reported: ${escapeHTML(tReasonLabel(last.reason))}`}</span>`;
+      else if (last && recent && last.status === 'declined') chip = `<span class="block rounded-lg bg-slate-50 text-slate-600 text-[11px] px-2.5 py-1.5"><b>Custodian:</b> ${escapeHTML(last.reply || 'Return declined')}</span>`;
+      else if (last && recent && last.status === 'done' && last.kind === 'problem') chip = `<span class="block rounded-lg bg-slate-50 text-slate-600 text-[11px] px-2.5 py-1.5"><b>Custodian:</b> ${escapeHTML(last.reply || (last.resolution === 'repair' ? 'Marked for repair' : last.resolution === 'unserv' ? 'Marked unserviceable' : 'Noted'))}</span>`;
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-slate-900 leading-snug">${escapeHTML(line.desc)}</p>
+              <p class="mt-0.5 text-[11px] text-slate-500"><span class="font-mono font-bold text-slate-700">${escapeHTML(unit.no || '—')}</span>${unit.serial ? ` · S/N ${escapeHTML(unit.serial)}` : ''}</p>
+              <p class="text-[11px] text-slate-500">ICS ${rel.no ? escapeHTML(rel.no) : '—'}${rel.date ? ` · ${escapeHTML(formatShortDate(rel.date + 'T00:00:00'))}` : ''}</p>
+            </div>
+            <p class="shrink-0 text-xs font-extrabold font-mono text-slate-700">₱${peso2(line.unitCost)}</p>
+          </div>
+          ${chip}
+          <div class="flex gap-2">
+            <button onclick="openTeacherReport('problem', '${rel.id}', '${unit.id}')" ${open && last.kind === 'problem' ? 'disabled' : ''} class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-warning"></i> Report a problem</button>
+            <button onclick="openTeacherReport('return', '${rel.id}', '${unit.id}')" ${open && last.kind === 'return' ? 'disabled' : ''} class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-arrow-u-up-left"></i> Return</button>
+          </div>
+        </div>`;
+    }
+
+    function teacherRisCardHTML(r) {
+      const last = tReports.filter(x => x.kind === 'problem' && x.releaseId === r.id).sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0))[0];
+      const ack = tReports.find(x => x.kind === 'received' && x.releaseId === r.id);
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="text-xs font-bold text-slate-900">RIS No. <span class="font-mono">${escapeHTML(r.no || '')}</span> · ${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</p>
+              ${r.purpose ? `<p class="text-[11px] text-slate-500 truncate">${escapeHTML(r.purpose)}</p>` : ''}
+            </div>
+            ${ack ? `<span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold"><i class="ph-bold ph-check-circle"></i> Received</span>` : ''}
+          </div>
+          <ul class="text-xs text-slate-700 space-y-0.5">${r.lines.map(l => `<li class="flex justify-between gap-3"><span class="min-w-0 truncate">${escapeHTML(l.desc)}</span><span class="shrink-0 font-mono font-bold">${l.qty} <span class="font-sans font-medium text-slate-400">${escapeHTML(l.unit || '')}</span></span></li>`).join('')}</ul>
+          ${last ? `<p class="rounded-lg ${last.status === 'open' ? 'bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-600'} text-[11px] px-2.5 py-1.5">${last.status === 'open' ? `<b>Reported:</b> ${escapeHTML(tReasonLabel(last.reason))}${last.note ? ` · ${escapeHTML(last.note)}` : ''}` : `<b>Custodian:</b> ${escapeHTML(last.reply || 'Noted')}`}</p>` : ''}
+          <button onclick="openTeacherReport('problem', '${r.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-warning"></i> Report a problem</button>
+        </div>`;
+    }
+
+    function tReportBase(kind, rel, extra) {
+      const F = cloud.sdk;
+      const me = reqRole.me || {};
+      return {
+        uid: cloud.user.uid, name: (me.name || 'Teacher').slice(0, 80), kind, releaseId: rel.id, releaseNo: `${rel.kind} ${rel.no || ''}`.trim().slice(0, 60),
+        code: '', desc: '', units: [], reason: '', note: '', status: 'open', createdMs: Date.now(), createdAt: F.serverTimestamp(), ...extra
+      };
+    }
+
+    const ackSent = new Set();
+    function ackRelease(relId) {
+      const rel = myReleases.find(r => r.id === relId);
+      if (!rel || !cloud.user || ackSent.has(relId) || tAcked(relId)) return;
+      ackSent.add(relId);
+      const F = cloud.sdk;
+      // One "received" per release: a fixed ID, so tapping twice changes nothing.
+      cloudWrite(F.setDoc(F.doc(tReportCol(), `ack-${relId}`), tReportBase('received', rel, { desc: rel.lines.map(l => l.desc).join(', ').slice(0, 160) })), 'Sending');
+      showToast(`Thanks! The custodian will see you received ${rel.kind} ${rel.no || ''}`.trim(), 'ph-check-circle');
+    }
+
+    function openTeacherReport(kind, relId, unitId = null) {
+      const rel = myReleases.find(r => r.id === relId);
+      if (!rel) return;
+      let line = null, unit = null;
+      if (unitId) rel.lines.forEach(l => (l.units || []).forEach(u => { if (u.id === unitId) { line = l; unit = u; } }));
+      const equip = !!unit;
+      tReportDraft = { kind, relId, unitId, equip, reason: kind === 'return' ? '' : (equip ? 'repair' : 'short') };
+      document.getElementById('trTitle').textContent = kind === 'return' ? 'Return to the property custodian' : 'Report a problem';
+      document.getElementById('trItem').innerHTML = equip
+        ? `<p class="text-sm font-extrabold text-slate-900">${escapeHTML(line.desc)}</p><p class="text-[11px] text-slate-500"><span class="font-mono font-bold">${escapeHTML(unit.no || '')}</span> · ICS ${escapeHTML(rel.no || '')}</p>`
+        : `<p class="text-sm font-extrabold text-slate-900">RIS No. ${escapeHTML(rel.no || '')}</p><p class="text-[11px] text-slate-500">${rel.lines.map(l => `${l.qty} ${escapeHTML(l.unit || '')} ${escapeHTML(l.desc)}`).join(' · ')}</p>`;
+      document.getElementById('trNote').value = '';
+      document.getElementById('trNote').placeholder = kind === 'return' ? 'Why are you returning it? e.g. transferring to another school' : 'What happened? e.g. no display since Monday';
+      document.getElementById('trHint').textContent = kind === 'return'
+        ? 'Bring the item to the property custodian. It stays on your list until they mark it received back.'
+        : 'The property custodian sees this right away.';
+      renderTeacherReasons();
+      document.getElementById('tReportModal').classList.remove('hidden');
+      placeToast();
+    }
+    function renderTeacherReasons() {
+      const d = tReportDraft;
+      const box = document.getElementById('trReasons');
+      box.classList.toggle('hidden', d.kind === 'return');
+      box.innerHTML = (d.equip ? T_REASONS.equip : T_REASONS.supply).map(([key, label, icon]) => `
+        <button type="button" onclick="tReportDraft.reason='${key}'; renderTeacherReasons()" class="h-11 px-3 rounded-xl border text-xs font-bold flex items-center gap-2 text-left ${d.reason === key ? 'bg-rose-50 border-rose-300 text-rose-800' : 'bg-white border-slate-200 text-slate-600'}">
+          <i class="ph-bold ${icon} text-base"></i> ${label}</button>`).join('');
+    }
+    function closeTeacherReport() { tReportDraft = null; document.getElementById('tReportModal').classList.add('hidden'); placeToast(); }
+
+    function sendTeacherReport() {
+      const d = tReportDraft;
+      if (!d || !cloud.user) return;
+      const rel = myReleases.find(r => r.id === d.relId);
+      if (!rel) return;
+      const note = reqVal('trNote').slice(0, 300);
+      if (d.kind === 'problem' && d.reason === 'other' && !note) { alert('Tell the custodian what happened.'); document.getElementById('trNote').focus(); return; }
+      let extra = { reason: d.reason, note };
+      if (d.unitId) {
+        const line = rel.lines.find(l => (l.units || []).some(u => u.id === d.unitId));
+        const unit = line.units.find(u => u.id === d.unitId);
+        extra = { ...extra, code: line.code || '', desc: line.desc.slice(0, 160), units: [{ id: unit.id, no: unit.no || '' }] };
+      } else {
+        extra = { ...extra, desc: rel.lines.map(l => l.desc).join(', ').slice(0, 160) };
+      }
+      const F = cloud.sdk;
+      cloudWrite(F.setDoc(F.doc(tReportCol()), tReportBase(d.kind, rel, extra)), 'Sending');
+      closeTeacherReport();
+      showToast(navigator.onLine ? (d.kind === 'return' ? 'Return request sent · bring the item to the custodian' : 'Sent to the property custodian')
+        : 'Saved · it will be sent when you are back online', 'ph-paper-plane-tilt');
+    }
+
+    // ---- Custodian: "From teachers" (problems and returns) ---------------------------------
+    const openTeacherReports = () => tReports.filter(x => x.status === 'open' && x.kind !== 'received')
+      .sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
+
+    function teacherInboxHTML() {
+      const open = openTeacherReports();
+      if (!open.length) return '';
+      return `
+        <div class="rounded-2xl bg-white border border-rose-200 shadow-sm overflow-hidden">
+          <p class="px-4 pt-3 pb-2 text-xs font-extrabold text-slate-900 flex items-center gap-2"><span class="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><i class="ph-bold ph-chalkboard-teacher"></i></span> From teachers · ${open.length}</p>
+          ${open.map(x => {
+            const units = (x.units || []).map(u => u.no).filter(Boolean).join(', ');
+            const ret = x.kind === 'return';
+            const action = ret ? ['acceptTeacherReturn', 'Received back', 'ph-arrow-u-down-left', 'bg-emerald-600 hover:bg-emerald-700']
+              : x.reason === 'repair' && x.units.length ? ['resolveTeacherReport', 'Mark for repair', 'ph-wrench', 'bg-amber-500 hover:bg-amber-600', 'repair']
+              : x.reason === 'unserv' && x.units.length ? ['resolveTeacherReport', 'Mark unserviceable', 'ph-x-circle', 'bg-rose-600 hover:bg-rose-700', 'unserv']
+              : ['resolveTeacherReport', 'Noted', 'ph-check', 'bg-slate-700 hover:bg-slate-800', 'noted'];
+            return `
+              <div class="px-4 py-3 border-t border-slate-100 space-y-1.5" data-treport="${x.id}">
+                <p class="text-sm text-slate-900"><b>${escapeHTML(x.name)}</b> ${ret ? 'is returning' : `reports <b class="text-rose-700">${escapeHTML(tReasonLabel(x.reason).toLowerCase())}</b>`}</p>
+                <p class="text-xs text-slate-600">${escapeHTML(x.desc)}${units ? ` · <span class="font-mono font-bold">${escapeHTML(units)}</span>` : ''} · ${escapeHTML(x.releaseNo || '')}</p>
+                ${x.note ? `<p class="text-xs text-slate-700 bg-slate-50 rounded-lg px-2.5 py-1.5">“${escapeHTML(x.note)}”</p>` : ''}
+                <div class="flex items-center gap-2 pt-1">
+                  <button onclick="${action[0]}('${x.id}'${action[4] ? `, '${action[4]}'` : ''})" class="h-9 px-3 rounded-lg ${action[3]} text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ${action[2]}"></i> ${action[1]}</button>
+                  ${action[4] && action[4] !== 'noted' ? `<button onclick="resolveTeacherReport('${x.id}', 'noted')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Noted</button>` : ''}
+                  ${ret ? `<button onclick="declineTeacherReport('${x.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Decline</button>` : ''}
+                  <span class="ml-auto text-[11px] text-slate-400">${escapeHTML(formatTimeAgo(x.createdMs))}</span>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>`;
+    }
+
+    function findUnitWithItem(id) {
+      for (const item of items) { const unit = getUnits(item.code).find(u => u.id === id); if (unit) return { item, unit }; }
+      return null;
+    }
+
+    function acceptTeacherReturn(id) {
+      const x = tReports.find(r => r.id === id);
+      if (!x || !cloud.user) return;
+      const F = cloud.sdk;
+      const byItem = new Map();
+      (x.units || []).forEach(({ id: uid }) => {
+        const found = findUnitWithItem(uid);
+        if (!found || (found.unit.toUid && found.unit.toUid !== x.uid)) return; // already with someone else
+        const { item, unit } = found;
+        unit.to = ''; delete unit.toUid; unit.ics = ''; delete unit.icsDate; delete unit.released;
+        unit.returned = Date.now();
+        if (!byItem.has(item.code)) byItem.set(item.code, { item, units: [] });
+        byItem.get(item.code).units.push(unit);
+      });
+      const batch = F.writeBatch(cloud.db);
+      if (byItem.size) {
+        const lines = [...byItem.values()].map(({ item, units }) => relLine(item, units.length, units));
+        const t = rosterByUid(x.uid) || { uid: x.uid, name: x.name };
+        batch.set(F.doc(relCol()), cleanJSON(relBase(t, {
+          kind: 'RETURN', source: 'returned', no: '', date: localISODate(), purpose: x.note || 'Returned by the teacher', reportId: x.id,
+          lines, total: 0, createdAt: F.serverTimestamp()
+        })));
+        saveStateWith({ summary: { kind: 'release', text: `${x.name} returned ${lines.map(l => `${l.desc} (${l.units.map(u => u.no).join(', ')})`).join(', ')}`, track: true } });
+      }
+      batch.update(F.doc(tReportCol(), x.id), { status: 'done', resolution: 'returned', reply: 'Received back', resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '' });
+      cloudWrite(batch.commit(), 'Saving the return');
+      tReports = tReports.map(r => (r.id === id ? { ...r, status: 'done' } : r));
+      renderRequestsEverywhere();
+      if (activeMainView === 'ITEMS') renderDashboardLedger();
+      showToast(`${x.name.split(' ')[0]}’s return received · back in stock, not assigned`, 'ph-arrow-u-down-left');
+    }
+
+    function resolveTeacherReport(id, action) {
+      const x = tReports.find(r => r.id === id);
+      if (!x || !cloud.user) return;
+      const F = cloud.sdk;
+      if (action === 'repair' || action === 'unserv') {
+        const touched = [];
+        (x.units || []).forEach(({ id: uid }) => {
+          const found = findUnitWithItem(uid);
+          if (!found) return;
+          found.unit.cond = action === 'repair' ? 'R' : 'U';
+          syncUnitCondition(found.item);
+          touched.push(found);
+        });
+        if (touched.length) saveStateWith({ summary: { kind: 'condition', code: touched[0].item.code,
+          text: `${touched.map(f => f.unit.no).join(', ')} marked ${action === 'repair' ? 'for repair' : 'unserviceable'} (reported by ${x.name}${x.note ? `: ${x.note}` : ''})` } });
+      }
+      const reply = action === 'repair' ? 'Marked for repair' : action === 'unserv' ? 'Marked unserviceable' : 'Noted';
+      cloudWrite(F.updateDoc(F.doc(tReportCol(), x.id), { status: 'done', resolution: action, reply, resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '' }), 'Updating');
+      tReports = tReports.map(r => (r.id === id ? { ...r, status: 'done' } : r));
+      renderRequestsEverywhere();
+      showToast(`${reply} · ${x.name.split(' ')[0]} will see it`, 'ph-check-circle');
+    }
+
+    function declineTeacherReport(id) {
+      const x = tReports.find(r => r.id === id);
+      if (!x) return;
+      const reason = prompt(`Reason for not accepting the return (${x.name} will see this):`, '');
+      if (reason === null) return;
+      const F = cloud.sdk;
+      cloudWrite(F.updateDoc(F.doc(tReportCol(), x.id), { status: 'declined', reply: reason.trim().slice(0, 300) || 'Return not accepted', resolvedMs: Date.now() }), 'Updating');
+      tReports = tReports.map(r => (r.id === id ? { ...r, status: 'declined' } : r));
+      renderRequestsEverywhere();
     }
 
     // ---- Items delivered on a PR → stock in ---------------------------------------------

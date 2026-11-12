@@ -11,6 +11,7 @@ rules_version = '2';
 //   schools/{schoolId}/settings/info          school & custodian info, custodian only
 //   schools/{schoolId}/members/{uid}          teachers who joined (each writes their own)
 //   schools/{schoolId}/releases/{id}          RIS / ICS releases to teachers (teacher reads own)
+//   schools/{schoolId}/teacherReports/{id}    received / problem / return, from teachers (own only)
 //
 // Teachers join from the invite link (anonymously, or with Google to keep their requests
 // across phones): they can send requests and see or cancel only their own. The property
@@ -115,6 +116,26 @@ service cloud.firestore {
         allow create, update: if isCustodian(schoolId);
         allow get, list: if signedIn()
           && (resource.data.teacherUid == request.auth.uid || isCustodian(schoolId));
+        allow delete: if false;
+      }
+
+      // A teacher's answers about their items: "received", "problem" or "return". Teachers
+      // create their own (always 'open') and read only their own; the custodian resolves them.
+      match /teacherReports/{reportId} {
+        allow create: if signedIn()
+          && exists(/databases/$(database)/documents/schools/$(schoolId))
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'kind', 'releaseId', 'releaseNo', 'code', 'desc',
+                                                   'units', 'reason', 'note', 'status', 'createdMs', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.kind in ['received', 'problem', 'return']
+          && request.resource.data.status == 'open'
+          && request.resource.data.name is string && request.resource.data.name.size() <= 80
+          && shortText(request.resource.data.desc, 160)
+          && shortText(request.resource.data.note, 300)
+          && request.resource.data.units is list && request.resource.data.units.size() <= 50;
+        allow get, list: if signedIn()
+          && (resource.data.uid == request.auth.uid || isCustodian(schoolId));
+        allow update: if isCustodian(schoolId) && request.resource.data.uid == resource.data.uid;
         allow delete: if false;
       }
     }

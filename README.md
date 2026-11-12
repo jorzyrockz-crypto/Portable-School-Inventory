@@ -210,6 +210,26 @@ Every release, assignment and return is kept as a record under the school (`rele
 
 > Publish the updated [`firestore.rules`](firestore.rules) again after updating. The new parts are `members` and `releases`.
 
+## A teacher's My Items
+
+On a teacher's phone the screen has two tabs: **My Items** and **Requests**.
+
+- **New from the property custodian:** each RIS or ICS released to the teacher, with a **Received** button. The custodian's records show who confirmed.
+- **Accountable equipment · ICS:** every unit under the teacher's name, with its property number, serial, ICS no. and value. Returns are subtracted. Each unit has two actions:
+  - **Report a problem:** needs repair, not working, lost or missing, or something else, plus a note.
+  - **Return:** the item stays on the list, marked *Return requested*, until the custodian marks it received back.
+- **Supplies received · RIS:** every slip, newest first. *Report a problem* covers fewer than released, damaged, or wrong item.
+- Reports sent without signal are queued (*Sending…*) and go out when the phone reconnects.
+
+The custodian sees open reports at the top of **Supply requests** under **From teachers**, and as *N from teachers* on Home:
+
+- **Mark for repair / Mark unserviceable** sets the unit's condition in My Items.
+- **Received back** clears the assignment. The unit is back in stock, and a return record is kept.
+- **Decline** asks for a reason. **Noted** closes a report without changes.
+- The teacher sees the answer on the item.
+
+Teachers create only their own reports and read only their own. Only the custodian can resolve them (`teacherReports` in `firestore.rules`).
+
 ## Works offline
 
 CustodianPro is an installable Progressive Web App:
@@ -255,6 +275,7 @@ npm run serve &                       # app on http://localhost:8080
 cd tests/e2e && npm install
 node inventory-sync.mjs               # My Items saved to the account
 node release.mjs                      # teachers, RIS/ICS releases, stock in
+node teacher-items.mjs                # a teacher's My Items, reports and returns
 # or: npm test (all suites)
 ```
 
