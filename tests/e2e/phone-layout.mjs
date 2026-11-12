@@ -66,18 +66,46 @@ try {
   await a.screenshot({ path: `${SHOTS}/phone-encode.png` });
   await ev(a, () => { closeEncodeSheet(); document.getElementById('appToast').classList.add('hidden'); });
 
-  out('4 My Items: value + stepper, then labelled buttons');
+  out('4 Inventory: tidy rows, tap one for the item sheet');
   await ev(a, () => switchMainView('ITEMS'));
-  await screen(a, 'My Items');
-  const row = await ev(a, () => {
-    const btn = [...document.querySelectorAll('#viewItems button[onclick^="openReleaseForItem"]')].find(b => b.offsetParent);
-    const b = btn.getBoundingClientRect();
-    return { w: b.width, h: b.height, label: btn.innerText.trim() };
-  });
-  check(row.h >= 40 && row.w >= 80, `release button is a real button (${Math.round(row.w)}×${Math.round(row.h)})`);
-  check(row.label === 'Release', 'buttons carry words on a phone');
-  check(await ev(a, () => [...document.querySelectorAll('.ledger-tab')].filter(t => t.offsetParent).every(t => t.getBoundingClientRect().height >= 34)), 'filter tabs at least 34 px tall');
+  await screen(a, 'Inventory');
+  check(await ev(a, () => document.querySelector('.tab-btn[data-view="ITEMS"]').innerText.includes('Inventory') && /^Inventory/.test(document.querySelector('#masterLedgerSection h3').innerText.trim())), 'the tab and the page are called Inventory');
+  check(await ev(a, () => /^\d+ items · ₱/.test(document.getElementById('invSummary').innerText)), 'summary line: items · total value');
+  const rows = await ev(a, () => [...document.querySelectorAll('#dashboardLedgerContainer .inv-row')].map(r => ({
+    h: r.getBoundingClientRect().height, flags: r.querySelectorAll('.inv-flag').length,
+    steppers: r.querySelectorAll('button[onclick*="adjustQty"]').length, val: r.innerText.includes('₱')
+  })));
+  check(rows.length > 10, `one row per item (${rows.length})`);
+  check(rows.every(r => r.steppers === 0), 'no +/− on the rows (counts can’t change by accident)');
+  check(rows.every(r => r.flags <= 3), 'at most 2 status labels (+N) per row');
+  check(rows.every(r => r.val && r.h >= 56), 'every row shows the value and is a big tap target');
+  check(await ev(a, () => { const t = [...document.querySelectorAll('.ledger-tab')].filter(t => t.offsetParent); return t.every(x => x.getBoundingClientRect().right <= innerWidth && x.getBoundingClientRect().height >= 34); }), 'filter chips wrap inside the screen, at least 34 px tall');
+  check(await ev(a, () => !document.getElementById('ledgerTab-UNCOUNTED').offsetParent), '“Not counted” only during a count');
   await a.screenshot({ path: `${SHOTS}/phone-items.png` });
+  await a.click('#dashboardLedgerContainer .inv-row');
+  await sleep(300);
+  const sheet = await box(a, '#itemSheet > div');
+  check(Math.abs(sheet.bottom - 844) <= 2 && sheet.w >= 388, 'item sheet slides up from the bottom, full width');
+  const acts = await ev(a, () => [...document.querySelectorAll('#itemSheet button')].filter(b => b.offsetParent).map(b => (b.innerText || b.getAttribute('aria-label') || '').trim()));
+  check(['Release', 'Edit details', 'History', 'Close', 'One less', 'One more'].every(x => acts.includes(x)), `sheet buttons carry words or names (${acts.filter(Boolean).slice(0, 8).join(', ')})`);
+  check(await ev(a, () => [...document.querySelectorAll('#isStats p.font-mono')].every(p => p.scrollWidth <= p.clientWidth + 1)), 'on hand / unit cost / total value are not cut off');
+  await screen(a, 'item sheet');
+  await a.screenshot({ path: `${SHOTS}/phone-item-sheet.png` });
+  await ev(a, () => closeItemSheet());
+
+  // During a physical count: a check button on each row, "Not counted" chip, Mark as counted in the sheet
+  await ev(a, () => { countSession = { name: 'Test count', startedAt: Date.now(), counted: {} }; renderDashboard(); });
+  check(await ev(a, () => document.querySelectorAll('#dashboardLedgerContainer .count-check').length === document.querySelectorAll('#dashboardLedgerContainer .inv-row').length), 'count: a check button on every row');
+  check(await ev(a, () => !!document.getElementById('ledgerTab-UNCOUNTED').offsetParent), 'count: “Not counted” chip shows');
+  const first = await ev(a, () => document.querySelector('#dashboardLedgerContainer .inv-row').dataset.code);
+  await a.click('#dashboardLedgerContainer .inv-row .count-check');
+  check(await ev(a, c => isCounted(c) && document.getElementById('itemSheet').classList.contains('hidden'), first), 'count: the check button marks the item without opening the sheet');
+  const second = await ev(a, () => document.querySelectorAll('#dashboardLedgerContainer .inv-row')[1].dataset.code);
+  await ev(a, c => openItemSheet(c), second);
+  await a.click('#isCount');
+  check(await ev(a, c => isCounted(c) && document.getElementById('itemSheet').classList.contains('hidden'), second), 'count: Mark as counted in the sheet, then back to the list');
+  await screen(a, 'Inventory during a count');
+  await ev(a, () => { countSession = null; persistCountSession(); setLedgerFilter('ALL'); renderDashboard(); });
 
   out('5 pop-ups open as bottom sheets');
   for (const [open, id, close] of [['openUnitsModal(items.find(i => getUnits(i.code).length).code)', 'unitsModal', 'closeUnitsModal()'], ['openSchoolModal()', 'schoolModal', 'closeSchoolModal()'], ['openItemModal(items.find(i => i.qty > 0).code)', 'itemModal', 'closeItemModal()']]) {

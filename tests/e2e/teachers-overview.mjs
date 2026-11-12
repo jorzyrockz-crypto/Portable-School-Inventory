@@ -100,13 +100,14 @@ try {
   check(true, 'Ana’s phone now lists 1 item');
   check(/Taken back/.test(await bodyText(a)), 'history: Taken back');
 
-  out('7 My Items chip opens the person');
+  out('7 Inventory: the item sheet opens the person');
   await release(a, ana, [{ code: D, qty: 1 }]);
   await ev(a, () => switchMainView('ITEMS'));
   await sleep(200);
-  const sel = await ev(a, uid => !!document.querySelector(`#masterLedgerSection button[onclick="openTeachersView('${uid}')"]`), ana);
-  check(sel, 'chip “With Ana Reyes” links to her page');
-  await a.click(`#masterLedgerSection button[onclick="openTeachersView('${ana}')"]`);
+  await ev(a, code => openItemSheet(code), D);
+  const sel = await ev(a, uid => !!document.querySelector(`#itemSheet button[onclick="closeItemSheet(); openTeachersView('${uid}')"]`), ana);
+  check(sel, '“Ana Reyes” in the item sheet links to her page');
+  await a.click(`#itemSheet button[onclick="closeItemSheet(); openTeachersView('${ana}')"]`);
   await sleep(200);
   check(await ev(a, () => activeMainView === 'TEACHERS' && /Ana Reyes/.test(document.getElementById('tvHead').innerText)), 'opened Ana’s page');
 

@@ -15,7 +15,7 @@ who is using the phone:
 
 - **Property custodian**: Google, or email and password. The first sign-in creates the school
   (*School* field). This is the same account that receives teachers' requests and keeps
-  **My Items** saved online.
+  the **Inventory** saved online.
 - **Teacher**: paste the invite link or type the school code from the custodian. Opening the
   invite link on the phone skips this step and goes straight to *Join*.
 
@@ -64,18 +64,29 @@ colour classes in `index.html` (`bg-white`, `text-slate-900`, `bg-amber-50`,
 CustodianPro is laid out for a 360–430 px phone first and widens on tablets and computers:
 
 - Pop-ups become **bottom sheets** below 640 px (the `.sheet-sm` class on the overlay): full width, rounded top, buttons above the home indicator.
-- Lists stack on a phone: **My Items** rows show value and quantity on one line and labelled *Property nos. · Release · Edit* buttons below; **Catalog** cards put the stepper under the item name.
+- Lists stack on a phone: **Inventory** rows are one tidy line per item (see below); **Catalog** cards put the stepper under the item name.
 - Every tap target is at least 32 px (most 40 px); headers wrap their buttons onto a second row instead of squeezing the title.
 - Toasts sit above the bottom tabs, move to the top while a sheet is open (also when the sheet opens after the toast), and go to the bottom on the sign-in screen so the logo stays visible.
 - `tests/e2e/phone-layout.mjs` checks this at 390 × 844: no sideways scrolling, no small buttons, sheets anchored to the bottom, full peso amounts on Reports.
 - **Touch tablets** (700 px and wider, `pointer: coarse`) scale the whole UI with the screen width: the root font size becomes `100vw / 42`, between 16 and 20 px, and every size is in rem. The phone-first column then fills the screen (686 of 800 px in portrait) instead of sitting small in the middle. The fixed-px caption classes (`text-[10px]`, `text-[11px]`…) are switched to rem inside that rule. Computers (mouse) and phones keep 16 px. A browser tab zoomed by Chrome reports a narrower width, so it is not enlarged twice. `tests/e2e/tablet-layout.mjs` checks this.
+
+## Inventory (was *My Items*)
+
+The custodian's list of everything the school has (quantity above 0). It was called *My Items*; the teacher's own *My Items* (what was released to them) keeps its name.
+
+- **Top:** *Inventory*, the saved-online chip, `N items · ₱ total` and **Add items** (opens the Catalog). Then a search box (name, code, room, property or serial number, teacher) and a sort menu: highest value, name, room, most / least quantity.
+- **Filter chips** wrap onto a second line instead of scrolling sideways, each with its count: *All · Equipment · Consumables · Low stock · Needs repair · With teachers*, plus *Not counted* during a physical count. Chips with nothing in them are hidden.
+- **One row per item:** type icon, name (2 lines at most), *room · code*, at most two status labels (repair / unserviceable, low stock, with a teacher, tagged; more show as *+N*), and on the right the quantity and total value. There are no +/− buttons on the rows, so a count can't change by accident while scrolling.
+- **Tap a row** for the **item sheet** (a bottom sheet on phones): on hand, unit cost and total value; a low-stock note; the quantity stepper; room, category, condition, property numbers and who has the units (each name opens that teacher's page); and **Release · Edit details · History** at the bottom.
+- **During a physical count** each row has a check button on the left (tap to mark counted without opening the item), and the sheet has **Mark as counted**, which returns to the list.
+- `tests/e2e/phone-layout.mjs` checks the rows, chips, sheet and count mode at 390 px; `release.mjs` and `teachers-overview.mjs` use the sheet for Release and the teacher links.
 
 ## Sharing and link previews
 
 Links to CustodianPro (and teacher invite links) show a large preview in Messenger, Facebook, Viber, WhatsApp, Telegram, LinkedIn and X:
 
 - `index.html` `<head>`: description, Open Graph and X (`twitter:`) tags, canonical address and WebApplication structured data (features, screenshots, free).
-- `assets/brand/og-image.png` (1200×630): the banner, **drawn from the real app**. It shows the current Home and My Items screens, so it never shows features the app doesn't have. The image URL carries `?v=<date>`; change it when the picture changes so Facebook and Messenger fetch it again.
+- `assets/brand/og-image.png` (1200×630): the banner, **drawn from the real app**. It shows the current Home and Inventory screens, so it never shows features the app doesn't have. The image URL carries `?v=<date>`; change it when the picture changes so Facebook and Messenger fetch it again.
 - `assets/brand/social-preview.png` (1280×640): the same banner for GitHub (**Settings → General → Social preview**; uploaded by hand).
 - `assets/brand/banner.png` / `.webp` (1024×434): the README header and **More → About**.
 
@@ -111,7 +122,7 @@ Everything else moved out of the way:
 
 | Where | What |
 | --- | --- |
-| **My Items** tab | your in-stock ledger, plus the physical count checklist while counting |
+| **Inventory** tab | everything the school has (quantity above 0): search, filter chips, tap an item for its sheet; the physical count checklist while counting |
 | **Catalog** tab | the full APP-CSE catalog with part tabs and category filters |
 | **Reports** tab | valuation, condition, property tags, categories, rooms, print and APP-CSE summary |
 | **☰ More** menu | add custom item, import, scan ICS / QR, print, CSV exports, school info, backup, restore, change history, sample data |
@@ -149,7 +160,7 @@ The app is connected to the Firebase project **russapps-custodianpro** (settings
 The config values are not secret; access is controlled by the published rules. To use a different project, replace the object in `firebase-config.js` (or set it to `null` to hide Supply requests).
 
 **Switching to another project.** Data stays in the old project, so nothing moves over by itself. Each phone remembers which project it last used. On the first open after the switch, the app keeps the phone's inventory, history and settings, clears its link to the old school, and asks the custodian to sign in again.
-- **Custodian:** signing in creates the school in the new project, and My Items uploads everything.
+- **Custodian:** signing in creates the school in the new project, and the Inventory uploads everything.
 - **Teachers:** need a new invite link.
 
 **Sign-in**
@@ -287,14 +298,14 @@ back to the automatic rule. Custom items can be classified when they are added.
 Teachers who join with the invite link are listed automatically (their phone sends their name, position and office). The custodian releases items from stock:
 
 - **From a request:** an approved request with everything in stock, or a delivered one, has a **Release** button. The teacher and the approved items are filled in.
-- **From My Items:** the green hand button on an item. Or tap **Release** at the top of Supply requests.
+- **From Inventory:** tap the item, then **Release** in its sheet. Or tap **Release** at the top of Supply requests.
 - **Supplies** go on a **RIS** (Requisition and Issue Slip, Appendix 63) and leave the stock count.
-- **Equipment** goes on an **ICS** (Inventory Custodian Slip, Appendix 59). It stays in My Items, and each unit shows *With Ana Reyes · ICS 2026-11-001*. Pick which property numbers to hand over. Units without one get the next number automatically.
+- **Equipment** goes on an **ICS** (Inventory Custodian Slip, Appendix 59). It stays in Inventory, and each unit shows *With Ana Reyes · ICS 2026-11-001*. Pick which property numbers to hand over. Units without one get the next number automatically.
 - **Equipment worth ₱50,000 or more** (PPE under COA Circular 2022-004) goes on a **PAR** (Property Acknowledgment Receipt, Appendix 71) instead. One release can create an ICS and a PAR; each line says which slip it goes on, and the unit shows *With Ana Reyes · PAR 2026-11-001*.
 - Numbers run per month (`2026-11-001`, …), separately for RIS, ICS, PAR, ITR, PTR and RRSP. The slips print from the done screen.
 - Someone without an account (e.g. utility staff) can be typed in. The slip still prints.
 
-**Items delivered** on a Purchase Request now adds the items to the stock in My Items. Items that weren't in My Items yet are added as new items. The requests then show *Ready* to the teacher until you release them.
+**Items delivered** on a Purchase Request now adds the items to the stock in Inventory. Items that weren't in Inventory yet are added as new items. The requests then show *Ready* to the teacher until you release them.
 
 **Assigned to** (Property Numbers) suggests the teachers. Picking one links the unit to that teacher's account. Names typed earlier or read from a scanned ICS (e.g. *MR. JUAN D. DELA CRUZ*) are linked automatically when *Juan Dela Cruz* joins. Titles, middle initials and *Last, First* order are ignored. Two teachers with the same name are left for you to pick.
 
@@ -337,7 +348,7 @@ On a teacher's phone the screen has two tabs: **My Items** and **Requests**.
 
 The custodian sees open reports at the top of **Supply requests** under **From teachers**, and as *N from teachers* on Home:
 
-- **Mark for repair / Mark unserviceable** sets the unit's condition in My Items.
+- **Mark for repair / Mark unserviceable** sets the unit's condition in Inventory.
 - **Received back** clears the assignment. The unit is back in stock, and a return record is kept.
 - **Decline** asks for a reason. **Noted** closes a report without changes.
 - The teacher sees the answer on the item.
@@ -354,7 +365,7 @@ Teachers create only their own reports and read only their own. Only the custodi
 Each person shows their equipment units and value, plus *to confirm* (slips they haven't marked Received) and *open* reports. Search by name, item, property number or serial.
 
 A person's page lists:
-- **Accountable equipment:** taken from My Items. It shows condition, ICS no., and *Confirmed* when the teacher tapped Received. **Take back** returns a unit to stock unassigned and keeps a return record.
+- **Accountable equipment:** taken from Inventory. It shows condition, ICS no., and *Confirmed* when the teacher tapped Received. **Take back** returns a unit to stock unassigned and keeps a return record.
 - **Supplies received (RIS):** with a reprint button for each slip.
 - **History:** releases, assignments, links and returns.
 
@@ -363,7 +374,7 @@ A person's page lists:
 - supplies on RIS;
 - signature lines for *Certified correct* (the teacher) and *Verified by* (the custodian).
 
-The *With …* chip on an item in My Items opens that person's page.
+In Inventory, an item's sheet lists who has its units (*Ana Reyes · 1 unit · ICS 2026-11-001*); tapping a name opens that person's page.
 
 ## Notifications
 
@@ -401,7 +412,7 @@ CustodianPro is an installable Progressive Web App:
 - `sw.js` (service worker) caches the whole app on the first visit, so it opens with no internet.
 - On iPad/iPhone: open the site in **Safari → Share → Add to Home Screen**.
   On Android/Chrome/Edge: tap **Install** on the bar under the header (or **More → Install app on this phone**). The browser's menu works as well. Chrome's install sheet shows screenshots of the app (`assets/screenshots/`).
-- Long-press the home-screen icon for shortcuts: **Scan ICS**, **Count**, **My Items** and **Requests** (teachers get their own My items and requests).
+- Long-press the home-screen icon for shortcuts: **Scan ICS**, **Count**, **Inventory** and **Requests** (teachers get their own My items and requests).
 - Inventory data is stored on the device (`localStorage`). Use **Backup Data** regularly –
   clearing the browser's website data erases it. The app shows *Last backup: …* under the
   dashboard tools and a reminder banner when changes haven't been backed up for 7 days
@@ -442,7 +453,7 @@ Generated files (`assets/`, `sw.js`) are committed so GitHub Pages can serve the
 ```bash
 npm run serve &                       # app on http://localhost:8080
 cd tests/e2e && npm install
-node inventory-sync.mjs               # My Items saved to the account
+node inventory-sync.mjs               # Inventory saved to the account
 node release.mjs                      # teachers, RIS/ICS releases, stock in
 node teacher-items.mjs                # a teacher's My Items, reports and returns
 node teachers-overview.mjs            # released-to-teachers overview, take back, accountability print

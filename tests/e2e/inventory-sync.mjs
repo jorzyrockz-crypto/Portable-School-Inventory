@@ -1,4 +1,4 @@
-// My Items saved to the custodian's account: upload from the first phone, load on a new
+// Inventory saved to the custodian's account: upload from the first phone, load on a new
 // phone, edits both ways, offline edits sent later, deletions, merging a phone that already
 // has its own items (incl. a clashing custom item code), and teachers kept out.
 import { createBackend } from './lib/fake-backend.mjs';
@@ -39,7 +39,7 @@ try {
   await until(a, () => /Saved to your account/.test(document.getElementById('invSyncChip').innerText), 'synced chip', 10000);
   check(live().length === aCodes.length, `every item uploaded (${live().length}/${aCodes.length})`);
   check(!!backend.docs('schools/').find(d => /\/settings\/info$/.test(d.path) && d.info.school === 'San Jose National High School'), 'school info uploaded');
-  check(await chip(a) === 'Saved to your account', 'My Items shows “Saved to your account”');
+  check(await chip(a) === 'Saved to your account', 'Inventory shows “Saved to your account”');
   check(await ev(a, () => /saved to your account/.test(document.getElementById('homeStatusText').textContent)), 'Home footer: saved to your account');
   check(await ev(a, () => document.getElementById('backupReminder').classList.contains('hidden')), 'no manual-backup nag while synced');
   check(a.dialogs.every(d => !/already has the school inventory/.test(d)), 'no merge question (account was empty)');

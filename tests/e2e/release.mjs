@@ -107,7 +107,7 @@ try {
     units: getUnits(e).filter(u => u.toUid), done: document.getElementById('relDone').innerText
   }), pick.supply.code, pick.equip.code);
   check(after.supply === pick.supply.qty - 4, `supplies left the stock count (${pick.supply.qty} → ${after.supply})`);
-  check(after.equip === pick.equip.qty, 'equipment stays in My Items');
+  check(after.equip === pick.equip.qty, 'equipment stays in Inventory');
   check(after.units.length === 1 && after.units[0].to === 'Ana Reyes' && after.units[0].toUid === anaUid && after.units[0].ics === `${ym}-001`, 'unit marked With Ana Reyes · ICS no.');
   check(/Released to Ana Reyes/.test(after.done), 'done screen');
   await waitNode(() => rel().length >= 2, 'release docs online');
@@ -141,15 +141,22 @@ try {
   await a.emulateMediaType('screen');
   await ev(a, () => { document.body.classList.remove('printing-pr'); closeRelease(); });
 
-  out('4 My Items shows who has it');
+  out('4 Inventory shows who has it');
   await ev(a, () => switchMainView('ITEMS'));
   await sleep(300);
-  const chipText = await ev(a, code => {
-    const row = [...document.querySelectorAll('#masterLedgerSection button')].find(b => /^openTeachersView\(/.test(b.getAttribute('onclick') || '') && /With|with/.test(b.innerText));
-    return row ? row.innerText.trim() : '';
-  }, pick.equip.code);
-  check(chipText.includes('Ana Reyes') && chipText.includes(`ICS ${ym}-001`), `chip: “${chipText}”`);
-  check(await ev(a, code => !!document.querySelector(`button[onclick="openReleaseForItem('${code}')"]`), pick.supply.code), 'Release button on My Items cards');
+  check(await ev(a, code => /with Ana Reyes/i.test(document.querySelector(`#dashboardLedgerContainer .inv-row[data-code="${code}"]`).innerText), pick.equip.code), 'row label: With Ana Reyes');
+  await ev(a, code => openItemSheet(code), pick.equip.code);
+  const chipText = await ev(a, () => {
+    const b = [...document.querySelectorAll('#itemSheet button')].find(b => /openTeachersView\(/.test(b.getAttribute('onclick') || ''));
+    return b ? b.innerText.replace(/\s+/g, ' ').trim() : '';
+  });
+  check(chipText.includes('Ana Reyes') && chipText.includes(`ICS ${ym}-001`), `item sheet: “${chipText}”`);
+  await ev(a, code => { closeItemSheet(); openItemSheet(code); }, pick.supply.code);
+  check(await ev(a, () => !!document.getElementById('isRelease').offsetParent), 'Release button in the item sheet');
+  await ev(a, () => itemSheetGo('release'));
+  await sleep(200);
+  check(await ev(a, () => !document.getElementById('releaseModal').classList.contains('hidden') && document.getElementById('itemSheet').classList.contains('hidden')), 'Release opens the release form (sheet closes)');
+  await ev(a, () => closeRelease());
   await a.screenshot({ path: '/tmp/e2e_rel_items.png' });
 
   out('5 the teacher’s side');
@@ -225,7 +232,7 @@ try {
   await sleep(500);
   const stocked = await ev(a, c => ({ low: items.find(i => i.code === c).qty, pad: items.find(i => /RUBBER STAMP PAD/.test(i.name)) }), lowItem.code);
   check(stocked.low === lowItem.qty + 6, `delivered stock added (${lowItem.qty} → ${stocked.low})`);
-  check(stocked.pad && stocked.pad.qty === 3 && stocked.pad.price === 45, 'item not in My Items added as a new item (3 at ₱45)');
+  check(stocked.pad && stocked.pad.qty === 3 && stocked.pad.price === 45, 'item not in Inventory added as a new item (3 at ₱45)');
   await until(a, () => prList[0].deliveredMs, 'PR delivered', 8000);
   await until(a, id => reqList.some(r => r.id === id && r.status === 'closed'), 'ready', 8000, req2);
   check(await ev(a, () => !document.querySelector('button[onclick^="markPrDelivered"]')), 'Items delivered can’t be pressed twice');

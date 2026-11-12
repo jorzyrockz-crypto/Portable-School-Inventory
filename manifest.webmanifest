@@ -72,8 +72,8 @@
       ]
     },
     {
-      "name": "My Items",
-      "short_name": "My Items",
+      "name": "Inventory",
+      "short_name": "Inventory",
       "url": "./?go=items",
       "icons": [
         {
@@ -109,7 +109,7 @@
       "sizes": "1080x2400",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "My Items with property tags"
+      "label": "Inventory with property tags"
     },
     {
       "src": "assets/screenshots/phone-requests.png",

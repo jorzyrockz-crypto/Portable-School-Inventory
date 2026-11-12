@@ -53,7 +53,7 @@ try {
   check(await ev(a, () => items.filter(i => i.qty > 0).length) === before, `the ${before} items on this phone are still there`);
   await a.screenshot({ path: `${SHOTS}/home-light.png` });
   await ev(a, () => switchMainView('ITEMS'));
-  check(await ev(a, () => !document.body.classList.contains('page-art')), 'lists stay plain (no art on My Items)');
+  check(await ev(a, () => !document.body.classList.contains('page-art')), 'lists stay plain (no art on Inventory)');
   await ev(a, () => switchMainView('HOME'));
 
   out('4 opening the app again goes straight in');
