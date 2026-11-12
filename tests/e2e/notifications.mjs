@@ -375,6 +375,40 @@ try {
   bl = await tn(t2, 3 * day);
   check(bl.filter(n => /Reminder/.test(n.title)).length === 2, 'teacher reminders switched off: none');
 
+  out('17 changes not reaching the account (custodian)');
+  await ev(a, () => { closeNotifPanel(); switchMainView('HOME'); localStorage.removeItem(SYNC_SNOOZE_KEY); });
+  await ev(a, () => adjustQty(items.find(i => i.qty > 3).code, 1));
+  check(await ev(a, () => invSync.pendingSince > 0), 'a change waiting for the account is remembered (pendingSince)');
+  await until(a, () => invStatus.state === 'synced' && !invSync.pendingSince, 'saved', 8000);
+  check(await ev(a, () => !invSync.pendingSince && document.getElementById('syncBar').classList.contains('hidden')), 'saved to the account: cleared, no bar');
+  let n17 = (await notifs(a)).length;
+  await ev(a, () => { invSync.pendingSince = Date.now() - 23 * 3600e3; checkSyncProblem(); });
+  check(await ev(a, () => document.getElementById('syncBar').classList.contains('hidden')) && (await notifs(a)).length === n17, 'unsaved for 23 h: nothing yet');
+  await ev(a, () => { invSync.pendingSince = Date.now() - 26 * 3600e3; checkSyncProblem(); });
+  await waitNotif(a, /Changes are not saved to your account/, 'stale', 3000);
+  const bar17 = await ev(a, () => ({ shown: !document.getElementById('syncBar').classList.contains('hidden'), text: document.getElementById('syncBar').innerText }));
+  check(bar17.shown && /have not reached your account/.test(bar17.text) && /Back up/.test(bar17.text) && /Try again/.test(bar17.text), 'bar: not saved · Back up · Try again');
+  await ev(a, () => checkSyncProblem());
+  check((await notifs(a)).filter(n => /not saved to your account/.test(n.title)).length === 1, 'one bell item per problem (no repeats)');
+  await a.screenshot({ path: '/tmp/e2e_n_syncbar.png' });
+  await ev(a, () => snoozeSyncBar());
+  check(await ev(a, () => document.getElementById('syncBar').classList.contains('hidden')), '× hides the bar (12 h)');
+  await ev(a, id => openNotif(id), (await notifs(a)).find(n => /not saved to your account/.test(n.title)).id);
+  await sleep(200);
+  const tap17 = await ev(a, () => ({ v: activeMainView, hidden: document.getElementById('syncBar').classList.contains('hidden'), p: invSync.pendingSince, st: invStatus.state }));
+  check(tap17.v === 'HOME' && !tap17.hidden, 'tap the bell item → Home with the bar ' + JSON.stringify(tap17));
+  // the account refuses changes (e.g. security rules not published)
+  await ev(a, () => setInvStatus('error', 'Missing or insufficient permissions.'));
+  await waitNotif(a, /Your account is not saving changes/, 'error', 3000);
+  check(/insufficient permissions/.test(await ev(a, () => document.getElementById('syncBarText').innerText)), 'error shown at once, with the reason');
+  await ev(a, () => setInvStatus('error', 'Missing or insufficient permissions.'));
+  check((await notifs(a)).filter(n => /not saving changes/.test(n.title)).length === 1, 'same error: no second notification');
+  await a.click('#syncRetryBtn');
+  await until(a, () => invStatus.state === 'synced', 'synced again', 8000);
+  await ev(a, () => { invSync.pendingSince = 0; checkSyncProblem(); });
+  check(await ev(a, () => document.getElementById('syncBar').classList.contains('hidden')), 'Try again → synced, bar gone');
+  check(!(await ev(t, () => !document.getElementById('syncBar').classList.contains('hidden'))), 'never on a teacher’s phone');
+
   out('14 manifest and service worker');
   const m = JSON.parse(fs.readFileSync(new URL('../../manifest.webmanifest', import.meta.url)));
   check(m.theme_color === '#122e76' && (await ev(a, () => document.querySelector('meta[name=theme-color]').content)) === '#122e76', 'navy theme colour (manifest + page)');

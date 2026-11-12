@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="0eb83f340571">
+  <meta name="app-version" content="a6a7ae978acb">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -465,6 +465,22 @@
       </div>
       <button id="installBtn" onclick="installApp()" class="shrink-0 h-10 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold">Install</button>
       <button onclick="dismissInstall()" class="shrink-0 w-8 h-8 rounded-full text-slate-500 hover:bg-slate-100 flex items-center justify-center" aria-label="Not now"><i class="ph-bold ph-x"></i></button>
+    </div>
+  </div>
+
+  <!-- Custodian: changes on this phone are not reaching the account (24 h, or an error) -->
+  <div id="syncBar" class="hidden max-w-4xl mx-auto px-4 pt-3 no-print" role="alert">
+    <div class="rounded-2xl bg-rose-50 border border-rose-200 shadow-sm p-3 flex flex-wrap items-center gap-3">
+      <span class="w-10 h-10 shrink-0 rounded-xl bg-white text-rose-600 flex items-center justify-center"><i class="ph-bold ph-cloud-warning text-xl"></i></span>
+      <div class="flex-1 min-w-[12rem]">
+        <p id="syncBarTitle" class="text-sm font-extrabold text-slate-900 leading-tight">Changes are not saved to your account</p>
+        <p id="syncBarText" class="text-xs text-slate-700 mt-0.5 leading-snug"></p>
+      </div>
+      <div class="flex items-center gap-2 ml-auto">
+        <button onclick="exportBackupJSON()" class="shrink-0 h-10 px-3 rounded-xl bg-white border border-rose-200 text-rose-800 text-sm font-bold">Back up</button>
+        <button id="syncRetryBtn" onclick="retryInventorySync()" class="shrink-0 h-10 px-3 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-sm font-bold">Try again</button>
+        <button onclick="snoozeSyncBar()" class="shrink-0 w-8 h-8 rounded-full text-slate-500 hover:bg-white flex items-center justify-center" aria-label="Hide for now"><i class="ph-bold ph-x"></i></button>
+      </div>
     </div>
   </div>
 
@@ -7479,6 +7495,7 @@
     let invApplying = false;
     let invPushTimer = null;
     const invStatus = { state: 'off', error: '' }; // off | syncing | saving | synced | offline | error
+    let invErrorSince = 0;   // when the current sync error started
 
     function loadInvSync() {
       try { invSync = Object.assign({ schoolId: null, synced: {}, lastAt: 0 }, JSON.parse(localStorage.getItem(INV_SYNC_KEY) || '{}')); }
@@ -7530,9 +7547,12 @@
     }
 
     function setInvStatus(state, error = '') {
+      if (state === 'error' && invStatus.state !== 'error') invErrorSince = Date.now();
+      if (state !== 'error') invErrorSince = 0;
       invStatus.state = state;
       invStatus.error = error;
       renderInvStatus();
+      if (typeof checkSyncProblem === 'function') checkSyncProblem();
     }
 
     function renderInvStatus() {
@@ -7625,6 +7645,7 @@
         reconcileInventory();
       }
       if (!fromCache) invSync.lastAt = Date.now();
+      if (!fromCache && !metas.some(m => m.pending)) invSync.pendingSince = 0;   // everything reached the account
       saveInvSync();
       setInvStatus(metas.some(m => m.pending) ? 'saving' : fromCache ? (navigator.onLine ? 'syncing' : 'offline') : 'synced');
       linkTypedNamesToTeachers();
@@ -7755,6 +7776,7 @@
     // Called after every local save; sends what changed since the last sync.
     function scheduleInventorySync() {
       if (invApplying || !invReady) return;
+      if (!invSync.pendingSince) { invSync.pendingSince = Date.now(); saveInvSync(); }
       clearTimeout(invPushTimer);
       invPushTimer = setTimeout(() => pushInventory(), 600);
     }
@@ -7776,6 +7798,7 @@
       }
       if (!writes.length) { saveInvSync(); return; }
       const by = cloud.user.uid, now = Date.now();
+      if (!invSync.pendingSince) invSync.pendingSince = now;   // oldest change not yet in the account
       for (let i = 0; i < writes.length; i += 400) {
         const chunk = writes.slice(i, i + 400);
         const batch = F.writeBatch(cloud.db);
@@ -11770,6 +11793,53 @@
       }
     }
 
+    // ---- Sync problem (custodian): changes not in the account for 24 h, or the account refuses them ----
+    // A bar under the header (Back up · Try again · hide for 12 h) and one bell item per problem.
+    const SYNC_STALE_MS = 24 * 3600 * 1000;
+    const SYNC_SNOOZE_KEY = 'custodian_sync_snooze_v1';
+    function syncProblem(now = Date.now()) {
+      if (!isCustodianDevice() || !cloudConfigured() || !cloud.user || invStatus.state === 'off') return null;
+      if (invStatus.state === 'error') return { kind: 'error', since: invErrorSince || now, error: invStatus.error || '' };
+      if (invSync.pendingSince && now - invSync.pendingSince >= SYNC_STALE_MS) return { kind: 'stale', since: invSync.pendingSince };
+      return null;
+    }
+    function syncProblemText(p) {
+      return p.kind === 'error'
+        ? { title: 'Your account is not saving changes', body: `${p.error ? p.error.replace(/\.?$/, '. ') : ''}Changes stay on this phone until it works again. Save a backup file to be safe.` }
+        : { title: 'Changes are not saved to your account', body: `Changes made on this phone since ${formatTimeAgo(p.since)} have not reached your account. Connect to the internet and keep CustodianPro open for a minute, or save a backup file.` };
+    }
+    function checkSyncProblem(now = Date.now()) {
+      const p = syncProblem(now);
+      const bar = document.getElementById('syncBar');
+      if (bar) {
+        const snoozed = Number(localStorage.getItem(SYNC_SNOOZE_KEY) || 0) > now;
+        bar.classList.toggle('hidden', !p || snoozed);
+        if (p) {
+          const t = syncProblemText(p);
+          document.getElementById('syncBarTitle').textContent = t.title;
+          document.getElementById('syncBarText').textContent = t.body;
+        }
+      }
+      if (!p || !notifScope()) return;
+      const st = loadNotifs();
+      const episode = `${p.kind}:${p.since}`;
+      if (st.seen.sync === episode) return;
+      st.seen.sync = episode;
+      saveNotifs();
+      const t = syncProblemText(p);
+      addNotif({ title: t.title, body: t.body, icon: 'ph-cloud-warning', tone: 'rose', go: 'sync' });
+    }
+    function snoozeSyncBar() {
+      localStorage.setItem(SYNC_SNOOZE_KEY, String(Date.now() + 12 * 3600 * 1000));
+      checkSyncProblem();
+    }
+    function retryInventorySync() {
+      if (!navigator.onLine) { showToast('No internet connection · try again when you are online', 'ph-wifi-slash'); return; }
+      localStorage.removeItem(SYNC_SNOOZE_KEY);
+      startInventorySync();
+      showToast('Trying again…', 'ph-arrows-clockwise');
+    }
+
     // ---- Reminders to confirm received items ----
     // Teacher: a release still without Received, 2 days and again 7 days after it was made.
     // Custodian: once, 3 days after, so they know whom to follow up. Releases older than
@@ -11996,6 +12066,11 @@
         window.scrollTo({ top: 0 });
       } else if (n.go === 'teachers') {
         openTeachersView(n.person || null);
+      } else if (n.go === 'sync') {
+        localStorage.removeItem(SYNC_SNOOZE_KEY);
+        switchMainView('HOME');
+        checkSyncProblem();
+        window.scrollTo({ top: 0 });
       } else if (n.go === 'low') {
         switchMainView('ITEMS');
         setLedgerFilter('LOW');
@@ -12022,8 +12097,8 @@
           if (e.data.nid) openNotif(e.data.nid); else openNotifPanel();
         });
       }
-      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { renderNotifBell(); notifReminders(); } });
-      setInterval(() => notifReminders(), 30 * 60 * 1000);   // days pass while the app stays open
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { renderNotifBell(); notifReminders(); checkSyncProblem(); } });
+      setInterval(() => { notifReminders(); checkSyncProblem(); }, 30 * 60 * 1000);   // days pass while the app stays open
     }
 
     // ---- Install as an app (Chrome's "beforeinstallprompt") -------------------------------
@@ -12447,7 +12522,7 @@
     // Firebase keeps the session). Without a cloud project (firebase-config.js = null) the app
     // has nobody to sign in with, so it stays the local-only inventory.
     var gateStep = 'welcome'; // 'welcome' | 'custodian' | 'teacher' | 'busy'
-    var GATE_BEHIND = 'body > header, body > section, #tabBar, #installBar, #updateBar';
+    var GATE_BEHIND = 'body > header, body > section, #tabBar, #installBar, #syncBar, #updateBar';
 
     function loginGateNeeded() {
       if (!cloudConfigured()) return false;
