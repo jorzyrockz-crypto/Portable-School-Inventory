@@ -49,7 +49,7 @@ A teacher’s phone only shows the request screen and only that teacher’s own 
 
 ### Supply requests: Firebase setup
 
-The app is connected to the Firebase project **russapps-custodian-pro** (settings in [`firebase-config.js`](firebase-config.js)). In the [Firebase console](https://console.firebase.google.com/project/russapps-custodian-pro), do these once:
+The app is connected to the Firebase project **russapps-custodianpro** (settings in [`firebase-config.js`](firebase-config.js)). In the [Firebase console](https://console.firebase.google.com/project/russapps-custodianpro), do these once:
 
 1. **Build → Authentication → Get started → Sign-in method**: turn on
    - **Google** (custodian, and teachers who want their requests on every phone). Pick a support email and save.
@@ -60,6 +60,10 @@ The app is connected to the Firebase project **russapps-custodian-pro** (setting
 4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school, and nothing can be deleted.
 
 The config values are not secret; access is controlled by the published rules. To use a different project, replace the object in `firebase-config.js` (or set it to `null` to hide Supply requests).
+
+**Switching to another project.** Data stays in the old project, so nothing moves over by itself. Each phone remembers which project it last used. On the first open after the switch, the app keeps the phone's inventory, history and settings, clears its link to the old school, and asks the custodian to sign in again.
+- **Custodian:** signing in creates the school in the new project, and My Items uploads everything.
+- **Teachers:** need a new invite link.
 
 **Sign-in**
 - **Custodian:** *Continue with Google* (or email + password). The first sign-in creates the school; signing in on another phone or tablet finds it again.
@@ -298,6 +302,7 @@ node inventory-sync.mjs               # My Items saved to the account
 node release.mjs                      # teachers, RIS/ICS releases, stock in
 node teacher-items.mjs                # a teacher's My Items, reports and returns
 node teachers-overview.mjs            # released-to-teachers overview, take back, accountability print
+node project-switch.mjs               # moving to another Firebase project keeps inventory, resets cloud links
 # or: npm test (all suites)
 ```
 
