@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="33f8ef535672">
+  <meta name="app-version" content="e611f7175b2e">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -149,6 +149,16 @@
     .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
     /* Padded sheets (p-5): keep the 1.25rem bottom padding and add the phone's home-bar inset. */
     .safe-pad { padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)); }
+    /* Tablets (touch screen, 700px+ wide): the app is laid out phone-first in a 36rem column, which
+       looked small and lost in the middle of a tablet, most visibly in the installed app (Chrome's
+       zoom / text size setting is applied to browser tabs, not always to installed apps). Scale the
+       whole UI with the screen width instead (all sizes are rem), so it fills a tablet like it fills
+       a phone. A zoomed browser tab reports a narrower width, so it is not enlarged twice. */
+    @media screen and (pointer: coarse) and (min-width: 700px) {
+      html { font-size: clamp(16px, calc(100vw / 42), 20px); }
+      .text-\[9px\] { font-size: 0.5625rem; } .text-\[10px\] { font-size: 0.625rem; } .text-\[11px\] { font-size: 0.6875rem; }
+      .text-\[13px\] { font-size: 0.8125rem; } .text-\[22px\] { font-size: 1.375rem; } .min-w-\[220px\] { min-width: 13.75rem; }
+    }
     /* QR property labels (printed 3 across on A4 / Letter) */
     .label-sheet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3mm; }
     .qr-label {
@@ -11324,6 +11334,9 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-tablet-size', date: 'Nov 2026', title: 'Bigger on tablets', points: [
+        'On a tablet, the installed app now fills the screen with larger text and buttons, instead of a small column in the middle.'
+      ] },
       { id: '2026-11-titlebar-share', date: 'Nov 2026', title: 'Cleaner title bar, new link preview', points: [
         'On a computer, the title bar now shows only app updates (Update ready · Restart). Requests and other notifications stay in the bell.',
         'Links to CustodianPro show a new preview picture with the app as it looks today.'

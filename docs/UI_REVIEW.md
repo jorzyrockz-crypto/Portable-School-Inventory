@@ -73,6 +73,7 @@ Four buttons share one row on a 390 px phone.
 ### 5. Tablet touch targets (Medium)
 The `sm:` (≥640 px) classes return to desktop sizes, but an iPad is a touch device.
 - **Fix:** keep the larger phone sizes up to `lg` (1024 px), or base them on `(pointer: coarse)` with a small CSS rule (`@media (pointer: coarse) { .ledger-tab, … { min-height: 40px } }`).
+- **Partly addressed (Nov 2026):** touch tablets 700 px and wider now scale the whole UI with the screen width (root font size up to 20 px, `tests/e2e/tablet-layout.mjs`), so on an 800 px tablet a 28 px tab is about 33 px. The `sm:` sizes themselves are unchanged.
 
 ### 6. About version card (Medium)
 - **Fix:** below 400 px, put **Check for updates** under the text (`flex-wrap`, button `w-full`).
