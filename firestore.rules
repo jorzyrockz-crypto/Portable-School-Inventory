@@ -6,6 +6,12 @@ rules_version = '2';
 //   schools/{schoolId}                        a school; custodians[] may manage it
 //   schools/{schoolId}/requests/{id}          supply requests from teachers
 //   schools/{schoolId}/purchaseRequests/{id}  Purchase Requests (Appendix 60)
+//   schools/{schoolId}/inventory/{code}       My Items (school inventory), custodian only
+//   schools/{schoolId}/catalog/{code}         custom catalog items, custodian only
+//   schools/{schoolId}/settings/info          school & custodian info, custodian only
+//   schools/{schoolId}/members/{uid}          teachers who joined (each writes their own)
+//   schools/{schoolId}/releases/{id}          RIS / ICS releases to teachers (teacher reads own)
+//   schools/{schoolId}/teacherReports/{id}    received / problem / return, from teachers (own only)
 //
 // Teachers join from the invite link (anonymously, or with Google to keep their requests
 // across phones): they can send requests and see or cancel only their own. The property
@@ -68,6 +74,68 @@ service cloud.firestore {
 
       match /purchaseRequests/{prId} {
         allow read, create, update: if isCustodian(schoolId);
+        allow delete: if false;
+      }
+
+      // School inventory (My Items), custom catalog items and school info: the custodian's
+      // devices only. Teachers never read the inventory. Removed items are marked
+      // { deleted: true } instead of being deleted.
+      match /inventory/{code} {
+        allow read, create, update: if isCustodian(schoolId);
+        allow delete: if false;
+      }
+      match /catalog/{code} {
+        allow read, create, update: if isCustodian(schoolId);
+        allow delete: if false;
+      }
+      match /settings/{docId} {
+        allow read, create, update: if isCustodian(schoolId);
+        allow delete: if false;
+      }
+
+      // Teachers who joined: each teacher's phone writes only its own card (name, position,
+      // office). The custodian reads all of them for the "Released to" list.
+      match /members/{uid} {
+        allow get: if signedIn() && (request.auth.uid == uid || isCustodian(schoolId));
+        allow list: if isCustodian(schoolId);
+        allow create, update: if signedIn() && request.auth.uid == uid
+          && exists(/databases/$(database)/documents/schools/$(schoolId))
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'position', 'office', 'email', 'joinedMs', 'updatedAt'])
+          && request.resource.data.uid == uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
+          && shortText(request.resource.data.position, 80)
+          && shortText(request.resource.data.office, 80)
+          && shortText(request.resource.data.email, 120);
+        allow delete: if false;
+      }
+
+      // Releases (RIS for supplies, ICS for equipment, returns): written by the custodian only.
+      // A teacher reads only the ones made out to their own account (query: teacherUid == uid).
+      match /releases/{releaseId} {
+        allow create, update: if isCustodian(schoolId);
+        allow get, list: if signedIn()
+          && (resource.data.teacherUid == request.auth.uid || isCustodian(schoolId));
+        allow delete: if false;
+      }
+
+      // A teacher's answers about their items: "received", "problem" or "return". Teachers
+      // create their own (always 'open') and read only their own; the custodian resolves them.
+      match /teacherReports/{reportId} {
+        allow create: if signedIn()
+          && exists(/databases/$(database)/documents/schools/$(schoolId))
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'kind', 'releaseId', 'releaseNo', 'code', 'desc',
+                                                   'units', 'reason', 'note', 'status', 'createdMs', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.kind in ['received', 'problem', 'return']
+          && request.resource.data.status == 'open'
+          && request.resource.data.name is string && request.resource.data.name.size() <= 80
+          && shortText(request.resource.data.desc, 160)
+          && shortText(request.resource.data.note, 300)
+          && request.resource.data.units is list && request.resource.data.units.size() <= 50;
+        allow get, list: if signedIn()
+          && (resource.data.uid == request.auth.uid || isCustodian(schoolId));
+        allow update: if isCustodian(schoolId) && request.resource.data.uid == resource.data.uid;
         allow delete: if false;
       }
     }

@@ -49,6 +49,8 @@
     /* Installed (standalone) mode on iPad/iPhone: respect notch & home indicator */
     .safe-top { padding-top: env(safe-area-inset-top); }
     .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+    /* Padded sheets (p-5): keep the 1.25rem bottom padding and add the phone's home-bar inset. */
+    .safe-pad { padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)); }
     /* QR property labels (printed 3 across on A4 / Letter) */
     .label-sheet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3mm; }
     .qr-label {
@@ -73,6 +75,8 @@
       body.printing-pr #printReportSection, body.printing-pr #printLabelsSection { display: none !important; }
       body:not(.printing-pr) #printPrSection { display: none !important; }
       @page { margin: 12mm; }
+      .acct-page { break-after: page; page-break-after: always; }
+      .acct-page:last-child { break-after: auto; page-break-after: auto; }
     }
       .more-item { display: flex; width: 100%; align-items: center; gap: 0.75rem; padding: 0.7rem 0.5rem; border-radius: 0.75rem;
       font-size: 0.875rem; font-weight: 600; color: #334155; text-align: left; }
@@ -524,10 +528,11 @@
       
       <!-- Ledger Header & Filter Pills -->
       <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
+        <div class="shrink-0">
           <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
             <i class="ph-bold ph-clipboard-text text-brand-600 text-lg"></i>
-            <span>My Items</span>
+            <span class="whitespace-nowrap">My Items</span>
+            <span id="invSyncChip" class="hidden"></span>
           </h3>
         </div>
 
@@ -643,26 +648,40 @@
       <span id="reqViewStatus" class="shrink-0 mt-6 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold"></span>
       <div id="reqViewActions" class="hidden shrink-0 flex items-center gap-1.5 pt-5">
         <button onclick="openInvite()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-user-plus text-brand-600"></i> Invite</button>
+<button onclick="openTeachersView()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-teal-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-users-three text-teal-600"></i> Teachers</button>
         <button onclick="openRequestForm()" class="h-9 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-plus"></i> New</button>
       </div>
     </div>
     <div id="reqViewBody" class="space-y-3"></div>
   </section>
 
+  <!-- RELEASED TO TEACHERS (custodian): who holds what, accountability print -->
+  <section id="viewTeachers" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
+    <div id="tvHead"></div>
+    <div id="tvBody" class="space-y-4"></div>
+  </section>
+
   <!-- REQUEST SUPPLIES (teacher phones): only their own requests -->
   <section id="viewRequester" class="hidden max-w-xl mx-auto px-4 pt-5 space-y-5 no-print">
     <div>
       <p id="rqHello" class="text-sm text-slate-500"></p>
-      <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Request supplies</h1>
+      <h1 id="rqTitle" class="text-2xl font-extrabold text-slate-900 tracking-tight">Request supplies</h1>
       <p id="rqSchool" class="text-xs text-slate-500"></p>
     </div>
+    <div role="tablist" aria-label="My items or requests" class="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-200/70">
+      <button id="rqTab-items" role="tab" onclick="setTeacherTab('items')"><i class="ph-bold ph-backpack text-base"></i> My Items <span id="rqItemsCount" class="hidden"></span><span id="rqItemsDot" class="hidden w-2 h-2 rounded-full bg-emerald-500"></span></button>
+      <button id="rqTab-requests" role="tab" onclick="setTeacherTab('requests')"><i class="ph-bold ph-paper-plane-tilt text-base"></i> Requests</button>
+    </div>
+    <p id="rqSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
+    <div id="rqItemsPane" class="hidden space-y-5"></div>
+    <div id="rqRequestsPane" class="space-y-5">
     <button onclick="openRequestForm()" class="w-full h-16 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-extrabold text-base shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition">
       <i class="ph-bold ph-plus-circle text-2xl"></i> New supply request
     </button>
-    <p id="rqSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
     <div>
       <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">My requests</h2>
       <div id="rqList" class="space-y-2"></div>
+    </div>
     </div>
     <div id="rqAccount" class="text-[11px] -mb-2"></div>
     <div class="flex items-center justify-between gap-3 text-xs pb-6">
@@ -792,6 +811,7 @@
           <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Reports &amp; files</p>
           <button onclick="closeMoreMenu(); openSummaryModal()" class="more-item"><i class="ph-bold ph-receipt text-brand-600"></i> APP-CSE summary</button>
           <button id="moreReqItem" onclick="closeMoreMenu(); openRequestsView()" class="more-item"><i class="ph-bold ph-tray text-amber-600"></i> Supply requests &amp; purchase requests</button>
+          <button onclick="closeMoreMenu(); openTeachersView()" class="more-item"><i class="ph-bold ph-users-three text-teal-600"></i> Released to teachers</button>
           <button onclick="closeMoreMenu(); printReport()" class="more-item"><i class="ph-bold ph-printer text-slate-600"></i> Print report</button>
           <button onclick="closeMoreMenu(); exportCSV()" class="more-item"><i class="ph-bold ph-download-simple text-emerald-600"></i> Export inventory (CSV)</button>
           <button onclick="closeMoreMenu(); exportRegisterCSV()" class="more-item"><i class="ph-bold ph-file-csv text-emerald-600"></i> Property register (CSV)</button>
@@ -927,28 +947,108 @@
     </div>
   </div>
 
+  <!-- RELEASE TO TEACHER (custodian): RIS for supplies, ICS for equipment -->
+  <div id="releaseModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print">
+    <div class="bg-white w-full sm:max-w-xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[96vh] flex flex-col">
+      <div class="px-5 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-slate-100">
+        <div class="min-w-0">
+          <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2"><i class="ph-bold ph-hand-arrow-up text-emerald-600"></i> Release to teacher</h3>
+          <p class="text-xs text-slate-500">Supplies on a RIS (Appendix 63) · equipment on an ICS (Appendix 59)</p>
+        </div>
+        <button onclick="closeRelease()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div class="px-5 py-4 space-y-4 overflow-y-auto">
+        <div id="relDone" class="hidden"></div>
+        <div id="relForm" class="space-y-4">
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-500">Released to
+              <select id="relTeacher" onchange="setRelTeacher(this.value)" class="pr-in"></select>
+            </label>
+            <p id="relTeacherHint" class="mt-1 text-[11px] text-slate-500"></p>
+            <div id="relOther" class="hidden mt-2 grid grid-cols-2 gap-2">
+              <input id="relOtherName" type="text" placeholder="Full name" class="pr-in mt-0">
+              <input id="relOtherPos" type="text" placeholder="Position, e.g. Teacher I" class="pr-in mt-0">
+            </div>
+          </div>
+          <div>
+            <p class="text-[11px] font-bold uppercase text-slate-500 mb-1.5">Items</p>
+            <div id="relLines" class="space-y-2"></div>
+            <p id="relMissing" class="hidden mt-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] px-2.5 py-1.5"></p>
+            <div class="mt-2 relative">
+              <i class="ph-bold ph-plus absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input id="relAdd" list="relItemList" type="text" placeholder="Add an item in stock…" onchange="addRelItem(this)" class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none">
+              <datalist id="relItemList"></datalist>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <label class="sm:col-span-2 text-[11px] font-bold uppercase text-slate-500">Purpose<input id="relPurpose" type="text" placeholder="e.g. For Grade 7 science classes" class="pr-in"></label>
+            <label class="text-[11px] font-bold uppercase text-slate-500">Date<input id="relDate" type="date" class="pr-in"></label>
+          </div>
+          <p id="relSummary" class="text-xs text-slate-600"></p>
+          <p id="relError" class="hidden text-[11px] text-rose-600"></p>
+        </div>
+      </div>
+      <div id="relFoot" class="px-5 py-3 border-t border-slate-100 flex items-center gap-2 safe-pad"></div>
+    </div>
+  </div>
+
+  <!-- TEACHER: report a problem / return an item -->
+  <div id="tReportModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeTeacherReport()">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <h3 id="trTitle" class="font-extrabold text-base text-slate-900">Report a problem</h3>
+        <button onclick="closeTeacherReport()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="trItem" class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2"></div>
+      <div id="trReasons" class="grid grid-cols-2 gap-2"></div>
+      <textarea id="trNote" rows="3" maxlength="300" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none"></textarea>
+      <p id="trHint" class="text-[11px] text-slate-500 -mt-2"></p>
+      <button id="trSend" onclick="sendTeacherReport()" class="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm flex items-center justify-center gap-2"><i class="ph-bold ph-paper-plane-tilt"></i> Send to the property custodian</button>
+    </div>
+  </div>
+
   <!-- INVITE TEACHERS (custodian) -->
   <div id="inviteModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeInvite()">
-    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-bottom">
+    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
       <div class="flex items-start justify-between gap-3">
-        <div>
-          <h3 class="font-extrabold text-base text-slate-900">Invite teachers</h3>
-          <p class="text-xs text-slate-500">Send this link to your faculty group chat. Teachers tap it, type their name, and can request supplies from their phones.</p>
+        <div class="flex items-start gap-3 min-w-0">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-user-plus text-xl"></i></span>
+          <div class="min-w-0">
+            <h3 class="font-extrabold text-base text-slate-900 leading-tight">Invite teachers</h3>
+            <p id="inviteSchool" class="text-xs font-semibold text-slate-500 truncate"></p>
+          </div>
         </div>
         <button onclick="closeInvite()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
-      <div id="inviteQr" class="mx-auto w-48 h-48 rounded-xl border border-slate-200 p-2 bg-white flex items-center justify-center text-xs text-slate-400">QR code</div>
-      <input id="inviteLink" type="text" readonly onclick="this.select()" class="w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-mono text-slate-600">
+      <div class="text-center">
+        <div id="inviteQr" class="mx-auto w-44 h-44 rounded-2xl border border-slate-200 p-2.5 bg-white flex items-center justify-center text-xs text-slate-400">QR code</div>
+        <p class="mt-2 text-[11px] text-slate-500">Teachers scan this with their phone camera, or tap the link you send them.</p>
+      </div>
+      <div class="rounded-xl bg-slate-50 border border-slate-200 divide-y divide-slate-200">
+        <div class="px-3 py-2">
+          <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Invite link</p>
+          <p id="inviteLinkText" class="text-[11px] font-mono text-slate-700 break-all leading-snug select-all"></p>
+        </div>
+        <div class="px-3 py-2 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">School code</p>
+            <p id="inviteCode" class="text-sm font-mono font-bold text-slate-900 truncate select-all"></p>
+          </div>
+          <button onclick="copyInviteCode()" class="shrink-0 h-8 px-2.5 rounded-lg bg-white border border-slate-200 hover:border-brand-300 text-[11px] font-bold text-slate-600 flex items-center gap-1"><i class="ph-bold ph-copy"></i> Copy</button>
+        </div>
+      </div>
+      <input id="inviteLink" type="text" readonly tabindex="-1" aria-hidden="true" class="sr-only">
       <div class="grid grid-cols-2 gap-2">
         <button onclick="copyInvite()" class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-copy"></i> Copy link</button>
         <button onclick="shareInvite()" class="h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-share-network"></i> Share</button>
       </div>
+      <p class="text-[11px] text-slate-400 text-center">Paste it in your faculty group chat. Teachers only see their own requests; you review every one.</p>
     </div>
   </div>
 
   <!-- JOIN A SCHOOL (teacher opens the invite link) -->
   <div id="joinModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print">
-    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-bottom">
+    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad">
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
           <p class="text-[11px] font-bold uppercase tracking-wider text-amber-600">Request supplies</p>
@@ -976,7 +1076,7 @@
   </div>
 
   <div id="encodeSheet" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeEncodeSheet()" onkeydown="if (event.key === 'Escape') closeEncodeSheet()">
-    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 safe-bottom space-y-4">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 safe-pad space-y-4">
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
           <p id="encCode" class="font-mono text-[11px] text-slate-400"></p>
@@ -2054,7 +2154,7 @@
 
     function saveState() {
       recordHistory();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userState)); scheduleInventorySync();
       markUnsavedChanges();
       updateDockStats();
       if (activeMainView === 'CATALOG') {
@@ -2068,7 +2168,7 @@
     // =========================================================================
     // 4. VIEW NAVIGATION (DASHBOARD <-> CATALOG)
     // =========================================================================
-    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester' };
+    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester', TEACHERS: 'viewTeachers' };
 
     function switchMainView(viewName) {
       if (viewName === 'DASHBOARD') viewName = 'REPORTS'; // old name
@@ -2092,6 +2192,7 @@
       else renderDashboard();
       if (viewName === 'REQUESTS') renderRequestsView();
       if (viewName === 'REQUESTER') renderRequesterView();
+      if (viewName === 'TEACHERS') renderTeachersView();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -2124,6 +2225,7 @@
     function renderDashboard() {
       const activeItems = items.filter(i => i.qty > 0);
       renderHome();
+      if (activeMainView === 'TEACHERS' && typeof renderTeachersView === 'function') renderTeachersView();
 
       // Compute KPIs
       let totalVal = 0;
@@ -2375,6 +2477,7 @@
                 `}
                 ${conditionChipHTML(item)}
                 ${tagChipHTML(item)}
+                ${withTeacherChipHTML(item)}
               </div>
 
               <h4 class="font-bold text-sm text-slate-900 leading-snug">${item.name}</h4>
@@ -2413,6 +2516,10 @@
               ${item.type === 'EQUIPMENT' || getUnits(item.code).length ? `
                 <button onclick="openUnitsModal('${item.code}')" title="Property numbers & QR labels" class="w-9 h-9 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 flex items-center justify-center">
                   <i class="ph-bold ph-qr-code"></i>
+                </button>` : ''}
+              ${isCustodianDevice() ? `
+                <button onclick="openReleaseForItem('${item.code}')" title="Release to a teacher" aria-label="Release to a teacher" class="w-9 h-9 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 flex items-center justify-center">
+                  <i class="ph-bold ph-hand-arrow-up"></i>
                 </button>` : ''}
               <button onclick="openItemModal('${item.code}')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center">
                 <i class="ph-bold ph-pencil-simple"></i>
@@ -2536,7 +2643,7 @@
           custodian: "Maria Santos",
           position: "School Property Custodian"
         };
-        localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+        localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo)); scheduleInventorySync();
         updateSchoolHeader();
       }
 
@@ -3069,7 +3176,7 @@
       const newRaw = [customNo, code, name, unit, price, 24, "PART2"];
 
       customRawItems.push(newRaw);
-      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems)); scheduleInventorySync();
 
       userState[code] = {
         qty: qty,
@@ -3167,7 +3274,7 @@
         head: document.getElementById('infoHead').value.trim(),
         propPrefix: cleanPrefix(document.getElementById('infoPropPrefix').value)
       };
-      localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+      localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo)); scheduleInventorySync();
       const labels = { school: 'school name', uacs: 'agency/division', custodian: 'custodian', position: 'position', head: 'school head', propPrefix: 'property number prefix' };
       const changed = Object.keys(labels).filter(k => (before[k] || '') !== (schoolInfo[k] || ''));
       if (changed.length) logHistory('system', `School info updated: ${changed.map(k => labels[k]).join(', ')}`);
@@ -3345,9 +3452,9 @@
       userState = us || {};
       schoolInfo = si || { school: "", uacs: "", custodian: "", position: "" };
       customRawItems = cri || [];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
-      localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
-      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userState)); scheduleInventorySync();
+      localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo)); scheduleInventorySync();
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems)); scheduleInventorySync();
       if (Array.isArray(hist)) {
         changeHistory = hist.filter(e => e && typeof e.t === 'number' && typeof e.x === 'string');
         persistHistory();
@@ -3427,6 +3534,14 @@
       const meta = getBackupMeta();
       const now = Date.now();
       const hasData = hasAnyInventoryData();
+      if (typeof inventorySyncActive === 'function' && inventorySyncActive()) {
+        // Saved to the custodian's account: no backup nag (a backup file is still one tap in More).
+        const statusText = document.getElementById('backupStatusText');
+        if (statusText) statusText.textContent = `Saved to your account${invSync.lastAt ? ` · synced ${formatTimeAgo(invSync.lastAt)}` : ''}`;
+        const banner = document.getElementById('backupReminder');
+        if (banner) banner.classList.add('hidden');
+        return;
+      }
 
       // Status line in Quick Custodian Tools
       const statusText = document.getElementById('backupStatusText');
@@ -3643,7 +3758,7 @@
       const field = (key, label, placeholder) => `
         <label class="block min-w-0">
           <span class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">${label}</span>
-          <input type="text" value="${escapeHTML(u[key] || '')}" placeholder="${escapeHTML(placeholder)}" onchange="setUnitField('${code}', '${u.id}', '${key}', this.value)" class="w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
+          <input type="text" value="${escapeHTML(u[key] || '')}" placeholder="${escapeHTML(placeholder)}" ${key === 'to' ? 'list="teacherNameList" autocomplete="off"' : ''} onchange="setUnitField('${code}', '${u.id}', '${key}', this.value)" class="w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
         </label>`;
       return `
         <div id="unitcard-${u.id}" class="rounded-xl border p-3 transition ${highlight ? 'border-emerald-300 ring-2 ring-emerald-400/40 bg-emerald-50/40' : 'border-slate-200 bg-white'}">
@@ -3669,6 +3784,7 @@
               ? `<span class="text-emerald-700 font-semibold inline-flex items-center gap-1"><i class="ph-fill ph-seal-check"></i> Verified ${formatShortDate(u.seen)}</span>`
               : `<span class="inline-flex items-center gap-1"><i class="ph-bold ph-seal-question"></i> Not verified yet</span>`}
             <span class="inline-flex items-center gap-1"><i class="ph-bold ph-printer"></i> ${u.printed ? `Label printed ${formatShortDate(u.printed)}` : 'Label not printed'}</span>
+            ${u.toUid ? `<span class="text-teal-700 font-semibold inline-flex items-center gap-1"><i class="ph-bold ph-link"></i> On ${escapeHTML((u.to || 'the teacher').split(' ')[0])}’s list</span>` : ''}
             ${u.icsDate || u.life ? `<span class="inline-flex items-center gap-1"><i class="ph-bold ph-file-text"></i> ${u.icsDate ? `ICS dated ${formatShortDate(u.icsDate + 'T00:00:00')}` : ''}${u.icsDate && u.life ? ' · ' : ''}${u.life ? `useful life ${escapeHTML(u.life)}` : ''}</span>` : ''}
           </p>
         </div>`;
@@ -3745,7 +3861,13 @@
       const unit = findUnit(code, id);
       if (!unit || !['serial', 'loc', 'to', 'ics'].includes(key)) return;
       unit[key] = key === 'ics' ? normalizePropNo(value) : String(value || '').trim();
+      if (key === 'to') {
+        const m = unit.to ? rosterMatch(unit.to) : null;
+        if (m && isCustodianDevice()) unit.to = m.name; // the name as the teacher wrote it
+        reassignUnit(code, unit, unit.to);
+      }
       saveState();
+      if (key === 'to' && unitsModalCode === code) renderUnitsModal(id);
     }
 
     function setUnitCond(code, id, cond) {
@@ -4228,6 +4350,7 @@
       condition: { label: 'Condition', icon: 'ph-wrench', tone: 'bg-orange-50 text-orange-600' },
       tag: { label: 'Tags & scans', icon: 'ph-qr-code', tone: 'bg-violet-50 text-violet-600' },
       edit: { label: 'Details', icon: 'ph-pencil-simple', tone: 'bg-slate-100 text-slate-600' },
+      release: { label: 'Releases', icon: 'ph-hand-arrow-up', tone: 'bg-teal-50 text-teal-600' },
       system: { label: 'System', icon: 'ph-gear-six', tone: 'bg-emerald-50 text-emerald-600' }
     };
     const TYPE_LABELS = { EQUIPMENT: 'Equipment (ICS/PAR)', CONSUMABLE: 'Consumable (RIS)' };
@@ -5063,7 +5186,7 @@
           s.repair = Math.min(t.repair, qty - s.unserv);
         }
       });
-      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems)); scheduleInventorySync();
       rebuildCatalogList();
       const fileName = st.fileName;
       saveStateWith({ summary: { kind: 'system', track: true, text:
@@ -5847,7 +5970,7 @@
         l.code = `CUSTOM-P2-${String(customNo).padStart(3, '0')}`;
         customRawItems.push([customNo, l.code, name, (l.unit || 'unit').toLowerCase(), l.unitCost || 0, 24, 'PART2']);
       });
-      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems)); scheduleInventorySync();
       rebuildCatalogList();
 
       // 2. stock, cost, ICS/PAR classification, property records. Numbers printed on the
@@ -6142,7 +6265,7 @@
       const total = active.reduce((sum, i) => sum + i.qty * i.price, 0);
       const meta = getBackupMeta();
       document.getElementById('homeStatusText').textContent = active.length
-        ? `${plural(active.length, 'item')} in stock · ${formatCurrency(total)} · ${meta.lastBackupAt ? `backed up ${formatTimeAgo(meta.lastBackupAt)}` : 'not backed up yet'}`
+        ? `${plural(active.length, 'item')} in stock · ${formatCurrency(total)} · ${inventorySyncActive() ? (invStatus.state === 'synced' ? 'saved to your account' : invStatus.state === 'error' ? 'not syncing' : 'syncing to your account') : meta.lastBackupAt ? `backed up ${formatTimeAgo(meta.lastBackupAt)}` : 'not backed up yet'}`
         : 'No items encoded yet';
     }
 
@@ -6323,7 +6446,7 @@
     function placeToast() {
       const toast = document.getElementById('appToast');
       if (!toast) return;
-      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
+      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
       const stickyAction = [...document.querySelectorAll('[data-toast-avoid]')].some(el => el.offsetParent !== null);
       const top = sheetOpen || stickyAction;
       toast.classList.toggle('bottom-24', !top);
@@ -6416,6 +6539,7 @@
       pending:   { label: 'Waiting for review', short: 'To review', cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'ph-hourglass-medium' },
       approved:  { label: 'Approved', short: 'Approved', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: 'ph-check-circle' },
       pr:        { label: 'On Purchase Request', short: 'On PR', cls: 'bg-brand-50 text-brand-700 border-brand-200', icon: 'ph-shopping-cart' },
+      released:  { label: 'Released', short: 'Released', cls: 'bg-teal-50 text-teal-700 border-teal-200', icon: 'ph-hand-arrow-up' },
       closed:    { label: 'Supplied', short: 'Supplied', cls: 'bg-slate-100 text-slate-700 border-slate-200', icon: 'ph-package' },
       declined:  { label: 'Declined', short: 'Declined', cls: 'bg-rose-50 text-rose-700 border-rose-200', icon: 'ph-x-circle' },
       cancelled: { label: 'Cancelled', short: 'Cancelled', cls: 'bg-slate-100 text-slate-500 border-slate-200', icon: 'ph-prohibit' }
@@ -6561,6 +6685,9 @@
     function stopRequestSync() {
       reqUnsubs.forEach(off => { try { off(); } catch (e) {} });
       reqUnsubs = [];
+      memberList = []; releaseList = []; releasesLoaded = false; teamError = '';
+      myReleases = []; tReports = [];
+      stopInventorySync();
     }
 
     function subscribeRequests() {
@@ -6581,7 +6708,316 @@
           prList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
           renderRequestsEverywhere();
         }, onErr));
+        subscribeTeam(F);
+        startInventorySync();
+      } else {
+        upsertMyMember();
+        subscribeTeacherItems(F);
       }
+    }
+
+    // ---- School inventory in the cloud (custodian devices) -----------------------------
+    // My Items, custom catalog items and school info are saved under the school in Firestore,
+    // one document per item, so the same inventory is on every device the custodian signs
+    // in on. The phone stays the working copy (localStorage); Firestore's offline queue
+    // sends edits whenever there is signal. Nothing is deleted online: removed items become
+    // { deleted: true } so other devices drop them too.
+    //   schools/{id}/inventory/{code}  { code, state, deleted, updatedMs, by }
+    //   schools/{id}/catalog/{code}    { code, raw, deleted, updatedMs, by }   (custom items)
+    //   schools/{id}/settings/info     { info, updatedMs, by }
+    const INV_SYNC_KEY = 'custodian_inventory_sync_v1';
+    let invSync = { schoolId: null, synced: {}, lastAt: 0 };
+    let invUnsubs = [];
+    let invRemote = {};
+    let invReady = false;
+    let invApplying = false;
+    let invPushTimer = null;
+    const invStatus = { state: 'off', error: '' }; // off | syncing | saving | synced | offline | error
+
+    function loadInvSync() {
+      try { invSync = Object.assign({ schoolId: null, synced: {}, lastAt: 0 }, JSON.parse(localStorage.getItem(INV_SYNC_KEY) || '{}')); }
+      catch (e) { invSync = { schoolId: null, synced: {}, lastAt: 0 }; }
+    }
+    function saveInvSync() { localStorage.setItem(INV_SYNC_KEY, JSON.stringify(invSync)); }
+    function inventorySyncActive() { return invReady && isCustodianDevice() && !!cloud.user; }
+
+    // Same text for the same data whatever the key order (Firestore returns maps sorted).
+    function canonJSON(v) {
+      if (Array.isArray(v)) return '[' + v.map(canonJSON).join(',') + ']';
+      if (v && typeof v === 'object') return '{' + Object.keys(v).sort().filter(k => v[k] !== undefined).map(k => JSON.stringify(k) + ':' + canonJSON(v[k])).join(',') + '}';
+      return JSON.stringify(v === undefined ? null : v);
+    }
+    function hashText(str) { // cyrb53
+      let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+      for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+      h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+      h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+      return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+    }
+    const invHash = body => hashText(canonJSON(body));
+    const invDocId = code => String(code).replace(/\//g, '∕').slice(0, 400);
+    const cleanJSON = v => JSON.parse(JSON.stringify(v)); // drops undefined (Firestore refuses it)
+
+    function invTarget(key) {
+      const code = key.slice(2);
+      if (key.startsWith('i:')) return { col: 'inventory', id: invDocId(code), code };
+      if (key.startsWith('c:')) return { col: 'catalog', id: invDocId(code), code };
+      return { col: 'settings', id: 'info' };
+    }
+
+    function localInvDocs() {
+      const docs = {};
+      Object.keys(userState).forEach(code => { if (userState[code]) docs['i:' + code] = { code, state: cleanJSON(userState[code]) }; });
+      customRawItems.forEach(raw => { if (raw && raw[1]) docs['c:' + raw[1]] = { code: raw[1], raw: cleanJSON(raw) }; });
+      docs['s:info'] = { info: cleanJSON(schoolInfo || {}) };
+      return docs;
+    }
+
+    function remoteInvDocs() {
+      const docs = {};
+      const add = (key, data, body) => { docs[key] = { body: data.deleted ? null : body, updatedMs: data.updatedMs || 0 }; };
+      Object.values(invRemote.inventory || {}).forEach(d => { if (d.code) add('i:' + d.code, d, { code: d.code, state: d.state || {} }); });
+      Object.values(invRemote.catalog || {}).forEach(d => { if (d.code) add('c:' + d.code, d, { code: d.code, raw: d.raw || [] }); });
+      const info = (invRemote.settings || {}).info;
+      if (info) add('s:info', info, { info: info.info || {} });
+      return docs;
+    }
+
+    function setInvStatus(state, error = '') {
+      invStatus.state = state;
+      invStatus.error = error;
+      renderInvStatus();
+    }
+
+    function renderInvStatus() {
+      const el = document.getElementById('invSyncChip');
+      const on = isCustodianDevice() && cloudConfigured() && invStatus.state !== 'off';
+      if (el) {
+        el.classList.toggle('hidden', !on);
+        el.classList.toggle('inline-flex', on);
+        if (on) {
+          const s = !navigator.onLine && invStatus.state !== 'error' ? 'offline' : invStatus.state;
+          const look = {
+            syncing: ['bg-slate-100 text-slate-600 border-slate-200', 'ph-circle-notch animate-spin', 'Syncing…'],
+            saving:  ['bg-sky-50 text-sky-700 border-sky-200', 'ph-cloud-arrow-up', 'Saving…'],
+            synced:  ['bg-emerald-50 text-emerald-700 border-emerald-200', 'ph-cloud-check', 'Saved to your account'],
+            offline: ['bg-slate-100 text-slate-600 border-slate-200', 'ph-cloud-slash', 'Offline · syncs later'],
+            error:   ['bg-rose-50 text-rose-700 border-rose-200', 'ph-warning', 'Not syncing']
+          }[s] || ['bg-slate-100 text-slate-600 border-slate-200', 'ph-cloud', ''];
+          el.className = `${look[0]} inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold whitespace-nowrap`;
+          el.innerHTML = `<i class="ph-bold ${look[1]}"></i>${look[2]}`;
+          el.title = invStatus.error || (invSync.lastAt ? `Last synced ${formatTimeAgo(invSync.lastAt)}` : '');
+        }
+      }
+      if (typeof updateBackupReminder === 'function') updateBackupReminder();
+      if (typeof renderHome === 'function') renderHome();
+    }
+
+    function stopInventorySync() {
+      invUnsubs.forEach(off => { try { off(); } catch (e) {} });
+      invUnsubs = [];
+      invReady = false;
+      clearTimeout(invPushTimer);
+      if (invStatus.state !== 'off') setInvStatus('off');
+    }
+
+    function startInventorySync() {
+      stopInventorySync();
+      if (!isCustodianDevice() || !cloud.db || !cloud.user) return;
+      loadInvSync();
+      const F = cloud.sdk;
+      invRemote = {};
+      const meta = {};
+      setInvStatus('syncing');
+      ['inventory', 'catalog', 'settings'].forEach(col => {
+        invUnsubs.push(F.onSnapshot(F.collection(cloud.db, 'schools', reqRole.schoolId, col), { includeMetadataChanges: true }, snap => {
+          const map = {};
+          snap.docs.forEach(d => { map[d.id] = d.data(); });
+          invRemote[col] = map;
+          meta[col] = { pending: !!snap.metadata.hasPendingWrites, fromCache: !!snap.metadata.fromCache };
+          onInvSnapshot(meta);
+        }, err => {
+          console.error('inventory sync', err);
+          setInvStatus('error', cloudErrorText(err));
+        }));
+      });
+    }
+
+    function onInvSnapshot(meta) {
+      if (!invRemote.inventory || !invRemote.catalog || !invRemote.settings) return;
+      const metas = Object.values(meta);
+      const fromCache = metas.some(m => m.fromCache);
+      if (!invReady) {
+        const firstTime = invSync.schoolId !== reqRole.schoolId;
+        // Never merge a brand-new phone against an empty offline cache: wait for the server.
+        if (firstTime && fromCache) return;
+        invReady = true;
+        if (firstTime) firstInventoryMerge();
+        else reconcileInventory();
+      } else {
+        reconcileInventory();
+      }
+      if (!fromCache) invSync.lastAt = Date.now();
+      saveInvSync();
+      setInvStatus(metas.some(m => m.pending) ? 'saving' : fromCache ? (navigator.onLine ? 'syncing' : 'offline') : 'synced');
+      linkTypedNamesToTeachers();
+    }
+
+    // Custom items are numbered per phone (CUSTOM-P2-114, -115 …), so two phones can create
+    // different items with the same code. A code this phone never synced that holds another
+    // item in the account gets the next free number here (its stock moves with it).
+    function resolveCustomCollisions(remote) {
+      const local = localInvDocs();
+      const clashes = Object.keys(local).filter(k => k.startsWith('c:') && remote[k] && remote[k].body &&
+        invSync.synced[k] === undefined && String(remote[k].body.raw[2]) !== String(local[k].raw[2]));
+      if (!clashes.length) return;
+      const used = new Set([...Object.keys(local), ...Object.keys(remote)].filter(k => k.startsWith('c:')).map(k => k.slice(2)));
+      let no = Math.max(113, ...[...used].map(c => parseInt(String(c).replace(/\D+/g, ' ').trim().split(' ').pop(), 10) || 0));
+      invApplying = true;
+      try {
+        clashes.forEach(key => {
+          const oldCode = key.slice(2);
+          const raw = customRawItems.find(r => r && r[1] === oldCode);
+          if (!raw) return;
+          let code;
+          do { no += 1; code = `CUSTOM-P2-${String(no).padStart(3, '0')}`; } while (used.has(code));
+          used.add(code);
+          raw[0] = no; raw[1] = code;
+          if (userState[oldCode]) { userState[code] = userState[oldCode]; delete userState[oldCode]; }
+          logHistory('system', `Renumbered ${raw[2]} to ${code} (another device used ${oldCode})`);
+        });
+        localStorage.setItem(STORAGE_KEY,  JSON.stringify(userState));
+        localStorage.setItem(CUSTOM_ITEMS_KEY,  JSON.stringify(customRawItems));
+        rebuildCatalogList();
+      } finally {
+        invApplying = false;
+      }
+    }
+
+    // Normal sync: take what changed elsewhere unless this phone changed the same item
+    // since the last sync (then this phone's version is sent and wins).
+    function reconcileInventory() {
+      resolveCustomCollisions(remoteInvDocs());
+      const local = localInvDocs(), remote = remoteInvDocs();
+      const apply = [];
+      for (const [key, r] of Object.entries(remote)) {
+        const rHash = r.body ? invHash(r.body) : null;
+        const lHash = local[key] ? invHash(local[key]) : null;
+        if (rHash === lHash) { invSync.synced[key] = rHash; continue; }
+        const agreed = invSync.synced[key] === undefined ? null : invSync.synced[key];
+        if (lHash === agreed) { apply.push([key, r.body]); invSync.synced[key] = rHash; }
+      }
+      if (apply.length) applyRemoteInventory(apply);
+      pushInventory();
+    }
+
+    // First sync of this phone with this school.
+    function firstInventoryMerge() {
+      invSync.synced = {};
+      resolveCustomCollisions(remoteInvDocs());
+      const local = localInvDocs(), remote = remoteInvDocs();
+      const remoteItems = Object.keys(remote).filter(k => k !== 's:info' && remote[k].body);
+      const localItems = Object.keys(local).filter(k => k !== 's:info');
+      invSync = { schoolId: reqRole.schoolId, synced: {}, lastAt: invSync.lastAt || 0 };
+      const remoteInfo = remote['s:info'] && remote['s:info'].body;
+      if (!remoteItems.length) {
+        // The account has no inventory yet: this phone's list becomes the school inventory.
+        if (remoteInfo && !(schoolInfo && schoolInfo.school)) applyRemoteInventory([['s:info', remoteInfo]]);
+        pushInventory(true);
+        const n = Object.keys(userState).filter(c => (parseInt(userState[c].qty, 10) || 0) > 0).length;
+        if (n) showToast(`My Items saved to your account · ${plural(n, 'item')}`, 'ph-cloud-check');
+        return;
+      }
+      const localOnly = localItems.filter(k => !remote[k]);
+      const meaningful = localOnly.filter(k => !k.startsWith('i:') || (parseInt(local[k].state.qty, 10) || 0) > 0 || (local[k].state.units || []).length);
+      let keep = false;
+      if (meaningful.length) {
+        keep = confirm(`Your account already has the school inventory (${plural(remoteItems.filter(k => k.startsWith('i:')).length, 'item')}).\n\n` +
+          `This phone has ${plural(meaningful.length, 'item')} that ${meaningful.length === 1 ? 'is' : 'are'} not in it. Add ${meaningful.length === 1 ? 'it' : 'them'} to the school inventory?\n\n` +
+          `OK: add them\nCancel: use only the account’s list (a backup file of this phone’s list is downloaded first)`);
+        if (!keep) { try { exportBackupJSON(); } catch (e) {} }
+      }
+      const apply = Object.entries(remote).filter(([, r]) => r.body).map(([k, r]) => [k, r.body]);
+      // Items removed on another device stay removed; this phone's extra items go only if declined.
+      const removedOnline = localItems.filter(k => remote[k] && !remote[k].body).map(k => [k, null]);
+      const drop = [...removedOnline, ...(keep ? [] : localOnly.map(k => [k, null]))];
+      applyRemoteInventory([...apply, ...drop]);
+      Object.entries(remote).forEach(([k, r]) => { invSync.synced[k] = r.body ? invHash(r.body) : null; });
+      pushInventory(true);
+      showToast(keep ? `Combined with the school inventory · ${plural(meaningful.length, 'item')} added` : 'Loaded the school inventory from your account', 'ph-cloud-check');
+    }
+
+    function applyRemoteInventory(list) {
+      invApplying = true;
+      try {
+        list.forEach(([key, body]) => {
+          if (key.startsWith('i:')) {
+            const code = key.slice(2);
+            if (body) userState[code] = body.state || {}; else delete userState[code];
+          } else if (key.startsWith('c:')) {
+            const code = key.slice(2);
+            const at = customRawItems.findIndex(raw => raw && raw[1] === code);
+            if (body) { if (at >= 0) customRawItems[at] = body.raw; else customRawItems.push(body.raw); }
+            else if (at >= 0) customRawItems.splice(at, 1);
+          } else if (body) {
+            schoolInfo = Object.assign({ school: '', uacs: '', custodian: '', position: '' }, body.info || {});
+          }
+        });
+        localStorage.setItem(STORAGE_KEY,  JSON.stringify(userState));
+        localStorage.setItem(CUSTOM_ITEMS_KEY,  JSON.stringify(customRawItems));
+        localStorage.setItem(SCHOOL_KEY,  JSON.stringify(schoolInfo));
+        updateSchoolHeader();
+        rebuildCatalogList();
+        resetHistoryBase();
+        updateDockStats();
+        renderItems();
+        renderDashboard();
+      } finally {
+        invApplying = false;
+      }
+    }
+
+    // Called after every local save; sends what changed since the last sync.
+    function scheduleInventorySync() {
+      if (invApplying || !invReady) return;
+      clearTimeout(invPushTimer);
+      invPushTimer = setTimeout(() => pushInventory(), 600);
+    }
+
+    function pushInventory(all = false) {
+      if (!invReady || invApplying || !cloud.db || !isCustodianDevice()) return;
+      const F = cloud.sdk;
+      const local = localInvDocs();
+      const writes = [];
+      for (const [key, body] of Object.entries(local)) {
+        const h = invHash(body);
+        if (invSync.synced[key] !== h) writes.push([key, { ...body, deleted: false }, h]);
+      }
+      for (const key of Object.keys(invSync.synced)) {
+        if (!local[key] && invSync.synced[key] !== null && key !== 's:info') {
+          const t = invTarget(key);
+          writes.push([key, { code: t.code, deleted: true }, null]);
+        }
+      }
+      if (!writes.length) { saveInvSync(); return; }
+      const by = cloud.user.uid, now = Date.now();
+      for (let i = 0; i < writes.length; i += 400) {
+        const chunk = writes.slice(i, i + 400);
+        const batch = F.writeBatch(cloud.db);
+        chunk.forEach(([key, body]) => {
+          const t = invTarget(key);
+          batch.set(F.doc(cloud.db, 'schools', reqRole.schoolId, t.col, t.id), { ...body, updatedMs: now, by, updatedAt: F.serverTimestamp() });
+        });
+        chunk.forEach(([key, , h]) => { invSync.synced[key] = h; });
+        batch.commit().catch(err => {
+          console.error('inventory save', err);
+          chunk.forEach(([key]) => { delete invSync.synced[key]; });
+          saveInvSync();
+          setInvStatus('error', cloudErrorText(err));
+        });
+      }
+      saveInvSync();
+      if (invStatus.state !== 'error') setInvStatus(navigator.onLine ? 'saving' : 'offline');
     }
 
     // A phone updating from an older version can load the previous firebase-config.js once
@@ -6613,6 +7049,8 @@
       }
       window.addEventListener('online', renderRequestsEverywhere);
       window.addEventListener('offline', renderRequestsEverywhere);
+      window.addEventListener('online', renderInvStatus);
+      window.addEventListener('offline', renderInvStatus);
       window.addEventListener('hashchange', checkJoinLink);
       if (isTeacherDevice()) switchMainView('REQUESTER');
       renderRequestsEverywhere();
@@ -6646,6 +7084,7 @@
       renderHomeReqCard();
       if (activeMainView === 'REQUESTS') renderRequestsView();
       if (activeMainView === 'REQUESTER') renderRequesterView();
+      if (activeMainView === 'TEACHERS') renderTeachersView();
     }
 
     const reqLinesOf = r => (r.review && Array.isArray(r.review.lines) ? r.review.lines : (r.lines || []));
@@ -6659,11 +7098,12 @@
       if (!sub) return;
       const pending = reqList.filter(r => r.status === 'pending').length;
       const toBuy = reqList.filter(r => r.status === 'approved' && reqBuyLines(r).length).length;
+      const fromTeachers = isCustodianDevice() ? openTeacherReports().length : 0;
       let text;
       if (!cloudConfigured()) text = 'Teachers request supplies from their phones · set up';
       else if (!isCustodianDevice()) text = 'Connect to receive teachers’ requests';
       else if (cloud.state === 'ready' && !cloud.user) text = 'Signed out · sign in to see requests';
-      else if (pending || toBuy) text = [pending && `${pending} waiting for review`, toBuy && `${toBuy} approved to purchase`].filter(Boolean).join(' · ');
+      else if (pending || toBuy || fromTeachers) text = [pending && `${pending} waiting for review`, toBuy && `${toBuy} approved to purchase`, fromTeachers && `${fromTeachers} from teachers`].filter(Boolean).join(' · ');
       else text = cloud.state === 'loading' ? 'Connecting…' : 'No new requests';
       sub.textContent = text;
       const badge = document.getElementById('homeReqBadge');
@@ -6707,11 +7147,12 @@
 
       const pending = reqList.filter(r => r.status === 'pending');
       const approved = reqList.filter(r => r.status === 'approved');
-      const closed = reqList.filter(r => ['declined', 'cancelled', 'closed', 'pr'].includes(r.status));
+      const closed = reqList.filter(r => ['declined', 'cancelled', 'closed', 'released', 'pr'].includes(r.status));
       const counts = { pending: pending.length, approved: approved.length, prs: prList.length, closed: closed.length };
       let html = `
         ${cloud.error ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2">${escapeHTML(cloud.error)}</p>` : ''}
         ${!navigator.onLine ? `<p class="rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-cloud-slash"></i> Offline · showing saved requests. Your changes are sent when you reconnect.</p>` : ''}
+        ${teacherInboxHTML()}
         ${reqFlowHTML(counts)}
         <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1 pt-1">${REQ_STAGES.find(st => st.key === reqTab).title}</h2>`;
 
@@ -6739,7 +7180,7 @@
         html += prList.length ? prList.map(prCardHTML).join('')
           : reqEmptyHTML('ph-file-text', 'No Purchase Requests yet', 'Approve requests, then prepare a PR from the To purchase tab.');
       } else {
-        html += closed.length ? closed.map(r => reqCardHTML(r)).join('') : reqEmptyHTML('ph-archive', 'Nothing here yet', 'Requests on a PR, supplied, declined or cancelled.');
+        html += closed.length ? closed.map(r => reqCardHTML(r, { supply: r.status === 'closed' })).join('') : reqEmptyHTML('ph-archive', 'Nothing here yet', 'Requests on a PR, supplied, declined or cancelled.');
       }
       html += `<button onclick="custodianSignOut()" class="text-[11px] font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 px-1 pt-2"><i class="ph-bold ph-sign-out"></i> Sign out of supply requests</button>`;
       body.innerHTML = html;
@@ -6862,8 +7303,9 @@
             ${r.purpose ? `<span class="block mt-1 text-[11px] text-slate-500 truncate">Purpose: ${escapeHTML(r.purpose)}</span>` : ''}
             ${pick ? `<span class="block mt-1.5 text-[11px] font-bold text-brand-700">To buy: ${plural(buy.length, 'item')} · ₱${peso2(reqBuyTotal(r))}</span>` : ''}
             ${r.status === 'declined' && r.declineReason ? `<span class="block mt-1 text-[11px] text-rose-600">Reason: ${escapeHTML(r.declineReason)}</span>` : ''}
+            ${r.status === 'released' && r.releaseNos ? `<span class="block mt-1 text-[11px] font-bold text-teal-700">${escapeHTML(r.releaseNos.join(' · '))}</span>` : ''}
           </button>
-          ${supply ? `<button onclick="markReqSupplied('${r.id}')" class="shrink-0 px-3 border-l border-slate-100 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50">Mark<br>supplied</button>` : ''}
+          ${supply ? `<button onclick="openReleaseFromRequest('${r.id}')" class="shrink-0 w-20 px-2 border-l border-slate-100 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 flex flex-col items-center justify-center gap-1"><i class="ph-bold ph-hand-arrow-up text-lg"></i>Release</button>` : ''}
         </div>`;
     }
 
@@ -6875,7 +7317,7 @@
     function prCardHTML(pr) {
       const mine = reqList.filter(r => (pr.requestIds || []).includes(r.id));
       const waiting = mine.filter(r => r.status === 'pr').length;
-      const delivered = !waiting && mine.length && mine.every(r => r.status === 'closed');
+      const delivered = pr.deliveredMs || (!waiting && mine.length && mine.every(r => ['closed', 'released'].includes(r.status)));
       return `
         <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3">
           <div class="flex items-start justify-between gap-2">
@@ -7008,7 +7450,7 @@
       saveReqRole();
       if (!schoolInfo.school) {
         schoolInfo.school = name;
-        localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+        localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo)); scheduleInventorySync();
         updateSchoolHeader();
       }
       logHistory('system', `Connected supply requests for ${name} (${email})`);
@@ -7052,6 +7494,9 @@
       if (!isCustodianDevice()) return;
       const link = inviteLink();
       document.getElementById('inviteLink').value = link;
+      document.getElementById('inviteLinkText').textContent = link;
+      document.getElementById('inviteCode').textContent = reqRole.schoolId;
+      document.getElementById('inviteSchool').textContent = reqRole.schoolName || '';
       document.getElementById('inviteModal').classList.remove('hidden');
       const box = document.getElementById('inviteQr');
       try {
@@ -7067,6 +7512,12 @@
       try { await navigator.clipboard.writeText(link); }
       catch (e) { const el = document.getElementById('inviteLink'); el.select(); document.execCommand('copy'); }
       showToast('Invite link copied · paste it in your faculty chat', 'ph-copy');
+    }
+    async function copyInviteCode() {
+      const code = reqRole.schoolId;
+      try { await navigator.clipboard.writeText(code); }
+      catch (e) { const r = document.createRange(); r.selectNodeContents(document.getElementById('inviteCode')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.execCommand('copy'); }
+      showToast('School code copied', 'ph-copy');
     }
     async function shareInvite() {
       const url = document.getElementById('inviteLink').value;
@@ -7137,6 +7588,7 @@
       saveReqRole();
       closeJoin();
       if (joining) subscribeRequests();
+      else upsertMyMember();
       switchMainView('REQUESTER');
       showToast(`Hi ${me.name.split(' ')[0]}! Tap New supply request to ask for supplies.`, 'ph-hand-waving');
     }
@@ -7192,6 +7644,7 @@
       reqRole = null;
       saveReqRole();
       reqList = [];
+      teacherTab = null;
       switchMainView('HOME');
       updateSchoolHeader();
     }
@@ -7214,6 +7667,7 @@
       sync.innerHTML = msg ? `<i class="ph-bold ${cloud.error ? 'ph-warning text-rose-500' : 'ph-cloud-slash'}"></i> ${escapeHTML(msg)}` : '';
       sync.classList.toggle('hidden', !msg);
       sync.classList.toggle('flex', !!msg);
+      renderTeacherTabs();
       const list = document.getElementById('rqList');
       list.innerHTML = reqList.length ? reqList.map(teacherReqCardHTML).join('') : `
         <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
@@ -7236,6 +7690,7 @@
       const info = r.sending ? '<i class="ph-bold ph-cloud-arrow-up"></i> Sending…'
         : r.status === 'pr' ? `Being purchased · PR No. ${escapeHTML(r.prNo || '')}`
         : r.status === 'closed' ? 'Ready · get it from the property custodian'
+        : r.status === 'released' ? `Released to you${r.releaseNos ? ` · ${escapeHTML(r.releaseNos.join(' · '))}` : ''}`
         : r.status === 'approved' ? 'Approved by the property custodian' : st.label;
       return `
         <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2">
@@ -7470,7 +7925,8 @@
         ? btn('flex-1 h-12 rounded-xl bg-slate-100 text-sm font-bold text-slate-700', 'closeReview()', 'Close')
         : btn('h-12 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-bold', 'declineRequest()', '<i class="ph-bold ph-x"></i> Decline') +
           btn('flex-1 h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2', 'approveRequest()',
-            `<i class="ph-bold ph-check-circle"></i> ${st.status === 'approved' ? 'Save changes' : 'Approve'}`);
+            `<i class="ph-bold ph-check-circle"></i> ${st.status === 'approved' ? 'Save changes' : 'Approve'}`) +
+          (st.status === 'approved' ? btn('h-12 px-4 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 text-sm font-bold flex items-center gap-1.5', `openReleaseFromRequest('${st.id}')`, '<i class="ph-bold ph-hand-arrow-up"></i> Release') : '');
     }
 
     function updateReviewSummary() {
@@ -7566,18 +8022,27 @@
       showToast('Marked as supplied from stock', 'ph-package');
     }
 
-    // Items bought on a PR arrived: close its requests so teachers see "Supplied".
+    // Items bought on a PR arrived: they go into My Items (stock in), and its requests show
+    // "Ready" to the teachers until the custodian releases the items to them.
     function markPrDelivered(prId) {
       const pr = prList.find(p => p.id === prId);
-      if (!pr) return;
+      if (!pr || pr.deliveredMs) return;
       const open = reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr');
-      if (!open.length) return;
-      if (!confirm(`Items on PR No. ${pr.prNo} were delivered?\n\nThis marks ${plural(open.length, 'request')} as supplied (${open.map(r => r.name).join(', ')}).`)) return;
+      const plan = prStockInPlan(pr);
+      const fresh = plan.filter(x => !x.item).length;
+      if (!confirm(`Items on PR No. ${pr.prNo} were delivered?\n\n` +
+        `Adds ${plural(plan.length, 'item')} to the stock in My Items${fresh ? ` (${fresh} new)` : ''}.` +
+        (open.length ? `\n${plural(open.length, 'request')} will show as ready to release (${open.map(r => r.name).join(', ')}).` : ''))) return;
+      const { added } = stockInPr(pr);
       const F = cloud.sdk;
       const batch = F.writeBatch(cloud.db);
+      batch.update(F.doc(prCol(), pr.id), { deliveredMs: Date.now(), updatedAt: F.serverTimestamp() });
       open.forEach(r => batch.update(F.doc(reqCol(), r.id), { status: 'closed', suppliedAtMs: Date.now(), updatedAt: F.serverTimestamp() }));
       cloudWrite(batch.commit(), 'Updating');
-      showToast(`PR No. ${pr.prNo} delivered · ${plural(open.length, 'request')} supplied`, 'ph-package');
+      if (open.length) reqTab = 'closed';
+      renderRequestsView();
+      showToast(`PR No. ${pr.prNo} delivered · ${plural(added, 'item')} added to stock`, 'ph-package',
+        open.length ? { label: 'Release', onClick: () => setReqTab('closed') } : null);
     }
 
     // ---- Purchase Request (Appendix 60) -------------------------------------------
@@ -7602,7 +8067,7 @@
         const item = l.code && items.find(i => i.code === l.code);
         const key = l.code || 'D:' + normItemName(l.desc);
         const cur = lines.get(key) || {
-          id: newReqLineId(), stockNo: item && !/^CUSTOM-/.test(item.code) ? item.code : '',
+          id: newReqLineId(), code: item ? item.code : null, stockNo: item && !/^CUSTOM-/.test(item.code) ? item.code : '',
           unit: l.unit, desc: item ? item.name : l.desc, qty: 0, unitCost: l.unitCost || 0
         };
         cur.qty += l.prQty;
@@ -7675,7 +8140,7 @@
     function savePr() {
       if (!prDraft) return;
       const lines = prDraft.lines.filter(l => l.qty > 0 && l.desc.trim())
-        .map(l => ({ stockNo: l.stockNo.trim(), unit: l.unit.trim(), desc: l.desc.trim(), qty: l.qty, unitCost: Math.round(l.unitCost * 100) / 100 }));
+        .map(l => ({ code: l.code || null, stockNo: l.stockNo.trim(), unit: l.unit.trim(), desc: l.desc.trim(), qty: l.qty, unitCost: Math.round(l.unitCost * 100) / 100 }));
       if (!lines.length) { alert('The Purchase Request has no items.'); return; }
       const prNo = reqVal('prNo');
       if (!prNo) { alert('Enter the PR No.'); document.getElementById('prNo').focus(); return; }
@@ -7764,6 +8229,1210 @@
       downloadText('\ufeff' + rows.map(r => r.map(q).join(',')).join('\n'), `Purchase_Request_${String(pr.prNo).replace(/[^\w-]+/g, '_')}.csv`, 'text/csv;charset=utf-8;');
     }
     function exportPrCSVById(id) { const pr = prList.find(p => p.id === id); if (pr) exportPrCSV(pr); }
+
+    // ---- Teachers & releases --------------------------------------------------------
+    // Teachers who joined the school (members) and what the custodian handed to each one.
+    //   schools/{id}/members/{uid}   written by the teacher's own phone:
+    //     { uid, name, position, office, email, joinedMs }
+    //   schools/{id}/releases/{id}   written by the custodian only, never deleted:
+    //     { kind: 'RIS' | 'ICS' | 'RETURN', no, date, teacherUid, teacherName, position, office, purpose,
+    //       lines: [{ code, desc, unit, qty, unitCost, units: [{ id, no, serial }] }], total,
+    //       source: 'release' | 'existing' | 'assigned' | 'reassigned', requestId, by, createdMs }
+    // RIS (Appendix 63): supplies leave the stock count. ICS (Appendix 59): equipment stays in
+    // My Items and its units show "With <teacher> · ICS no.". RETURN: units taken back or given
+    // to someone else. A teacher can read only the releases made out to their own account.
+    let memberList = [];
+    let releaseList = [];
+    let releasesLoaded = false;
+    let teamError = '';
+    let releaseDraft = null;
+    let releaseDone = null;
+
+    function memberCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'members'); }
+    function relCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'releases'); }
+
+    // "Mrs. Ma. Theresa D. Cruz", "CRUZ, THERESA D." and "Theresa Cruz" are the same person.
+    const NAME_SKIP = new Set(['mr', 'mrs', 'ms', 'miss', 'dr', 'sir', 'maam', 'madam', 'mam', 'teacher', 'tchr', 'engr', 'prof',
+      'hon', 'atty', 'jr', 'sr', 'ii', 'iii', 'iv', 'ma', 'mª']);
+    function personKey(name) {
+      let s = String(name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[’'`]/g, '').replace(/\./g, ' ');
+      if (s.includes(',')) { const [last, ...rest] = s.split(','); s = rest.join(' ') + ' ' + last; }
+      const w = s.replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(x => x.length > 1 && !NAME_SKIP.has(x));
+      return !w.length ? '' : w.length === 1 ? w[0] : `${w[0]} ${w[w.length - 1]}`;
+    }
+
+    // Everyone who joined, plus anyone who sent a request (teachers from before the roster).
+    function teacherRoster() {
+      const map = new Map();
+      reqList.forEach(r => { if (r.uid && r.name && !map.has(r.uid)) map.set(r.uid, { uid: r.uid, name: r.name, position: r.position || '', office: r.office || '' }); });
+      memberList.forEach(m => { if (m.uid && m.name) map.set(m.uid, { ...(map.get(m.uid) || {}), ...m, joined: true }); });
+      return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    const rosterByUid = uid => (uid ? teacherRoster().find(t => t.uid === uid) || null : null);
+    function rosterMatch(name) {
+      const k = personKey(name);
+      const found = k ? teacherRoster().filter(t => personKey(t.name) === k) : [];
+      return found.length === 1 ? found[0] : null; // two teachers with the same name: pick by hand
+    }
+    const unitHolder = u => (u && (u.to || u.toUid) ? (u.to || (rosterByUid(u.toUid) || {}).name || 'a teacher') : '');
+
+    function nextReleaseNo(kind, date) {
+      const ym = (date || localISODate()).slice(0, 7);
+      const used = releaseList.filter(r => r.kind === kind).map(r => String(r.no || ''))
+        .filter(no => no.startsWith(ym + '-')).map(no => parseInt(no.slice(ym.length + 1), 10) || 0);
+      return `${ym}-${String(Math.max(0, ...used) + 1).padStart(3, '0')}`;
+    }
+    const relLine = (item, qty, units = []) => ({
+      code: item.code, desc: item.name, unit: item.unit, qty, unitCost: Math.round((item.price || 0) * 100) / 100,
+      units: units.map(u => ({ id: u.id, no: u.no || '', serial: u.serial || '' }))
+    });
+    const relTotal = lines => Math.round(lines.reduce((n, l) => n + l.qty * (l.unitCost || 0), 0) * 100) / 100;
+    function relBase(t, extra) {
+      return {
+        teacherUid: t.uid || null, teacherName: t.name, position: t.position || '', office: t.office || '',
+        by: schoolInfo.custodian || reqRole.email || '', byUid: cloud.user ? cloud.user.uid : null, createdMs: Date.now(),
+        ...extra
+      };
+    }
+
+    function subscribeTeam(F) {
+      const soft = what => err => {
+        console.warn(what, err);
+        teamError = cloudErrorText(err);
+        if (releaseDraft) renderRelease();
+      };
+      reqUnsubs.push(F.onSnapshot(memberCol(), snap => {
+        memberList = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
+        teamError = '';
+        onTeamChange();
+      }, soft('members')));
+      reqUnsubs.push(F.onSnapshot(relCol(), { includeMetadataChanges: true }, snap => {
+        releaseList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
+        releaseList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
+        if (!(snap.metadata && snap.metadata.fromCache)) releasesLoaded = true;
+        onTeamChange();
+      }, soft('releases')));
+      reqUnsubs.push(F.onSnapshot(tReportCol(), snap => {
+        tReports = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+        renderRequestsEverywhere();
+      }, soft('teacher reports')));
+    }
+
+    function onTeamChange() {
+      linkTypedNamesToTeachers();
+      refreshTeacherNameList();
+      if (releaseDraft) renderRelease();
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+    }
+
+    // Teacher phones keep their name card in the roster (written once, and when it changes).
+    function upsertMyMember() {
+      if (!isTeacherDevice() || !cloud.user || !cloud.db || !reqRole.me || !reqRole.me.name) return;
+      const u = cloud.user;
+      if (!reqRole.joinedMs) { reqRole.joinedMs = Date.now(); saveReqRole(); }
+      const data = {
+        uid: u.uid, name: reqRole.me.name.slice(0, 80), position: (reqRole.me.position || '').slice(0, 80),
+        office: (reqRole.me.office || '').slice(0, 80), email: (!u.isAnonymous && u.email ? u.email : '').slice(0, 120), joinedMs: reqRole.joinedMs
+      };
+      const sig = invHash(data);
+      if (reqRole.memberSig === sig) return;
+      const F = cloud.sdk;
+      F.setDoc(F.doc(memberCol(), u.uid), { ...data, updatedAt: F.serverTimestamp() })
+        .then(() => { if (reqRole) { reqRole.memberSig = sig; saveReqRole(); } })
+        .catch(err => console.warn('member', err));
+    }
+
+    // Names typed or scanned under "Assigned to" (e.g. from printed ICS slips) are linked to the
+    // teacher's account when that teacher joins, so the items show on the teacher's list. Each
+    // batch gets a fixed document ID, so two custodian devices write the same record.
+    function linkTypedNamesToTeachers() {
+      if (!isCustodianDevice() || !releasesLoaded || !inventorySyncActive() || !cloud.user) return;
+      const joined = teacherRoster().filter(t => t.joined);
+      if (!joined.length) return;
+      const F = cloud.sdk;
+      const batch = F.writeBatch(cloud.db);
+      let changed = 0;
+      const linkedNames = [];
+      joined.forEach(t => {
+        const m = rosterMatch(t.name);
+        if (!m || m.uid !== t.uid) return;
+        const k = personKey(t.name);
+        if (!k) return;
+        const lines = [];
+        items.forEach(item => {
+          const units = getUnits(item.code).filter(u => !u.toUid && u.to && personKey(u.to) === k);
+          if (!units.length) return;
+          units.forEach(u => { u.toUid = t.uid; });
+          lines.push(relLine(item, units.length, units));
+        });
+        if (!lines.length) return;
+        const ids = lines.flatMap(l => l.units.map(u => u.id)).sort();
+        const nos = [...new Set(lines.flatMap(l => l.units.map(u => (findUnitAny(u.id) || {}).ics)).filter(Boolean))];
+        batch.set(F.doc(relCol(), `link-${t.uid}-${hashText(ids.join(','))}`), cleanJSON(relBase(t, {
+          kind: 'ICS', source: 'existing', no: nos.join(', ').slice(0, 120), date: localISODate(), purpose: 'Items already assigned before the teacher joined',
+          lines, total: relTotal(lines), createdAt: F.serverTimestamp()
+        })));
+        changed += ids.length;
+        linkedNames.push(t.name);
+      });
+      if (!changed) return;
+      saveStateWith({ summary: { kind: 'release', text: `Linked ${plural(changed, 'unit')} to ${listJoin(linkedNames)}’s account`, track: true } });
+      cloudWrite(batch.commit(), 'Linking items to teachers');
+      if (activeMainView === 'ITEMS') renderDashboardLedger();
+      showToast(`Linked ${plural(changed, 'item')} to ${listJoin(linkedNames.map(n => n.split(' ')[0]))}’s account`, 'ph-link');
+    }
+
+    function findUnitAny(id) {
+      for (const item of items) { const u = getUnits(item.code).find(x => x.id === id); if (u) return u; }
+      return null;
+    }
+
+    // "Assigned to" in Property Numbers: picking a teacher from the list links the unit to
+    // their account (a record they can see); changing it away records a return.
+    function refreshTeacherNameList() {
+      let dl = document.getElementById('teacherNameList');
+      if (!dl) { dl = document.createElement('datalist'); dl.id = 'teacherNameList'; document.body.appendChild(dl); }
+      dl.innerHTML = (isCustodianDevice() ? teacherRoster() : []).map(t => `<option value="${escapeHTML(t.name)}">${escapeHTML([t.position, t.office].filter(Boolean).join(' · '))}</option>`).join('');
+    }
+
+    function reassignUnit(code, unit, newName) {
+      const item = items.find(i => i.code === code);
+      const oldUid = unit.toUid || null;
+      const match = newName ? rosterMatch(newName) : null;
+      const newUid = match ? match.uid : null;
+      if (oldUid === newUid) return;
+      if (newUid) unit.toUid = newUid; else delete unit.toUid;
+      if (!isCustodianDevice() || !cloud.user || !item) return;
+      const F = cloud.sdk;
+      const batch = F.writeBatch(cloud.db);
+      const date = localISODate();
+      if (oldUid) {
+        const old = rosterByUid(oldUid) || { uid: oldUid, name: 'Teacher' };
+        batch.set(F.doc(relCol()), cleanJSON(relBase(old, {
+          kind: 'RETURN', source: 'reassigned', no: '', date, purpose: newName ? `Reassigned to ${newName}` : 'No longer assigned',
+          lines: [relLine(item, 1, [unit])], total: 0, createdAt: F.serverTimestamp()
+        })));
+      }
+      if (newUid) {
+        batch.set(F.doc(relCol()), cleanJSON(relBase(match, {
+          kind: 'ICS', source: 'assigned', no: unit.ics || '', date, purpose: '',
+          lines: [relLine(item, 1, [unit])], total: relTotal([relLine(item, 1, [unit])]), createdAt: F.serverTimestamp()
+        })));
+      }
+      cloudWrite(batch.commit(), 'Updating the assignment');
+      if (newUid) showToast(`Linked to ${match.name}’s account`, 'ph-link');
+    }
+
+    function withTeacherChipHTML(item) {
+      const held = getUnits(item.code).filter(u => u.to || u.toUid);
+      if (!held.length) return '';
+      const names = [...new Set(held.map(unitHolder))];
+      const ics = held.every(u => u.ics && u.ics === held[0].ics) ? ` · ICS ${held[0].ics}` : '';
+      const text = names.length === 1 ? `${held.length < item.qty ? `${held.length} with` : 'With'} ${names[0]}${ics}` : `${held.length} with ${names.length} people`;
+      const key = names.length === 1 ? personId(held[0].toUid, held[0].to) : null;
+      return `<button onclick="${key ? `openTeachersView('${escapeHTML(key).replace(/'/g, '&#39;')}')` : `openUnitsModal('${item.code}')`}" class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border bg-teal-50 text-teal-700 border-teal-200 max-w-full">
+          <i class="ph-bold ph-user-circle"></i> <span class="truncate">${escapeHTML(text)}</span></button>`;
+    }
+
+    // ---- Release to teacher (RIS for supplies, ICS for equipment) ---------------------------
+    const relIsEquip = item => item.type === 'EQUIPMENT';
+    const relFreeUnits = item => getUnits(item.code).filter(u => !u.to && !u.toUid);
+    const relUntagged = item => Math.max(0, (item.qty || 0) - getUnits(item.code).length);
+    const relMax = item => (relIsEquip(item) ? relFreeUnits(item).length + relUntagged(item) : item.qty || 0);
+    const relQty = l => (l.equip ? l.unitIds.length + l.newUnits : l.qty);
+
+    function relDraftLine(code, qty) {
+      const item = items.find(i => i.code === code);
+      if (!item) return null;
+      const want = Math.max(0, Math.min(qty, relMax(item)));
+      if (!relIsEquip(item)) return { code, equip: false, qty: want };
+      const free = relFreeUnits(item).slice(0, want).map(u => u.id);
+      return { code, equip: true, unitIds: free, newUnits: Math.min(relUntagged(item), want - free.length) };
+    }
+
+    function openRelease(opts = {}) {
+      if (!isCustodianDevice() || !cloud.user) { showToast('Sign in under Supply requests to release items to teachers', 'ph-info'); return; }
+      const t = opts.teacherUid ? (rosterByUid(opts.teacherUid) || { uid: opts.teacherUid, name: opts.name, position: opts.position, office: opts.office }) : null;
+      releaseDone = null;
+      releaseDraft = {
+        teacherUid: t ? t.uid : '', fallback: t, otherName: '', otherPosition: '',
+        purpose: opts.purpose || '', date: localISODate(), requestId: opts.requestId || null,
+        lines: (opts.lines || []).map(l => relDraftLine(l.code, l.qty)).filter(l => l && relQty(l) > 0),
+        missing: opts.missing || []
+      };
+      document.getElementById('relPurpose').value = releaseDraft.purpose;
+      document.getElementById('relDate').value = releaseDraft.date;
+      document.getElementById('relOtherName').value = '';
+      document.getElementById('relOtherPos').value = '';
+      document.getElementById('releaseModal').classList.remove('hidden');
+      placeToast(); // a toast shown just before (e.g. "Approved") moves off the Release button
+      renderRelease();
+    }
+    function openReleaseForItem(code) {
+      const item = items.find(i => i.code === code);
+      if (!item) return;
+      if (!relMax(item)) { showToast(relIsEquip(item) ? 'Every unit is already with someone' : 'None in stock to release', 'ph-info'); return; }
+      openRelease({ lines: [{ code, qty: 1 }] });
+    }
+    function openReleaseFromRequest(id) {
+      const r = reqList.find(x => x.id === id);
+      if (!r) return;
+      const missing = [];
+      const lines = [];
+      reqLinesOf(r).forEach(l => {
+        const want = r.review && r.review.lines ? l.approved : l.qty;
+        if (!(want > 0)) return;
+        const item = (l.code && items.find(i => i.code === l.code)) || items.find(i => normItemName(i.name) === normItemName(l.desc));
+        if (item && relMax(item) > 0) lines.push({ code: item.code, qty: want });
+        else missing.push(`${want} ${l.unit || ''} ${l.desc}`.replace(/\s+/g, ' ').trim());
+      });
+      closeReview();
+      openRelease({ teacherUid: r.uid, name: r.name, position: r.position, office: r.office, purpose: r.purpose, requestId: id, lines, missing });
+    }
+    function closeRelease() {
+      releaseDraft = null; releaseDone = null;
+      document.getElementById('releaseModal').classList.add('hidden');
+      placeToast();
+    }
+
+    function relTeacher() {
+      const d = releaseDraft;
+      if (d.teacherUid === '__other') {
+        const name = reqVal('relOtherName');
+        return name ? { uid: null, name, position: reqVal('relOtherPos'), office: '' } : null;
+      }
+      return d.teacherUid ? (rosterByUid(d.teacherUid) || d.fallback) : null;
+    }
+
+    function renderRelease() {
+      const d = releaseDraft;
+      const body = document.getElementById('relDone');
+      const foot = document.getElementById('relFoot');
+      body.classList.toggle('hidden', !releaseDone);
+      document.getElementById('relForm').classList.toggle('hidden', !!releaseDone);
+      if (releaseDone) {
+        const r = releaseDone;
+        body.innerHTML = `
+          <div class="py-6 text-center space-y-2">
+            <span class="mx-auto w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="ph-bold ph-check-circle text-3xl"></i></span>
+            <p class="text-base font-extrabold text-slate-900">Released to ${escapeHTML(r.teacherName)}</p>
+            <p class="text-xs text-slate-500">${r.docs.map(x => `${x.kind} No. <b class="font-mono">${escapeHTML(x.no)}</b> · ${plural(x.lines.length, 'item')}`).join('<br>')}</p>
+            <p class="text-xs text-slate-500">${r.docs.some(x => x.kind === 'RIS') ? 'Supplies were taken out of the stock count. ' : ''}${r.docs.some(x => x.kind === 'ICS') ? `Equipment stays in My Items, shown as with ${escapeHTML(r.teacherName.split(' ')[0])}.` : ''}</p>
+          </div>`;
+        foot.innerHTML = r.docs.map((x, i) => `<button onclick="printReleaseDone(${i})" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> ${x.kind}</button>`).join('') +
+          `<button onclick="closeRelease()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-sm">Done</button>`;
+        return;
+      }
+      if (!d) return;
+      const roster = teacherRoster();
+      if (d.fallback && !roster.some(t => t.uid === d.fallback.uid)) roster.unshift(d.fallback);
+      const sel = document.getElementById('relTeacher');
+      sel.innerHTML = `<option value="" ${d.teacherUid ? '' : 'selected'} disabled>Choose a teacher…</option>` +
+        roster.map(t => `<option value="${escapeHTML(t.uid)}" ${t.uid === d.teacherUid ? 'selected' : ''}>${escapeHTML(t.name)}${t.position || t.office ? ` · ${escapeHTML(t.position || t.office)}` : ''}</option>`).join('') +
+        `<option value="__other" ${d.teacherUid === '__other' ? 'selected' : ''}>Someone else (type the name)…</option>`;
+      document.getElementById('relOther').classList.toggle('hidden', d.teacherUid !== '__other');
+      document.getElementById('relTeacherHint').textContent = !roster.length
+        ? 'No teachers yet. Share your invite link, or type the name below.'
+        : d.teacherUid === '__other' ? 'Not linked to an account · the slip is still printed.' : '';
+      document.getElementById('relItemList').innerHTML = items.filter(i => relMax(i) > 0 && !d.lines.some(l => l.code === i.code))
+        .map(i => `<option value="${escapeHTML(i.name)} · ${escapeHTML(i.code)}"></option>`).join('');
+
+      const lineHTML = l => {
+        const item = items.find(i => i.code === l.code);
+        if (!item) return '';
+        const max = relMax(item);
+        const q = relQty(l);
+        const badge = l.equip
+          ? '<span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Equipment · ICS</span>'
+          : '<span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">Supply · RIS</span>';
+        let units = '';
+        if (l.equip) {
+          const free = relFreeUnits(item);
+          const untag = relUntagged(item);
+          units = `<div class="flex flex-wrap gap-1.5 mt-2">${free.map(u => {
+            const on = l.unitIds.includes(u.id);
+            return `<button type="button" onclick="toggleRelUnit('${l.code}', '${u.id}')" class="h-8 px-2 rounded-lg border text-[11px] font-mono font-bold ${on ? 'bg-brand-600 border-brand-600 text-white' : 'bg-white border-slate-300 text-slate-600'}">${on ? '<i class="ph-bold ph-check"></i> ' : ''}${escapeHTML(u.no)}</button>`;
+          }).join('')}</div>${untag ? `<p class="mt-1.5 text-[11px] text-slate-500">${l.newUnits ? `<b>${l.newUnits}</b> of ` : ''}${plural(untag, 'unit')} without a property number${l.newUnits ? ' · new numbers are given on release' : ''}</p>` : ''}`;
+        }
+        return `
+          <div class="rounded-xl border border-slate-200 p-3" data-rel="${l.code}">
+            <div class="flex items-start gap-2">
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-slate-900 leading-snug">${escapeHTML(item.name)}</p>
+                <p class="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">${badge}<span>${l.equip ? `${max} available` : `${item.qty} ${escapeHTML(item.unit)} in stock`}</span></p>
+              </div>
+              <button onclick="removeRelLine('${l.code}')" class="w-8 h-8 shrink-0 text-slate-300 hover:text-rose-500 flex items-center justify-center" aria-label="Remove"><i class="ph-bold ph-trash"></i></button>
+            </div>
+            <div class="mt-2 flex items-center gap-2">
+              <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button onclick="stepRelLine('${l.code}', -1)" class="w-9 h-8 rounded-lg bg-white text-slate-700 shadow-sm flex items-center justify-center" aria-label="Less"><i class="ph-bold ph-minus text-xs"></i></button>
+                <input type="number" min="0" max="${max}" inputmode="numeric" value="${q}" onfocus="this.select()" onchange="setRelQty('${l.code}', this.value)" aria-label="Quantity" class="w-14 h-8 text-center bg-transparent font-mono font-extrabold text-sm outline-none">
+                <button onclick="stepRelLine('${l.code}', 1)" class="w-9 h-8 rounded-lg bg-brand-600 text-white shadow-sm flex items-center justify-center" aria-label="More"><i class="ph-bold ph-plus text-xs"></i></button>
+              </div>
+              <span class="text-xs text-slate-500">${escapeHTML(item.unit)} · ₱${peso2(q * (item.price || 0))}</span>
+            </div>
+            ${units}
+          </div>`;
+      };
+      document.getElementById('relLines').innerHTML = d.lines.length ? d.lines.map(lineHTML).join('') : `
+        <div class="rounded-xl border border-dashed border-slate-300 p-4 text-center text-xs text-slate-500">Add the items you are handing over.</div>`;
+      const miss = document.getElementById('relMissing');
+      miss.innerHTML = d.missing.length ? `<i class="ph-bold ph-warning"></i> Not in stock in My Items: ${d.missing.map(escapeHTML).join(' · ')}` : '';
+      miss.classList.toggle('hidden', !d.missing.length);
+      const err = document.getElementById('relError');
+      err.textContent = teamError ? `Teacher list: ${teamError}` : '';
+      err.classList.toggle('hidden', !teamError);
+
+      const ris = d.lines.filter(l => !l.equip && relQty(l) > 0), ics = d.lines.filter(l => l.equip && relQty(l) > 0);
+      const docs = [ris.length && `RIS ${nextReleaseNo('RIS', d.date)} · ${ris.length} ${ris.length === 1 ? 'supply' : 'supplies'}`, ics.length && `ICS ${nextReleaseNo('ICS', d.date)} · ${plural(ics.length, 'equipment item')}`].filter(Boolean);
+      document.getElementById('relSummary').innerHTML = docs.length ? `Creates ${docs.map(x => `<b>${escapeHTML(x)}</b>`).join(' and ')}` : 'Nothing to release yet';
+      foot.innerHTML = `
+        <button onclick="closeRelease()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Cancel</button>
+        <button id="relSaveBtn" onclick="confirmRelease()" ${docs.length ? '' : 'disabled'} class="flex-1 h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2">
+          <i class="ph-bold ph-hand-arrow-up text-lg"></i> Release</button>`;
+    }
+
+    function setRelTeacher(v) { releaseDraft.teacherUid = v; renderRelease(); if (v === '__other') document.getElementById('relOtherName').focus(); }
+    function addRelItem(input) {
+      const code = String(input.value).split(' · ').pop().trim();
+      const item = items.find(i => i.code === code);
+      if (!item) return;
+      input.value = '';
+      if (!releaseDraft.lines.some(l => l.code === code)) { const l = relDraftLine(code, 1); if (l) releaseDraft.lines.push(l); }
+      renderRelease();
+    }
+    function removeRelLine(code) { releaseDraft.lines = releaseDraft.lines.filter(l => l.code !== code); renderRelease(); }
+    function setRelQty(code, v) {
+      const i = releaseDraft.lines.findIndex(l => l.code === code);
+      if (i < 0) return;
+      const keep = releaseDraft.lines[i];
+      const want = Math.max(0, parseInt(v, 10) || 0);
+      if (!keep.equip) keep.qty = Math.min(want, relMax(items.find(x => x.code === code)));
+      else {
+        const item = items.find(x => x.code === code);
+        const free = relFreeUnits(item).map(u => u.id);
+        const ids = keep.unitIds.slice(0, want);
+        free.forEach(id => { if (ids.length < want && !ids.includes(id)) ids.push(id); });
+        keep.unitIds = ids;
+        keep.newUnits = Math.min(relUntagged(item), want - ids.length);
+      }
+      renderRelease();
+    }
+    function stepRelLine(code, delta) {
+      const l = releaseDraft.lines.find(x => x.code === code);
+      if (l) setRelQty(code, relQty(l) + delta);
+    }
+    function toggleRelUnit(code, id) {
+      const l = releaseDraft.lines.find(x => x.code === code);
+      if (!l) return;
+      l.unitIds = l.unitIds.includes(id) ? l.unitIds.filter(x => x !== id) : [...l.unitIds, id];
+      renderRelease();
+    }
+
+    function confirmRelease() {
+      const d = releaseDraft;
+      if (!d || !isCustodianDevice() || !cloud.user) return;
+      d.date = document.getElementById('relDate').value || localISODate();
+      d.purpose = reqVal('relPurpose').slice(0, 300);
+      const t = relTeacher();
+      if (!t || !t.name) { alert('Choose who receives the items.'); return; }
+      const lines = d.lines.filter(l => relQty(l) > 0);
+      if (!lines.length) return;
+      for (const l of lines) {
+        const item = items.find(i => i.code === l.code);
+        if (!item || relQty(l) > relMax(item)) { alert(`${item ? item.name : l.code}: only ${item ? relMax(item) : 0} available.`); return; }
+      }
+      const F = cloud.sdk;
+      const now = Date.now();
+      const risNo = nextReleaseNo('RIS', d.date), icsNo = nextReleaseNo('ICS', d.date);
+      const ris = [], ics = [];
+      lines.forEach(l => {
+        const item = items.find(i => i.code === l.code);
+        const state = userState[item.code] || (userState[item.code] = { qty: item.qty });
+        if (!l.equip) {
+          item.qty = Math.max(0, (item.qty || 0) - l.qty);
+          state.qty = item.qty;
+          clampCondition(item);
+          ris.push(relLine(item, l.qty));
+          return;
+        }
+        const chosen = getUnits(item.code).filter(u => l.unitIds.includes(u.id));
+        const fresh = l.newUnits ? nextPropertyNumbers(l.newUnits).map(no => ({ id: newUnitId(), no, serial: '', loc: '', to: '', cond: 'S', seen: null, printed: null, added: now })) : [];
+        state.units = [...getUnits(item.code), ...fresh];
+        [...chosen, ...fresh].forEach(u => {
+          u.to = t.name;
+          if (t.uid) u.toUid = t.uid; else delete u.toUid;
+          u.ics = icsNo;
+          u.icsDate = d.date;
+          u.released = now;
+        });
+        syncUnitCondition(item);
+        ics.push(relLine(item, chosen.length + fresh.length, [...chosen, ...fresh]));
+      });
+      const docs = [];
+      const base = relBase(t, { date: d.date, purpose: d.purpose, requestId: d.requestId || null, source: 'release' });
+      if (ris.length) docs.push({ ...base, kind: 'RIS', no: risNo, lines: ris, total: relTotal(ris) });
+      if (ics.length) docs.push({ ...base, kind: 'ICS', no: icsNo, lines: ics, total: relTotal(ics) });
+      saveStateWith({ summary: { kind: 'release', text: `Released to ${t.name}: ${docs.map(x => `${x.kind} ${x.no} (${plural(x.lines.length, 'item')})`).join(', ')}`, track: true } });
+
+      const batch = F.writeBatch(cloud.db);
+      const refs = docs.map(x => { const ref = F.doc(relCol()); batch.set(ref, cleanJSON({ ...x, createdAt: F.serverTimestamp() })); return ref.id; });
+      if (d.requestId) batch.update(F.doc(reqCol(), d.requestId), {
+        status: 'released', releaseIds: refs, releaseNos: docs.map(x => `${x.kind} ${x.no}`), releasedMs: now, updatedAt: F.serverTimestamp()
+      });
+      cloudWrite(batch.commit(), 'Saving the release');
+      releaseDone = { teacherName: t.name, docs: docs.map((x, i) => ({ ...x, id: refs[i] })) };
+      releaseDraft = null;
+      renderRelease();
+      renderDashboard();
+      renderRequestsEverywhere();
+    }
+
+    function printReleaseDone(i) { if (releaseDone && releaseDone.docs[i]) printRelease(releaseDone.docs[i]); }
+    function printReleaseById(id) { const r = releaseList.find(x => x.id === id); if (r) printRelease(r); }
+    function printRelease(rel) {
+      document.getElementById('printPrSection').innerHTML = rel.kind === 'ICS' ? icsPrintHTML(rel) : risPrintHTML(rel);
+      document.body.classList.remove('printing-labels');
+      document.body.classList.add('printing-pr');
+      const done = () => { document.body.classList.remove('printing-pr'); window.removeEventListener('afterprint', done); };
+      window.addEventListener('afterprint', done);
+      setTimeout(() => window.print(), 50);
+    }
+    const longDate = iso => (iso ? new Date(iso + 'T00:00:00').toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }) : '');
+
+    // Appendix 63 · Requisition and Issue Slip
+    function risPrintHTML(r) {
+      const e = v => escapeHTML(v || '');
+      const d = prDefaults();
+      const rows = r.lines.map(l => `<tr><td class="pr-sn">${e(/^CUSTOM-/.test(l.code) ? '' : l.code)}</td><td class="c">${e(l.unit)}</td><td>${e(l.desc)}</td><td class="c">${l.qty}</td><td class="c"><svg viewBox="0 0 16 16" width="11" height="11" aria-label="Yes"><path d="M2.5 8.5l3.5 3.5 7.5-8" fill="none" stroke="#000" stroke-width="2.2"/></svg></td><td></td><td class="c">${l.qty}</td><td></td></tr>`).join('');
+      const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 10 - r.lines.length));
+      return `
+        <div class="pr-form">
+          <div class="pr-appx">Appendix 63</div>
+          <h1>REQUISITION AND ISSUE SLIP</h1>
+          <div class="pr-top"><span>Entity Name: <b>${e(d.entity || schoolInfo.school)}</b></span><span>Fund Cluster: <b>${e(d.fund)}</b></span></div>
+          <table class="pr-table">
+            <colgroup><col style="width:14%"><col style="width:8%"><col style="width:29%"><col style="width:11%"><col style="width:6%"><col style="width:6%"><col style="width:11%"><col style="width:15%"></colgroup>
+            <tr><td colspan="4">Division: <b>${e(schoolInfo.division)}</b></td><td colspan="4">Responsibility Center Code: <b>${e(d.rcc)}</b></td></tr>
+            <tr><td colspan="4">Office: <b>${e(r.office || r.position)}</b></td><td colspan="4">RIS No.: <b>${e(r.no)}</b></td></tr>
+            <tr><th colspan="4"><i>Requisition</i></th><th colspan="2"><i>Stock Available?</i></th><th colspan="2"><i>Issue</i></th></tr>
+            <tr><th>Stock No.</th><th>Unit</th><th>Description</th><th>Quantity</th><th>Yes</th><th>No</th><th>Quantity</th><th>Remarks</th></tr>
+            ${rows}${blanks}
+            <tr><td colspan="8" class="pr-purpose">Purpose: ${e(r.purpose)}</td></tr>
+          </table>
+          <table class="pr-table" style="border-top:0">
+            <colgroup><col style="width:16%"><col style="width:21%"><col style="width:21%"><col style="width:21%"><col style="width:21%"></colgroup>
+            <tr><td></td><td><i>Requested by:</i></td><td><i>Approved by:</i></td><td><i>Issued by:</i></td><td><i>Received by:</i></td></tr>
+            <tr><td>Signature:</td><td class="pr-sig"></td><td class="pr-sig"></td><td class="pr-sig"></td><td class="pr-sig"></td></tr>
+            <tr><td>Printed Name:</td><td class="c"><b>${e(r.teacherName).toUpperCase()}</b></td><td class="c"><b>${e(d.apprName || schoolInfo.principal).toUpperCase()}</b></td><td class="c"><b>${e(schoolInfo.custodian).toUpperCase()}</b></td><td class="c"><b>${e(r.teacherName).toUpperCase()}</b></td></tr>
+            <tr><td>Designation:</td><td class="c">${e(r.position)}</td><td class="c">${e(d.apprDesig || 'School Head')}</td><td class="c">${e(schoolInfo.position || 'Property Custodian')}</td><td class="c">${e(r.position)}</td></tr>
+            <tr><td>Date:</td><td class="c">${e(longDate(r.date))}</td><td></td><td class="c">${e(longDate(r.date))}</td><td></td></tr>
+          </table>
+        </div>`;
+    }
+
+    // Appendix 59 · Inventory Custodian Slip
+    function icsPrintHTML(r) {
+      const e = v => escapeHTML(v || '');
+      const d = prDefaults();
+      const rows = r.lines.map(l => {
+        const serials = (l.units || []).map(u => u.serial).filter(Boolean);
+        const life = (l.units || []).map(u => (findUnitAny(u.id) || {}).life).find(Boolean) || '';
+        return `<tr><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td>
+          <td>${e(l.desc)}${serials.length ? `<br><span style="font-size:8.5pt">S/N: ${e(serials.join(', '))}</span>` : ''}</td>
+          <td class="pr-sn">${e((l.units || []).map(u => u.no).join(', '))}</td><td class="c">${e(life)}</td></tr>`;
+      }).join('');
+      const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 8 - r.lines.length));
+      return `
+        <div class="pr-form">
+          <div class="pr-appx">Appendix 59</div>
+          <h1>INVENTORY CUSTODIAN SLIP</h1>
+          <div class="pr-top"><span>Entity Name: <b>${e(d.entity || schoolInfo.school)}</b></span><span>ICS No.: <b>${e(r.no)}</b></span></div>
+          <div class="pr-top"><span>Fund Cluster: <b>${e(d.fund)}</b></span><span>Date: <b>${e(longDate(r.date))}</b></span></div>
+          <table class="pr-table">
+            <colgroup><col style="width:9%"><col style="width:8%"><col style="width:12%"><col style="width:12%"><col style="width:31%"><col style="width:16%"><col style="width:12%"></colgroup>
+            <tr><th rowspan="2">Quantity</th><th rowspan="2">Unit</th><th colspan="2">Amount</th><th rowspan="2">Description</th><th rowspan="2">Inventory Item No.</th><th rowspan="2">Estimated Useful Life</th></tr>
+            <tr><th>Unit Cost</th><th>Total Cost</th></tr>
+            ${rows}${blanks}
+            <tr><td colspan="3" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(r.total)}</b></td><td colspan="3"></td></tr>
+          </table>
+          <table class="pr-table" style="border-top:0">
+            <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+            <tr><td><i>Received from:</i></td><td><i>Received by:</i></td></tr>
+            <tr><td class="pr-sig"></td><td class="pr-sig"></td></tr>
+            <tr><td class="c"><b>${e(schoolInfo.custodian).toUpperCase()}</b><br><span style="font-size:8.5pt">Signature over Printed Name</span></td><td class="c"><b>${e(r.teacherName).toUpperCase()}</b><br><span style="font-size:8.5pt">Signature over Printed Name</span></td></tr>
+            <tr><td class="c">${e(schoolInfo.position || 'Property Custodian')}<br><span style="font-size:8.5pt">Position/Office</span></td><td class="c">${e([r.position, r.office].filter(Boolean).join(', '))}<br><span style="font-size:8.5pt">Position/Office</span></td></tr>
+            <tr><td class="c">${e(longDate(r.date))}<br><span style="font-size:8.5pt">Date</span></td><td class="c"><br><span style="font-size:8.5pt">Date</span></td></tr>
+          </table>
+        </div>`;
+    }
+
+    // ---- A teacher's My Items ------------------------------------------------------------
+    // Built from the releases made out to this teacher (they cannot read the school
+    // inventory): equipment they are accountable for (ICS minus returns) and supplies they
+    // received (RIS). Teachers answer with reports the custodian sees under "From teachers":
+    //   schools/{id}/teacherReports/{id}  written by the teacher, resolved by the custodian:
+    //     { uid, name, kind: 'received' | 'problem' | 'return', releaseId, releaseNo, code, desc,
+    //       units: [{ id, no }], reason, note, status: 'open' | 'done' | 'declined',
+    //       resolution, reply, createdMs }
+    let myReleases = [];        // teacher phone: releases made out to me
+    let tReports = [];          // teacher: my reports · custodian: every teacher's reports
+    let teacherTab = null;      // 'items' | 'requests'
+    let tReportDraft = null;
+
+    const T_REASONS = {
+      equip: [
+        ['repair', 'Needs repair', 'ph-wrench'], ['unserv', 'Not working · beyond repair', 'ph-x-circle'],
+        ['lost', 'Lost or missing', 'ph-question'], ['other', 'Something else', 'ph-chat-text']
+      ],
+      supply: [
+        ['short', 'Fewer than released', 'ph-minus-circle'], ['damaged', 'Damaged', 'ph-warning'],
+        ['wrong', 'Wrong item', 'ph-swap'], ['other', 'Something else', 'ph-chat-text']
+      ]
+    };
+    const tReasonLabel = key => ([...T_REASONS.equip, ...T_REASONS.supply].find(r => r[0] === key) || [key, key])[1];
+    function tReportCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'teacherReports'); }
+
+    // What a teacher holds now: ICS units minus later returns; RIS slips newest first.
+    function teacherHoldings(releases) {
+      const held = new Map();
+      const supplies = [];
+      [...releases].sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0)).forEach(r => {
+        (r.lines || []).forEach(l => (l.units || []).forEach(u => {
+          if (r.kind === 'ICS') held.set(u.id, { unit: u, line: l, rel: r });
+          else if (r.kind === 'RETURN') held.delete(u.id);
+        }));
+        if (r.kind === 'RIS') supplies.push(r);
+      });
+      return { equipment: [...held.values()], supplies: supplies.reverse() };
+    }
+    const tAcked = relId => tReports.some(x => x.kind === 'received' && x.releaseId === relId) || (typeof ackSent !== 'undefined' && ackSent.has(relId));
+    function tLatestFor(unitId) {
+      return tReports.filter(x => x.kind !== 'received' && (x.units || []).some(u => u.id === unitId))
+        .sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0))[0] || null;
+    }
+
+    function subscribeTeacherItems(F) {
+      const soft = what => err => { console.warn(what, err); };
+      reqUnsubs.push(F.onSnapshot(F.query(relCol(), F.where('teacherUid', '==', cloud.user.uid)), { includeMetadataChanges: true }, snap => {
+        myReleases = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+        renderRequestsEverywhere();
+      }, soft('my releases')));
+      reqUnsubs.push(F.onSnapshot(F.query(tReportCol(), F.where('uid', '==', cloud.user.uid)), { includeMetadataChanges: true }, snap => {
+        tReports = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
+        renderRequestsEverywhere();
+      }, soft('my reports')));
+    }
+
+    function setTeacherTab(tab) {
+      teacherTab = tab;
+      renderRequesterView();
+      window.scrollTo({ top: 0 });
+    }
+
+    function renderTeacherTabs() {
+      const h = teacherHoldings(myReleases);
+      const toAck = myReleases.filter(r => (r.kind === 'ICS' || r.kind === 'RIS') && !tAcked(r.id));
+      if (!teacherTab) teacherTab = myReleases.length ? 'items' : 'requests';
+      const tab = teacherTab;
+      document.getElementById('rqTitle').textContent = tab === 'items' ? 'My items' : 'Request supplies';
+      ['items', 'requests'].forEach(t => {
+        const b = document.getElementById(`rqTab-${t}`);
+        const on = t === tab;
+        b.className = `h-11 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 transition ${on ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-800'}`;
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      const n = document.getElementById('rqItemsCount');
+      n.textContent = h.equipment.length || '';
+      n.className = h.equipment.length ? 'min-w-5 h-5 px-1.5 rounded-full bg-slate-200 text-slate-700 text-[11px] font-bold inline-flex items-center justify-center' : 'hidden';
+      document.getElementById('rqItemsDot').classList.toggle('hidden', !toAck.length);
+      document.getElementById('rqItemsPane').classList.toggle('hidden', tab !== 'items');
+      document.getElementById('rqRequestsPane').classList.toggle('hidden', tab !== 'requests');
+      if (tab === 'items') renderTeacherItems(h, toAck);
+    }
+
+    function renderTeacherItems(h, toAck) {
+      const pane = document.getElementById('rqItemsPane');
+      const date = iso => (iso ? formatShortDate(iso + 'T00:00:00') : '');
+      const value = h.equipment.reduce((n, x) => n + (x.line.unitCost || 0), 0);
+      let html = '';
+      if (toAck.length) {
+        html += `
+          <div class="rounded-2xl bg-emerald-50 border border-emerald-200 p-3 space-y-2">
+            <p class="text-xs font-extrabold text-emerald-900 flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-down"></i> New from the property custodian</p>
+            ${toAck.map(r => `
+              <div class="rounded-xl bg-white border border-emerald-100 p-3 flex items-center gap-3">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-bold text-slate-900">${escapeHTML(r.kind)} ${r.no ? `No. <span class="font-mono">${escapeHTML(r.no)}</span>` : ''} · ${escapeHTML(date(r.date))}</p>
+                  <p class="text-[11px] text-slate-600 line-clamp-2">${r.lines.map(l => `${l.qty} ${escapeHTML(l.unit || '')} ${escapeHTML(l.desc)}`).join(' · ')}</p>
+                </div>
+                <button onclick="ackRelease('${r.id}')" class="shrink-0 h-10 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-check"></i> Received</button>
+              </div>`).join('')}
+            <p class="text-[11px] text-emerald-800">Check the items first. Tap <b>Received</b> to let the custodian know you have them.</p>
+          </div>`;
+      }
+      html += `
+        <div>
+          <div class="flex items-end justify-between gap-2 mb-2 px-1">
+            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Accountable equipment · ICS</h2>
+            ${h.equipment.length ? `<span class="text-[11px] font-bold text-slate-500">${plural(h.equipment.length, 'item')} · ₱${peso2(value)}</span>` : ''}
+          </div>
+          <div class="space-y-2">${h.equipment.length ? h.equipment.map(teacherUnitCardHTML).join('') : `
+            <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
+              <i class="ph-bold ph-desktop-tower text-3xl text-slate-300"></i>
+              <p class="mt-1 font-bold text-slate-700 text-sm">No equipment under your name</p>
+              <p>Equipment the property custodian issues to you on an ICS shows here.</p>
+            </div>`}</div>
+        </div>
+        <div>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Supplies received · RIS</h2>
+          <div class="space-y-2">${h.supplies.length ? h.supplies.map(teacherRisCardHTML).join('') : `
+            <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
+              <i class="ph-bold ph-package text-3xl text-slate-300"></i>
+              <p class="mt-1 font-bold text-slate-700 text-sm">No supplies yet</p>
+              <p>Supplies released to you are listed here. Ask for more under <button onclick="setTeacherTab('requests')" class="font-bold text-amber-700 underline">Requests</button>.</p>
+            </div>`}</div>
+        </div>`;
+      pane.innerHTML = html;
+    }
+
+    function teacherUnitCardHTML(x) {
+      const { unit, line, rel } = x;
+      const last = tLatestFor(unit.id);
+      const open = last && last.status === 'open';
+      const recent = last && Date.now() - (last.resolvedMs || last.createdMs || 0) < 30 * 86400000;
+      let chip = '';
+      if (last && open) chip = last.kind === 'return'
+        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold"><i class="ph-bold ph-${last.sending ? 'cloud-arrow-up' : 'hourglass-medium'}"></i> ${last.sending ? 'Sending…' : 'Return requested · waiting for the custodian'}</span>`
+        : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-bold"><i class="ph-bold ph-${last.sending ? 'cloud-arrow-up' : 'warning'}"></i> ${last.sending ? 'Sending…' : `Reported: ${escapeHTML(tReasonLabel(last.reason))}`}</span>`;
+      else if (last && recent && last.status === 'declined') chip = `<span class="block rounded-lg bg-slate-50 text-slate-600 text-[11px] px-2.5 py-1.5"><b>Custodian:</b> ${escapeHTML(last.reply || 'Return declined')}</span>`;
+      else if (last && recent && last.status === 'done' && last.kind === 'problem') chip = `<span class="block rounded-lg bg-slate-50 text-slate-600 text-[11px] px-2.5 py-1.5"><b>Custodian:</b> ${escapeHTML(last.reply || (last.resolution === 'repair' ? 'Marked for repair' : last.resolution === 'unserv' ? 'Marked unserviceable' : 'Noted'))}</span>`;
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-slate-900 leading-snug">${escapeHTML(line.desc)}</p>
+              <p class="mt-0.5 text-[11px] text-slate-500"><span class="font-mono font-bold text-slate-700">${escapeHTML(unit.no || '—')}</span>${unit.serial ? ` · S/N ${escapeHTML(unit.serial)}` : ''}</p>
+              <p class="text-[11px] text-slate-500">ICS ${rel.no ? escapeHTML(rel.no) : '—'}${rel.date ? ` · ${escapeHTML(formatShortDate(rel.date + 'T00:00:00'))}` : ''}</p>
+            </div>
+            <p class="shrink-0 text-xs font-extrabold font-mono text-slate-700">₱${peso2(line.unitCost)}</p>
+          </div>
+          ${chip}
+          <div class="flex gap-2">
+            <button onclick="openTeacherReport('problem', '${rel.id}', '${unit.id}')" ${open && last.kind === 'problem' ? 'disabled' : ''} class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-warning"></i> Report a problem</button>
+            <button onclick="openTeacherReport('return', '${rel.id}', '${unit.id}')" ${open && last.kind === 'return' ? 'disabled' : ''} class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-arrow-u-up-left"></i> Return</button>
+          </div>
+        </div>`;
+    }
+
+    function teacherRisCardHTML(r) {
+      const last = tReports.filter(x => x.kind === 'problem' && x.releaseId === r.id).sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0))[0];
+      const ack = tReports.find(x => x.kind === 'received' && x.releaseId === r.id);
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="text-xs font-bold text-slate-900">RIS No. <span class="font-mono">${escapeHTML(r.no || '')}</span> · ${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</p>
+              ${r.purpose ? `<p class="text-[11px] text-slate-500 truncate">${escapeHTML(r.purpose)}</p>` : ''}
+            </div>
+            ${ack ? `<span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold"><i class="ph-bold ph-check-circle"></i> Received</span>` : ''}
+          </div>
+          <ul class="text-xs text-slate-700 space-y-0.5">${r.lines.map(l => `<li class="flex justify-between gap-3"><span class="min-w-0 truncate">${escapeHTML(l.desc)}</span><span class="shrink-0 font-mono font-bold">${l.qty} <span class="font-sans font-medium text-slate-400">${escapeHTML(l.unit || '')}</span></span></li>`).join('')}</ul>
+          ${last ? `<p class="rounded-lg ${last.status === 'open' ? 'bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-600'} text-[11px] px-2.5 py-1.5">${last.status === 'open' ? `<b>Reported:</b> ${escapeHTML(tReasonLabel(last.reason))}${last.note ? ` · ${escapeHTML(last.note)}` : ''}` : `<b>Custodian:</b> ${escapeHTML(last.reply || 'Noted')}`}</p>` : ''}
+          <button onclick="openTeacherReport('problem', '${r.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-warning"></i> Report a problem</button>
+        </div>`;
+    }
+
+    function tReportBase(kind, rel, extra) {
+      const F = cloud.sdk;
+      const me = reqRole.me || {};
+      return {
+        uid: cloud.user.uid, name: (me.name || 'Teacher').slice(0, 80), kind, releaseId: rel.id, releaseNo: `${rel.kind} ${rel.no || ''}`.trim().slice(0, 60),
+        code: '', desc: '', units: [], reason: '', note: '', status: 'open', createdMs: Date.now(), createdAt: F.serverTimestamp(), ...extra
+      };
+    }
+
+    const ackSent = new Set();
+    function ackRelease(relId) {
+      const rel = myReleases.find(r => r.id === relId);
+      if (!rel || !cloud.user || ackSent.has(relId) || tAcked(relId)) return;
+      ackSent.add(relId);
+      const F = cloud.sdk;
+      // One "received" per release: a fixed ID, so tapping twice changes nothing.
+      cloudWrite(F.setDoc(F.doc(tReportCol(), `ack-${relId}`), tReportBase('received', rel, { desc: rel.lines.map(l => l.desc).join(', ').slice(0, 160) })), 'Sending');
+      showToast(`Thanks! The custodian will see you received ${rel.kind} ${rel.no || ''}`.trim(), 'ph-check-circle');
+    }
+
+    function openTeacherReport(kind, relId, unitId = null) {
+      const rel = myReleases.find(r => r.id === relId);
+      if (!rel) return;
+      let line = null, unit = null;
+      if (unitId) rel.lines.forEach(l => (l.units || []).forEach(u => { if (u.id === unitId) { line = l; unit = u; } }));
+      const equip = !!unit;
+      tReportDraft = { kind, relId, unitId, equip, reason: kind === 'return' ? '' : (equip ? 'repair' : 'short') };
+      document.getElementById('trTitle').textContent = kind === 'return' ? 'Return to the property custodian' : 'Report a problem';
+      document.getElementById('trItem').innerHTML = equip
+        ? `<p class="text-sm font-extrabold text-slate-900">${escapeHTML(line.desc)}</p><p class="text-[11px] text-slate-500"><span class="font-mono font-bold">${escapeHTML(unit.no || '')}</span> · ICS ${escapeHTML(rel.no || '')}</p>`
+        : `<p class="text-sm font-extrabold text-slate-900">RIS No. ${escapeHTML(rel.no || '')}</p><p class="text-[11px] text-slate-500">${rel.lines.map(l => `${l.qty} ${escapeHTML(l.unit || '')} ${escapeHTML(l.desc)}`).join(' · ')}</p>`;
+      document.getElementById('trNote').value = '';
+      document.getElementById('trNote').placeholder = kind === 'return' ? 'Why are you returning it? e.g. transferring to another school' : 'What happened? e.g. no display since Monday';
+      document.getElementById('trHint').textContent = kind === 'return'
+        ? 'Bring the item to the property custodian. It stays on your list until they mark it received back.'
+        : 'The property custodian sees this right away.';
+      renderTeacherReasons();
+      document.getElementById('tReportModal').classList.remove('hidden');
+      placeToast();
+    }
+    function renderTeacherReasons() {
+      const d = tReportDraft;
+      const box = document.getElementById('trReasons');
+      box.classList.toggle('hidden', d.kind === 'return');
+      box.innerHTML = (d.equip ? T_REASONS.equip : T_REASONS.supply).map(([key, label, icon]) => `
+        <button type="button" onclick="tReportDraft.reason='${key}'; renderTeacherReasons()" class="h-11 px-3 rounded-xl border text-xs font-bold flex items-center gap-2 text-left ${d.reason === key ? 'bg-rose-50 border-rose-300 text-rose-800' : 'bg-white border-slate-200 text-slate-600'}">
+          <i class="ph-bold ${icon} text-base"></i> ${label}</button>`).join('');
+    }
+    function closeTeacherReport() { tReportDraft = null; document.getElementById('tReportModal').classList.add('hidden'); placeToast(); }
+
+    function sendTeacherReport() {
+      const d = tReportDraft;
+      if (!d || !cloud.user) return;
+      const rel = myReleases.find(r => r.id === d.relId);
+      if (!rel) return;
+      const note = reqVal('trNote').slice(0, 300);
+      if (d.kind === 'problem' && d.reason === 'other' && !note) { alert('Tell the custodian what happened.'); document.getElementById('trNote').focus(); return; }
+      let extra = { reason: d.reason, note };
+      if (d.unitId) {
+        const line = rel.lines.find(l => (l.units || []).some(u => u.id === d.unitId));
+        const unit = line.units.find(u => u.id === d.unitId);
+        extra = { ...extra, code: line.code || '', desc: line.desc.slice(0, 160), units: [{ id: unit.id, no: unit.no || '' }] };
+      } else {
+        extra = { ...extra, desc: rel.lines.map(l => l.desc).join(', ').slice(0, 160) };
+      }
+      const F = cloud.sdk;
+      cloudWrite(F.setDoc(F.doc(tReportCol()), tReportBase(d.kind, rel, extra)), 'Sending');
+      closeTeacherReport();
+      showToast(navigator.onLine ? (d.kind === 'return' ? 'Return request sent · bring the item to the custodian' : 'Sent to the property custodian')
+        : 'Saved · it will be sent when you are back online', 'ph-paper-plane-tilt');
+    }
+
+    // ---- Custodian: "From teachers" (problems and returns) ---------------------------------
+    const openTeacherReports = () => tReports.filter(x => x.status === 'open' && x.kind !== 'received')
+      .sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
+
+    function teacherInboxHTML() {
+      const open = openTeacherReports();
+      if (!open.length) return '';
+      return `
+        <div class="rounded-2xl bg-white border border-rose-200 shadow-sm overflow-hidden">
+          <p class="px-4 pt-3 pb-2 text-xs font-extrabold text-slate-900 flex items-center gap-2"><span class="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><i class="ph-bold ph-chalkboard-teacher"></i></span> From teachers · ${open.length}</p>
+          ${open.map(x => {
+            const units = (x.units || []).map(u => u.no).filter(Boolean).join(', ');
+            const ret = x.kind === 'return';
+            const action = ret ? ['acceptTeacherReturn', 'Received back', 'ph-arrow-u-down-left', 'bg-emerald-600 hover:bg-emerald-700']
+              : x.reason === 'repair' && x.units.length ? ['resolveTeacherReport', 'Mark for repair', 'ph-wrench', 'bg-amber-500 hover:bg-amber-600', 'repair']
+              : x.reason === 'unserv' && x.units.length ? ['resolveTeacherReport', 'Mark unserviceable', 'ph-x-circle', 'bg-rose-600 hover:bg-rose-700', 'unserv']
+              : ['resolveTeacherReport', 'Noted', 'ph-check', 'bg-slate-700 hover:bg-slate-800', 'noted'];
+            return `
+              <div class="px-4 py-3 border-t border-slate-100 space-y-1.5" data-treport="${x.id}">
+                <p class="text-sm text-slate-900"><b>${escapeHTML(x.name)}</b> ${ret ? 'is returning' : `reports <b class="text-rose-700">${escapeHTML(tReasonLabel(x.reason).toLowerCase())}</b>`}</p>
+                <p class="text-xs text-slate-600">${escapeHTML(x.desc)}${units ? ` · <span class="font-mono font-bold">${escapeHTML(units)}</span>` : ''} · ${escapeHTML(x.releaseNo || '')}</p>
+                ${x.note ? `<p class="text-xs text-slate-700 bg-slate-50 rounded-lg px-2.5 py-1.5">“${escapeHTML(x.note)}”</p>` : ''}
+                <div class="flex items-center gap-2 pt-1">
+                  <button onclick="${action[0]}('${x.id}'${action[4] ? `, '${action[4]}'` : ''})" class="h-9 px-3 rounded-lg ${action[3]} text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ${action[2]}"></i> ${action[1]}</button>
+                  ${action[4] && action[4] !== 'noted' ? `<button onclick="resolveTeacherReport('${x.id}', 'noted')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Noted</button>` : ''}
+                  ${ret ? `<button onclick="declineTeacherReport('${x.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Decline</button>` : ''}
+                  <span class="ml-auto text-[11px] text-slate-400">${escapeHTML(formatTimeAgo(x.createdMs))}</span>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>`;
+    }
+
+    function findUnitWithItem(id) {
+      for (const item of items) { const unit = getUnits(item.code).find(u => u.id === id); if (unit) return { item, unit }; }
+      return null;
+    }
+
+    function acceptTeacherReturn(id) {
+      const x = tReports.find(r => r.id === id);
+      if (!x || !cloud.user) return;
+      const F = cloud.sdk;
+      const byItem = new Map();
+      (x.units || []).forEach(({ id: uid }) => {
+        const found = findUnitWithItem(uid);
+        if (!found || (found.unit.toUid && found.unit.toUid !== x.uid)) return; // already with someone else
+        const { item, unit } = found;
+        unit.to = ''; delete unit.toUid; unit.ics = ''; delete unit.icsDate; delete unit.released;
+        unit.returned = Date.now();
+        if (!byItem.has(item.code)) byItem.set(item.code, { item, units: [] });
+        byItem.get(item.code).units.push(unit);
+      });
+      const batch = F.writeBatch(cloud.db);
+      if (byItem.size) {
+        const lines = [...byItem.values()].map(({ item, units }) => relLine(item, units.length, units));
+        const t = rosterByUid(x.uid) || { uid: x.uid, name: x.name };
+        batch.set(F.doc(relCol()), cleanJSON(relBase(t, {
+          kind: 'RETURN', source: 'returned', no: '', date: localISODate(), purpose: x.note || 'Returned by the teacher', reportId: x.id,
+          lines, total: 0, createdAt: F.serverTimestamp()
+        })));
+        saveStateWith({ summary: { kind: 'release', text: `${x.name} returned ${lines.map(l => `${l.desc} (${l.units.map(u => u.no).join(', ')})`).join(', ')}`, track: true } });
+      }
+      batch.update(F.doc(tReportCol(), x.id), { status: 'done', resolution: 'returned', reply: 'Received back', resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '' });
+      cloudWrite(batch.commit(), 'Saving the return');
+      tReports = tReports.map(r => (r.id === id ? { ...r, status: 'done' } : r));
+      renderRequestsEverywhere();
+      if (activeMainView === 'ITEMS') renderDashboardLedger();
+      showToast(`${x.name.split(' ')[0]}’s return received · back in stock, not assigned`, 'ph-arrow-u-down-left');
+    }
+
+    function resolveTeacherReport(id, action) {
+      const x = tReports.find(r => r.id === id);
+      if (!x || !cloud.user) return;
+      const F = cloud.sdk;
+      if (action === 'repair' || action === 'unserv') {
+        const touched = [];
+        (x.units || []).forEach(({ id: uid }) => {
+          const found = findUnitWithItem(uid);
+          if (!found) return;
+          found.unit.cond = action === 'repair' ? 'R' : 'U';
+          syncUnitCondition(found.item);
+          touched.push(found);
+        });
+        if (touched.length) saveStateWith({ summary: { kind: 'condition', code: touched[0].item.code,
+          text: `${touched.map(f => f.unit.no).join(', ')} marked ${action === 'repair' ? 'for repair' : 'unserviceable'} (reported by ${x.name}${x.note ? `: ${x.note}` : ''})` } });
+      }
+      const reply = action === 'repair' ? 'Marked for repair' : action === 'unserv' ? 'Marked unserviceable' : 'Noted';
+      cloudWrite(F.updateDoc(F.doc(tReportCol(), x.id), { status: 'done', resolution: action, reply, resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '' }), 'Updating');
+      tReports = tReports.map(r => (r.id === id ? { ...r, status: 'done' } : r));
+      renderRequestsEverywhere();
+      showToast(`${reply} · ${x.name.split(' ')[0]} will see it`, 'ph-check-circle');
+    }
+
+    function declineTeacherReport(id) {
+      const x = tReports.find(r => r.id === id);
+      if (!x) return;
+      const reason = prompt(`Reason for not accepting the return (${x.name} will see this):`, '');
+      if (reason === null) return;
+      const F = cloud.sdk;
+      cloudWrite(F.updateDoc(F.doc(tReportCol(), x.id), { status: 'declined', reply: reason.trim().slice(0, 300) || 'Return not accepted', resolvedMs: Date.now() }), 'Updating');
+      tReports = tReports.map(r => (r.id === id ? { ...r, status: 'declined' } : r));
+      renderRequestsEverywhere();
+    }
+
+    // ---- Released to teachers (custodian overview) ------------------------------------------
+    // One line per accountable person: teachers who joined, anyone something was released to,
+    // and names typed or scanned under "Assigned to" (no account needed). Equipment comes from
+    // My Items (the units' "Assigned to"), so it is right even for items assigned before the
+    // app was used; supplies and history come from the release records.
+    let teachersSel = null;     // person key shown in detail, or null for the list
+    let teachersQuery = '';
+
+    const personId = (uid, name) => (uid ? uid : 'n:' + (personKey(name) || String(name || '').trim().toLowerCase()));
+
+    function accountabilityPeople() {
+      const map = new Map();
+      const add = (key, p) => { if (!map.has(key)) map.set(key, { key, uid: null, name: '', position: '', office: '', joined: false, ...p }); return map.get(key); };
+      (isCustodianDevice() ? teacherRoster() : []).forEach(t => add(t.uid, { uid: t.uid, name: t.name, position: t.position || '', office: t.office || '', joined: !!t.joined }));
+      releaseList.forEach(r => { if (r.teacherName) add(personId(r.teacherUid, r.teacherName), { uid: r.teacherUid || null, name: r.teacherName, position: r.position || '', office: r.office || '' }); });
+      const unitsOf = new Map();
+      items.forEach(item => getUnits(item.code).forEach(unit => {
+        if (!unit.to && !unit.toUid) return;
+        const key = personId(unit.toUid, unit.to);
+        add(key, { uid: unit.toUid || null, name: unit.to || 'Teacher' });
+        if (!unitsOf.has(key)) unitsOf.set(key, []);
+        unitsOf.get(key).push({ item, unit });
+      }));
+      return [...map.values()].map(p => {
+        const records = releaseList.filter(r => personId(r.teacherUid, r.teacherName) === p.key).sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
+        const equipment = (unitsOf.get(p.key) || []).sort((a, b) => a.item.name.localeCompare(b.item.name) || String(a.unit.no).localeCompare(String(b.unit.no)));
+        const ris = records.filter(r => r.kind === 'RIS');
+        const toConfirm = p.uid ? records.filter(r => (r.kind === 'ICS' || r.kind === 'RIS') && !tReports.some(x => x.kind === 'received' && x.releaseId === r.id)) : [];
+        const open = p.uid ? tReports.filter(x => x.uid === p.uid && x.status === 'open' && x.kind !== 'received') : [];
+        const value = equipment.reduce((n, x) => n + (x.item.price || 0), 0);
+        const last = records[0] ? (records[0].createdMs || 0) : 0;
+        return { ...p, records, equipment, ris, toConfirm, open, value, last };
+      }).sort((a, b) => (b.equipment.length + b.records.length > 0) - (a.equipment.length + a.records.length > 0) || a.name.localeCompare(b.name));
+    }
+
+    function openTeachersView(key = null) {
+      teachersSel = key;
+      switchMainView('TEACHERS');
+    }
+    function setTeachersQuery(v) { teachersQuery = v; renderTeachersList(); }
+
+    function renderTeachersView() {
+      const head = document.getElementById('tvHead');
+      const body = document.getElementById('tvBody');
+      if (!head) return;
+      const people = accountabilityPeople();
+      const person = teachersSel && people.find(p => p.key === teachersSel);
+      if (teachersSel && !person) teachersSel = null;
+      if (!person) {
+        // Typing in the search box: refresh the list only, so the keyboard stays open.
+        if (document.activeElement && document.activeElement.id === 'tvSearch') { renderTeachersList(people); return; }
+        const withItems = people.filter(p => p.equipment.length);
+        const units = withItems.reduce((n, p) => n + p.equipment.length, 0);
+        const value = withItems.reduce((n, p) => n + p.value, 0);
+        head.innerHTML = `
+          <button onclick="switchMainView('${isCustodianDevice() ? 'REQUESTS' : 'HOME'}')" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-1"><i class="ph-bold ph-caret-left"></i> ${isCustodianDevice() ? 'Supply requests' : 'Home'}</button>
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h1 class="text-xl font-extrabold text-slate-900">Released to teachers</h1>
+              <p class="text-xs text-slate-500">${people.length} ${people.length === 1 ? 'person' : 'people'} · ${plural(units, 'equipment unit')} · ₱${peso2(value)}</p>
+            </div>
+            <div class="shrink-0 flex items-center gap-1.5 pt-1">
+              <button onclick="printAccountability()" ${withItems.length || people.some(p => p.ris.length) ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print all</button>
+              ${isCustodianDevice() && cloud.user ? `<button onclick="openRelease()" class="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release</button>` : ''}
+            </div>
+          </div>
+          <div class="relative mt-3">
+            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input id="tvSearch" type="search" value="${escapeHTML(teachersQuery)}" oninput="setTeachersQuery(this.value)" placeholder="Find a teacher, item or property no." class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-brand-500 outline-none">
+          </div>`;
+        renderTeachersList(people);
+        return;
+      }
+      renderTeacherDetail(person);
+    }
+
+    function renderTeachersList(people = accountabilityPeople()) {
+      const body = document.getElementById('tvBody');
+      const q = teachersQuery.trim().toLowerCase();
+      const list = !q ? people : people.filter(p => [p.name, p.position, p.office].some(v => String(v || '').toLowerCase().includes(q)) ||
+        p.equipment.some(({ item, unit }) => item.name.toLowerCase().includes(q) || String(unit.no || '').toLowerCase().includes(q) || String(unit.serial || '').toLowerCase().includes(q)));
+      if (!people.length) {
+        body.innerHTML = `
+          <div class="rounded-2xl bg-white border border-slate-200 p-6 text-center">
+            <i class="ph-bold ph-users-three text-3xl text-slate-300"></i>
+            <p class="mt-1 text-sm font-bold text-slate-700">No one yet</p>
+            <p class="text-xs text-slate-500">Teachers appear here when they join with your invite link, when you release items to them, or when you fill in “Assigned to” under Property Numbers.</p>
+          </div>`;
+        return;
+      }
+      body.innerHTML = list.length ? list.map(p => {
+        const chips = [
+          p.toConfirm.length && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold"><i class="ph-bold ph-hourglass-medium"></i> ${p.toConfirm.length} to confirm</span>`,
+          p.open.length && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold"><i class="ph-bold ph-warning"></i> ${p.open.length} open</span>`,
+          !p.uid && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 text-[10px] font-bold">No account</span>`
+        ].filter(Boolean).join('');
+        return `
+          <button onclick="openTeachersView('${escapeHTML(p.key)}')" class="w-full text-left rounded-2xl bg-white border border-slate-200 hover:border-slate-300 shadow-sm p-3 flex items-center gap-3">
+            <span class="w-10 h-10 shrink-0 rounded-full ${p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-sm font-extrabold">${escapeHTML(personInitials(p.name))}</span>
+            <span class="min-w-0 flex-1">
+              <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(p.name)}</span>
+              <span class="block text-[11px] text-slate-500 truncate">${escapeHTML([p.position, p.office].filter(Boolean).join(' · ') || (p.uid ? 'Teacher' : 'Typed under Assigned to'))}</span>
+              ${chips ? `<span class="mt-1 flex flex-wrap gap-1">${chips}</span>` : ''}
+            </span>
+            <span class="shrink-0 text-right">
+              <span class="block text-sm font-extrabold font-mono text-slate-900">${p.equipment.length}</span>
+              <span class="block text-[10px] font-bold uppercase text-slate-400">${p.equipment.length === 1 ? 'unit' : 'units'}</span>
+              ${p.value ? `<span class="block text-[11px] font-mono text-slate-500">₱${peso2(p.value)}</span>` : ''}
+            </span>
+          </button>`;
+      }).join('') : `<p class="text-center text-xs text-slate-500 py-6">No one matches “${escapeHTML(teachersQuery)}”.</p>`;
+    }
+
+    function personInitials(name) {
+      const w = String(name || '').replace(/[^A-Za-zÀ-ÿ\s]/g, ' ').split(/\s+/).filter(x => x.length > 1 && !NAME_SKIP.has(x.toLowerCase()));
+      return ((w[0] || '?')[0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase();
+    }
+
+    function renderTeacherDetail(p) {
+      const head = document.getElementById('tvHead');
+      const body = document.getElementById('tvBody');
+      const connected = isCustodianDevice() && cloud.user;
+      head.innerHTML = `
+        <button onclick="openTeachersView(null)" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-1"><i class="ph-bold ph-caret-left"></i> All teachers</button>
+        <div class="flex items-start gap-3">
+          <span class="w-12 h-12 shrink-0 rounded-full ${p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-base font-extrabold">${escapeHTML(personInitials(p.name))}</span>
+          <div class="min-w-0 flex-1">
+            <h1 class="text-xl font-extrabold text-slate-900 leading-tight">${escapeHTML(p.name)}</h1>
+            <p class="text-xs text-slate-500">${escapeHTML([p.position, p.office].filter(Boolean).join(' · ') || '—')}${p.uid ? ' · <span class="text-teal-700 font-bold">has the app</span>' : ' · no account'}</p>
+          </div>
+        </div>
+        <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+          <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${p.equipment.length}</p><p class="text-[10px] font-bold uppercase text-slate-400">Equipment</p></div>
+          <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">₱${Math.round(p.value).toLocaleString('en-PH')}</p><p class="text-[10px] font-bold uppercase text-slate-400">Value</p></div>
+          <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${p.ris.length}</p><p class="text-[10px] font-bold uppercase text-slate-400">RIS slips</p></div>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button onclick="printAccountability('${escapeHTML(p.key)}')" class="h-10 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print accountability</button>
+          ${connected ? `<button onclick="openRelease({ teacherUid: ${p.uid ? `'${p.uid}'` : 'null'} })" class="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release more</button>` : ''}
+        </div>`;
+
+      const condChip = u => {
+        const c = UNIT_COND[u.cond] || UNIT_COND.S;
+        return u.cond && u.cond !== 'S' ? `<span class="inline-flex px-1.5 py-0.5 rounded-md border text-[10px] font-bold ${c.on}">${c.label}</span>` : '';
+      };
+      const confirmedUnit = u => p.uid && releaseList.some(r => r.teacherUid === p.uid && r.kind === 'ICS' && r.lines.some(l => (l.units || []).some(x => x.id === u.id)) && tReports.some(x => x.kind === 'received' && x.releaseId === r.id));
+      let html = '';
+      if (p.open.length) html += `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-warning"></i> ${plural(p.open.length, 'open report')} · see <button onclick="openRequestsView()" class="underline font-bold">From teachers</button></p>`;
+      html += `
+        <div>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Accountable equipment</h2>
+          <div class="rounded-2xl bg-white border border-slate-200 shadow-sm divide-y divide-slate-100">
+            ${p.equipment.length ? p.equipment.map(({ item, unit }) => `
+              <div class="p-3 flex items-start gap-3" data-tunit="${unit.id}">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-bold text-slate-900 leading-snug">${escapeHTML(item.name)}</p>
+                  <p class="text-[11px] text-slate-500"><span class="font-mono font-bold text-slate-700">${escapeHTML(unit.no || '—')}</span>${unit.serial ? ` · S/N ${escapeHTML(unit.serial)}` : ''}${unit.ics ? ` · ICS ${escapeHTML(unit.ics)}` : ''}${unit.icsDate ? ` · ${escapeHTML(formatShortDate(unit.icsDate + 'T00:00:00'))}` : ''}</p>
+                  <p class="mt-1 flex flex-wrap gap-1">${condChip(unit)}${confirmedUnit(unit) ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold"><i class="ph-bold ph-check-circle"></i> Confirmed</span>' : ''}</p>
+                </div>
+                <div class="shrink-0 text-right space-y-1">
+                  <p class="text-xs font-mono font-bold text-slate-700">₱${peso2(item.price)}</p>
+                  <button onclick="takeBackUnit('${item.code}', '${unit.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrow-u-down-left"></i> Take back</button>
+                </div>
+              </div>`).join('') : '<p class="p-4 text-xs text-slate-500 text-center">No equipment under this name.</p>'}
+          </div>
+        </div>
+        <div>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Supplies received · RIS</h2>
+          <div class="rounded-2xl bg-white border border-slate-200 shadow-sm divide-y divide-slate-100">
+            ${p.ris.length ? p.ris.map(r => {
+              const ok = tReports.some(x => x.kind === 'received' && x.releaseId === r.id);
+              return `
+              <div class="p-3">
+                <div class="flex items-center justify-between gap-2">
+                  <p class="text-xs font-bold text-slate-900">RIS No. <span class="font-mono">${escapeHTML(r.no || '')}</span> · ${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</p>
+                  <span class="flex items-center gap-1.5">${p.uid ? (ok ? '<span class="text-[10px] font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Confirmed</span>' : '<span class="text-[10px] font-bold text-amber-700">Not confirmed yet</span>') : ''}
+                    <button onclick="printReleaseById('${r.id}')" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Print RIS"><i class="ph-bold ph-printer"></i></button></span>
+                </div>
+                <p class="text-[11px] text-slate-600">${r.lines.map(l => `${l.qty} ${escapeHTML(l.unit || '')} ${escapeHTML(l.desc)}`).join(' · ')}</p>
+              </div>`;
+            }).join('') : '<p class="p-4 text-xs text-slate-500 text-center">No supplies released yet.</p>'}
+          </div>
+        </div>`;
+      if (p.records.length) {
+        const label = r => r.kind === 'RETURN' ? (r.source === 'returned' ? 'Returned' : r.source === 'taken-back' ? 'Taken back' : 'Reassigned') : r.source === 'existing' ? 'Linked (assigned before joining)' : r.source === 'assigned' ? 'Assigned' : 'Released';
+        html += `
+          <div>
+            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">History</h2>
+            <ol class="rounded-2xl bg-white border border-slate-200 shadow-sm divide-y divide-slate-100">
+              ${p.records.map(r => `
+                <li class="p-3 flex items-start gap-3">
+                  <span class="w-8 h-8 shrink-0 rounded-lg ${r.kind === 'RETURN' ? 'bg-slate-100 text-slate-500' : r.kind === 'RIS' ? 'bg-indigo-50 text-indigo-600' : 'bg-blue-50 text-blue-600'} flex items-center justify-center"><i class="ph-bold ${r.kind === 'RETURN' ? 'ph-arrow-u-down-left' : 'ph-hand-arrow-up'}"></i></span>
+                  <span class="min-w-0 flex-1">
+                    <span class="block text-xs font-bold text-slate-900">${label(r)} · ${escapeHTML(r.kind === 'RETURN' ? '' : `${r.kind} ${r.no || ''}`)}</span>
+                    <span class="block text-[11px] text-slate-600 line-clamp-2">${r.lines.map(l => `${l.qty} ${escapeHTML(l.desc)}${(l.units || []).length ? ` (${escapeHTML(l.units.map(u => u.no).join(', '))})` : ''}`).join(' · ')}</span>
+                    ${r.purpose ? `<span class="block text-[11px] text-slate-400 truncate">${escapeHTML(r.purpose)}</span>` : ''}
+                  </span>
+                  <span class="shrink-0 text-[11px] text-slate-400">${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span>
+                </li>`).join('')}
+            </ol>
+          </div>`;
+      }
+      body.innerHTML = html;
+    }
+
+    // The custodian takes an item back (e.g. teacher transferred): back in stock, unassigned,
+    // and a return record for the teacher's list.
+    function takeBackUnit(code, unitId) {
+      const item = items.find(i => i.code === code);
+      const unit = item && getUnits(code).find(u => u.id === unitId);
+      if (!unit) return;
+      const holder = unitHolder(unit);
+      if (!confirm(`Take back ${item.name} (${unit.no || 'no property no.'}) from ${holder}?\n\nIt goes back to stock, not assigned to anyone.`)) return;
+      const uid = unit.toUid || null;
+      const line = relLine(item, 1, [unit]);
+      unit.to = ''; delete unit.toUid; unit.ics = ''; delete unit.icsDate; delete unit.released;
+      unit.returned = Date.now();
+      saveStateWith({ summary: { kind: 'release', code, text: `Took back ${unit.no || item.name} from ${holder}` } });
+      if (isCustodianDevice() && cloud.user) {
+        const F = cloud.sdk;
+        const t = rosterByUid(uid) || { uid, name: holder };
+        cloudWrite(F.setDoc(F.doc(relCol()), cleanJSON(relBase(t, {
+          kind: 'RETURN', source: 'taken-back', no: '', date: localISODate(), purpose: 'Taken back by the property custodian',
+          lines: [line], total: 0, createdAt: F.serverTimestamp()
+        }))), 'Saving the return');
+      }
+      renderTeachersView();
+      showToast(`${unit.no || item.name} is back in stock`, 'ph-arrow-u-down-left');
+    }
+
+    // Summary of accountability: one page per person (all, or the one selected).
+    function printAccountability(key = null) {
+      const people = accountabilityPeople().filter(p => (key ? p.key === key : p.equipment.length || p.ris.length));
+      if (!people.length) return;
+      document.getElementById('printPrSection').innerHTML = people.map(accountabilityPrintHTML).join('');
+      document.body.classList.remove('printing-labels');
+      document.body.classList.add('printing-pr');
+      const done = () => { document.body.classList.remove('printing-pr'); window.removeEventListener('afterprint', done); };
+      window.addEventListener('afterprint', done);
+      setTimeout(() => window.print(), 50);
+    }
+
+    function accountabilityPrintHTML(p) {
+      const e = v => escapeHTML(v || '');
+      const d = prDefaults();
+      const today = new Date().toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
+      const condText = u => (UNIT_COND[u.cond] || UNIT_COND.S).label;
+      const eqRows = p.equipment.map(({ item, unit }) => `<tr><td class="pr-sn">${e(unit.ics)}</td><td class="c" style="font-size:9pt">${e(unit.icsDate ? new Date(unit.icsDate + 'T00:00:00').toLocaleDateString('en-PH') : '')}</td><td class="pr-sn">${e(unit.no)}</td><td>${e(item.name)}${unit.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(unit.serial)}</span>` : ''}</td><td class="c" style="font-size:9pt">${e(condText(unit))}</td><td class="r">${peso2(item.price)}</td></tr>`).join('');
+      const risRows = p.ris.flatMap(r => r.lines.map((l, i) => `<tr><td class="pr-sn">${i ? '' : e(r.no)}</td><td class="c" style="font-size:9pt">${i ? '' : e(r.date ? new Date(r.date + 'T00:00:00').toLocaleDateString('en-PH') : '')}</td><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td><td>${e(l.desc)}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td></tr>`)).join('');
+      return `
+        <div class="pr-form acct-page">
+          <h1 style="margin-bottom:2pt">SUMMARY OF ACCOUNTABILITY</h1>
+          <p style="text-align:center;margin:0 0 10pt">Semi-expendable property and supplies issued · as of ${e(today)}</p>
+          <div class="pr-top"><span>Entity Name: <b>${e(d.entity || schoolInfo.school)}</b></span><span>Fund Cluster: <b>${e(d.fund)}</b></span></div>
+          <div class="pr-top"><span>Accountable person: <b>${e(p.name).toUpperCase()}</b></span><span>Position/Office: <b>${e([p.position, p.office].filter(Boolean).join(', '))}</b></span></div>
+          <p style="font-weight:700;margin:8pt 0 3pt">A. Equipment issued on ICS (${p.equipment.length})</p>
+          <table class="pr-table">
+            <colgroup><col style="width:13%"><col style="width:13%"><col style="width:18%"><col style="width:30%"><col style="width:13%"><col style="width:13%"></colgroup>
+            <tr><th>ICS No.</th><th>Date</th><th>Inventory Item No.</th><th>Description</th><th>Condition</th><th>Unit Cost</th></tr>
+            ${eqRows || '<tr><td colspan="6" class="c"><i>None</i></td></tr>'}
+            <tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(p.value)}</b></td></tr>
+          </table>
+          <p style="font-weight:700;margin:10pt 0 3pt">B. Supplies issued on RIS (${p.ris.length})</p>
+          <table class="pr-table">
+            <colgroup><col style="width:13%"><col style="width:13%"><col style="width:8%"><col style="width:10%"><col style="width:43%"><col style="width:13%"></colgroup>
+            <tr><th>RIS No.</th><th>Date</th><th>Qty</th><th>Unit</th><th>Description</th><th>Amount</th></tr>
+            ${risRows || '<tr><td colspan="6" class="c"><i>None</i></td></tr>'}
+          </table>
+          <table class="pr-table" style="margin-top:14pt">
+            <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+            <tr><td><i>Certified correct:</i></td><td><i>Verified by:</i></td></tr>
+            <tr><td class="pr-sig"></td><td class="pr-sig"></td></tr>
+            <tr><td class="c"><b>${e(p.name).toUpperCase()}</b><br><span style="font-size:8.5pt">Accountable person</span></td><td class="c"><b>${e(schoolInfo.custodian).toUpperCase()}</b><br><span style="font-size:8.5pt">${e(schoolInfo.position || 'Property Custodian')}</span></td></tr>
+            <tr><td class="c"><br><span style="font-size:8.5pt">Date</span></td><td class="c"><br><span style="font-size:8.5pt">Date</span></td></tr>
+          </table>
+        </div>`;
+    }
+
+    // ---- Items delivered on a PR → stock in ---------------------------------------------
+    function prStockInPlan(pr) {
+      return (pr.lines || []).filter(l => l.qty > 0).map(l => {
+        const item = (l.code && items.find(i => i.code === l.code)) || (l.stockNo && items.find(i => i.code === l.stockNo))
+          || items.find(i => normItemName(i.name) === normItemName(l.desc)) || null;
+        return { line: l, item };
+      });
+    }
+    function addCustomItemSilently({ name, unit, price, qty }) {
+      const used = new Set(customRawItems.map(r => r[1]));
+      let no = Math.max(113, ...customRawItems.map(r => parseInt(r[0], 10) || 0));
+      let code;
+      do { no += 1; code = `CUSTOM-P2-${String(no).padStart(3, '0')}`; } while (used.has(code));
+      customRawItems.push([no, code, String(name).toUpperCase().slice(0, 200), unit || 'unit', Math.max(0, price || 0), 24, 'PART2']);
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems)); scheduleInventorySync();
+      userState[code] = { qty, customPrice: Math.max(0, price || 0), minQty: 2, note: '' };
+      return code;
+    }
+    function stockInPr(pr) {
+      const plan = prStockInPlan(pr);
+      let added = 0, created = 0;
+      plan.forEach(({ line, item }) => {
+        if (item) {
+          item.qty = (item.qty || 0) + line.qty;
+          (userState[item.code] || (userState[item.code] = {})).qty = item.qty;
+        } else {
+          addCustomItemSilently({ name: line.desc, unit: line.unit, price: line.unitCost, qty: line.qty });
+          created += 1;
+        }
+        added += 1;
+      });
+      if (created) rebuildCatalogList();
+      if (added) saveStateWith({ summary: { kind: 'edit', text: `Delivered PR ${pr.prNo}: added ${plural(added, 'item')} to stock${created ? ` (${created} new)` : ''}`, track: true } });
+      renderDashboard();
+      return { added, created };
+    }
 
     // Boot App on Load
     window.addEventListener('DOMContentLoaded', () => {

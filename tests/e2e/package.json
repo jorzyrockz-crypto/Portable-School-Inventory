@@ -1,0 +1,13 @@
+{
+  "name": "custodianpro-e2e",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end tests (headless Chromium, Firebase replaced by an in-memory stand-in). See README.md.",
+  "scripts": {
+    "test": "for t in *.mjs; do node $t || exit 1; done"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "*",
+    "puppeteer-core": "*"
+  }
+}

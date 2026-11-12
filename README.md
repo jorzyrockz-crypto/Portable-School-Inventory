@@ -191,6 +191,66 @@ price (anything counted per "unit" costing ₱500 or more). If an item is classi
 open it and pick **Equipment** or **Consumable** under *Classification*; choose **Auto** to go
 back to the automatic rule. Custom items can be classified when they are added.
 
+## Releasing items to teachers
+
+Teachers who join with the invite link are listed automatically (their phone sends their name, position and office). The custodian releases items from stock:
+
+- **From a request:** an approved request with everything in stock, or a delivered one, has a **Release** button. The teacher and the approved items are filled in.
+- **From My Items:** the green hand button on an item. Or tap **Release** at the top of Supply requests.
+- **Supplies** go on a **RIS** (Requisition and Issue Slip, Appendix 63) and leave the stock count.
+- **Equipment** goes on an **ICS** (Inventory Custodian Slip, Appendix 59). It stays in My Items, and each unit shows *With Ana Reyes · ICS 2026-11-001*. Pick which property numbers to hand over. Units without one get the next number automatically.
+- Numbers run per month (`2026-11-001`, …), separately for RIS and ICS. Both slips print from the done screen.
+- Someone without an account (e.g. utility staff) can be typed in. The slip still prints.
+
+**Items delivered** on a Purchase Request now adds the items to the stock in My Items. Items that weren't in My Items yet are added as new items. The requests then show *Ready* to the teacher until you release them.
+
+**Assigned to** (Property Numbers) suggests the teachers. Picking one links the unit to that teacher's account. Names typed earlier or read from a scanned ICS (e.g. *MR. JUAN D. DELA CRUZ*) are linked automatically when *Juan Dela Cruz* joins. Titles, middle initials and *Last, First* order are ignored. Two teachers with the same name are left for you to pick.
+
+Every release, assignment and return is kept as a record under the school (`releases`), and nothing is ever deleted. A teacher can read only the records made out to their own account. Teachers can't see the school inventory or the list of other teachers.
+
+> Publish the updated [`firestore.rules`](firestore.rules) again after updating. The new parts are `members` and `releases`.
+
+## A teacher's My Items
+
+On a teacher's phone the screen has two tabs: **My Items** and **Requests**.
+
+- **New from the property custodian:** each RIS or ICS released to the teacher, with a **Received** button. The custodian's records show who confirmed.
+- **Accountable equipment · ICS:** every unit under the teacher's name, with its property number, serial, ICS no. and value. Returns are subtracted. Each unit has two actions:
+  - **Report a problem:** needs repair, not working, lost or missing, or something else, plus a note.
+  - **Return:** the item stays on the list, marked *Return requested*, until the custodian marks it received back.
+- **Supplies received · RIS:** every slip, newest first. *Report a problem* covers fewer than released, damaged, or wrong item.
+- Reports sent without signal are queued (*Sending…*) and go out when the phone reconnects.
+
+The custodian sees open reports at the top of **Supply requests** under **From teachers**, and as *N from teachers* on Home:
+
+- **Mark for repair / Mark unserviceable** sets the unit's condition in My Items.
+- **Received back** clears the assignment. The unit is back in stock, and a return record is kept.
+- **Decline** asks for a reason. **Noted** closes a report without changes.
+- The teacher sees the answer on the item.
+
+Teachers create only their own reports and read only their own. Only the custodian can resolve them (`teacherReports` in `firestore.rules`).
+
+## Released to teachers (overview)
+
+**More → Released to teachers** (or **Teachers** on Supply requests) lists everyone who holds something:
+- teachers who joined;
+- anyone items were released to;
+- names typed or scanned under *Assigned to*. These show as *No account*, and appear even if you never signed in.
+
+Each person shows their equipment units and value, plus *to confirm* (slips they haven't marked Received) and *open* reports. Search by name, item, property number or serial.
+
+A person's page lists:
+- **Accountable equipment:** taken from My Items. It shows condition, ICS no., and *Confirmed* when the teacher tapped Received. **Take back** returns a unit to stock unassigned and keeps a return record.
+- **Supplies received (RIS):** with a reprint button for each slip.
+- **History:** releases, assignments, links and returns.
+
+**Print accountability** gives a *Summary of Accountability* for one person. **Print all** gives one page per person. Each summary covers:
+- equipment on ICS (ICS no., date, inventory item no., description and serial, condition, unit cost and total);
+- supplies on RIS;
+- signature lines for *Certified correct* (the teacher) and *Verified by* (the custodian).
+
+The *With …* chip on an item in My Items opens that person's page.
+
 ## Works offline
 
 CustodianPro is an installable Progressive Web App:
@@ -226,3 +286,19 @@ npm run serve   # http://localhost:8080
 | `manifest.webmanifest` | PWA metadata (name, icons, colours) |
 
 Generated files (`assets/`, `sw.js`) are committed so GitHub Pages can serve them directly.
+
+### End-to-end tests
+
+`tests/e2e/` runs the app on simulated phones in headless Chromium, with Firebase replaced by an in-memory stand-in that applies the same access rules as `firestore.rules` (`lib/fake-backend.mjs`):
+
+```bash
+npm run serve &                       # app on http://localhost:8080
+cd tests/e2e && npm install
+node inventory-sync.mjs               # My Items saved to the account
+node release.mjs                      # teachers, RIS/ICS releases, stock in
+node teacher-items.mjs                # a teacher's My Items, reports and returns
+node teachers-overview.mjs            # released-to-teachers overview, take back, accountability print
+# or: npm test (all suites)
+```
+
+Set `CHROME_PATH=/path/to/chrome` to use an installed Chrome instead of `@sparticuz/chromium`. `BASE_URL` changes the address.
