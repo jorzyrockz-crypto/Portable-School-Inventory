@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="8f8df8870fb2">
+  <meta name="app-version" content="633107bb1291">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -11731,7 +11731,7 @@
     const NOTIF_MAX = 60;
     let notifState = null;      // { scope, items: [], seen: {}, primed: {} }
     let notifPrefs = (() => {
-      const def = { system: true, lowStock: true, reminders: true, waiting: true, count: true };
+      const def = { system: true, lowStock: true, reminders: true, waiting: true, count: true, quiet: true, quietFrom: '19:00', quietTo: '06:00' };
       try { return Object.assign(def, JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY) || '{}')); }
       catch (e) { return def; }
     })();
@@ -12150,8 +12150,57 @@
     }
 
     const systemNotifSupported = () => 'Notification' in window && 'serviceWorker' in navigator;
+    // ---- Quiet hours: no phone notifications at night (7 pm – 6 am unless changed) ----
+    // What arrives meanwhile still goes to the bell; if the app is in the background when the
+    // quiet hours end, one phone notification sums it up ("4 notifications overnight").
+    const QUIET_KEY = 'custodian_quiet_held_v1';
+    const hmMin = hm => { const [h, m] = String(hm || '0:0').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+    function inQuietHours(now = Date.now()) {
+      if (notifPrefs.quiet === false) return false;
+      const d = new Date(now), m = d.getHours() * 60 + d.getMinutes();
+      const from = hmMin(notifPrefs.quietFrom || '19:00'), to = hmMin(notifPrefs.quietTo || '06:00');
+      if (from === to) return false;
+      return from < to ? m >= from && m < to : m >= from || m < to;
+    }
+    function quietHeld() { try { return JSON.parse(localStorage.getItem(QUIET_KEY) || 'null') || { n: 0, titles: [] }; } catch (e) { return { n: 0, titles: [] }; } }
+    function releaseQuietHeld(now = Date.now()) {
+      const held = quietHeld();
+      if (!held.n || inQuietHours(now)) return;
+      localStorage.removeItem(QUIET_KEY);
+      if (document.visibilityState === 'visible') return;   // the bell already shows them
+      showSystemNotif({ id: '', title: held.n === 1 ? held.titles[0] : `${held.n} notifications overnight`, body: held.n === 1 ? '' : held.titles.slice(0, 3).join(' · '), at: now });
+    }
+    const fmtHM = hm => { const m = hmMin(hm), h = Math.floor(m / 60) % 24; return `${h % 12 || 12}:${String(m % 60).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; };
+    function setQuietTime(which, value) {
+      if (!/^\d{2}:\d{2}$/.test(value)) return;
+      notifPrefs[which === 'from' ? 'quietFrom' : 'quietTo'] = value;
+      localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(notifPrefs));
+      renderNotifPanel();
+    }
+    function quietHoursHTML() {
+      const on = notifPrefs.quiet !== false;
+      const time = (id, which, v) => `<input id="${id}" type="time" value="${escapeHTML(v)}" onchange="setQuietTime('${which}', this.value)" aria-label="Quiet hours ${which}" class="h-9 px-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-brand-500 outline-none">`;
+      return `
+        <div id="quietHours" class="rounded-xl bg-white border border-slate-200 px-3 py-2.5 text-xs">
+          <div class="flex items-center gap-3">
+            <i class="ph-bold ph-moon-stars text-base text-indigo-600"></i>
+            <span class="flex-1 min-w-0"><span class="block font-bold text-slate-800">Quiet hours</span><span class="block text-[11px] text-slate-600 leading-snug">${on ? `No phone notifications ${fmtHM(notifPrefs.quietFrom)} – ${fmtHM(notifPrefs.quietTo)} · they wait in the bell` : 'Phone notifications at any time of day'}</span></span>
+            <button role="switch" aria-checked="${on}" aria-label="Quiet hours" data-notif-quiet onclick="setNotifPref('quiet', ${!on})"
+              class="notif-sw shrink-0 w-11 h-6 rounded-full p-0.5 transition ${on ? 'bg-brand-600' : 'bg-slate-300'}"><span class="block w-5 h-5 rounded-full bg-white shadow transition ${on ? 'translate-x-5' : ''}"></span></button>
+          </div>
+          ${on ? `<div class="mt-2 pl-7 flex flex-wrap items-center gap-2 text-slate-600"><span>From</span>${time('quietFrom', 'from', notifPrefs.quietFrom)}<span>to</span>${time('quietTo', 'to', notifPrefs.quietTo)}</div>` : ''}
+        </div>`;
+    }
+
     async function showSystemNotif(n) {
       if (!systemNotifSupported() || Notification.permission !== 'granted' || !notifPrefs.system) return;
+      if (inQuietHours(n.at || Date.now())) {
+        const held = quietHeld();
+        held.n += 1;
+        held.titles = [n.title, ...held.titles].slice(0, 5);
+        localStorage.setItem(QUIET_KEY, JSON.stringify(held));
+        return;
+      }
       const opts = {
         body: n.body || '', icon: 'assets/icons/icon-192.png', badge: 'assets/icons/badge-96.png',
         tag: n.id || 'custodianpro-summary', data: { nid: n.id || '' }, timestamp: n.at || Date.now()
@@ -12211,7 +12260,8 @@
         return `<div class="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-xs text-emerald-800 flex items-start gap-2">
           <i class="ph-bold ph-bell-ringing text-base mt-0.5"></i>
           <div class="flex-1 min-w-0"><p class="font-bold">Phone notifications are on</p><p class="text-emerald-700 mt-0.5">They appear while CustodianPro is open or was used recently.</p></div>
-          <button onclick="setSystemNotifs(false)" class="shrink-0 h-8 px-2.5 rounded-lg bg-white border border-emerald-200 font-bold text-emerald-800">Turn off</button></div>`;
+          <button onclick="setSystemNotifs(false)" class="shrink-0 h-8 px-2.5 rounded-lg bg-white border border-emerald-200 font-bold text-emerald-800">Turn off</button></div>
+          ${quietHoursHTML()}`;
       }
       if (p === 'denied') {
         return `<div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs text-slate-600 flex items-start gap-2">
@@ -12344,8 +12394,8 @@
           if (e.data.nid) openNotif(e.data.nid); else openNotifPanel();
         });
       }
-      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { renderNotifBell(); notifReminders(); checkSyncProblem(); } });
-      setInterval(() => { notifReminders(); checkSyncProblem(); }, 30 * 60 * 1000);   // days pass while the app stays open
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { renderNotifBell(); notifReminders(); checkSyncProblem(); releaseQuietHeld(); } });
+      setInterval(() => { notifReminders(); checkSyncProblem(); releaseQuietHeld(); }, 30 * 60 * 1000);   // days pass while the app stays open
     }
 
     // ---- Install as an app (Chrome's "beforeinstallprompt") -------------------------------

@@ -31,6 +31,8 @@ async function instrument(page, { granted = false } = {}) {
     navigator.clearAppBadge = () => { window.__badge.push(0); return Promise.resolve(); };
     window.__shown = [];
     window.__hidden = false;
+    // The suite runs at any hour: quiet hours (7 pm – 6 am) start off here; section 19 tests them.
+    try { if (!localStorage.getItem('custodian_notification_prefs_v1')) localStorage.setItem('custodian_notification_prefs_v1', JSON.stringify({ quiet: false })); } catch (e) {}
     Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (window.__hidden ? 'hidden' : 'visible') });
     if (navigator.serviceWorker) {
       navigator.serviceWorker.getRegistration = async () => ({ showNotification: async (title, o) => { window.__shown.push({ title, ...o }); } });
@@ -444,6 +446,35 @@ try {
   await cn(t2, at(2026, 11, 4));
   check((await notifs(t2)).filter(n => /^Year-end/.test(n.title)).length === 1, 'teacher: once a week');
   await ev(a, () => closeNotifPanel());
+
+  out('19 quiet hours for phone notifications');
+  check(await ev(t, () => { localStorage.removeItem(NOTIF_PREFS_KEY); return true; }), 'fresh preferences');
+  const defs = await ev(t, () => { const d = { system: true, lowStock: true, reminders: true, waiting: true, count: true, quiet: true, quietFrom: '19:00', quietTo: '06:00' }; return d; });
+  await ev(t, d => { Object.assign(notifPrefs, d); localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(notifPrefs)); }, defs);
+  const hm = (h, m = 0) => { const d = new Date(); d.setHours(h, m, 0, 0); return d.getTime(); };
+  const q = await ev(t, (a, b, c, d, e) => [inQuietHours(a), inQuietHours(b), inQuietHours(c), inQuietHours(d), inQuietHours(e)], hm(18, 59), hm(19), hm(23, 30), hm(5, 59), hm(6));
+  check(q.join() === 'false,true,true,true,false', `default 7 pm – 6 am (6:59 pm ${q[0]}, 7 pm ${q[1]}, 11:30 pm ${q[2]}, 5:59 am ${q[3]}, 6 am ${q[4]})`);
+  await ev(t, () => { notifPrefs.system = true; openNotifPanel(); });
+  const qh = await ev(t, () => ({ text: document.getElementById('quietHours').innerText, on: document.querySelector('[data-notif-quiet]').getAttribute('aria-checked'), from: quietFrom.value, to: quietTo.value }));
+  check(/Quiet hours/.test(qh.text) && /7:00 PM – 6:00 AM/.test(qh.text) && qh.on === 'true' && qh.from === '19:00' && qh.to === '06:00', `sheet: “${qh.text.replace(/\s+/g, ' ')}”`);
+  await t.screenshot({ path: '/tmp/e2e_n_quiet.png' });
+  await ev(t, () => { quietFrom.value = '21:30'; quietFrom.dispatchEvent(new Event('change')); });
+  check(await ev(t, () => JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY)).quietFrom === '21:30' && /9:30 PM – 6:00 AM/.test(document.getElementById('quietHours').innerText)), 'start time changed to 9:30 pm (saved)');
+  // during quiet hours: held back (still in the bell), summed up when they end
+  await ev(t, () => { notifPrefs.quietFrom = '00:00'; notifPrefs.quietTo = '23:59'; window.__shown = []; window.__hidden = true; localStorage.removeItem(QUIET_KEY); });
+  await ev(t, () => { addNotif({ title: 'Test one', body: 'x', icon: 'ph-bell' }); });
+  await sleep(500);
+  await ev(t, () => { addNotif({ title: 'Test two', body: 'y', icon: 'ph-bell' }); });
+  await sleep(500);
+  const held = await ev(t, () => ({ shown: window.__shown.length, held: quietHeld().n, bell: loadNotifs().items.filter(n => /^Test (one|two)$/.test(n.title)).length }));
+  check(held.shown === 0 && held.held === 2 && held.bell === 2, `quiet hours: no phone notification, 2 kept for later, both in the bell (${JSON.stringify(held)})`);
+  await ev(t, () => { notifPrefs.quietFrom = '19:00'; notifPrefs.quietTo = '06:00'; releaseQuietHeld(new Date().setHours(7, 0, 0, 0)); });
+  await sleep(300);
+  const sum = await ev(t, () => ({ shown: window.__shown.map(x => x.title), left: quietHeld().n }));
+  check(sum.shown.length === 1 && sum.shown[0] === '2 notifications overnight' && sum.left === 0, `after quiet hours (app in background): “${sum.shown[0]}”`);
+  await ev(t, () => { window.__shown = []; window.__hidden = false; setNotifPref('quiet', false); });
+  check(await ev(t, () => !inQuietHours(new Date().setHours(23, 0, 0, 0)) && /any time of day/.test(document.getElementById('quietHours').innerText) && !document.getElementById('quietFrom')), 'switch off: phone notifications at any hour');
+  await ev(t, () => closeNotifPanel());
 
   out('17 changes not reaching the account (custodian)');
   await ev(a, () => { closeNotifPanel(); switchMainView('HOME'); localStorage.removeItem(SYNC_SNOOZE_KEY); });
