@@ -47,6 +47,17 @@ export function createBackend() {
       if (before.uid === ctx.uid && before.status === 'pending' && after.status === 'cancelled' && changed.every(k => ['status', 'updatedAt'].includes(k))) return;
       deny('request update', { path, data });
     }
+    if (p.length === 4 && sub === 'members') {
+      const keys = ['uid', 'name', 'position', 'office', 'email', 'joinedMs', 'updatedAt'];
+      const ok = ctx.uid === p[3] && school(sid) && Object.keys(data).every(k => keys.includes(k)) && data.uid === p[3] &&
+        typeof data.name === 'string' && data.name.length > 0 && data.name.length <= 80 && str(data.position, 80) && str(data.office, 80) && str(data.email, 120);
+      if (!ok) deny('member write', { path, data });
+      return;
+    }
+    if (p.length === 4 && sub === 'releases') {
+      if (!isCust(ctx, sid)) deny('release write', { path });
+      return;
+    }
     if (p.length === 4 && CUSTODIAN_ONLY.includes(sub)) {
       if (!isCust(ctx, sid)) deny(`${sub} write`, { path });
       return;
@@ -70,6 +81,16 @@ export function createBackend() {
       return;
     }
     if (CUSTODIAN_ONLY.includes(sub)) { if (!isCust(ctx, sid)) deny(`read ${sub}`, { path }); return; }
+    if (sub === 'members') {
+      if (isCust(ctx, sid) || (single && p[3] === ctx.uid)) return;
+      deny('read members', { path });
+    }
+    if (sub === 'releases') {
+      if (isCust(ctx, sid)) return;
+      if (single) { const d = store.get(path); if (d && d.teacherUid === ctx.uid) return; deny('get release', { path }); }
+      if (!filters.some(f => f.field === 'teacherUid' && f.op === '==' && f.value === ctx.uid)) deny('list releases', { path, filters });
+      return;
+    }
     deny('read: no rule', { path });
   }
 

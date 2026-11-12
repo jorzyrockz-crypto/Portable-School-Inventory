@@ -144,7 +144,7 @@ try {
   check(deniedByApp.length === 0, `app flows refused 0 times (${deniedByApp.length}) ${deniedByApp.slice(0, 2).join(' | ')}`);
 } catch (e) {
   out('CRASH', e);
-  process.exitCode = 1;
+  check(false, `crashed: ${e.message}`);
 } finally {
   summary('inventory-sync');
   await closeAll();

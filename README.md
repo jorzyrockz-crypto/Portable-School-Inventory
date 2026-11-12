@@ -191,6 +191,25 @@ price (anything counted per "unit" costing ₱500 or more). If an item is classi
 open it and pick **Equipment** or **Consumable** under *Classification*; choose **Auto** to go
 back to the automatic rule. Custom items can be classified when they are added.
 
+## Releasing items to teachers
+
+Teachers who join with the invite link are listed automatically (their phone sends their name, position and office). The custodian releases items from stock:
+
+- **From a request:** an approved request with everything in stock, or a delivered one, has a **Release** button. The teacher and the approved items are filled in.
+- **From My Items:** the green hand button on an item. Or tap **Release** at the top of Supply requests.
+- **Supplies** go on a **RIS** (Requisition and Issue Slip, Appendix 63) and leave the stock count.
+- **Equipment** goes on an **ICS** (Inventory Custodian Slip, Appendix 59). It stays in My Items, and each unit shows *With Ana Reyes · ICS 2026-11-001*. Pick which property numbers to hand over. Units without one get the next number automatically.
+- Numbers run per month (`2026-11-001`, …), separately for RIS and ICS. Both slips print from the done screen.
+- Someone without an account (e.g. utility staff) can be typed in. The slip still prints.
+
+**Items delivered** on a Purchase Request now adds the items to the stock in My Items. Items that weren't in My Items yet are added as new items. The requests then show *Ready* to the teacher until you release them.
+
+**Assigned to** (Property Numbers) suggests the teachers. Picking one links the unit to that teacher's account. Names typed earlier or read from a scanned ICS (e.g. *MR. JUAN D. DELA CRUZ*) are linked automatically when *Juan Dela Cruz* joins. Titles, middle initials and *Last, First* order are ignored. Two teachers with the same name are left for you to pick.
+
+Every release, assignment and return is kept as a record under the school (`releases`), and nothing is ever deleted. A teacher can read only the records made out to their own account. Teachers can't see the school inventory or the list of other teachers.
+
+> Publish the updated [`firestore.rules`](firestore.rules) again after updating. The new parts are `members` and `releases`.
+
 ## Works offline
 
 CustodianPro is an installable Progressive Web App:
@@ -234,7 +253,9 @@ Generated files (`assets/`, `sw.js`) are committed so GitHub Pages can serve the
 ```bash
 npm run serve &                       # app on http://localhost:8080
 cd tests/e2e && npm install
-node inventory-sync.mjs               # or: npm test (all suites)
+node inventory-sync.mjs               # My Items saved to the account
+node release.mjs                      # teachers, RIS/ICS releases, stock in
+# or: npm test (all suites)
 ```
 
 Set `CHROME_PATH=/path/to/chrome` to use an installed Chrome instead of `@sparticuz/chromium`. `BASE_URL` changes the address.
