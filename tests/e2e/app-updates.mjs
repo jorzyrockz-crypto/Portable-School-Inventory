@@ -109,12 +109,13 @@ try {
   await ev(p, () => localStorage.setItem(SEEN_RELEASE_KEY, '2026-10-requests'));
   await p.reload({ waitUntil: 'networkidle0' });
   await until(p, () => /Updated · /.test(document.getElementById('appToast').innerText), 'whats new toast', 5000);
-  check(/Updated · Notifications and app updates/.test(await toastText(p)), `toast: ${(await toastText(p)).replace(/\s+/g, ' ')}`);
+  const latestTitle = await ev(p, () => WHATS_NEW[0].title);
+  check((await toastText(p)).includes(`Updated · ${latestTitle}`), `toast: ${(await toastText(p)).replace(/\s+/g, ' ')}`);
   await p.click('#appToastAction');
   await sleep(300);
   const about = await ev(p, () => ({ open: !document.getElementById('aboutPanel').classList.contains('hidden'), text: document.getElementById('aboutBody').innerText,
     img: document.querySelector('#aboutPanel img').naturalWidth, releases: document.querySelectorAll('[data-release]').length }));
-  check(about.open && /What’s new/i.test(about.text) && /Notifications and app updates/.test(about.text) && about.releases === 3, 'What’s new opens About with the latest 3 releases');
+  check(about.open && /What’s new/i.test(about.text) && about.text.includes(latestTitle) && about.releases === 3, 'What’s new opens About with the latest 3 releases');
   check(about.img === 1024, 'banner shown in About');
   await p.screenshot({ path: '/tmp/e2e_u_about.png' });
   await p.reload({ waitUntil: 'networkidle0' });

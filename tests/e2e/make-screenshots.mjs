@@ -40,7 +40,7 @@ try {
     window.Notification = class { static get permission() { return 'granted'; } static requestPermission() { return Promise.resolve('granted'); } };
   });
   await setup(a);
-  await ev(a, () => openRequestsView());
+  await ev(a, () => { openRequestsView(); gateGo('custodian'); }); // signed out: the sign-in screen carries the form
   await until(a, () => !!document.getElementById('rcEmail'), 'sign-in card');
   await ev(a, () => { rcSchool.value = 'San Jose National High School'; rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
   await a.click('#rcCreate');

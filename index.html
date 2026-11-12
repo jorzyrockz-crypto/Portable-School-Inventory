@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#122e76">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="6c6c1228d102">
+  <meta name="app-version" content="332616039419">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="Effortless classroom and equipment tracking for school property custodians and teachers: QR property tags, physical count, RIS/ICS releases, supply requests and Appendix 60 purchase requests. Free, works offline on phones and tablets.">
   <meta name="author" content="CustodianPro">
@@ -65,6 +65,15 @@
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <!-- Compiled Tailwind + self-hosted Inter / JetBrains Mono + Phosphor icons (npm run build) -->
   <link rel="stylesheet" href="assets/app.css">
+  <!-- Before the first paint: light/dark (More → Appearance) and the sign-in screen, so neither flashes -->
+  <script>
+    (function () {
+      var c = document.documentElement.classList, t = null, role = null;
+      try { t = localStorage.getItem('custodian_theme_v1'); role = localStorage.getItem('custodian_requests_role_v1'); } catch (e) {}
+      if (t === 'dark' || (t !== 'light' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches)) c.add('dark');
+      if (!role) c.add('gated');
+    })();
+  </script>
 
   <style>
     /* iPad & Tablet Touch Optimizations */
@@ -161,6 +170,77 @@
     .pr-table .pr-blank td { height: 15pt; }
     .pr-table .pr-sig { height: 28pt; }
     .pr-table .pr-purpose { height: 40pt; }
+    /* ---- Light / dark ---------------------------------------------------------------
+       html.dark is set by the <head> script (System / Light / Dark in More). The Tailwind
+       color classes get their dark twins from scripts/dark-theme.mjs; these are the bits
+       written as plain CSS. Printing always uses the light look. */
+    html { color-scheme: light; }
+    html.theme-switching *, html.theme-switching *::before, html.theme-switching *::after { transition: none !important; }
+    html.dark { color-scheme: dark; }
+    @media screen {
+      html.dark body { background-color: #0b1220; }
+      html.dark .more-item { color: #cbd5e1; }
+      html.dark .more-item:hover, html.dark .more-item:active { background: #1c2638; }
+      html.dark .pr-in { background: #0e1626; border-color: #334155; color: #f1f5f9; }
+      html.dark :where(input:not([type=checkbox], [type=radio], [type=range], [type=color]), select, textarea) { background-color: #0e1626; }
+      html.dark .bg-\[\#eef3fb\] { background-color: #1b2747; }
+      /* QR codes must stay dark-on-white to scan */
+      html.dark .keep-light { background-color: #fff; }
+    }
+
+    /* ---- Sign-in screen (school art: portrait art on tall screens, landscape on wide) ---- */
+    #loginGate { display: none; }
+    html.gated #loginGate { display: block; position: fixed; inset: 0; z-index: 45; background: #f1e0cf; }
+    html.wco.gated #loginGate { top: env(titlebar-area-height, 33px); }
+    html.gated body { overflow: hidden; }
+    html.gated #appToast.top-20 { top: calc(env(safe-area-inset-top) + 0.5rem); }
+    .gate-art { position: absolute; inset: 0; background: url(assets/brand/login-portrait.webp) center 38% / cover no-repeat; }
+    .gate-shade { position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(241 224 207 / 0.25) 0%, rgb(241 224 207 / 0) 22%, rgb(241 224 207 / 0) 48%, rgb(18 46 118 / 0.38) 100%); }
+    .gate-scroll { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    .gate-inner { min-height: 100%; max-width: 26rem; margin: 0 auto; display: flex; flex-direction: column;
+      padding: calc(env(safe-area-inset-top) + 1.75rem) 1rem calc(env(safe-area-inset-bottom) + 1.25rem); }
+    .gate-brand { display: flex; align-items: center; gap: 0.75rem; }
+    .gate-brand img { width: 3.5rem; height: 3.5rem; flex: none; filter: drop-shadow(0 4px 10px rgb(18 46 118 / 0.25)); }
+    .gate-name { font-weight: 800; font-size: 1.65rem; letter-spacing: -0.025em; line-height: 1; color: #122e76; }
+    .gate-tag { margin-top: 0.3rem; font-size: 0.8rem; font-weight: 600; color: #6b5640; }
+    .gate-spacer { flex: 1 0 40vh; }
+    #loginGate:not([data-step="welcome"]):not([data-step=""]) .gate-spacer { flex: 0 0 1.25rem; }
+    .gate-back { display: inline-flex; align-items: center; gap: 0.35rem; height: 2rem; padding: 0 0.8rem; margin-bottom: 0.6rem; border-radius: 999px;
+      background: rgb(255 255 255 / 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #1e293b; font-size: 0.75rem; font-weight: 700; box-shadow: 0 1px 3px rgb(15 23 42 / 0.12); }
+    @media (orientation: landscape) {
+      .gate-art { background-image: url(assets/brand/login-landscape.webp); background-position: 72% center; }
+      .gate-shade { background: linear-gradient(to right, rgb(241 224 207 / 0.9) 0%, rgb(241 224 207 / 0.55) 30rem, rgb(241 224 207 / 0) 42rem); }
+      .gate-inner { margin: 0 0 0 max(1rem, 5vw); justify-content: center; padding-top: calc(env(safe-area-inset-top) + 1.25rem); }
+      .gate-spacer, #loginGate:not([data-step="welcome"]):not([data-step=""]) .gate-spacer { flex: 0 0 1.25rem; }
+    }
+    html.dark.gated #loginGate { background: #0b1220; }
+    html.dark .gate-art { filter: brightness(0.5) saturate(0.85); }
+    html.dark .gate-shade { background: linear-gradient(to bottom, rgb(11 18 32 / 0.35), rgb(11 18 32 / 0) 30%, rgb(11 18 32 / 0.75) 100%); }
+    html.dark .gate-name { color: #fff; }
+    html.dark .gate-tag { color: #cbd5e1; }
+    html.dark .gate-back { background: rgb(18 26 43 / 0.85); color: #e2e8f0; }
+    @media (orientation: landscape) {
+      html.dark .gate-shade { background: linear-gradient(to right, rgb(11 18 32 / 0.9) 0%, rgb(11 18 32 / 0.5) 30rem, rgb(11 18 32 / 0) 42rem); }
+    }
+
+    /* ---- Faded school art behind the top of Home / the teacher's screen ---------------- */
+    @media screen {
+      body.page-art {
+        --page: 241 245 249;
+        background-image: linear-gradient(to bottom, rgb(var(--page) / 0.3) 0, rgb(var(--page) / 0.72) 9rem, rgb(var(--page)) 16rem), url(assets/brand/login-portrait.webp);
+        background-repeat: no-repeat; background-size: 100% 100%, 100% auto; background-position: 0 0, center calc(4.5rem - 50vw);
+      }
+      html.dark body.page-art { --page: 11 18 32; }
+      html.dark body.page-art { background-image: linear-gradient(to bottom, rgb(var(--page) / 0.62) 0, rgb(var(--page) / 0.88) 9rem, rgb(var(--page)) 16rem), url(assets/brand/login-portrait.webp); }
+      @media (orientation: landscape) {
+        body.page-art, html.dark body.page-art { background-position: 0 0, center calc(3.5rem - 3vw); }
+        body.page-art { background-image: linear-gradient(to bottom, rgb(var(--page) / 0.3) 0, rgb(var(--page) / 0.72) 10rem, rgb(var(--page)) 19rem), url(assets/brand/login-landscape.webp); }
+        html.dark body.page-art { background-image: linear-gradient(to bottom, rgb(var(--page) / 0.62) 0, rgb(var(--page) / 0.88) 10rem, rgb(var(--page)) 19rem), url(assets/brand/login-landscape.webp); }
+      }
+      /* the header turns to frosted glass so the art shows through */
+      body.page-art > header.safe-top { background-color: rgb(255 255 255 / 0.62); }
+      html.dark body.page-art > header.safe-top { background-color: rgb(18 26 43 / 0.62); }
+    }
   </style>
 </head>
 <body class="text-slate-800 antialiased selection:bg-brand-500 selection:text-white pb-28">
@@ -177,6 +257,26 @@
     <button id="tbBell" onclick="openNotifPanel()" class="hidden shrink-0 h-6 px-2 rounded-full bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold items-center gap-1" aria-label="Notifications">
       <i class="ph-bold ph-bell"></i><span id="tbBellCount"></span>
     </button>
+  </div>
+
+  <!-- Sign-in screen: shown until this phone signs in (custodian) or joins a school (teacher) -->
+  <div id="loginGate" class="no-print" data-step="" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+    <div class="gate-art" aria-hidden="true"></div>
+    <div class="gate-shade" aria-hidden="true"></div>
+    <div class="gate-scroll">
+      <div class="gate-inner">
+        <div class="gate-brand">
+          <img src="assets/icons/icon-192.png" alt="" width="56" height="56">
+          <div>
+            <h1 id="gateTitle" class="gate-name">CustodianPro</h1>
+            <p class="gate-tag">School inventory · supply requests</p>
+          </div>
+        </div>
+        <div class="gate-spacer"></div>
+        <p id="gateOffline" class="hidden mb-3 items-center gap-2 rounded-2xl bg-slate-900/80 text-white text-xs font-semibold px-3.5 py-2.5 backdrop-blur"><i class="ph-bold ph-cloud-slash text-base"></i> You are offline. Signing in needs internet once; after that the app works offline.</p>
+        <div id="gatePanel"></div>
+      </div>
+    </div>
   </div>
 
   <header class="safe-top sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm no-print">
@@ -789,6 +889,10 @@
       <div id="rqList" class="space-y-2"></div>
     </div>
     </div>
+    <div>
+      <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Appearance</h2>
+      <div id="rqTheme" data-theme-switch></div>
+    </div>
     <div id="rqAccount" class="text-[11px] -mb-2"></div>
     <div class="flex items-center justify-between gap-3 text-xs pb-6">
       <button onclick="editMyDetails()" class="font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-user-circle"></i> Change my name or office</button>
@@ -922,6 +1026,11 @@
           <button onclick="closeMoreMenu(); exportCSV()" class="more-item"><i class="ph-bold ph-download-simple text-emerald-600"></i> Export inventory (CSV)</button>
           <button onclick="closeMoreMenu(); exportRegisterCSV()" class="more-item"><i class="ph-bold ph-file-csv text-emerald-600"></i> Property register (CSV)</button>
         </div>
+        <div>
+          <p class="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Appearance</p>
+          <div id="moreTheme" data-theme-switch class="px-1"></div>
+        </div>
+        <div id="moreAccount" class="hidden"></div>
         <div>
           <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Data &amp; settings</p>
           <button id="moreInstallItem" onclick="closeMoreMenu(); installApp()" class="more-item" style="display:none"><i class="ph-bold ph-device-mobile text-brand-600"></i> Install app on this phone</button>
@@ -1154,7 +1263,7 @@
         <button onclick="closeInvite()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
       <div class="text-center">
-        <div id="inviteQr" class="mx-auto w-44 h-44 rounded-2xl border border-slate-200 p-2.5 bg-white flex items-center justify-center text-xs text-slate-400">QR code</div>
+        <div id="inviteQr" class="keep-light mx-auto w-44 h-44 rounded-2xl border border-slate-200 p-2.5 bg-white flex items-center justify-center text-xs text-slate-400">QR code</div>
         <p class="mt-2 text-[11px] text-slate-500">Teachers scan this with their phone camera, or tap the link you send them.</p>
       </div>
       <div class="rounded-xl bg-slate-50 border border-slate-200 divide-y divide-slate-200">
@@ -2329,6 +2438,7 @@
       if (viewName === 'REQUESTS') renderRequestsView();
       if (viewName === 'REQUESTER') renderRequesterView();
       if (viewName === 'TEACHERS') renderTeachersView();
+      syncPageArt();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -6566,6 +6676,7 @@
     // ---- More menu ------------------------------------------------------------
     function openMoreMenu() {
       updateBackupReminder();
+      renderMoreAccount();
       document.getElementById('moreMenu').classList.remove('hidden');
     }
 
@@ -6584,7 +6695,7 @@
       if (!toast) return;
       const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel', 'aboutPanel'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
       const stickyAction = [...document.querySelectorAll('[data-toast-avoid]')].some(el => el.offsetParent !== null);
-      const top = sheetOpen || stickyAction;
+      const top = sheetOpen || stickyAction || document.documentElement.classList.contains('gated');
       toast.classList.toggle('bottom-24', !top);
       toast.classList.toggle('top-20', top);
     }
@@ -6707,6 +6818,7 @@
     function saveReqRole() {
       if (reqRole) localStorage.setItem(REQ_ROLE_KEY, JSON.stringify(reqRole));
       else localStorage.removeItem(REQ_ROLE_KEY);
+      renderLoginGate(); // signed in, joined, signed out or left: show or hide the sign-in screen
     }
     function tsMillis(v) {
       if (!v) return 0;
@@ -7214,14 +7326,15 @@
       if (cloudProjectChanged) setTimeout(() => showToast('The app moved to a new cloud account. Sign in again to link your school', 'ph-cloud-arrow-up'), 600);
       checkJoinLink();
       const pendingGoogle = (() => { try { return JSON.parse(localStorage.getItem(GOOGLE_PENDING_KEY) || 'null'); } catch (e) { return null; } })();
+      if (pendingGoogle && !reqRole && cloudConfigured()) { gateStep = 'busy'; renderLoginGate(); }
       if ((!reqRole && !pendingGoogle) || !cloudConfigured()) return;
       try {
         await cloudStart();
         if (pendingGoogle) {
           localStorage.removeItem(GOOGLE_PENDING_KEY);
           if (cloud.user && !cloud.user.isAnonymous && pendingGoogle.mode === 'custodian') {
-            openRequestsView();
-            await finishCustodianConnect(cloud.user, pendingGoogle.schoolName || '', msg => showToast(msg, 'ph-warning'));
+            const fail = msg => { gateStep = 'custodian'; renderRequestsEverywhere(); showToast(msg, 'ph-warning'); };
+            try { await finishCustodianConnect(cloud.user, pendingGoogle.schoolName || '', fail); } catch (err) { fail(cloudErrorText(err)); }
             return;
           }
           if (cloud.redirectError) showToast(cloud.redirectError, 'ph-warning');
@@ -7235,10 +7348,12 @@
       } catch (err) {
         cloud.error = cloudErrorText(err);
       }
+      if (gateStep === 'busy') gateStep = 'custodian';
       renderRequestsEverywhere();
     }
 
     function renderRequestsEverywhere() {
+      renderLoginGate();
       if (typeof renderNotifBell === 'function') renderNotifBell();
       renderHomeReqCard();
       if (activeMainView === 'REQUESTS') renderRequestsView();
@@ -7302,7 +7417,8 @@
         body.innerHTML = `<div class="rounded-2xl bg-white border border-slate-200 p-6 text-center text-sm text-slate-500"><i class="ph-bold ph-circle-notch animate-spin text-2xl text-brand-500"></i><p class="mt-2">Connecting to ${escapeHTML(reqRole.schoolName)}…</p></div>`;
         return;
       }
-      if (!connected) { body.innerHTML = reqSignedOutLayout(reqConnectHTML(), true); if (navigator.onLine) cloudStart().catch(() => {}); return; }
+      // Signed out: the sign-in screen covers the app and carries the form (one set of field ids).
+      if (!connected) { body.innerHTML = loginGateNeeded() ? '' : reqSignedOutLayout(reqConnectHTML(), true); if (navigator.onLine) cloudStart().catch(() => {}); return; }
 
       const pending = reqList.filter(r => r.status === 'pending');
       const approved = reqList.filter(r => r.status === 'approved');
@@ -7341,7 +7457,7 @@
       } else {
         html += closed.length ? closed.map(r => reqCardHTML(r, { supply: r.status === 'closed' })).join('') : reqEmptyHTML('ph-archive', 'Nothing here yet', 'Requests on a PR, supplied, declined or cancelled.');
       }
-      html += `<button onclick="custodianSignOut()" class="text-[11px] font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 px-1 pt-2"><i class="ph-bold ph-sign-out"></i> Sign out of supply requests</button>`;
+      html += `<button onclick="custodianSignOut()" class="text-[11px] font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 px-1 pt-2"><i class="ph-bold ph-sign-out"></i> Sign out</button>`;
       body.innerHTML = html;
       placeToast();
     }
@@ -7632,14 +7748,16 @@
     }
 
     async function custodianSignOut() {
-      if (!confirm('Sign out of supply requests on this device? Requests stay safe online; sign in again to see them.')) return;
+      if (!confirm('Sign out of CustodianPro on this phone? Your inventory stays on this phone and in your school account. Sign in again to keep using it.')) return;
       stopRequestSync();
       try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
       cloud.user = null;
       const email = reqRole && reqRole.email;
       reqRole = null;
+      gateStep = 'custodian'; // back to the sign-in screen, ready for the same custodian
       saveReqRole();
       reqList = []; prList = [];
+      switchMainView('HOME');
       renderRequestsEverywhere();
       if (email) setTimeout(() => { const el = document.getElementById('rcEmail'); if (el) el.value = email; }, 0);
     }
@@ -7689,6 +7807,7 @@
       const m = location.hash.match(/[#&]join=([A-Za-z0-9_-]{6,64})/);
       if (!m) return;
       history.replaceState(null, '', location.pathname + location.search);
+      if (!reqRole) { gateStep = 'teacher'; renderLoginGate(); }
       openJoin(m[1]);
     }
 
@@ -10035,6 +10154,11 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-signin-dark', date: 'Nov 2026', title: 'Sign-in screen and dark mode', points: [
+        'Every phone now signs in: property custodians with Google or email, teachers with the invite link or school code. The inventory already on your phone is kept.',
+        'A school picture on the sign-in screen and behind the top of Home.',
+        'Dark mode follows your phone. Change it in More → Appearance.'
+      ] },
       { id: '2026-11-notifications', date: 'Nov 2026', title: 'Notifications and app updates', points: [
         'A bell shows new supply requests, approvals, releases, receipts and returns. Tap one to open it.',
         'Phone notifications while CustodianPro is open or was used recently (turn on in the bell).',
@@ -10229,8 +10353,209 @@
       }
     }
 
+    // =========================================================================
+    // APPEARANCE: follows the phone's light / dark setting, or a choice in More
+    // =========================================================================
+    // The <head> script applies the saved choice before the first paint (no white flash).
+    // Dark colors come from scripts/dark-theme.mjs (built into assets/app.css).
+    var THEME_KEY = 'custodian_theme_v1'; // 'light' | 'dark' · missing = follow the system
+    var darkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    function themePref() {
+      const t = localStorage.getItem(THEME_KEY);
+      return t === 'light' || t === 'dark' ? t : 'system';
+    }
+    function applyTheme() {
+      const pref = themePref();
+      const dark = pref === 'dark' || (pref === 'system' && !!(darkQuery && darkQuery.matches));
+      const root = document.documentElement;
+      if (root.classList.contains('dark') !== dark) {
+        // Switch in one go: without this every button with `transition` fades separately.
+        root.classList.add('theme-switching');
+        root.classList.toggle('dark', dark);
+        void root.offsetHeight;
+        requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('theme-switching')));
+      }
+      renderThemeSwitches();
+    }
+    function setTheme(pref) {
+      if (pref === 'light' || pref === 'dark') localStorage.setItem(THEME_KEY, pref);
+      else localStorage.removeItem(THEME_KEY);
+      applyTheme();
+    }
+    function renderThemeSwitches() {
+      const pref = themePref();
+      const opts = [['system', 'ph-circle-half', 'System'], ['light', 'ph-sun', 'Light'], ['dark', 'ph-moon', 'Dark']];
+      document.querySelectorAll('[data-theme-switch]').forEach(el => {
+        el.innerHTML = `<div role="radiogroup" aria-label="Appearance" class="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100">${opts.map(([key, icon, label]) => `
+          <button type="button" role="radio" aria-checked="${pref === key}" data-theme-opt="${key}" onclick="setTheme('${key}')"
+            class="h-9 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${pref === key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}"><i class="ph-bold ${icon}"></i> ${label}</button>`).join('')}</div>`;
+      });
+    }
+    function initTheme() {
+      applyTheme();
+      if (darkQuery) {
+        if (darkQuery.addEventListener) darkQuery.addEventListener('change', applyTheme);
+        else if (darkQuery.addListener) darkQuery.addListener(applyTheme);
+      }
+      window.addEventListener('storage', e => { if (e.key === THEME_KEY) applyTheme(); }); // another tab
+    }
+
+    // =========================================================================
+    // SIGN-IN SCREEN: every phone signs in (property custodian) or joins a school (teacher)
+    // =========================================================================
+    // Shown while the phone has no role, and when a custodian's sign-in has ended. Once signed
+    // in, the app opens straight to Home, also offline (the role is kept on the phone and
+    // Firebase keeps the session). Without a cloud project (firebase-config.js = null) the app
+    // has nobody to sign in with, so it stays the local-only inventory.
+    var gateStep = 'welcome'; // 'welcome' | 'custodian' | 'teacher' | 'busy'
+    var GATE_BEHIND = 'body > header, body > section, #tabBar, #installBar, #updateBar';
+
+    function loginGateNeeded() {
+      if (!cloudConfigured()) return false;
+      if (!reqRole) return true;
+      return isCustodianDevice() && cloud.state === 'ready' && !cloud.user;
+    }
+
+    function renderLoginGate() {
+      const gate = document.getElementById('loginGate');
+      if (!gate) return;
+      const need = loginGateNeeded();
+      const root = document.documentElement;
+      root.classList.toggle('gated', need);
+      document.querySelectorAll(GATE_BEHIND).forEach(el => { el.inert = need; });
+      syncPageArt();
+      if (!need) {
+        if (gate.dataset.step) { gate.dataset.step = ''; document.getElementById('gatePanel').innerHTML = ''; }
+        gateStep = 'welcome';
+        return;
+      }
+      if (isCustodianDevice() && gateStep === 'welcome') gateStep = 'custodian';
+      const offline = document.getElementById('gateOffline');
+      offline.classList.toggle('hidden', navigator.onLine);
+      offline.classList.toggle('flex', !navigator.onLine);
+      // Re-render only when the step changes, so a background refresh never wipes what is typed.
+      if (gate.dataset.step === gateStep) return;
+      gate.dataset.step = gateStep;
+      document.getElementById('gatePanel').innerHTML = gateHTML();
+      document.querySelector('#loginGate .gate-scroll').scrollTop = 0;
+    }
+
+    function gateGo(step) {
+      gateStep = step;
+      renderLoginGate();
+      const first = step === 'custodian' ? (document.getElementById('rcSchool').value ? 'rcEmail' : 'rcSchool') : step === 'teacher' ? 'gateCode' : '';
+      if (first && matchMedia('(hover: hover)').matches) setTimeout(() => document.getElementById(first)?.focus(), 50);
+    }
+
+    // A custodian whose sign-in ended can also start over (e.g. a different person takes the phone).
+    function gateStartOver() {
+      reqRole = null;
+      gateStep = 'welcome';
+      saveReqRole();
+    }
+
+    function gateHTML() {
+      const back = `<button onclick="gateGo('welcome')" class="gate-back"><i class="ph-bold ph-arrow-left"></i> Back</button>`;
+      if (gateStep === 'busy') {
+        return `
+          <div class="rounded-3xl bg-white/90 backdrop-blur-xl border border-white/80 shadow-2xl p-6 text-center">
+            <i class="ph-bold ph-circle-notch animate-spin text-3xl text-brand-600"></i>
+            <p class="mt-2 text-sm font-bold text-slate-700">Finishing sign-in…</p>
+          </div>`;
+      }
+      if (gateStep === 'custodian') {
+        const stale = isCustodianDevice();
+        return `
+          ${stale ? '' : back}
+          ${stale ? `<div class="rounded-2xl bg-amber-50 border border-amber-200 px-3.5 py-2.5 text-xs text-amber-800 mb-3"><b>Sign in again</b> to keep ${escapeHTML(reqRole.schoolName || 'your school')} in sync. Your inventory is still on this phone.</div>` : ''}
+          ${reqConnectHTML()}
+          ${stale ? `<button onclick="gateStartOver()" class="mt-3 w-full text-center text-xs font-bold text-slate-600 hover:text-slate-900">Not ${escapeHTML(reqRole.email || 'you')}? Start over</button>`
+            : gateLocalNote()}`;
+      }
+      if (gateStep === 'teacher') {
+        return `
+          ${back}
+          <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3">
+            <div class="flex items-center gap-3">
+              <span class="w-11 h-11 shrink-0 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center"><i class="ph-bold ph-chalkboard-teacher text-2xl"></i></span>
+              <div>
+                <p class="text-sm font-extrabold text-slate-900">Teacher · join your school</p>
+                <p class="text-xs text-slate-500">Your property custodian shares an invite link or a school code.</p>
+              </div>
+            </div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Invite link or school code
+              <input id="gateCode" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"
+                placeholder="Paste the link or type the code" onkeydown="if (event.key === 'Enter') gateJoin()"
+                class="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium normal-case tracking-normal text-slate-900 focus:border-teal-500 outline-none">
+            </label>
+            <p id="gateCodeError" class="hidden text-xs font-semibold text-rose-600"></p>
+            <button id="gateJoinBtn" onclick="gateJoin()" class="w-full h-12 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-sign-in"></i> Continue</button>
+            <p class="text-[11px] text-slate-500">Got the link in a message? Open it on this phone and it brings you straight to the next step.</p>
+          </div>`;
+      }
+      const role = (step, icon, tint, title, sub) => `
+        <button onclick="gateGo('${step}')" data-gate-role="${step}" class="w-full rounded-2xl border border-slate-200 bg-white hover:border-brand-300 hover:bg-slate-50 p-3.5 flex items-center gap-3 text-left active:scale-[0.99] transition">
+          <span class="w-11 h-11 shrink-0 rounded-xl ${tint} flex items-center justify-center"><i class="ph-bold ${icon} text-2xl"></i></span>
+          <span class="flex-1 min-w-0"><span class="block text-sm font-extrabold text-slate-900">${title}</span><span class="block text-xs text-slate-500 leading-snug">${sub}</span></span>
+          <i class="ph-bold ph-caret-right text-slate-400"></i>
+        </button>`;
+      return `
+        <div class="rounded-3xl bg-white/90 backdrop-blur-xl border border-white/80 shadow-2xl p-5 space-y-3">
+          <div>
+            <h2 class="text-lg font-extrabold text-slate-900 leading-tight">Sign in to continue</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Who will use CustodianPro on this phone?</p>
+          </div>
+          ${role('custodian', 'ph-identification-badge', 'bg-brand-50 text-brand-600', 'Property custodian', 'School inventory, physical count, teachers’ requests and purchase requests')}
+          ${role('teacher', 'ph-chalkboard-teacher', 'bg-teal-50 text-teal-600', 'Teacher', 'Request supplies and see the items released to you')}
+          ${gateLocalNote()}
+        </div>`;
+    }
+
+    // Inventory already on this phone (from before sign-in was required) is never lost.
+    function gateLocalNote() {
+      const n = Object.keys(userState || {}).filter(c => (parseInt(userState[c].qty, 10) || 0) > 0).length;
+      if (!n) return '';
+      return `<p class="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-[11px] text-emerald-800 flex items-start gap-2"><i class="ph-bold ph-shield-check text-sm mt-px"></i>
+        <span>This phone has ${plural(n, 'item')} in its inventory. They stay here, and are saved to your school account when you sign in as the property custodian.</span></p>`;
+    }
+
+    function gateJoin() {
+      const raw = (document.getElementById('gateCode').value || '').trim();
+      const err = document.getElementById('gateCodeError');
+      const m = raw.match(/[#&?]join=([A-Za-z0-9_-]{6,64})/) || raw.match(/^([A-Za-z0-9_-]{6,64})$/);
+      const fail = msg => { err.textContent = msg; err.classList.remove('hidden'); };
+      if (!raw) return fail('Paste the invite link or type the school code.');
+      if (!m) return fail('That does not look like an invite link or school code. Ask your property custodian to send it again.');
+      if (!navigator.onLine) return fail('Joining needs internet once. Connect and try again.');
+      err.classList.add('hidden');
+      openJoin(m[1]);
+    }
+
+    // ---- Art behind the top of Home (and the teacher's screen) -------------------------
+    function syncPageArt() {
+      const gated = document.documentElement.classList.contains('gated');
+      document.body.classList.toggle('page-art', !gated && (activeMainView === 'HOME' || activeMainView === 'REQUESTER'));
+    }
+
+    // ---- More → Account -------------------------------------------------------------
+    function renderMoreAccount() {
+      const el = document.getElementById('moreAccount');
+      if (!el) return;
+      el.classList.toggle('hidden', !isCustodianDevice());
+      if (!isCustodianDevice()) { el.innerHTML = ''; return; }
+      el.innerHTML = `
+        <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Account</p>
+        <div class="px-2 py-1.5 flex items-center gap-3">
+          <span class="w-9 h-9 shrink-0 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-user"></i></span>
+          <span class="min-w-0 flex-1"><span class="block text-sm font-bold text-slate-800 truncate">${escapeHTML(reqRole.email || 'Property custodian')}</span>
+            <span class="block text-[11px] text-slate-500 truncate">Property custodian · ${escapeHTML(reqRole.schoolName || '')}</span></span>
+        </div>
+        <button id="moreSignOut" onclick="closeMoreMenu(); custodianSignOut()" class="more-item"><i class="ph-bold ph-sign-out text-rose-600"></i> Sign out</button>`;
+    }
+
     // Boot App on Load
     window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
       initApp();
       initOfflineSupport();
       updateBackupReminder();

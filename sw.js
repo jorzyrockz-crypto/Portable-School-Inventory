@@ -14,7 +14,7 @@
  *   brings anything new to the page that is open.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
-const CACHE = 'custodianpro-6c6c1228d102';
+const CACHE = 'custodianpro-332616039419';
 const PRECACHE_URLS = [
     "./",
     "./index.html",
@@ -22,6 +22,8 @@ const PRECACHE_URLS = [
     "./firebase-config.js",
     "./assets/app.css",
     "./assets/brand/banner.webp",
+    "./assets/brand/login-landscape.webp",
+    "./assets/brand/login-portrait.webp",
     "./assets/fonts/Phosphor-Bold.woff2",
     "./assets/fonts/Phosphor-Duotone.woff2",
     "./assets/fonts/Phosphor-Fill.woff2",
