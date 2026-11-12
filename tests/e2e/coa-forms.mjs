@@ -436,6 +436,22 @@ try {
   await sleep(200);
   const iirupRow = await ev(a, no => [...document.querySelectorAll('#printPrSection tr')].find(tr => tr.innerText.includes(no)).cells[0].innerText.trim(), unsNo);
   check(iirupRow === acqDate, `IIRUP Date Acquired filled (${iirupRow})`);
+  // straight line: 5 % residual, 10 years, from the month after June 2023 to the "as at" month
+  const dep = await ev(a, no => {
+    const tr = [...document.querySelectorAll('#printPrSection tr')].find(tr => tr.innerText.includes(no));
+    const [y, m] = coaVal('asAt').split('-').map(Number);
+    return { acc: tr.cells[6].innerText.trim(), carry: tr.cells[8].innerText.trim(), months: y * 12 + m - (2023 * 12 + 6),
+      total: [...document.querySelectorAll('#printPrSection tr')].find(tr => /TOTAL/.test(tr.innerText) && tr.cells.length > 4).innerText };
+  }, unsNo);
+  const accWant = Math.round(65000 * 0.95 / 120 * dep.months * 100) / 100;
+  const fmt = n => n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  check(dep.acc === fmt(accWant) && dep.carry === fmt(65000 - accWant), `IIRUP accumulated depreciation ₱${dep.acc} and carrying amount ₱${dep.carry} (${dep.months} months)`);
+  check(dep.total.includes(fmt(accWant)) && dep.total.includes(fmt(65000 - accWant)), 'TOTAL row adds up depreciation and carrying amount');
+  check(await ev(a, () => /carrying amount ₱/.test(document.getElementById('coaUnservSum').innerText)), 'IIRUP page shows the carrying amount');
+  await printShot(a, 'iirup-depreciation.png');
+  await ev(a, p => { closeCoa(); openUnitsModal(p); }, pick.ppe.code);
+  check(await ev(a, () => /Carrying amount ₱/.test(document.getElementById('unitsList').innerText)), 'unit card shows the carrying amount');
+  await ev(a, () => { closeUnitsModal(); openCoa(); });
   // RegSPI: Estimated Useful Life (category estimate when nothing was written)
   await ev(a, () => coaGo('regspi'));
   await until(a, () => !document.getElementById('coaPrint').disabled, 'RegSPI ready');

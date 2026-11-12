@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="8c4e777a9a5c">
+  <meta name="app-version" content="89fd62218868">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -4367,6 +4367,7 @@
               : `<span class="inline-flex items-center gap-1"><i class="ph-bold ph-seal-question"></i> Not verified yet</span>`}
             <span class="inline-flex items-center gap-1"><i class="ph-bold ph-printer"></i> ${u.printed ? `Label printed ${formatShortDate(u.printed)}` : 'Label not printed'}</span>
             ${u.toUid ? `<span class="text-teal-700 font-semibold inline-flex items-center gap-1"><i class="ph-bold ph-link"></i> On ${escapeHTML((u.to || 'the teacher').split(' ')[0])}’s list</span>` : ''}
+            ${(() => { const dep = ppeDepreciation(item, u); return dep ? `<span class="unit-book inline-flex items-center gap-1"><i class="ph-bold ph-trend-down"></i> Carrying amount ₱${peso2(dep.carrying)} (depreciation ₱${peso2(dep.acc)}${dep.est ? ', est. life' : ''})</span>` : ''; })()}
             ${u.icsDate || u.life ? `<span class="inline-flex items-center gap-1"><i class="ph-bold ph-file-text"></i> ${u.icsDate ? `${unitDocKind(u)} dated ${formatShortDate(u.icsDate + 'T00:00:00')}` : ''}${u.icsDate && u.life ? ' · ' : ''}${u.life ? `useful life ${escapeHTML(u.life)}` : ''}</span>` : ''}
           </p>
           ${unitTrailHTML(item, u)}
@@ -9281,6 +9282,23 @@
       return { years: d, text: lifeLabel(d), est: true };
     }
 
+    // Straight-line depreciation of PPE (₱50,000 and up), as in the Government Accounting
+    // Manual: residual value 5 % of cost, (cost − residual) ÷ useful life, by month, starting
+    // the month after the date acquired. Needs a date acquired; useful life falls back to the
+    // category estimate (est: true). Semi-expendable property is expensed, not depreciated.
+    const RESIDUAL_RATE = 0.05;
+    function ppeDepreciation(item, u, asAtISO = localISODate()) {
+      const acq = unitAcq(u);
+      if (!item || !isPPE(item) || !acq) return null;
+      const cost = Number(item.price) || 0;
+      const life = unitLife(item, u);
+      const [ay, am] = acq.split('-').map(Number), [ty, tm] = asAtISO.split('-').map(Number);
+      const months = Math.max(0, (ty * 12 + tm) - (ay * 12 + am));
+      const base = cost * (1 - RESIDUAL_RATE);
+      const acc = Math.round(Math.min(base, base / (life.years * 12) * months) * 100) / 100;
+      return { cost, acc, carrying: Math.round((cost - acc) * 100) / 100, months, life, est: life.est };
+    }
+
     function findUnitAny(id) {
       for (const item of items) { const u = getUnits(item.code).find(x => x.id === id); if (u) return u; }
       return null;
@@ -10800,7 +10818,12 @@
             ${rows.length ? rows.map(r => `<div class="px-3 py-2 flex items-center gap-3"><span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900 truncate">${escapeHTML(r.item.name)}</span><span class="block text-[11px] text-slate-500 font-mono">${escapeHTML(r.unit ? r.unit.no : `${r.qty} untagged`)}</span></span><span class="shrink-0 text-[11px] font-mono text-slate-600">₱${peso2(r.qty * (r.item.price || 0))}</span></div>`).join('')
               : `<p class="px-3 py-4 text-center text-xs text-slate-500">Nothing is marked Unserviceable ${ppe ? 'among items of ₱50,000 or more' : 'below ₱50,000'}. Mark units under Property Numbers, or when a teacher reports a problem.</p>`}
           </div>
-          ${rows.length ? `<p class="text-xs text-slate-600"><b>${plural(rows.reduce((n, r) => n + r.qty, 0), 'unit')}</b> · total cost <b class="font-mono">₱${peso2(total)}</b></p>` : ''}
+          ${rows.length ? `<p id="coaUnservSum" class="text-xs text-slate-600"><b>${plural(rows.reduce((n, r) => n + r.qty, 0), 'unit')}</b> · total cost <b class="font-mono">₱${peso2(total)}</b>${ppe ? (() => {
+            const deps = rows.map(r => r.unit && ppeDepreciation(r.item, r.unit, coaVal('asAt') || localISODate()));
+            const known = deps.filter(Boolean);
+            return known.length ? ` · carrying amount <b class="font-mono">₱${peso2(known.reduce((n, d) => n + d.carrying, 0))}</b>${known.length < rows.length ? ` <span class="text-slate-500">(${known.length} of ${rows.length} with a date acquired)</span>` : ''}`
+              : ` · <span class="text-slate-500">add the date acquired under Property Numbers to fill in depreciation</span>`;
+          })() : ''}</p>` : ''}
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             ${coaField('asAt', 'As at', { type: 'date' })}
             ${coaField('fund', 'Fund cluster', { ph: 'e.g. 01' })}
@@ -10913,11 +10936,16 @@
       const rows = unservRows(ppe);
       if (!rows.length) return;
       const e = v => escapeHTML(v || '');
+      const asAt = coaVal('asAt') || localISODate();
+      let accTotal = 0, carryTotal = 0, estLife = false, depMissing = false;
       const body = rows.map(r => {
         const total = r.qty * (r.item.price || 0);
-        const lead = `<td class="c" style="font-size:8.5pt">${e(r.unit && unitAcq(r.unit) ? fDate(unitAcq(r.unit)) : '')}</td><td>${e(r.item.name)}${r.unit && r.unit.serial ? `<br><span style="font-size:8pt">S/N: ${e(r.unit.serial)}</span>` : ''}</td><td class="pr-sn">${e(r.unit ? r.unit.no : '')}</td><td class="c">${r.qty}</td><td class="r">${peso2(r.item.price)}</td><td class="r">${peso2(total)}</td>`;
+        const lead = `<td class="c" style="font-size:7.5pt;white-space:nowrap;padding-inline:1pt">${e(r.unit && unitAcq(r.unit) ? fDate(unitAcq(r.unit)) : '')}</td><td>${e(r.item.name)}${r.unit && r.unit.serial ? `<br><span style="font-size:8pt">S/N: ${e(r.unit.serial)}</span>` : ''}</td><td class="pr-sn">${e(r.unit ? r.unit.no : '')}</td><td class="c">${r.qty}</td><td class="r">${peso2(r.item.price)}</td><td class="r">${peso2(total)}</td>`;
         const remark = `<td style="font-size:8pt">${e(r.unit ? [unitHolder(r.unit) && `With ${unitHolder(r.unit)}`, r.unit.loc].filter(Boolean).join(' · ') : '')}</td>`;
-        return `<tr>${lead}${ppe ? '<td></td><td></td><td></td>' : ''}${remark}${'<td></td>'.repeat(8)}</tr>`;
+        const dep = ppe && r.unit ? ppeDepreciation(r.item, r.unit, asAt) : null;
+        if (dep) { accTotal += dep.acc; carryTotal += dep.carrying; if (dep.est) estLife = true; } else if (ppe) depMissing = true;
+        const depCells = dep ? `<td class="r">${peso2(dep.acc)}${dep.est ? '*' : ''}</td><td></td><td class="r">${peso2(dep.carrying)}</td>` : '<td></td><td></td><td></td>';
+        return `<tr>${lead}${ppe ? depCells : ''}${remark}${'<td></td>'.repeat(8)}</tr>`;
       }).join('');
       const cols = ppe ? 18 : 15;
       const blanks = `<tr class="pr-blank">${'<td></td>'.repeat(cols)}</tr>`.repeat(Math.max(0, 5 - rows.length));
@@ -10937,8 +10965,11 @@
               ${ppe ? '<th>Accumu&shy;lated Depre&shy;ciation</th><th>Accumu&shy;lated Impair&shy;ment Losses</th><th>Carrying Amount</th>' : ''}<th>Remarks</th>
               <th>Sale</th><th>Transfer</th><th>Destruc&shy;tion</th><th>Others (Specify)</th><th>Total</th><th>OR No.</th><th>Amount</th></tr>
             ${body}${blanks}
-            <tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(totalCost)}</b></td><td colspan="${cols - 6}"></td></tr>
+            ${ppe
+              ? `<tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(totalCost)}</b></td><td class="r"><b>${peso2(accTotal)}</b></td><td></td><td class="r"><b>${peso2(carryTotal)}</b></td><td colspan="${cols - 9}"></td></tr>`
+              : `<tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(totalCost)}</b></td><td colspan="${cols - 6}"></td></tr>`}
           </table>
+          ${ppe && (estLife || depMissing) ? `<p style="font-size:7.5pt;margin:2pt 0 0">${estLife ? '* Useful life not recorded; the usual life for the category was used (5 years; furniture 10). ' : ''}${depMissing ? 'Depreciation is blank where the date acquired is not recorded.' : ''} Straight line, residual value 5 % of cost, from the month after acquisition.</p>` : ''}
           <table class="pr-table" style="margin-top:8pt">
             <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
             <tr><td style="font-size:8.5pt">I HEREBY request inspection and disposition, pursuant to Section 79 of PD 1445, of the property enumerated above.</td>

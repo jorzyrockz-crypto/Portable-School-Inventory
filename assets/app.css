@@ -141,6 +141,7 @@
 .ph-bold.ph-text-aa:before { content: "\e6ee"; }
 .ph-bold.ph-trash:before { content: "\e4a6"; }
 .ph-bold.ph-tray:before { content: "\e4aa"; }
+.ph-bold.ph-trend-down:before { content: "\e4ac"; }
 .ph-bold.ph-upload-simple:before { content: "\e4c0"; }
 .ph-bold.ph-user:before { content: "\e4c2"; }
 .ph-bold.ph-user-circle:before { content: "\e4c4"; }
@@ -291,6 +292,7 @@
 .ph-fill.ph-text-aa:before { content: "\e6ee"; }
 .ph-fill.ph-trash:before { content: "\e4a6"; }
 .ph-fill.ph-tray:before { content: "\e4aa"; }
+.ph-fill.ph-trend-down:before { content: "\e4ac"; }
 .ph-fill.ph-upload-simple:before { content: "\e4c0"; }
 .ph-fill.ph-user:before { content: "\e4c2"; }
 .ph-fill.ph-user-circle:before { content: "\e4c4"; }
@@ -544,6 +546,8 @@
 .ph-duotone.ph-trash:after { content: "\e4a7"; margin-left: -1em; }
 .ph-duotone.ph-tray:before { content: "\e4aa"; opacity: 0.2; }
 .ph-duotone.ph-tray:after { content: "\e4ab"; margin-left: -1em; }
+.ph-duotone.ph-trend-down:before { content: "\e4ac"; opacity: 0.2; }
+.ph-duotone.ph-trend-down:after { content: "\e4ad"; margin-left: -1em; }
 .ph-duotone.ph-upload-simple:before { content: "\e4c0"; opacity: 0.2; }
 .ph-duotone.ph-upload-simple:after { content: "\e4c1"; margin-left: -1em; }
 .ph-duotone.ph-user:before { content: "\e4c2"; opacity: 0.2; }
