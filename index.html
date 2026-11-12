@@ -633,13 +633,14 @@
   <!-- OFFICIAL PRINTABLE REPORT VIEW (Only visible when printing)           -->
   <!-- ===================================================================== -->
   <!-- SUPPLY REQUESTS (custodian): review, approve, prepare Purchase Requests -->
-  <section id="viewRequests" class="hidden max-w-2xl mx-auto px-4 pt-4 space-y-4 no-print">
+  <section id="viewRequests" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
         <button onclick="switchMainView('HOME')" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-1"><i class="ph-bold ph-caret-left"></i> Home</button>
         <h1 class="text-xl font-extrabold text-slate-900">Supply requests</h1>
         <p id="reqViewSchool" class="text-xs text-slate-500 truncate"></p>
       </div>
+      <span id="reqViewStatus" class="shrink-0 mt-6 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold"></span>
       <div id="reqViewActions" class="hidden shrink-0 flex items-center gap-1.5 pt-5">
         <button onclick="openInvite()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-user-plus text-brand-600"></i> Invite</button>
         <button onclick="openRequestForm()" class="h-9 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-plus"></i> New</button>
@@ -6317,6 +6318,18 @@
     // OFFLINE SUPPORT (service worker, persistent storage, connection badge)
     // =========================================================================
     // action = { label, onClick } adds a button (e.g. "Undo") and keeps the toast up longer.
+    // Bottom of the screen, unless a sheet or a sticky action button (e.g. Prepare Purchase
+    // Request) is there – then just under the header, so the toast never hides a button.
+    function placeToast() {
+      const toast = document.getElementById('appToast');
+      if (!toast) return;
+      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
+      const stickyAction = [...document.querySelectorAll('[data-toast-avoid]')].some(el => el.offsetParent !== null);
+      const top = sheetOpen || stickyAction;
+      toast.classList.toggle('bottom-24', !top);
+      toast.classList.toggle('top-20', top);
+    }
+
     function showToast(message, icon = 'ph-check-circle', action = null) {
       const toast = document.getElementById('appToast');
       if (!toast) return;
@@ -6324,9 +6337,7 @@
         toast.classList.add('hidden');
         toast.classList.remove('flex');
       };
-      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
-      toast.classList.toggle('bottom-24', !sheetOpen);
-      toast.classList.toggle('top-20', sheetOpen);
+      placeToast();
       document.getElementById('appToastIcon').className = `ph-bold ${icon} text-lg text-emerald-400`;
       document.getElementById('appToastText').textContent = message;
       const btn = document.getElementById('appToastAction');
@@ -6573,7 +6584,33 @@
       }
     }
 
+    // A phone updating from an older version can load the previous firebase-config.js once
+    // (the old service worker answers before the new one takes over). Re-read it then.
+    async function refreshCloudConfig() {
+      if (cloudConfigured() || !navigator.onLine) return;
+      try { await loadScript(`firebase-config.js?fresh=${Date.now()}`); } catch (e) { return; }
+      if (!cloudConfigured()) return;
+      if (reqRole) {
+        try {
+          await cloudStart();
+          if (!cloud.user && isTeacherDevice()) {
+            await cloud.sdk.signInAnonymously(cloud.auth);
+            cloud.user = cloud.auth.currentUser;
+          }
+          if (cloud.user) subscribeRequests();
+        } catch (err) {
+          cloud.error = cloudErrorText(err);
+        }
+      }
+      renderRequestsEverywhere();
+    }
+
     async function initSupplyRequests() {
+      if (!initSupplyRequests.wired) {
+        initSupplyRequests.wired = true;
+        if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange', refreshCloudConfig);
+        refreshCloudConfig();
+      }
       window.addEventListener('online', renderRequestsEverywhere);
       window.addEventListener('offline', renderRequestsEverywhere);
       window.addEventListener('hashchange', checkJoinLink);
@@ -6650,27 +6687,33 @@
       const connected = isCustodianDevice() && cloud.user;
       document.getElementById('reqViewActions').classList.toggle('hidden', !connected);
       document.getElementById('reqViewActions').classList.toggle('flex', !!connected);
+      // Signed out: sign-in + "How it works" side by side on wide screens.
+      document.getElementById('viewRequests').classList.toggle('lg:max-w-4xl', !connected);
+      document.getElementById('viewRequests').classList.toggle('lg:max-w-3xl', !!connected);
+      const status = document.getElementById('reqViewStatus');
+      const chip = (cls, icon, text) => { status.className = `shrink-0 mt-6 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold ${cls}`; status.innerHTML = `<i class="ph-bold ${icon}"></i> ${text}`; };
+      if (connected) status.classList.add('hidden');
+      else if (!cloudConfigured()) chip('bg-amber-50 border-amber-200 text-amber-700', 'ph-wrench', 'Setup needed');
+      else if (isCustodianDevice()) chip('bg-slate-100 border-slate-200 text-slate-600', 'ph-circle-notch animate-spin', 'Connecting');
+      else chip('bg-slate-100 border-slate-200 text-slate-600', 'ph-plugs', 'Not connected');
       document.getElementById('reqViewSchool').textContent = isCustodianDevice()
         ? `${reqRole.schoolName}${reqRole.email ? ` · ${reqRole.email}` : ''}` : 'Teachers request · you review, approve and prepare the Purchase Request';
-      if (!cloudConfigured()) { body.innerHTML = reqSetupHTML(); return; }
+      if (!cloudConfigured()) { body.innerHTML = reqSignedOutLayout(reqSetupHTML(), false); return; }
       if (isCustodianDevice() && (cloud.state === 'idle' || cloud.state === 'loading')) {
         body.innerHTML = `<div class="rounded-2xl bg-white border border-slate-200 p-6 text-center text-sm text-slate-500"><i class="ph-bold ph-circle-notch animate-spin text-2xl text-brand-500"></i><p class="mt-2">Connecting to ${escapeHTML(reqRole.schoolName)}…</p></div>`;
         return;
       }
-      if (!connected) { body.innerHTML = reqConnectHTML(); if (navigator.onLine) cloudStart().catch(() => {}); return; }
+      if (!connected) { body.innerHTML = reqSignedOutLayout(reqConnectHTML(), true); if (navigator.onLine) cloudStart().catch(() => {}); return; }
 
       const pending = reqList.filter(r => r.status === 'pending');
       const approved = reqList.filter(r => r.status === 'approved');
       const closed = reqList.filter(r => ['declined', 'cancelled', 'closed', 'pr'].includes(r.status));
-      const tabs = [['pending', 'To review', pending.length], ['approved', 'To purchase', approved.length], ['prs', 'Purchase requests', prList.length], ['closed', 'Closed', closed.length]];
-      const tabBtn = ([key, label, n]) => `
-        <button onclick="setReqTab('${key}')" class="shrink-0 h-9 px-3 rounded-lg text-xs font-bold whitespace-nowrap transition ${reqTab === key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">
-          ${label}${n ? ` <span class="ml-0.5 px-1.5 py-0.5 rounded-md text-[10px] ${key === 'pending' && n ? 'bg-rose-500 text-white' : 'bg-slate-200 text-slate-600'}">${n}</span>` : ''}
-        </button>`;
+      const counts = { pending: pending.length, approved: approved.length, prs: prList.length, closed: closed.length };
       let html = `
         ${cloud.error ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2">${escapeHTML(cloud.error)}</p>` : ''}
         ${!navigator.onLine ? `<p class="rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-cloud-slash"></i> Offline · showing saved requests. Your changes are sent when you reconnect.</p>` : ''}
-        <div class="flex gap-1 p-1 rounded-xl bg-slate-100 overflow-x-auto">${tabs.map(tabBtn).join('')}</div>`;
+        ${reqFlowHTML(counts)}
+        <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1 pt-1">${REQ_STAGES.find(st => st.key === reqTab).title}</h2>`;
 
       if (reqTab === 'pending') {
         html += pending.length ? pending.map(r => reqCardHTML(r)).join('')
@@ -6683,7 +6726,7 @@
         html += buy.length ? `
           <p class="text-xs text-slate-500 px-1">Tick the requests to put on one Purchase Request. Items are added together.</p>
           ${buy.map(r => reqCardHTML(r, { pick: true })).join('')}
-          <div class="sticky bottom-20 z-10">
+          <div class="sticky bottom-20 z-10" data-toast-avoid>
             <button id="prPrepareBtn" onclick="openPrFromPicked()" ${picked.length ? '' : 'disabled'} class="w-full h-14 rounded-2xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white font-extrabold text-sm shadow-lg flex items-center justify-center gap-2">
               <i class="ph-bold ph-file-plus text-lg"></i> Prepare Purchase Request · ${plural(picked.length, 'request')} · ₱${peso2(total)}
             </button>
@@ -6700,6 +6743,85 @@
       }
       html += `<button onclick="custodianSignOut()" class="text-[11px] font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 px-1 pt-2"><i class="ph-bold ph-sign-out"></i> Sign out of supply requests</button>`;
       body.innerHTML = html;
+      placeToast();
+    }
+
+    // The four stages a request moves through; on the custodian screen they are the tabs.
+    const REQ_STAGES = [
+      { key: 'pending',  n: 1, label: 'To review',         title: 'Waiting for your review',      icon: 'ph-tray',          tone: 'amber',
+        hint: 'from teachers', how: 'Teachers send requests from their phones with your invite link. No account needed.' },
+      { key: 'approved', n: 2, label: 'To purchase',       title: 'Approved · ready for a Purchase Request', icon: 'ph-check-circle', tone: 'emerald',
+        hint: 'approved', how: 'Check each line against stock (asked, on hand, to buy), fix names, quantities and costs, then approve or decline.' },
+      { key: 'prs',      n: 3, label: 'Purchase requests', title: 'Purchase Requests (Appendix 60)', icon: 'ph-file-text',   tone: 'brand',
+        hint: 'Appendix 60', how: 'Combine approved requests into one PR. Only what is not in stock is bought. Print or export to CSV.' },
+      { key: 'closed',   n: 4, label: 'Closed',            title: 'Supplied, declined or cancelled', icon: 'ph-archive',     tone: 'slate',
+        hint: 'supplied · declined', how: 'Mark items delivered. Teachers see every status and your notes right away.' }
+    ];
+    const REQ_TONE = {
+      amber: 'bg-amber-50 text-amber-600', emerald: 'bg-emerald-50 text-emerald-600',
+      brand: 'bg-brand-50 text-brand-600', slate: 'bg-slate-100 text-slate-500'
+    };
+
+    function reqFlowHTML(counts) {
+      return `<nav aria-label="Request stages" class="grid grid-cols-2 sm:grid-cols-4 gap-2">${REQ_STAGES.map(st => {
+        const on = reqTab === st.key;
+        const n = counts[st.key] || 0;
+        const alert = st.key === 'pending' && n;
+        return `
+          <button onclick="setReqTab('${st.key}')" aria-current="${on ? 'page' : 'false'}" class="req-stage relative text-left rounded-2xl border p-3 transition ${on ? 'bg-white border-brand-400 ring-2 ring-brand-500/15 shadow-sm' : 'bg-white/60 border-slate-200 hover:bg-white hover:border-slate-300'}">
+            <span class="flex items-center justify-between gap-2">
+              <span class="w-8 h-8 rounded-lg ${REQ_TONE[st.tone]} flex items-center justify-center"><i class="ph-bold ${st.icon} text-lg"></i></span>
+              <span class="text-2xl font-extrabold font-mono ${alert ? 'text-rose-600' : on ? 'text-slate-900' : 'text-slate-400'}">${n}</span>
+            </span>
+            <span class="mt-2 block text-[13px] font-extrabold ${on ? 'text-slate-900' : 'text-slate-700'} leading-tight">${st.label}</span>
+            <span class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide">${st.n} · ${st.hint}</span>
+            ${alert ? '<span class="absolute top-2 left-2 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>' : ''}
+          </button>`;
+      }).join('')}</nav>`;
+    }
+
+    function reqHowItWorksHTML() {
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
+          <p class="text-sm font-extrabold text-slate-900">How it works</p>
+          <p class="text-xs text-slate-500">From a teacher’s request to a signed Purchase Request.</p>
+          <ol class="mt-4 space-y-0">${REQ_STAGES.map((st, i) => `
+            <li class="flex gap-3">
+              <span class="flex flex-col items-center">
+                <span class="w-9 h-9 shrink-0 rounded-xl ${REQ_TONE[st.tone]} flex items-center justify-center"><i class="ph-bold ${st.icon} text-lg"></i></span>
+                ${i < REQ_STAGES.length - 1 ? '<span class="w-px flex-1 bg-slate-200 my-1"></span>' : ''}
+              </span>
+              <span class="pb-4">
+                <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Step ${st.n} · ${st.label}</span>
+                <span class="block text-xs text-slate-600 leading-relaxed">${st.how}</span>
+              </span>
+            </li>`).join('')}
+          </ol>
+        </div>`;
+    }
+
+    // Signed out (or not set up): the main card on the left, how it works + teachers on the right.
+    function reqSignedOutLayout(mainHTML, withTeacher) {
+      return `
+        <div class="grid gap-4 lg:grid-cols-5 lg:items-start">
+          <div class="lg:col-span-3 space-y-4">${mainHTML}</div>
+          <div class="lg:col-span-2 space-y-4">
+            ${reqHowItWorksHTML()}
+            ${withTeacher ? reqTeacherCardHTML() : ''}
+          </div>
+        </div>`;
+    }
+
+    function reqTeacherCardHTML() {
+      return `
+        <div class="rounded-2xl bg-amber-50 border border-amber-200 p-4 space-y-2">
+          <p class="text-sm font-extrabold text-amber-900 flex items-center gap-2"><i class="ph-bold ph-chalkboard-teacher"></i> Are you a teacher?</p>
+          <p class="text-xs text-amber-800">Open the invite link your property custodian shared, or type the school code:</p>
+          <div class="flex gap-2">
+            <input id="rcCode" type="text" autocomplete="off" spellcheck="false" placeholder="School code" class="flex-1 min-w-0 h-10 px-3 rounded-xl border border-amber-300 bg-white text-sm font-mono focus:border-amber-500 outline-none">
+            <button onclick="openJoin(reqVal('rcCode'))" class="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-extrabold">Join</button>
+          </div>
+        </div>`;
     }
 
     function setReqTab(tab) {
@@ -6794,9 +6916,12 @@
       const email = escapeHTML((reqRole && reqRole.email) || '');
       return `
         <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3">
-          <div>
-            <p class="text-sm font-extrabold text-slate-900">Property custodian</p>
-            <p class="text-xs text-slate-500">Sign in to receive your teachers’ requests. The first sign-in sets up your school.</p>
+          <div class="flex items-center gap-3">
+            <span class="w-11 h-11 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-identification-badge text-2xl"></i></span>
+            <div>
+              <p class="text-sm font-extrabold text-slate-900">Property custodian sign-in</p>
+              <p class="text-xs text-slate-500">Receive your teachers’ requests. The first sign-in sets up your school.</p>
+            </div>
           </div>
           <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">School (first sign-in only)
             <input id="rcSchool" type="text" value="${school}" placeholder="School name" class="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium normal-case tracking-normal text-slate-900 focus:border-brand-500 outline-none">
@@ -6815,14 +6940,7 @@
           </div>
           <button onclick="custodianResetPassword()" class="text-[11px] font-bold text-slate-500 hover:text-slate-800">Forgot password?</button>
         </div>
-        <div class="rounded-2xl bg-amber-50 border border-amber-200 p-4 space-y-2">
-          <p class="text-sm font-extrabold text-amber-900">Are you a teacher?</p>
-          <p class="text-xs text-amber-800">Open the invite link your property custodian shared, or type the school code:</p>
-          <div class="flex gap-2">
-            <input id="rcCode" type="text" autocomplete="off" spellcheck="false" placeholder="School code" class="flex-1 min-w-0 h-10 px-3 rounded-xl border border-amber-300 bg-white text-sm font-mono focus:border-amber-500 outline-none">
-            <button onclick="openJoin(reqVal('rcCode'))" class="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-extrabold">Join</button>
-          </div>
-        </div>`;
+`;
     }
 
     async function custodianConnect(create) {
