@@ -97,6 +97,33 @@ try {
   await ev(a, () => setTheme('system'));
   await a.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
 
+  out('5b background picture: More → Appearance, per tab');
+  await ev(a, () => { switchMainView('HOME'); openMoreMenu(); });
+  const artOpts = () => ev(a, () => Object.fromEntries([...document.querySelectorAll('#moreArt [data-art-opt]')].map(b => [b.dataset.artOpt, b.getAttribute('aria-checked') === 'true'])));
+  check(JSON.stringify(await artOpts(a)) === JSON.stringify({ HOME: true, ITEMS: false, CATALOG: false, REPORTS: false }), 'four tick boxes: Home on by default, the others off');
+  await a.click('#moreArt [data-art-opt="ITEMS"]');
+  await a.click('#moreArt [data-art-opt="CATALOG"]');
+  check((await artOpts(a)).ITEMS && (await artOpts(a)).CATALOG, 'tapping Inventory and Catalog ticks them');
+  await a.screenshot({ path: `${SHOTS}/more-background.png` });
+  await ev(a, () => closeMoreMenu());
+  await ev(a, () => switchMainView('ITEMS'));
+  check(await ev(a, () => document.body.classList.contains('page-art')), 'the picture now shows on Inventory');
+  const card = await ev(a, () => { const b = document.getElementById('masterLedgerSection').getBoundingClientRect(); const h = document.querySelector('body > header').getBoundingClientRect(); return { left: b.left, gap: b.top - h.bottom, r: getComputedStyle(document.getElementById('masterLedgerSection')).borderTopLeftRadius }; });
+  check(card.left >= 15 && card.gap >= 15 && card.r === '16px', `on a phone the Inventory card floats so the picture shows around it (left ${card.left}, gap ${Math.round(card.gap)})`);
+  await a.screenshot({ path: `${SHOTS}/items-with-picture.png` });
+  await ev(a, () => switchMainView('REPORTS'));
+  check(await ev(a, () => !document.body.classList.contains('page-art')), 'Reports stays plain (not ticked)');
+  await ev(a, () => { openMoreMenu(); });
+  await a.click('#moreArt [data-art-opt="HOME"]');
+  await ev(a, () => { closeMoreMenu(); switchMainView('HOME'); });
+  check(await ev(a, () => !document.body.classList.contains('page-art')), 'unticking Home removes the picture there');
+  await a.reload({ waitUntil: 'networkidle0' });
+  await ev(a, () => switchMainView('CATALOG'));
+  check(await ev(a, () => document.body.classList.contains('page-art') && (l => l.includes('ITEMS') && l.includes('CATALOG') && !l.includes('HOME'))(JSON.parse(localStorage.getItem('custodian_page_art_v1')))), 'the choice is kept after a restart');
+  await ev(a, () => { localStorage.removeItem('custodian_page_art_v1'); switchMainView('ITEMS'); });
+  check(await ev(a, () => !document.body.classList.contains('page-art')), 'back to the default: Inventory plain again');
+  await ev(a, () => switchMainView('HOME'));
+
   out('6 sign out → back to the sign-in screen, same person can sign in again');
   // The app's own dialog, tapped for real (no browser "… says" box).
   const dlgOpen = () => ev(a, () => !document.getElementById('appDialog').classList.contains('hidden'));
@@ -181,6 +208,10 @@ try {
   check(!(await gated(t)), 'joined → sign-in screen gone');
   check(await ev(t, () => activeMainView) === 'REQUESTER', 'teacher screen');
   check(await ev(t, () => document.querySelectorAll('#rqTheme [data-theme-opt]').length) === 3, 'teachers get the appearance switch too');
+  check(await ev(t, () => document.body.classList.contains('page-art') && document.querySelector('#rqArt [data-art-opt="REQUESTER"]').getAttribute('aria-checked') === 'true'), 'teachers: background picture on, with a switch to turn it off');
+  await t.click('#rqArt [data-art-opt="REQUESTER"]');
+  check(await ev(t, () => !document.body.classList.contains('page-art')), 'teachers: the switch turns the picture off');
+  await t.click('#rqArt [data-art-opt="REQUESTER"]');
   await ev(t, () => setTheme('dark'));
   await t.screenshot({ path: `${SHOTS}/teacher-dark.png`, fullPage: true });
   await ev(t, () => setTheme('system'));

@@ -54,6 +54,22 @@ bottom of their screen) switches between **System**, **Light** and **Dark**. The
 applied before the first paint, so there is no white flash when opening the app at night.
 Printed forms always use the light look. In dark mode the sign-in screen and the strip behind Home use a night version of the school picture, and the selected option of every switch (System/Light/Dark, My Items/Requests, transfer type…) is a lighter raised pill.
 
+### Background picture
+
+The faded school picture behind the top of the page shows on **Home** by default. Under
+**More → Appearance → Background picture on**, each tab has a tick box: **Home**, **Inventory**,
+**Catalog** and **Reports**. Teachers get one *Background picture* switch for their screen.
+
+- The choice is saved on the device, like light / dark (`custodian_page_art_v1` in local storage, a list of tabs; missing means the default). It is kept after a restart and follows other open tabs.
+- The header turns to frosted glass wherever the picture is on.
+- On phones, Inventory and Catalog normally run edge to edge under the top bar. With the picture on, their card floats with a 16 px gap and rounded corners, as on wider screens, so the picture shows around it.
+- `tests/e2e/login-theme.mjs` (section 5b) checks:
+  - the default;
+  - ticking and unticking;
+  - the floating card on a phone;
+  - that the choice is kept after a restart;
+  - the teacher's switch.
+
 Dark colours are generated, not hand-written: `scripts/dark-theme.mjs` reads the Tailwind
 colour classes in `index.html` (`bg-white`, `text-slate-900`, `bg-amber-50`,
 `hover:bg-slate-50` …) and writes an `html.dark` counterpart for each one into
@@ -463,7 +479,7 @@ npm run serve   # http://localhost:8080
 | `scripts/build-icons.mjs` | Regenerates the home-screen icons from `src/app-icon.png` (`npm run icons`): rounded tile, Android maskable and iPhone versions, plus the notification badge and shortcut icons |
 | `manifest.webmanifest` | PWA metadata: name, icons, navy theme colour, shortcuts, screenshots |
 | `scripts/dark-theme.mjs` | Dark mode: maps every light colour class in `index.html` to a dark one (called by `build-assets.mjs`) |
-| `assets/brand/` | School art for the sign-in screen and the faded strip behind the top of Home: `login-portrait.webp` 572×1024, `login-landscape.webp` 1024×434 (both precached). Banner: `banner.png` (this README), `banner.webp` (About sheet, precached), `og-image.png` 1200×630 (link previews: `og:image` / X card), `social-preview.png` 1280×640 (upload under GitHub → Settings → Social preview) |
+| `assets/brand/` | School art for the sign-in screen and the faded picture behind the top of Home (and any tab ticked under More → Appearance): `login-portrait.webp` 572×1024, `login-landscape.webp` 1024×434 (both precached). Banner: `banner.png` (this README), `banner.webp` (About sheet, precached), `og-image.png` 1200×630 (link previews: `og:image` / X card), `social-preview.png` 1280×640 (upload under GitHub → Settings → Social preview) |
 | `tests/e2e/make-screenshots.mjs` | Re-renders `assets/screenshots/` from the app with sample data (not precached by `sw.js`) |
 
 Generated files (`assets/`, `sw.js`) are committed so GitHub Pages can serve them directly.
