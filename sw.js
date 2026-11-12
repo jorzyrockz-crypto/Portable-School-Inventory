@@ -10,15 +10,18 @@
  *   in its own cache the first time it is used, so app updates don't download it again.
  * - Tapping a phone notification (shown by the page while the app is open or was used
  *   recently; there is no push server) focuses CustodianPro and opens that notification.
+ * - The page asks for this worker's version ("get-version") to tell whether an update
+ *   brings anything new to the page that is open.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
-const CACHE = 'custodianpro-f763c41406bc';
+const CACHE = 'custodianpro-b40c02675a41';
 const PRECACHE_URLS = [
     "./",
     "./index.html",
     "./manifest.webmanifest",
     "./firebase-config.js",
     "./assets/app.css",
+    "./assets/brand/banner.webp",
     "./assets/fonts/Phosphor-Bold.woff2",
     "./assets/fonts/Phosphor-Duotone.woff2",
     "./assets/fonts/Phosphor-Fill.woff2",
@@ -142,4 +145,11 @@ self.addEventListener('notificationclick', (event) => {
     }
     await self.clients.openWindow(`${scope}?notif=${encodeURIComponent(nid)}`);
   })());
+});
+
+// The page compares this with its own version (meta app-version) before announcing an update.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'get-version' && event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ version: CACHE.slice('custodianpro-'.length) });
+  }
 });

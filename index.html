@@ -9,6 +9,20 @@
   <meta name="apple-mobile-web-app-title" content="CustodianPro">
   <meta name="theme-color" content="#122e76">
   <title>CustodianPro | General Inventory & APP-CSE 2027</title>
+  <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
+  <meta name="app-version" content="b40c02675a41">
+  <meta name="description" content="School property and supply inventory for custodians and teachers: property tags, physical count, RIS/ICS releases and supply requests. Works offline.">
+  <!-- Link previews (Messenger, Facebook, Viber, X) when the app or a teacher invite link is shared -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="CustodianPro">
+  <meta property="og:title" content="CustodianPro – School Inventory">
+  <meta property="og:description" content="Effortless classroom & equipment tracking for property custodians and teachers. Works offline.">
+  <meta property="og:image" content="https://custodianpro.vercel.app/assets/brand/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="CustodianPro School Inventory – effortless classroom and equipment tracking">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://custodianpro.vercel.app/assets/brand/social-preview.png">
 
   <!-- Offline-ready PWA: everything below is served locally and precached by sw.js -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -48,6 +62,21 @@
     }
     /* Installed (standalone) mode on iPad/iPhone: respect notch & home indicator */
     .safe-top { padding-top: env(safe-area-inset-top); }
+    /* Installed on a computer with the title bar folded into the app (Window Controls
+       Overlay): our own navy title bar sits beside Chrome's window buttons and carries the
+       update notice and unread count. Elsewhere it is hidden. */
+    #titleBar { display: none; }
+    html.wco #titleBar {
+      display: flex; align-items: center; gap: 0.5rem; position: fixed; top: 0; left: 0; right: 0; z-index: 65;
+      height: env(titlebar-area-height, 33px);
+      padding-left: calc(env(titlebar-area-x, 0px) + 0.75rem);
+      padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 0.5rem);
+      background: #122e76; color: #fff; font-size: 12px; user-select: none;
+      -webkit-app-region: drag; app-region: drag;
+    }
+    html.wco #titleBar button { -webkit-app-region: no-drag; app-region: no-drag; }
+    html.wco body { padding-top: env(titlebar-area-height, 33px); }
+    html.wco header.safe-top { top: env(titlebar-area-height, 33px); }
     .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
     /* Padded sheets (p-5): keep the 1.25rem bottom padding and add the phone's home-bar inset. */
     .safe-pad { padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)); }
@@ -103,6 +132,19 @@
 <body class="text-slate-800 antialiased selection:bg-brand-500 selection:text-white pb-28">
 
   <!-- TOP STICKY NAVIGATION & CONTROLS (Portrait Tablet Optimized) -->
+  <div id="titleBar" class="no-print">
+    <img src="assets/icons/favicon-32.png" alt="" width="16" height="16" class="w-4 h-4 shrink-0">
+    <span class="font-bold shrink-0">CustodianPro</span>
+    <span id="tbSchool" class="truncate text-white/60 min-w-0"></span>
+    <span class="flex-1"></span>
+    <button id="tbUpdate" onclick="applyUpdate()" class="hidden shrink-0 h-6 px-2.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-900 text-[11px] font-extrabold items-center gap-1" title="A new version is ready">
+      <i class="ph-bold ph-arrow-clockwise"></i> Update ready · Restart
+    </button>
+    <button id="tbBell" onclick="openNotifPanel()" class="hidden shrink-0 h-6 px-2 rounded-full bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold items-center gap-1" aria-label="Notifications">
+      <i class="ph-bold ph-bell"></i><span id="tbBellCount"></span>
+    </button>
+  </div>
+
   <header class="safe-top sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm no-print">
     
     <!-- Top bar: identity + school, everything else lives in the More menu -->
@@ -186,6 +228,19 @@
       </div>
       <button id="installBtn" onclick="installApp()" class="shrink-0 h-10 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold">Install</button>
       <button onclick="dismissInstall()" class="shrink-0 w-8 h-8 rounded-full text-slate-400 hover:bg-slate-100 flex items-center justify-center" aria-label="Not now"><i class="ph-bold ph-x"></i></button>
+    </div>
+  </div>
+
+  <!-- A new version was downloaded in the background -->
+  <div id="updateBar" class="hidden max-w-4xl mx-auto px-4 pt-3 no-print">
+    <div class="rounded-2xl bg-brand-50 border border-brand-200 shadow-sm p-3 flex items-center gap-3">
+      <span class="w-10 h-10 shrink-0 rounded-xl bg-white text-brand-600 flex items-center justify-center"><i class="ph-bold ph-arrow-clockwise text-xl"></i></span>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-extrabold text-slate-900 leading-tight">A new version is ready</p>
+        <p class="text-xs text-slate-600 mt-0.5 leading-snug">Restart to update. Your inventory stays on this device.</p>
+      </div>
+      <button id="updateBtn" onclick="applyUpdate()" class="shrink-0 h-10 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold">Restart</button>
+      <button onclick="snoozeUpdate()" class="shrink-0 w-8 h-8 rounded-full text-slate-400 hover:bg-white flex items-center justify-center" aria-label="Later"><i class="ph-bold ph-x"></i></button>
     </div>
   </div>
 
@@ -841,6 +896,7 @@
           <button onclick="closeMoreMenu(); document.getElementById('restoreFileInput').click()" class="more-item"><i class="ph-bold ph-upload-simple text-amber-600"></i> Restore a backup</button>
           <button onclick="closeMoreMenu(); openHistory()" class="more-item"><i class="ph-bold ph-list-magnifying-glass text-brand-600"></i> Change history</button>
           <button onclick="closeMoreMenu(); loadSampleInventory()" class="more-item"><i class="ph-bold ph-magic-wand text-slate-500"></i> Load sample data</button>
+          <button id="moreAboutItem" onclick="closeMoreMenu(); openAbout()" class="more-item"><i class="ph-bold ph-info text-brand-600"></i> About &amp; what’s new <span id="moreUpdateDot" class="hidden ml-auto text-[10px] font-extrabold uppercase tracking-wider text-white bg-amber-500 rounded-full px-2 py-0.5">Update</span></button>
           <p id="backupStatusLine" class="px-2 pt-2 text-[11px] text-slate-500 flex items-center gap-1.5">
             <i class="ph-bold ph-clock-counter-clockwise"></i>
             <span id="backupStatusText">Last backup: never</span>
@@ -863,6 +919,17 @@
         </div>
       </div>
       <div id="notifBody" class="p-3 space-y-3 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <!-- About & what's new -->
+  <div id="aboutPanel" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center no-print" onclick="if (event.target === this) closeAbout()">
+    <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] flex flex-col safe-bottom overflow-hidden">
+      <div class="relative shrink-0 bg-[#eef3fb]">
+        <img src="assets/brand/banner.webp" alt="CustodianPro School Inventory – effortless classroom and equipment tracking" width="1024" height="434" class="w-full h-auto block">
+        <button onclick="closeAbout()" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 text-slate-600 shadow flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="aboutBody" class="p-4 space-y-4 overflow-y-auto"></div>
     </div>
   </div>
   <!-- ENCODE SHEET: quantity + room for one item, then straight on to the next -->
@@ -1602,6 +1669,9 @@
   <!-- APPLICATION JAVASCRIPT & COMPLETE PDF DATASET -->
   <script src="firebase-config.js"></script>
   <script>
+    // Was anything saved on this device before this visit? ("What's new" is for returning users.)
+    var RETURNING_USER = (() => { try { return Object.keys(localStorage).some(k => k.startsWith('custodian_')); } catch (e) { return false; } })();
+
     // =========================================================================
     // 1. CATEGORIES MAPPING (From APP-CSE 2027 PDF)
     // =========================================================================
@@ -6478,7 +6548,7 @@
     function placeToast() {
       const toast = document.getElementById('appToast');
       if (!toast) return;
-      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
+      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel', 'aboutPanel'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
       const stickyAction = [...document.querySelectorAll('[data-toast-avoid]')].some(el => el.offsetParent !== null);
       const top = sheetOpen || stickyAction;
       toast.classList.toggle('bottom-24', !top);
@@ -6526,17 +6596,23 @@
       }
 
       if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
-      const firstInstall = !navigator.serviceWorker.controller;
+      let hadWorker = !!navigator.serviceWorker.controller;
       navigator.serviceWorker.register('./sw.js').then((reg) => {
+        swReg = reg;
         reg.addEventListener('updatefound', () => {
           const worker = reg.installing;
           if (!worker) return;
           worker.addEventListener('statechange', () => {
-            if (worker.state === 'activated' && firstInstall) {
+            if (worker.state !== 'activated') return;
+            if (!hadWorker) {
+              hadWorker = true;
               showToast('Ready to work offline on this device', 'ph-wifi-slash');
+            } else {
+              onWorkerUpdated(worker);
             }
           });
         });
+        scheduleUpdateChecks();
       }).catch((err) => console.warn('Service worker registration failed:', err));
     }
 
@@ -9697,6 +9773,7 @@
       count.classList.toggle('hidden', !n);
       btn.setAttribute('aria-label', n ? `Notifications, ${n} unread` : 'Notifications');
       if (renderNotifBell._last !== n) { renderNotifBell._last = n; updateAppBadge(n); }
+      renderAppTitle();
       if (!document.getElementById('notifPanel').classList.contains('hidden')) renderNotifPanel();
     }
 
@@ -9795,6 +9872,8 @@
         window.scrollTo({ top: 0 });
       } else if (n.go === 'teachers') {
         openTeachersView(n.person || null);
+      } else if (n.go === 'update') {
+        if (appUpdate.ready) applyUpdate(); else openAbout();
       }
     }
     function markAllNotifsRead() {
@@ -9820,7 +9899,7 @@
     // ---- Install as an app (Chrome's "beforeinstallprompt") -------------------------------
     const INSTALL_DISMISS_KEY = 'custodian_install_dismissed_v1';
     let installPrompt = null;
-    const isInstalledApp = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+    const isInstalledApp = () => (window.matchMedia && ['standalone', 'window-controls-overlay', 'minimal-ui'].some(m => window.matchMedia(`(display-mode: ${m})`).matches)) || navigator.standalone === true;
     function initInstall() {
       window.addEventListener('beforeinstallprompt', e => {
         e.preventDefault();               // our own bar instead of Chrome's mini-infobar
@@ -9899,6 +9978,223 @@
       }, 200);
     }
 
+    // =========================================================================
+    // APP UPDATES: when a new version has downloaded in the background, say so where people
+    // look first:
+    //   - the window title ("Update ready · …"): Chrome's tab and the installed app's title bar;
+    //   - our own navy title bar when the installed app on a computer folds Chrome's title bar
+    //     into the page (Window Controls Overlay);
+    //   - a bar under the header, the bell list (and a phone notification when the app is in
+    //     the background and those are turned on), and More → About & what's new.
+    // The page knows its own version (meta app-version, written by `npm run build`, equal to
+    // the sw.js cache version), so a worker that brings the version already running is not
+    // announced. "What's new" appears once after each update.
+    // =========================================================================
+    var swReg = null;
+    const APP_VERSION = (document.querySelector('meta[name="app-version"]') || {}).content || '';
+    const BASE_TITLE = document.title;
+    const SEEN_RELEASE_KEY = 'custodian_seen_release_v1';
+    const UPDATE_SNOOZE_KEY = 'custodian_update_snoozed_v1';   // sessionStorage: bar hidden until restart
+    const REPO_URL = 'https://github.com/jorzyrockz-crypto/Portable-School-Inventory';
+    const appUpdate = { ready: false, newVersion: '', checking: false, manual: false };
+    let lastUpdateCheck = Date.now();
+
+    // Newest first. Add an entry when a release changes something people will notice.
+    const WHATS_NEW = [
+      { id: '2026-11-notifications', date: 'Nov 2026', title: 'Notifications and app updates', points: [
+        'A bell shows new supply requests, approvals, releases, receipts and returns. Tap one to open it.',
+        'Phone notifications while CustodianPro is open or was used recently (turn on in the bell).',
+        'Install button, home-screen shortcuts and a navy status bar.',
+        'New versions are announced in the title bar. Tap Restart to update.'
+      ] },
+      { id: '2026-11-icon', date: 'Nov 2026', title: 'New app icon', points: ['The smiling folder on your home screen.'] },
+      { id: '2026-10-teachers', date: 'Oct 2026', title: 'Releases to teachers', points: [
+        'Release supplies (RIS) and equipment (ICS) to teachers; they see them under My items.',
+        'Teachers confirm receipt, report problems and return items; Summary of Accountability per teacher.'
+      ] },
+      { id: '2026-10-requests', date: 'Oct 2026', title: 'Supply requests', points: [
+        'Teachers request supplies from their phones; approved requests become an Appendix 60 Purchase Request.'
+      ] }
+    ];
+
+    function renderAppTitle() {
+      const n = notifUnread();
+      document.title = `${n ? `(${n}) ` : ''}${appUpdate.ready ? 'Update ready · ' : ''}${BASE_TITLE}`;
+      const school = (document.getElementById('headerSchoolName') || {}).textContent || '';
+      document.getElementById('tbSchool').textContent = school && school !== 'Set School Info' ? `· ${school}` : '';
+      const up = document.getElementById('tbUpdate');
+      up.classList.toggle('hidden', !appUpdate.ready);
+      up.classList.toggle('flex', appUpdate.ready);
+      const bell = document.getElementById('tbBell');
+      const showBell = !!notifScope();
+      bell.classList.toggle('hidden', !showBell);
+      bell.classList.toggle('flex', showBell);
+      document.getElementById('tbBellCount').textContent = n ? String(n > 99 ? '99+' : n) : '';
+    }
+
+    // Installed on a computer: Chrome can fold its title bar into the page.
+    function syncTitleBarMode() {
+      const o = navigator.windowControlsOverlay;
+      document.documentElement.classList.toggle('wco', !!(o && o.visible));
+    }
+
+    function checkSwUpdate(force) {
+      if (!swReg || !navigator.onLine || (!force && Date.now() - lastUpdateCheck < 30 * 60 * 1000)) return Promise.resolve();
+      lastUpdateCheck = Date.now();
+      return swReg.update().catch(() => {});
+    }
+    // Apps stay open for days: look for a new version when they come back to the front
+    // (at most every 30 minutes) and once an hour.
+    function scheduleUpdateChecks() {
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkSwUpdate(); });
+      setInterval(() => checkSwUpdate(), 60 * 60 * 1000);
+    }
+
+    function workerVersion(worker) {
+      return new Promise(resolve => {
+        const t = setTimeout(() => resolve(''), 1500);
+        try {
+          const ch = new MessageChannel();
+          ch.port1.onmessage = e => { clearTimeout(t); resolve((e.data && e.data.version) || ''); };
+          worker.postMessage({ type: 'get-version' }, [ch.port2]);
+        } catch (e) { clearTimeout(t); resolve(''); }
+      });
+    }
+    async function onWorkerUpdated(worker) {
+      const v = await workerVersion(worker);
+      if (v && APP_VERSION && v === APP_VERSION) {           // this page is already that version
+        if (appUpdate.manual) showToast('You have the latest version', 'ph-check-circle');
+        appUpdate.manual = false;
+        renderAbout();
+        return;
+      }
+      markUpdateReady(v);
+    }
+
+    function markUpdateReady(version) {
+      if (appUpdate.ready) return;
+      appUpdate.ready = true;
+      appUpdate.newVersion = version || '';
+      appUpdate.manual = false;
+      renderUpdateUI();
+      if (notifScope()) {
+        addNotif({ title: 'A new version of CustodianPro is ready', body: 'Tap to restart and update. Your inventory stays on this device.', icon: 'ph-arrow-clockwise', tone: 'brand', go: 'update' });
+      } else {
+        showToast('A new version is ready', 'ph-arrow-clockwise', { label: 'Restart', onClick: applyUpdate });
+      }
+    }
+
+    function renderUpdateUI() {
+      const snoozed = sessionStorage.getItem(UPDATE_SNOOZE_KEY) === '1';
+      document.getElementById('updateBar').classList.toggle('hidden', !appUpdate.ready || snoozed);
+      document.getElementById('moreUpdateDot').classList.toggle('hidden', !appUpdate.ready);
+      renderAppTitle();
+      renderAbout();
+    }
+    function snoozeUpdate() {
+      sessionStorage.setItem(UPDATE_SNOOZE_KEY, '1');
+      renderUpdateUI();
+      showToast('Update when you’re ready: tap Restart in the title bar or More → About', 'ph-clock');
+    }
+
+    function applyUpdate() {
+      const busy = [...document.querySelectorAll('.fixed.inset-0:not(.hidden)')]
+        .filter(el => !['notifPanel', 'aboutPanel', 'moreMenu'].includes(el.id));
+      if (busy.length && !confirm('Restart now to update?\n\nThe form that is open will close. Anything you have not saved in it yet is lost.')) return;
+      if (notifScope()) {
+        loadNotifs().items.forEach(n => { if (n.go === 'update') n.read = true; });
+        saveNotifs();
+      }
+      sessionStorage.removeItem(UPDATE_SNOOZE_KEY);
+      sessionStorage.setItem('custodian_updating', '1');
+      location.reload();
+    }
+
+    async function checkForUpdates() {
+      if (appUpdate.ready) { applyUpdate(); return; }
+      if (!swReg) { showToast('Updates are checked when the app is opened from its web address', 'ph-info'); return; }
+      if (!navigator.onLine) { showToast('No internet · check again when you are online', 'ph-wifi-slash'); return; }
+      appUpdate.checking = true;
+      appUpdate.manual = true;
+      renderAbout();
+      await checkSwUpdate(true);
+      appUpdate.checking = false;
+      if (swReg.installing) showToast('Downloading the new version…', 'ph-download-simple');
+      else if (!appUpdate.ready) { appUpdate.manual = false; showToast('You have the latest version', 'ph-check-circle'); }
+      renderAbout();
+    }
+
+    function openAbout() {
+      closeMoreMenu();
+      document.getElementById('aboutPanel').classList.remove('hidden');
+      renderAbout();
+    }
+    function closeAbout() { document.getElementById('aboutPanel').classList.add('hidden'); }
+    function renderAbout() {
+      const body = document.getElementById('aboutBody');
+      if (!body || document.getElementById('aboutPanel').classList.contains('hidden')) return;
+      const status = appUpdate.ready
+        ? `<div class="rounded-2xl bg-amber-50 border border-amber-200 p-3 flex items-center gap-3">
+            <i class="ph-bold ph-arrow-clockwise text-xl text-amber-600"></i>
+            <div class="flex-1 min-w-0"><p class="text-sm font-extrabold text-slate-900">A new version is ready</p><p class="text-xs text-slate-600">Restart to update. Your inventory stays on this device.</p></div>
+            <button id="aboutRestart" onclick="applyUpdate()" class="shrink-0 h-10 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold">Restart</button></div>`
+        : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-3 flex items-center gap-3">
+            <i class="ph-bold ph-check-circle text-xl text-emerald-600"></i>
+            <div class="flex-1 min-w-0"><p class="text-sm font-bold text-slate-900">Version ${escapeHTML(APP_VERSION || 'dev')}</p><p class="text-xs text-slate-500">Updates download by themselves; you are told when one is ready.</p></div>
+            <button id="aboutCheck" onclick="checkForUpdates()" ${appUpdate.checking ? 'disabled' : ''} class="shrink-0 h-10 px-3 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-sm font-bold text-slate-700 disabled:opacity-60">${appUpdate.checking ? 'Checking…' : 'Check for updates'}</button></div>`;
+      body.innerHTML = `
+        <div>
+          <h3 class="text-lg font-extrabold text-slate-900 leading-tight">CustodianPro · School Inventory</h3>
+          <p class="text-sm text-slate-500 mt-0.5">Effortless classroom &amp; equipment tracking for property custodians and teachers. Works offline.</p>
+        </div>
+        ${status}
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">What’s new</p>
+          <div class="space-y-3">${WHATS_NEW.slice(0, 3).map((r, i) => `
+            <div data-release="${r.id}">
+              <p class="text-sm font-extrabold text-slate-800 flex items-center gap-2">${escapeHTML(r.title)}
+                <span class="text-[10px] font-bold text-slate-400">${escapeHTML(r.date)}</span>
+                ${i === 0 ? '<span class="text-[10px] font-extrabold uppercase tracking-wider text-brand-700 bg-brand-50 rounded-full px-2 py-0.5">Latest</span>' : ''}</p>
+              <ul class="mt-1 space-y-1">${r.points.map(pt => `<li class="text-xs text-slate-600 leading-snug flex gap-1.5"><span class="text-brand-500">•</span><span>${escapeHTML(pt)}</span></li>`).join('')}</ul>
+            </div>`).join('')}</div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="shareApp()" class="h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold flex items-center justify-center gap-1.5"><i class="ph-bold ph-share-network"></i> Share app link</button>
+          <a href="${REPO_URL}" target="_blank" rel="noopener" class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold flex items-center justify-center gap-1.5"><i class="ph-bold ph-github-logo"></i> GitHub</a>
+        </div>`;
+    }
+
+    // Share the app (Messenger, Viber, email…). The link shows the banner as its preview.
+    async function shareApp() {
+      const url = location.origin + location.pathname;
+      const data = { title: 'CustodianPro – School Inventory', text: 'School inventory for property custodians and teachers. Works offline.', url };
+      if (navigator.share) {
+        try { await navigator.share(data); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+      try { await navigator.clipboard.writeText(url); showToast('Link copied · paste it in Messenger or Viber', 'ph-link'); }
+      catch (e) { prompt('Copy this link:', url); }
+    }
+
+    function initAppUpdates() {
+      syncTitleBarMode();
+      if (navigator.windowControlsOverlay && navigator.windowControlsOverlay.addEventListener) {
+        navigator.windowControlsOverlay.addEventListener('geometrychange', syncTitleBarMode);
+      }
+      renderAppTitle();
+      // "What's new" once after each update (existing users only, not on the first ever open).
+      const latest = WHATS_NEW[0].id;
+      const seen = localStorage.getItem(SEEN_RELEASE_KEY);
+      const updating = sessionStorage.getItem('custodian_updating') === '1';
+      sessionStorage.removeItem('custodian_updating');
+      if (seen !== latest) {
+        localStorage.setItem(SEEN_RELEASE_KEY, latest);
+        const existingUser = !!seen || RETURNING_USER;
+        if (existingUser) setTimeout(() => showToast(`Updated · ${WHATS_NEW[0].title}`, 'ph-sparkle', { label: 'What’s new', onClick: openAbout }), 800);
+      } else if (updating) {
+        setTimeout(() => showToast('CustodianPro is up to date', 'ph-check-circle'), 800);
+      }
+    }
+
     // Boot App on Load
     window.addEventListener('DOMContentLoaded', () => {
       initApp();
@@ -9907,6 +10203,7 @@
       initSupplyRequests();
       initNotifications();
       initInstall();
+      initAppUpdates();
       handleLaunchParams();
       // Re-check when the app comes back to the foreground (iPad apps stay open for days).
       document.addEventListener('visibilitychange', () => {
