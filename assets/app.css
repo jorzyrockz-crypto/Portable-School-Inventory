@@ -44,6 +44,7 @@
 .ph-bold.ph-bell-slash:before { content: "\e0d4"; }
 .ph-bold.ph-books:before { content: "\e758"; }
 .ph-bold.ph-buildings:before { content: "\e102"; }
+.ph-bold.ph-calendar-check:before { content: "\e712"; }
 .ph-bold.ph-camera:before { content: "\e10e"; }
 .ph-bold.ph-caret-down:before { content: "\e136"; }
 .ph-bold.ph-caret-left:before { content: "\e138"; }
@@ -89,6 +90,7 @@
 .ph-bold.ph-hourglass-medium:before { content: "\e2b8"; }
 .ph-bold.ph-house:before { content: "\e2c2"; }
 .ph-bold.ph-identification-badge:before { content: "\e6f6"; }
+.ph-bold.ph-identification-card:before { content: "\e2c8"; }
 .ph-bold.ph-image:before { content: "\e2ca"; }
 .ph-bold.ph-info:before { content: "\e2ce"; }
 .ph-bold.ph-link:before { content: "\e2e2"; }
@@ -103,6 +105,7 @@
 .ph-bold.ph-minus-circle:before { content: "\e32c"; }
 .ph-bold.ph-moon:before { content: "\e330"; }
 .ph-bold.ph-moon-stars:before { content: "\e58e"; }
+.ph-bold.ph-notebook:before { content: "\e34e"; }
 .ph-bold.ph-package:before { content: "\e390"; }
 .ph-bold.ph-paper-plane-tilt:before { content: "\e398"; }
 .ph-bold.ph-path:before { content: "\e39c"; }
@@ -121,6 +124,7 @@
 .ph-bold.ph-seal-question:before { content: "\e608"; }
 .ph-bold.ph-share-network:before { content: "\e408"; }
 .ph-bold.ph-shield-check:before { content: "\e40c"; }
+.ph-bold.ph-shield-warning:before { content: "\e412"; }
 .ph-bold.ph-shopping-cart:before { content: "\e41e"; }
 .ph-bold.ph-sign-in:before { content: "\e428"; }
 .ph-bold.ph-sign-out:before { content: "\e42a"; }
@@ -188,6 +192,7 @@
 .ph-fill.ph-bell-slash:before { content: "\e0d4"; }
 .ph-fill.ph-books:before { content: "\e758"; }
 .ph-fill.ph-buildings:before { content: "\e102"; }
+.ph-fill.ph-calendar-check:before { content: "\e712"; }
 .ph-fill.ph-camera:before { content: "\e10e"; }
 .ph-fill.ph-caret-down:before { content: "\e136"; }
 .ph-fill.ph-caret-left:before { content: "\e138"; }
@@ -233,6 +238,7 @@
 .ph-fill.ph-hourglass-medium:before { content: "\e2b8"; }
 .ph-fill.ph-house:before { content: "\e2c2"; }
 .ph-fill.ph-identification-badge:before { content: "\e6f6"; }
+.ph-fill.ph-identification-card:before { content: "\e2c8"; }
 .ph-fill.ph-image:before { content: "\e2ca"; }
 .ph-fill.ph-info:before { content: "\e2ce"; }
 .ph-fill.ph-link:before { content: "\e2e2"; }
@@ -247,6 +253,7 @@
 .ph-fill.ph-minus-circle:before { content: "\e32c"; }
 .ph-fill.ph-moon:before { content: "\e330"; }
 .ph-fill.ph-moon-stars:before { content: "\e58e"; }
+.ph-fill.ph-notebook:before { content: "\e34e"; }
 .ph-fill.ph-package:before { content: "\e390"; }
 .ph-fill.ph-paper-plane-tilt:before { content: "\e398"; }
 .ph-fill.ph-path:before { content: "\e39c"; }
@@ -265,6 +272,7 @@
 .ph-fill.ph-seal-question:before { content: "\e608"; }
 .ph-fill.ph-share-network:before { content: "\e408"; }
 .ph-fill.ph-shield-check:before { content: "\e40c"; }
+.ph-fill.ph-shield-warning:before { content: "\e412"; }
 .ph-fill.ph-shopping-cart:before { content: "\e41e"; }
 .ph-fill.ph-sign-in:before { content: "\e428"; }
 .ph-fill.ph-sign-out:before { content: "\e42a"; }
@@ -338,6 +346,8 @@
 .ph-duotone.ph-books:after { content: "\e759"; margin-left: -1em; }
 .ph-duotone.ph-buildings:before { content: "\e102"; opacity: 0.2; }
 .ph-duotone.ph-buildings:after { content: "\e105"; margin-left: -1em; }
+.ph-duotone.ph-calendar-check:before { content: "\e712"; opacity: 0.2; }
+.ph-duotone.ph-calendar-check:after { content: "\e713"; margin-left: -1em; }
 .ph-duotone.ph-camera:before { content: "\e10e"; opacity: 0.2; }
 .ph-duotone.ph-camera:after { content: "\e10f"; margin-left: -1em; }
 .ph-duotone.ph-caret-down:before { content: "\e136"; opacity: 0.2; }
@@ -428,6 +438,8 @@
 .ph-duotone.ph-house:after { content: "\e2c3"; margin-left: -1em; }
 .ph-duotone.ph-identification-badge:before { content: "\e6f6"; opacity: 0.2; }
 .ph-duotone.ph-identification-badge:after { content: "\e6f7"; margin-left: -1em; }
+.ph-duotone.ph-identification-card:before { content: "\e2c8"; opacity: 0.2; }
+.ph-duotone.ph-identification-card:after { content: "\e2c9"; margin-left: -1em; }
 .ph-duotone.ph-image:before { content: "\e2ca"; opacity: 0.2; }
 .ph-duotone.ph-image:after { content: "\e2cb"; margin-left: -1em; }
 .ph-duotone.ph-info:before { content: "\e2ce"; opacity: 0.2; }
@@ -456,6 +468,8 @@
 .ph-duotone.ph-moon:after { content: "\e331"; margin-left: -1em; }
 .ph-duotone.ph-moon-stars:before { content: "\e58e"; opacity: 0.2; }
 .ph-duotone.ph-moon-stars:after { content: "\e58f"; margin-left: -1em; }
+.ph-duotone.ph-notebook:before { content: "\e34e"; opacity: 0.2; }
+.ph-duotone.ph-notebook:after { content: "\e34f"; margin-left: -1em; }
 .ph-duotone.ph-package:before { content: "\e390"; opacity: 0.2; }
 .ph-duotone.ph-package:after { content: "\e391"; margin-left: -1em; }
 .ph-duotone.ph-paper-plane-tilt:before { content: "\e398"; opacity: 0.2; }
@@ -492,6 +506,8 @@
 .ph-duotone.ph-share-network:after { content: "\e40b"; margin-left: -1em; }
 .ph-duotone.ph-shield-check:before { content: "\e40c"; opacity: 0.2; }
 .ph-duotone.ph-shield-check:after { content: "\e40f"; margin-left: -1em; }
+.ph-duotone.ph-shield-warning:before { content: "\e412"; opacity: 0.2; }
+.ph-duotone.ph-shield-warning:after { content: "\e414"; margin-left: -1em; }
 .ph-duotone.ph-shopping-cart:before { content: "\e41e"; opacity: 0.2; }
 .ph-duotone.ph-shopping-cart:after { content: "\e41f"; margin-left: -1em; }
 .ph-duotone.ph-sign-in:before { content: "\e428"; opacity: 0.2; }

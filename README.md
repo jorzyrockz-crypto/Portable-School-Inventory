@@ -371,9 +371,15 @@ Every release, assignment and return is kept as a record under the school (`rele
 | --- | --- |
 | **RPCPPE** (Appendix 73) / **RPCSP** (Annex A.8) – physical count | Each tagged unit counts as found when its QR was scanned or it was checked in the physical count since the chosen date. Shortage quantity and value, holder and room in Remarks. |
 | **IIRUP** (Appendix 74) / **IIRUSP** (Annex A.10) – unserviceable property | Units marked *Unserviceable* in Property Numbers, with blank inspection, disposal and sales columns to fill in by hand. |
+| **RLSDDP** (Appendix 75) / **RLSDDSP** (Annex A.9) – lost, stolen, damaged or destroyed | Tick the units (those a teacher reported *Lost or missing* start ticked), the nature, police report and circumstances. The accountable officer, designation, office and PAR/ICS no. come from the unit's holder. |
+| **Property Card** (Appendix 69) / **SPC** (Annex A.1) | One card per equipment item. Quantities added or dropped (from the change history) change the balance; every PAR / ICS / PTR / ITR shows who received the units, and RRSPs show returns. Issued units stay on the balance, since they are still the school's property. *Print all* puts one card per page. |
+| **RegSPI** (Annex A.4) – registry of semi-expendable property issued | ICS (issued), ITR (re-issued) and RRSP (returned) in the period, with the quantity still with end users and its amount. |
+| **RSPI** (Annex A.7) / **RSMI** (Appendix 64) – issued in a month | Every ICS line (with property numbers) or RIS line (with stock no.) in the period, the total, and for the RSMI the recapitulation by stock number. Serial no., responsibility center code and the accounting staff are typed in. |
+| **Stock Card** (Appendix 58) | One card per supply in stock: quantities received (history), every RIS with the office, and the balance after each line. |
+| **Supplies to reorder** | Supplies at or below their re-order point (*Min alert qty*), with a suggested order up to twice that level. Print it, download a CSV, or tap **Purchase Request** to start a PR (Appendix 60) with those lines. Out-of-stock items only appear if they were stocked before. |
 | **Slips & receipts** | Every RIS, ICS, PAR, ITR, PTR and RRSP made, filtered by form, to print again. |
 
-The inventory committee, COA representative, fund cluster and similar names are remembered for next year; *As at* is always today unless changed.
+The inventory committee, COA representative, fund cluster and similar names are remembered for next year; *As at* is always today unless changed. The cards and the Stock Card start with *Balance forward* on the chosen date and are worked out backwards from today's quantity, so the last line always matches Inventory. Since November 2026 the change history also keeps how much each item changed in bulk saves (deliveries, imports, ICS scans), so those show up as receipts.
 
 ## A teacher's My Items
 

@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="a920fd37e465">
+  <meta name="app-version" content="0eb83f340571">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -188,6 +188,7 @@
       @page wide { size: A4 landscape; margin: 10mm; }
       .pr-wide { page: wide; }
       .pr-table tr { break-inside: avoid; }
+      .pr-pages > .pr-form + .pr-form { break-before: page; page-break-before: always; }
     }
     @keyframes dlgIn { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
     @keyframes dlgNudge { 0%, 100% { transform: none; } 30% { transform: scale(1.02); } 60% { transform: scale(0.99); } }
@@ -762,7 +763,7 @@
       <div class="w-8 h-8 shrink-0 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-stamp text-lg"></i></div>
       <div class="min-w-0 flex-1">
         <h3 class="font-extrabold text-sm text-slate-900 leading-tight">Government forms</h3>
-        <p class="text-[11px] text-slate-500">Physical count (RPCPPE / RPCSP) · unserviceable (IIRUP / IIRUSP) · transfers (PTR / ITR) · slips</p>
+        <p class="text-[11px] text-slate-500">Physical count · property and stock cards · RegSPI · RSPI / RSMI · lost or damaged · reorder list · transfers · slips</p>
       </div>
       <i class="ph-bold ph-caret-right text-slate-500"></i>
     </button>
@@ -4954,6 +4955,13 @@
           const sig = st => st ? `${parseInt(st.qty, 10) || 0}|${(st.units || []).length}|${st.note || ''}` : '0|0|';
           const touched = Object.keys(userState).filter(code => sig(historyBase[code]) !== sig(userState[code]));
           if (touched.length) e.cs = touched.slice(0, 50);
+          // …and how much each quantity changed, for the Stock Card and Property Cards
+          const q = {};
+          touched.forEach(code => {
+            const d = (parseInt(userState[code] && userState[code].qty, 10) || 0) - (parseInt(historyBase[code] && historyBase[code].qty, 10) || 0);
+            if (d) q[code] = d;
+          });
+          if (Object.keys(q).length) e.q = q;
         }
         changeHistory.push(e);
       } else {
@@ -8852,14 +8860,20 @@
         if (!cur.unitCost && l.unitCost) cur.unitCost = l.unitCost;
         lines.set(key, cur);
       }));
-      const d = prDefaults();
-      const date = localISODate();
       const who = reqs.map(r => `${r.name}${r.office ? ` (${r.office})` : r.position ? ` (${r.position})` : ''}`);
       const purposes = [...new Set(reqs.map(r => (r.purpose || '').trim()).filter(Boolean))];
-      prDraft = {
+      openPrDraft({
         requestIds: reqs.map(r => r.id), requesters: reqs.map(r => r.name),
-        lines: [...lines.values()].sort((a, b) => a.desc.localeCompare(b.desc))
-      };
+        lines: [...lines.values()].sort((a, b) => a.desc.localeCompare(b.desc)),
+        purpose: `Supplies requested by ${listJoin(who)}${purposes.length ? ` · ${purposes.join('; ')}` : ''}`,
+        sub: `Appendix 60 · from ${plural(reqs.length, 'approved request')} · check every line before saving`
+      });
+    }
+    // A Purchase Request draft: from approved requests, or from the supplies reorder list.
+    function openPrDraft({ requestIds = [], requesters = [], lines, purpose, sub }) {
+      const d = prDefaults();
+      const date = localISODate();
+      prDraft = { requestIds, requesters, lines };
       const set = (id, v) => { document.getElementById(id).value = v || ''; };
       set('prEntity', d.entity || schoolInfo.school);
       set('prFund', d.fund);
@@ -8867,12 +8881,12 @@
       set('prNo', nextPrNo(date));
       set('prDate', date);
       set('prRcc', d.rcc);
-      set('prPurpose', `Supplies requested by ${listJoin(who)}${purposes.length ? ` · ${purposes.join('; ')}` : ''}`.slice(0, 600));
+      set('prPurpose', String(purpose || '').slice(0, 600));
       set('prReqName', d.reqName || schoolInfo.custodian);
       set('prReqDesig', d.reqDesig || schoolInfo.position);
       set('prApprName', d.apprName || schoolInfo.head);
       set('prApprDesig', d.apprDesig || 'School Principal');
-      document.getElementById('prSub').textContent = `Appendix 60 · from ${plural(reqs.length, 'approved request')} · check every line before saving`;
+      document.getElementById('prSub').textContent = sub || 'Appendix 60 · check every line before saving';
       renderPrLines();
       document.getElementById('prModal').classList.remove('hidden');
     }
@@ -10570,7 +10584,10 @@
       const defaults = {
         countType: 'ppe', unservType: 'ppe', asAt: localISODate(), since: coaYearStart(), fund: d.fund || '',
         officer: schoolInfo.custodian || '', desig: schoolInfo.position || 'Property Custodian', assumed: '',
-        committee: '', head: headName(), coaRep: '', station: schoolInfo.school || '', inspector: '', witness: '', propType: ''
+        committee: '', head: headName(), coaRep: '', station: schoolInfo.school || '', inspector: '', witness: '', propType: '',
+        cardType: 'sep', cardFrom: coaYearStart(), stockFrom: coaYearStart(), regFrom: coaYearStart(), regTo: localISODate(), regProp: '', sheetNo: '1',
+        issuedType: 'sep', issFrom: monthStart(), issTo: localISODate(), serial: `${localISODate().slice(0, 7)}-001`, rcc: d.rcc || '', acctStaff: '',
+        lostType: 'sep', lostDate: localISODate(), lostNature: ''
       };
       return coaOpts[key] !== undefined && coaOpts[key] !== '' ? coaOpts[key] : (defaults[key] ?? '');
     }
@@ -10578,13 +10595,17 @@
       document.querySelectorAll('#coaBody [data-coa]').forEach(el => { coaOpts[el.dataset.coa] = el.value.trim(); });
       coaSave();
     }
+    // Dates of the period and the details of one incident are not kept for next time.
+    const COA_TRANSIENT = ['asAt', 'regTo', 'issFrom', 'issTo', 'serial', 'lostNo', 'lostDate', 'lostCirc', 'lostPolice', 'lostPoliceDate', 'lostStation', 'lostNature', 'lostOfficer', 'lostDesig', 'lostOffice'];
     function coaSave() { // "As at" is today unless changed while the sheet is open
       const keep = { ...coaOpts };
-      delete keep.asAt;
+      COA_TRANSIENT.forEach(k => delete keep[k]);
       localStorage.setItem(COA_KEY, JSON.stringify(keep));
     }
     function openCoa(page = 'home') {
       closeMoreMenu();
+      COA_TRANSIENT.forEach(k => delete coaOpts[k]);
+      coaLostSel = null;
       coaPage = page;
       document.getElementById('coaModal').classList.remove('hidden');
       placeToast();
@@ -10640,6 +10661,7 @@
       const title = document.getElementById('coaTitle');
       const back = `<button onclick="coaGo('home')" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-caret-left"></i> All forms</button>`;
       foot.classList.toggle('hidden', coaPage === 'home' || coaPage === 'slips');
+      if (COA_MORE_PAGES[coaPage]) { COA_MORE_PAGES[coaPage]({ body, foot, title, back }); return; }
       if (coaPage === 'count') {
         title.textContent = 'Physical count report';
         const ppe = coaVal('countType') === 'ppe';
@@ -10727,9 +10749,21 @@
           <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">${name} <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">${forms}</span></span><span class="block text-[11px] text-slate-500 leading-snug">${sub}</span></span>
           <i class="ph-bold ph-caret-right text-slate-500"></i>
         </button>`;
+      const reorder = reorderRows().length;
+      const head = text => `<p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 pt-1 px-1">${text}</p>`;
       body.innerHTML = `
+        ${head('Year-end and incidents')}
         ${card('coaGoCount', 'ph-clipboard-text', 'bg-sky-50 text-sky-600', 'Physical count report', 'RPCPPE · RPCSP', `${seenYear} of ${eqUnits.length} tagged units counted this year · from your scans and checks`, "coaGo('count')")}
         ${card('coaGoUnserv', 'ph-wrench', 'bg-rose-50 text-rose-600', 'Unserviceable property', 'IIRUP · IIRUSP', `${plural(unserv, 'unit')} marked Unserviceable · for inspection and disposal`, "coaGo('unserv')")}
+        ${card('coaGoLost', 'ph-shield-warning', 'bg-rose-50 text-rose-600', 'Lost, stolen, damaged or destroyed', 'RLSDDP · RLSDDSP', 'Pick the units, say what happened, print for signing', "coaGo('lost')")}
+        ${head('Cards and registries')}
+        ${card('coaGoCards', 'ph-identification-card', 'bg-violet-50 text-violet-600', 'Property cards', 'PC · SPC', 'One card per equipment item · receipts, issues and balance', "coaGo('cards')")}
+        ${card('coaGoRegspi', 'ph-notebook', 'bg-violet-50 text-violet-600', 'Registry of property issued', 'RegSPI', 'Semi-expendable property issued, returned and re-issued', "coaGo('regspi')")}
+        ${card('coaGoStock', 'ph-stack', 'bg-amber-50 text-amber-700', 'Stock cards', 'Stock Card', 'One card per supply · received, issued (RIS) and balance', "coaGo('stock')")}
+        ${head('Monthly and supplies')}
+        ${card('coaGoIssued', 'ph-calendar-check', 'bg-teal-50 text-teal-600', 'Monthly report of issues', 'RSPI · RSMI', 'Every ICS or RIS of the month, for Accounting', "coaGo('issued')")}
+        ${card('coaGoReorder', 'ph-shopping-cart', 'bg-amber-50 text-amber-700', 'Supplies to reorder', 'List · PR', `${reorder ? `${reorder} ${reorder === 1 ? 'supply' : 'supplies'} at or below the re-order point` : 'Nothing at or below the re-order point'} · print or make a PR`, "coaGo('reorder')")}
+        ${head('Transfers and slips')}
         ${card('coaGoTransfer', 'ph-arrows-left-right', 'bg-brand-50 text-brand-600', 'Transfer property', 'PTR · ITR', 'To another teacher or room · kept in each unit’s history', 'closeCoa(); openTransfer()')}
         ${card('coaGoSlips', 'ph-files', 'bg-emerald-50 text-emerald-600', 'Slips & receipts', 'RIS · ICS · PAR · RRSP', 'Print again any slip saved for your school', "coaGo('slips')")}
         <p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[11px] text-slate-600 flex gap-2"><i class="ph-bold ph-info text-sm text-brand-600"></i><span><b>PAR and ICS</b> print when you release equipment: items worth ₱50,000 or more go on a PAR (Appendix 71), the rest on an ICS. Returns and take-backs get an RRSP number.</span></p>`;
@@ -10826,6 +10860,482 @@
           </table>
         </div>`);
     }
+
+    // =========================================================================
+    // MORE FORMS (Nov 2026) · built from the history log and the saved slips
+    //   PC       Appendix 69  Property Card · one per PPE item (₱50,000 and up)
+    //   SPC      Annex A.1    Semi-expendable Property Card · one per item below ₱50,000
+    //   RegSPI   Annex A.4    Registry of Semi-expendable Property Issued · issued / returned / re-issued
+    //   RSPI     Annex A.7    Report of Semi-expendable Property Issued · ICS of a month
+    //   RSMI     Appendix 64  Report of Supplies and Materials Issued · RIS of a month
+    //   RLSDDP   Appendix 75  / RLSDDSP Annex A.9 · lost, stolen, damaged or destroyed property
+    //   SC       Appendix 58  Stock Card · one per supply item
+    //   Reorder list (not a COA form): supplies at or below their alert level → Purchase Request
+    // Cards: quantities added or dropped (history) change the balance; an ICS / PAR / ITR / PTR
+    // shows who received the units but keeps them on the balance (still the school's property).
+    // The balance is worked out backwards from today's quantity, so the last line always
+    // matches Inventory; changes older than the history log fall into "Balance forward".
+    // =========================================================================
+    const monthStart = () => localISODate().slice(0, 8) + '01';
+    const inPeriod = (iso, from, to) => !!iso && (!from || iso >= from) && (!to || iso <= to);
+    const msISO = ms => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const relCodeLines = (r, code) => (r.lines || []).filter(l => l.code === code);
+    const lineQty = l => (l.units && l.units.length) || l.qty || 0;
+    const lineNos = l => (l.units || []).map(u => u.no).filter(Boolean).join(', ');
+    const officerOf = r => [r.teacherName, r.office || r.position].filter(Boolean).join(' · ');
+
+    // Quantity changes of one item from the history log: [{ t, delta, ref }]
+    function qtyEvents(code) {
+      const out = [];
+      changeHistory.forEach(e => {
+        if (e.c === code && e.k === 'count' && e.from !== undefined && e.to !== e.from) {
+          out.push({ t: e.t, delta: e.to - e.from, ref: e.to > e.from ? 'Added to stock' : 'Dropped from stock' });
+        } else if (e.q && e.q[code] && e.k !== 'release') {
+          out.push({ t: e.t, delta: e.q[code], ref: String(e.x || '').split(':')[0].slice(0, 60) });
+        }
+      });
+      return out;
+    }
+    // Rows with a running balance; changes before `from` become "Balance forward".
+    function withBalance(events, onHand, from) {
+      events.sort((a, b) => a.t - b.t);
+      let bal = onHand;
+      for (let i = events.length - 1; i >= 0; i--) { events[i].bal = bal; bal -= events[i].delta || 0; }
+      const fromMs = from ? isoMs(from) : 0;
+      const before = events.filter(e => e.t < fromMs);
+      const opening = before.length ? before[before.length - 1].bal : bal;
+      return { opening, rows: events.filter(e => e.t >= fromMs) };
+    }
+
+    // ---- Stock Card (Appendix 58) ---------------------------------------------------
+    function stockCardData(item, from) {
+      const ev = qtyEvents(item.code).map(e => ({ ...e, receipt: e.delta > 0 ? e.delta : '', issue: e.delta < 0 ? -e.delta : '', office: '' }));
+      releaseList.filter(r => r.kind === 'RIS' && !r.sending).forEach(r => relCodeLines(r, item.code).forEach(l => {
+        ev.push({ t: r.createdMs || isoMs(r.date), delta: -l.qty, ref: `RIS ${r.no || ''}`.trim(), receipt: '', issue: l.qty, office: officerOf(r) });
+      }));
+      return withBalance(ev, item.qty || 0, from);
+    }
+    function stockCardHTML(item, from) {
+      const e = v => escapeHTML(v ?? '');
+      const d = prDefaults();
+      const { opening, rows } = stockCardData(item, from);
+      const body = `<tr><td class="c" style="font-size:9pt">${e(fDate(from))}</td><td>Balance forward</td><td></td><td></td><td></td><td class="c">${opening}</td><td></td></tr>`
+        + rows.map(r => `<tr><td class="c" style="font-size:9pt">${e(fDate(msISO(r.t)))}</td><td style="font-size:9pt">${e(r.ref)}</td><td class="c">${r.receipt}</td><td class="c">${r.issue}</td><td style="font-size:9pt">${e(r.office)}</td><td class="c">${r.bal}</td><td></td></tr>`).join('');
+      const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 16 - rows.length));
+      return `
+        <div class="pr-form" data-card="${e(item.code)}">
+          <div class="pr-appx">Appendix 58</div>
+          <h1>STOCK CARD</h1>
+          <div class="pr-top"><span>Entity Name: <b>${e(d.entity || schoolInfo.school)}</b></span><span>Fund Cluster: <b>${e(coaVal('fund'))}</b></span></div>
+          <table class="pr-table">
+            <colgroup><col style="width:12%"><col style="width:22%"><col style="width:10%"><col style="width:10%"><col style="width:22%"><col style="width:10%"><col style="width:14%"></colgroup>
+            <tr><td colspan="5">Item: <b>${e(item.name)}</b></td><td colspan="2">Stock No.: <b>${e(/^CUSTOM-/.test(item.code) ? '' : item.code)}</b></td></tr>
+            <tr><td colspan="5">Description: ${e(item.category || '')}</td><td colspan="2">Re-order Point: <b>${e(item.minQty)}</b></td></tr>
+            <tr><td colspan="5">Unit of Measurement: <b>${e(item.unit)}</b></td><td colspan="2"></td></tr>
+            <tr><th rowspan="2">Date</th><th rowspan="2">Reference</th><th>Receipt</th><th colspan="2">Issue</th><th>Balance</th><th rowspan="2">No. of Days to Consume</th></tr>
+            <tr><th>Qty.</th><th>Qty.</th><th>Office</th><th>Qty.</th></tr>
+            ${body}${blanks}
+          </table>
+        </div>`;
+    }
+
+    // ---- Property Card (Appendix 69) / Semi-expendable Property Card (Annex A.1) -----
+    function propCardData(item, from) {
+      const ev = qtyEvents(item.code).map(e => ({ ...e, receipt: e.delta > 0 ? e.delta : '', issue: e.delta < 0 ? -e.delta : '', office: e.delta < 0 ? 'Dropped from inventory' : '', nos: '', remarks: '' }));
+      releaseList.filter(r => !r.sending && !r.sameHolder && !(r.kind === 'RETURN' && r.source === 'transferred')).forEach(r => relCodeLines(r, item.code).forEach(l => {
+        const t = r.createdMs || isoMs(r.date);
+        if (r.kind === 'RETURN') ev.push({ t, delta: 0, ref: relDocName(r) || 'Returned', receipt: '', issue: '', office: '', nos: lineNos(l), remarks: `${trailText(r)}${lineNos(l) ? ` · ${lineNos(l)}` : ''}` });
+        else if (isIssueKind(r.kind)) ev.push({ t, delta: 0, ref: relDocName(r), receipt: '', issue: lineQty(l), office: officerOf(r), nos: lineNos(l), remarks: r.kind === 'ITR' || r.kind === 'PTR' ? `Transferred${r.fromName ? ` from ${r.fromName}` : ''}` : '' });
+      }));
+      return withBalance(ev, item.qty || 0, from);
+    }
+    function propCardHTML(item, from) {
+      const e = v => escapeHTML(v ?? '');
+      const d = prDefaults();
+      const ppe = isPPE(item);
+      const price = item.price || 0;
+      const nos = getUnits(item.code).map(u => u.no).filter(Boolean);
+      const { opening, rows } = propCardData(item, from);
+      const tr = r => ppe
+        ? `<tr><td class="c" style="font-size:9pt">${e(fDate(msISO(r.t)))}</td><td style="font-size:9pt">${e(r.ref)}</td><td class="c">${r.receipt}</td><td class="c">${r.issue}</td><td style="font-size:9pt">${e(r.office)}</td><td class="c">${r.bal}</td><td class="r">${peso2(r.bal * price)}</td><td style="font-size:8.5pt">${e([r.nos, r.remarks].filter(Boolean).join(' · '))}</td></tr>`
+        : `<tr><td class="c" style="font-size:9pt">${e(fDate(msISO(r.t)))}</td><td style="font-size:9pt">${e(r.ref)}</td><td class="c">${r.receipt}</td><td class="pr-sn">${e(r.nos)}</td><td class="c">${r.issue}</td><td style="font-size:9pt">${e(r.office)}</td><td class="c">${r.bal}</td><td class="r">${peso2(r.bal * price)}</td><td style="font-size:8.5pt">${e(r.remarks)}</td></tr>`;
+      const cols = ppe ? 8 : 9;
+      const fwd = `<tr><td class="c" style="font-size:9pt">${e(fDate(from))}</td><td>Balance forward</td>${'<td></td>'.repeat(ppe ? 3 : 4)}<td class="c">${opening}</td><td class="r">${peso2(opening * price)}</td><td></td></tr>`;
+      const blanks = `<tr class="pr-blank">${'<td></td>'.repeat(cols)}</tr>`.repeat(Math.max(0, 14 - rows.length));
+      const label = ppe ? 'Property, Plant and Equipment' : 'Semi-expendable Property';
+      return `
+        <div class="pr-form" data-card="${e(item.code)}">
+          <div class="pr-appx">${ppe ? 'Appendix 69' : 'Annex A.1'}</div>
+          <h1>${ppe ? 'PROPERTY CARD' : 'SEMI-EXPENDABLE PROPERTY CARD'}</h1>
+          <div class="pr-top"><span>Entity Name: <b>${e(d.entity || schoolInfo.school)}</b></span><span>Fund Cluster: <b>${e(coaVal('fund'))}</b></span></div>
+          <table class="pr-table">
+            <colgroup>${(ppe ? [11, 14, 8, 8, 19, 10, 13, 17] : [10, 12, 8, 14, 7, 16, 9, 12, 12]).map(w => `<col style="width:${w}%">`).join('')}</colgroup>
+            <tr><td colspan="${cols - 3}">${label}: <b>${e(item.category || '')}</b></td><td colspan="3">${ppe ? 'Property Number' : 'Semi-expendable Property Number'}:<br><b style="font-size:8.5pt">${e(nos.join(', '))}</b></td></tr>
+            <tr><td colspan="${cols}">Description: <b>${e(item.name)}</b> · unit value ${peso2(price)} per ${e(item.unit)}</td></tr>
+            ${ppe
+              ? '<tr><th rowspan="2">Date</th><th rowspan="2">Reference/ PAR No.</th><th>Receipt</th><th colspan="2">Issue/Transfer/ Disposal</th><th>Balance</th><th rowspan="2">Amount</th><th rowspan="2">Remarks</th></tr><tr><th>Qty.</th><th>Qty.</th><th>Office/Officer</th><th>Qty.</th></tr>'
+              : '<tr><th rowspan="2">Date</th><th rowspan="2">Reference</th><th>Receipt</th><th colspan="3">Issue/Transfer/Disposal</th><th>Balance</th><th rowspan="2">Amount</th><th rowspan="2">Remarks</th></tr><tr><th>Qty.</th><th>Item No.</th><th>Qty.</th><th>Office/Officer</th><th>Qty.</th></tr>'}
+            ${fwd}${rows.map(tr).join('')}${blanks}
+          </table>
+        </div>`;
+    }
+
+    // ---- Registry of Semi-expendable Property Issued (Annex A.4) ---------------------
+    function regspiRows(from, to) {
+      const bal = new Map();
+      return releaseList.filter(r => !r.sending && inPeriod(r.date, from, to) && (r.kind === 'ICS' || r.kind === 'ITR' || (r.kind === 'RETURN' && r.source !== 'transferred')))
+        .slice().sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0))
+        .flatMap(r => (r.lines || []).filter(l => (l.unitCost || 0) < PPE_MIN).map(l => {
+          const q = lineQty(l), key = l.code || l.desc;
+          const kind = r.kind === 'RETURN' ? 'returned' : r.kind === 'ITR' ? 'reissued' : 'issued';
+          const b = Math.max(0, (bal.get(key) || 0) + (kind === 'issued' ? q : kind === 'returned' ? -q : 0));
+          bal.set(key, b);
+          return { r, l, q, kind, bal: b, remarks: r.kind === 'ITR' && r.fromName ? `From ${r.fromName}` : r.kind === 'RETURN' ? trailText(r) : '' };
+        }));
+    }
+    function printRegspi() {
+      coaRead();
+      const rows = regspiRows(coaVal('regFrom'), coaVal('regTo'));
+      if (!rows.length) return;
+      const e = v => escapeHTML(v ?? '');
+      const cell = (on, x) => (on ? `<td class="c">${x.q}</td><td style="font-size:8pt">${e(x.r.teacherName)}</td>` : '<td></td><td></td>');
+      const body = rows.map(x => `<tr><td class="c" style="font-size:8.5pt">${e(fDate(x.r.date))}</td><td class="pr-sn">${e(relDocName(x.r))}</td><td class="pr-sn">${e(lineNos(x.l))}</td><td>${e(x.l.desc)}</td><td></td>
+        ${cell(x.kind === 'issued', x)}${cell(x.kind === 'returned', x)}${cell(x.kind === 'reissued', x)}<td></td><td class="c">${x.bal}</td><td class="r">${peso2(x.bal * (x.l.unitCost || 0))}</td><td style="font-size:8pt">${e(x.remarks)}</td></tr>`).join('');
+      const blanks = `<tr class="pr-blank">${'<td></td>'.repeat(15)}</tr>`.repeat(Math.max(0, 6 - rows.length));
+      printFormHTML(`
+        <div class="pr-form pr-wide pr-dense">
+          <div class="pr-appx">Annex A.4</div>
+          <h1 style="margin-bottom:4pt">REGISTRY OF SEMI-EXPENDABLE PROPERTY ISSUED</h1>
+          <div class="pr-top"><span>Entity Name: <b>${e(prDefaults().entity || schoolInfo.school)}</b></span><span>Fund Cluster: <b>${e(coaVal('fund'))}</b></span></div>
+          <div class="pr-top"><span>Semi-expendable Property: <b><u>${e(coaVal('regProp') || 'All semi-expendable property')}</u></b></span><span>Sheet No.: <b>${e(coaVal('sheetNo'))}</b></span></div>
+          <p style="margin:0 0 4pt;font-size:9pt">Period: ${e(longDate(coaVal('regFrom')))} to ${e(longDate(coaVal('regTo')))}</p>
+          <table class="pr-table">
+            <colgroup>${[6.5, 9, 10, 16, 5, 3.5, 7.5, 3.5, 7.5, 3.5, 7.5, 3.5, 3.5, 7, 7].map(w => `<col style="width:${w}%">`).join('')}</colgroup>
+            <tr><th rowspan="2">Date</th><th colspan="2">Reference</th><th rowspan="2">Item Description</th><th rowspan="2">Estima&shy;ted Useful Life</th><th colspan="2">Issued</th><th colspan="2">Returned</th><th colspan="2">Re-issued</th><th>Dis&shy;posed</th><th>Bal&shy;ance</th><th rowspan="2">Amount</th><th rowspan="2">Remarks</th></tr>
+            <tr><th>ICS/RRSP No.</th><th>Semi-expendable Property No.</th><th>Qty.</th><th>Office/ Officer</th><th>Qty.</th><th>Office/ Officer</th><th>Qty.</th><th>Office/ Officer</th><th>Qty.</th><th>Qty.</th></tr>
+            ${body}${blanks}
+          </table>
+        </div>`);
+    }
+
+    // ---- RSPI (Annex A.7) and RSMI (Appendix 64): what was issued in a period ---------
+    function issuedRows(sup, from, to) {
+      return releaseList.filter(r => !r.sending && r.kind === (sup ? 'RIS' : 'ICS') && inPeriod(r.date, from, to))
+        .slice().sort((a, b) => String(a.no || '').localeCompare(String(b.no || ''), undefined, { numeric: true }))
+        .flatMap(r => (r.lines || []).map(l => ({ r, l, qty: sup ? l.qty : lineQty(l), amount: (sup ? l.qty : lineQty(l)) * (l.unitCost || 0) })));
+    }
+    function printIssuedReport() {
+      coaRead();
+      const sup = coaVal('issuedType') === 'sup';
+      const rows = issuedRows(sup, coaVal('issFrom'), coaVal('issTo'));
+      if (!rows.length) return;
+      const e = v => escapeHTML(v ?? '');
+      const rcc = coaVal('rcc');
+      const total = rows.reduce((n, x) => n + x.amount, 0);
+      const body = rows.map(x => sup
+        ? `<tr><td class="pr-sn">${e(x.r.no)}</td><td class="c" style="font-size:9pt">${e(rcc)}</td><td class="pr-sn">${e(/^CUSTOM-/.test(x.l.code || '') ? '' : x.l.code)}</td><td>${e(x.l.desc)}</td><td class="c">${e(x.l.unit)}</td><td class="c">${x.qty}</td><td class="r">${peso2(x.l.unitCost)}</td><td class="r">${peso2(x.amount)}</td></tr>`
+        : `<tr><td class="pr-sn">${e(x.r.no)}</td><td class="c" style="font-size:9pt">${e(rcc)}</td><td class="pr-sn">${e(lineNos(x.l))}</td><td>${e(x.l.desc)}</td><td class="c">${e(x.l.unit)}</td><td class="c">${x.qty}</td><td class="r">${peso2(x.l.unitCost)}</td><td class="r">${peso2(x.amount)}</td></tr>`).join('');
+      const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 10 - rows.length));
+      let recap = '';
+      if (sup) {
+        const by = new Map();
+        rows.forEach(x => { const k = x.l.code || x.l.desc; const c = by.get(k) || { stock: /^CUSTOM-/.test(x.l.code || '') ? '' : (x.l.code || ''), qty: 0, cost: x.l.unitCost || 0, total: 0 }; c.qty += x.qty; c.total += x.amount; by.set(k, c); });
+        recap = `
+          <table class="pr-table" style="border-top:0">
+            <colgroup><col style="width:20%"><col style="width:14%"><col style="width:6%"><col style="width:20%"><col style="width:20%"><col style="width:20%"></colgroup>
+            <tr><th colspan="2">Recapitulation:</th><td style="border-top:0;border-bottom:0"></td><th colspan="3">Recapitulation:</th></tr>
+            <tr><th>Stock No.</th><th>Quantity</th><td style="border-top:0;border-bottom:0"></td><th>Unit Cost</th><th>Total Cost</th><th>UACS Object Code</th></tr>
+            ${[...by.values()].map(c => `<tr><td class="pr-sn">${e(c.stock)}</td><td class="c">${c.qty}</td><td style="border-top:0;border-bottom:0"></td><td class="r">${peso2(c.cost)}</td><td class="r">${peso2(c.total)}</td><td></td></tr>`).join('')}
+          </table>`;
+      }
+      printFormHTML(`
+        <div class="pr-form">
+          <div class="pr-appx">${sup ? 'Appendix 64' : 'Annex A.7'}</div>
+          <h1>${sup ? 'REPORT OF SUPPLIES AND MATERIALS ISSUED' : 'REPORT OF SEMI-EXPENDABLE PROPERTY ISSUED'}</h1>
+          <div class="pr-top"><span>Entity Name: <b>${e(prDefaults().entity || schoolInfo.school)}</b></span><span>Serial No.: <b>${e(coaVal('serial'))}</b></span></div>
+          <div class="pr-top"><span>Fund Cluster: <b>${e(coaVal('fund'))}</b></span><span>Date: <b>${e(longDate(coaVal('issTo')))}</b></span></div>
+          <table class="pr-table">
+            <colgroup><col style="width:12%"><col style="width:10%"><col style="width:${sup ? 13 : 16}%"><col style="width:${sup ? 26 : 23}%"><col style="width:7%"><col style="width:8%"><col style="width:11%"><col style="width:13%"></colgroup>
+            <tr><th colspan="6"><i>To be filled up by the Supply and/or Property Division/Unit</i></th><th colspan="2"><i>To be filled up by the Accounting Division/Unit</i></th></tr>
+            <tr><th>${sup ? 'RIS No.' : 'ICS No.'}</th><th>Responsi&shy;bility Center Code</th><th>${sup ? 'Stock No.' : 'Semi-expendable Property No.'}</th><th>${sup ? 'Item' : 'Item Description'}</th><th>Unit</th><th>Quantity Issued</th><th>Unit Cost</th><th>Amount</th></tr>
+            ${body}${blanks}
+            <tr><td colspan="7" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(total)}</b></td></tr>
+          </table>
+          ${recap}
+          <table class="pr-table" style="border-top:0">
+            <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+            <tr><td style="font-size:9pt">I hereby certify to the correctness of the above information.</td><td style="font-size:9pt"><i>Posted by:</i></td></tr>
+            <tr><td class="pr-sig" style="vertical-align:bottom;text-align:center"><b>${e(coaVal('officer')).toUpperCase()}</b></td><td class="pr-sig" style="vertical-align:bottom;text-align:center"><b>${e(coaVal('acctStaff')).toUpperCase()}</b></td></tr>
+            <tr><td class="c" style="font-size:8pt">Signature over Printed Name of Supply and/or Property Custodian</td><td class="c" style="font-size:8pt">Signature over Printed Name of Designated Accounting Staff &nbsp;&nbsp;&nbsp; Date</td></tr>
+          </table>
+        </div>`);
+    }
+
+    // ---- RLSDDP (Appendix 75) / RLSDDSP (Annex A.9) ------------------------------------
+    const LOST_NATURE = [['lost', 'Lost'], ['stolen', 'Stolen'], ['damaged', 'Damaged'], ['destroyed', 'Destroyed']];
+    let coaLostSel = null;   // { type: 'ppe' | 'sep', ids: Set of unit ids ticked on the form }
+    let coaLostAuto = {};    // officer / designation / office filled in from the first unit's holder
+    function lostUnits(ppe) {
+      const lost = new Map();
+      tReports.filter(x => x.kind === 'problem' && x.reason === 'lost').forEach(x => (x.units || []).forEach(u => lost.set(u.id, x.name || 'a teacher')));
+      return allTaggedUnits().filter(x => relIsEquip(x.item) && isPPE(x.item) === ppe)
+        .map(x => ({ ...x, reportedBy: lost.get(x.unit.id) || '' }))
+        .sort((a, b) => (b.reportedBy ? 1 : 0) - (a.reportedBy ? 1 : 0) || String(a.unit.no).localeCompare(String(b.unit.no), undefined, { numeric: true }));
+    }
+    function coaToggleLost(id) { coaRead(); const ids = coaLostSel.ids; if (ids.has(id)) ids.delete(id); else ids.add(id); renderCoa(); }
+    function coaToggleNature(k) {
+      coaRead();
+      const set = new Set(String(coaVal('lostNature') || '').split(',').filter(Boolean));
+      if (set.has(k)) set.delete(k); else set.add(k);
+      coaOpts.lostNature = [...set].join(',');
+      renderCoa();
+    }
+    function coaFilterUnits(q) {
+      const words = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+      document.querySelectorAll('#coaLostUnits [data-q]').forEach(el => { el.style.display = words.every(w => el.dataset.q.includes(w)) ? '' : 'none'; });
+    }
+    function lostPicked(ppe) { return lostUnits(ppe).filter(x => coaLostSel && coaLostSel.ids.has(x.unit.id)); }
+    function printLostReport() {
+      coaRead();
+      const ppe = coaVal('lostType') === 'ppe';
+      const picked = lostPicked(ppe);
+      if (!picked.length) return;
+      const e = v => escapeHTML(v ?? '');
+      const nature = new Set(String(coaVal('lostNature') || '').split(',').filter(Boolean));
+      const docs = [...new Set(picked.map(x => unitDocLabel(x.unit)).filter(Boolean))].join(', ');
+      const docDates = [...new Set(picked.map(x => x.unit.icsDate && fDate(x.unit.icsDate)).filter(Boolean))].join(', ');
+      const police = coaVal('lostPolice');
+      const total = picked.reduce((n, x) => n + (x.item.price || 0), 0);
+      const rows = picked.map(x => `<tr><td class="pr-sn">${e(x.unit.no)}</td><td>${e(x.item.name)}${x.unit.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(x.unit.serial)}</span>` : ''}</td><td class="r">${peso2(x.item.price)}</td></tr>`).join('');
+      const blanks = '<tr class="pr-blank"><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 6 - picked.length));
+      printFormHTML(`
+        <div class="pr-form">
+          <div class="pr-appx">${ppe ? 'Appendix 75' : 'Annex A.9'}</div>
+          <h1 style="font-size:12.5pt">REPORT OF LOST, STOLEN, DAMAGED OR DESTROYED ${ppe ? 'PROPERTY' : 'SEMI-EXPENDABLE PROPERTY'}</h1>
+          <div class="pr-top"><span>Entity Name: <b>${e(prDefaults().entity || schoolInfo.school)}</b></span><span>Fund Cluster: <b>${e(coaVal('fund'))}</b></span></div>
+          <table class="pr-table">
+            <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+            <tr><td>Department/Office: <b>${e(coaVal('lostOffice'))}</b></td><td>${ppe ? 'RLSDDP' : 'RLSDDSP'} No.: <b>${e(coaVal('lostNo'))}</b><br>${ppe ? 'RLSDDP' : 'RLSDDSP'} Date: <b>${e(longDate(coaVal('lostDate')))}</b></td></tr>
+            <tr><td>Accountable Officer: <b>${e(coaVal('lostOfficer'))}</b><br>Designation: <b>${e(coaVal('lostDesig'))}</b></td><td>${ppe ? 'PAR' : 'ICS'} No.: <b>${e(docs)}</b><br>${ppe ? 'PAR' : 'ICS'} Date: <b>${e(docDates)}</b></td></tr>
+            <tr><td>Police Notified: &nbsp;${fBox(police === 'yes')}Yes &nbsp;&nbsp;${fBox(police === 'no')}No<br>Police Station: <b>${e(coaVal('lostStation'))}</b><br>Date: <b>${e(longDate(coaVal('lostPoliceDate')))}</b></td>
+              <td>Nature of Property:<br>${LOST_NATURE.map(([k, label]) => `<span style="margin-right:10pt">${fBox(nature.has(k))}${label}</span>`).join('')}</td></tr>
+          </table>
+          <table class="pr-table" style="border-top:0">
+            <colgroup><col style="width:28%"><col style="width:50%"><col style="width:22%"></colgroup>
+            <tr><th>${ppe ? 'Property No.' : 'Semi-expendable Property No.'}</th><th>Description</th><th>Acquisition Cost</th></tr>
+            ${rows}${blanks}
+            <tr><td colspan="2" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(total)}</b></td></tr>
+            <tr><td colspan="3" style="height:60pt">Circumstances:<br>${e(coaVal('lostCirc')).replace(/\n/g, '<br>')}</td></tr>
+          </table>
+          <table class="pr-table" style="border-top:0">
+            <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+            <tr><td><i>I hereby certify that the item/s and circumstances stated above are true and correct.</i></td><td><i>Noted by:</i></td></tr>
+            <tr><td class="pr-sig" style="vertical-align:bottom;text-align:center"><b>${e(coaVal('lostOfficer')).toUpperCase()}</b></td><td class="pr-sig" style="vertical-align:bottom;text-align:center"><b>${e(coaVal('lostSupervisor')).toUpperCase()}</b></td></tr>
+            <tr><td class="c" style="font-size:8pt">Signature over Printed Name of the Accountable Officer &nbsp;&nbsp; Date</td><td class="c" style="font-size:8pt">Signature over Printed Name of the Immediate Supervisor &nbsp;&nbsp; Date</td></tr>
+            <tr><td colspan="2" style="font-size:9pt">Government Issued ID: <b>${e(coaVal('lostId'))}</b> &nbsp;&nbsp; ID No.: <b>${e(coaVal('lostIdNo'))}</b> &nbsp;&nbsp; Date Issued: <b>${e(longDate(coaVal('lostIdDate')))}</b></td></tr>
+            <tr><td colspan="2" style="font-size:9pt">SUBSCRIBED AND SWORN to before me this _____ day of ______________, ______, affiant exhibiting the above government issued identification card.</td></tr>
+            <tr><td></td><td class="pr-sig"></td></tr>
+            <tr><td></td><td class="c" style="font-size:8pt">Signature over Printed Name of the Notary Public/Administering Officer</td></tr>
+          </table>
+        </div>`);
+    }
+
+    // ---- Supplies reorder list ------------------------------------------------------
+    // Supplies at or below their alert level. Out-of-stock items are listed only if they were
+    // in stock before (history or an RIS), not the hundreds of catalog items never bought.
+    function reorderRows() {
+      const before = new Set();
+      changeHistory.forEach(e => { if (e.c) before.add(e.c); (e.cs || []).forEach(c => before.add(c)); Object.keys(e.q || {}).forEach(c => before.add(c)); });
+      releaseList.forEach(r => r.kind === 'RIS' && (r.lines || []).forEach(l => l.code && before.add(l.code)));
+      return items.filter(i => !relIsEquip(i) && i.qty <= i.minQty && (i.qty > 0 || before.has(i.code)))
+        .map(i => ({ item: i, order: Math.max(1, 2 * i.minQty - i.qty) }))
+        .sort((a, b) => (a.item.qty > 0) - (b.item.qty > 0) || a.item.name.localeCompare(b.item.name));
+    }
+    function printReorderList() {
+      const rows = reorderRows();
+      if (!rows.length) return;
+      const e = v => escapeHTML(v ?? '');
+      const total = rows.reduce((n, x) => n + x.order * (x.item.price || 0), 0);
+      printFormHTML(`
+        <div class="pr-form">
+          <h1 style="margin-bottom:2pt">SUPPLIES FOR REORDER</h1>
+          <p style="text-align:center;margin:0 0 8pt">${e(prDefaults().entity || schoolInfo.school)} · as of ${e(longDate(localISODate()))}</p>
+          <table class="pr-table">
+            <colgroup><col style="width:15%"><col style="width:31%"><col style="width:8%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:10%"></colgroup>
+            <tr><th>Stock No.</th><th>Item</th><th>Unit</th><th>On Hand</th><th>Re-order Point</th><th>Suggested Order</th><th>Unit Cost</th><th>Est. Amount</th></tr>
+            ${rows.map(x => `<tr><td class="pr-sn">${e(/^CUSTOM-/.test(x.item.code) ? '' : x.item.code)}</td><td>${e(x.item.name)}</td><td class="c">${e(x.item.unit)}</td><td class="c">${x.item.qty}</td><td class="c">${x.item.minQty}</td><td class="c"><b>${x.order}</b></td><td class="r">${peso2(x.item.price)}</td><td class="r">${peso2(x.order * (x.item.price || 0))}</td></tr>`).join('')}
+            <tr><td colspan="7" class="r"><b>ESTIMATED TOTAL</b></td><td class="r"><b>${peso2(total)}</b></td></tr>
+          </table>
+          <p style="font-size:8.5pt;margin-top:6pt">Suggested order brings each item up to twice its re-order point. Prepared by ${e(schoolInfo.custodian || '')}.</p>
+        </div>`);
+    }
+    function exportReorderCSV() {
+      const rows = reorderRows();
+      const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const csv = [['Stock No.', 'Item', 'Unit', 'On hand', 'Re-order point', 'Suggested order', 'Unit cost', 'Estimated amount']]
+        .concat(rows.map(x => [/^CUSTOM-/.test(x.item.code) ? '' : x.item.code, x.item.name, x.item.unit, x.item.qty, x.item.minQty, x.order, (x.item.price || 0).toFixed(2), (x.order * (x.item.price || 0)).toFixed(2)]));
+      downloadText('\ufeff' + csv.map(r => r.map(q).join(',')).join('\n'), `Supplies_reorder_${localISODate()}.csv`, 'text/csv;charset=utf-8;');
+    }
+    function reorderToPr() {
+      if (!isCustodianDevice() || !cloud.user) { appAlert('Sign in as the property custodian to prepare a Purchase Request.'); return; }
+      const rows = reorderRows();
+      if (!rows.length) return;
+      closeCoa();
+      openPrDraft({
+        lines: rows.map(x => ({ id: newReqLineId(), code: x.item.code, stockNo: /^CUSTOM-/.test(x.item.code) ? '' : x.item.code, unit: x.item.unit, desc: x.item.name, qty: x.order, unitCost: x.item.price || 0 })),
+        purpose: `Replenishment of supplies at or below their re-order point (${plural(rows.length, 'item')})`,
+        sub: `Appendix 60 · from the reorder list (${plural(rows.length, 'item')}) · check every line before saving`
+      });
+    }
+
+    // ---- The pages in the Government forms sheet ----------------------------------------
+    const coaPrintBtn = (fn, label, on) => `<button onclick="coaGo('home')" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Back</button>
+      <button id="coaPrint" onclick="${fn}" ${on ? '' : 'disabled'} class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white font-extrabold text-sm flex items-center justify-center gap-2"><i class="ph-bold ph-printer text-lg"></i> ${label}</button>`;
+    const coaNote = (tone, html) => `<p class="rounded-xl ${tone === 'amber' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-slate-50 border-slate-200 text-slate-600'} border px-3 py-2 text-[11px]">${html}</p>`;
+    function coaItemList(list, fn, sub) {
+      return `<div id="coaItems" class="rounded-xl border border-slate-200 divide-y divide-slate-100">${list.length ? list.map(i => `
+        <div class="px-3 py-2 flex items-center gap-3" data-q="${escapeHTML((i.name + ' ' + i.code).toLowerCase())}">
+          <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900">${escapeHTML(i.name)}</span><span class="block text-[11px] text-slate-600">${escapeHTML(sub(i))}</span></span>
+          <button onclick="${fn}('${escapeHTML(i.code)}')" data-print-card="${escapeHTML(i.code)}" class="shrink-0 w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Print card for ${escapeHTML(i.name)}"><i class="ph-bold ph-printer"></i></button>
+        </div>`).join('') : '<p class="px-3 py-4 text-center text-xs text-slate-500">Nothing to show yet.</p>'}</div>`;
+    }
+    const cardItems = ppe => items.filter(i => relIsEquip(i) && isPPE(i) === ppe && (i.qty > 0 || getUnits(i.code).length)).sort((a, b) => a.name.localeCompare(b.name));
+    const stockItems = () => items.filter(i => !relIsEquip(i) && i.qty > 0).sort((a, b) => a.name.localeCompare(b.name));
+    function printPropCards(code) {
+      coaRead();
+      const from = coaVal('cardFrom');
+      const list = code ? items.filter(i => i.code === code) : cardItems(coaVal('cardType') === 'ppe');
+      if (list.length) printFormHTML(`<div class="pr-pages">${list.map(i => propCardHTML(i, from)).join('')}</div>`);
+    }
+    function printStockCards(code) {
+      coaRead();
+      const from = coaVal('stockFrom');
+      const list = code ? items.filter(i => i.code === code) : stockItems();
+      if (list.length) printFormHTML(`<div class="pr-pages">${list.map(i => stockCardHTML(i, from)).join('')}</div>`);
+    }
+
+    const COA_MORE_PAGES = {
+      cards({ body, foot, title, back }) {
+        title.textContent = 'Property cards';
+        const ppe = coaVal('cardType') === 'ppe';
+        const list = cardItems(ppe);
+        body.innerHTML = `${back}
+          ${coaSeg('cardType', [['ppe', 'PC', '₱50,000 and up'], ['sep', 'SPC', 'below ₱50,000']])}
+          ${coaNote('', `One card per item: quantities added or dropped, and every ${ppe ? 'PAR / PTR' : 'ICS / ITR'} with the officer who received it. Issued units stay on the balance (still the school’s property).`)}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${coaField('cardFrom', 'From', { type: 'date' })}${coaField('fund', 'Fund cluster', { ph: 'e.g. 01' })}</div>
+          ${coaItemList(list, 'printPropCards', i => `${i.qty} ${i.unit || 'unit'} · ₱${peso2(i.price)} each`)}`;
+        foot.innerHTML = coaPrintBtn('printPropCards()', `Print all ${list.length} ${ppe ? 'PC' : 'SPC'}`, list.length);
+      },
+      regspi({ body, foot, title, back }) {
+        title.textContent = 'Registry of property issued';
+        const rows = regspiRows(coaVal('regFrom'), coaVal('regTo'));
+        const n = k => rows.filter(x => x.kind === k).length;
+        body.innerHTML = `${back}
+          <p class="text-xs font-bold text-slate-700">RegSPI · Annex A.4 · semi-expendable property (below ₱50,000)</p>
+          <div id="coaRegStats" class="grid grid-cols-3 gap-2 text-center">
+            ${[['Issued', n('issued')], ['Returned', n('returned')], ['Re-issued', n('reissued')]].map(([l, v]) => `<div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${v}</p><p class="text-[11px] font-bold uppercase text-slate-500">${l}</p></div>`).join('')}
+          </div>
+          ${rows.length ? '' : coaNote('amber', 'No ICS, ITR or RRSP in this period. Change the dates or release items first.')}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            ${coaField('regFrom', 'From', { type: 'date' })}${coaField('regTo', 'To', { type: 'date' })}
+            ${coaField('regProp', 'Semi-expendable property', { ph: 'e.g. ICT Equipment (blank = all)' })}${coaField('sheetNo', 'Sheet No.', { ph: '1' })}
+            ${coaField('fund', 'Fund cluster', { ph: 'e.g. 01' })}
+          </div>`;
+        foot.innerHTML = coaPrintBtn('printRegspi()', 'Print RegSPI', rows.length);
+      },
+      issued({ body, foot, title, back }) {
+        title.textContent = 'Monthly report of issues';
+        const sup = coaVal('issuedType') === 'sup';
+        const rows = issuedRows(sup, coaVal('issFrom'), coaVal('issTo'));
+        const total = rows.reduce((n, x) => n + x.amount, 0);
+        const slips = new Set(rows.map(x => x.r.id)).size;
+        body.innerHTML = `${back}
+          ${coaSeg('issuedType', [['sep', 'RSPI', 'ICS · semi-expendable'], ['sup', 'RSMI', 'RIS · supplies']])}
+          <div id="coaIssuedStats" class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-700"><b>${slips} ${sup ? 'RIS' : 'ICS'}</b> · ${plural(rows.length, 'line')} · <b class="font-mono">₱${peso2(total)}</b></div>
+          ${rows.length ? '' : coaNote('amber', `No ${sup ? 'RIS' : 'ICS'} in this period.`)}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            ${coaField('issFrom', 'From', { type: 'date' })}${coaField('issTo', 'To (report date)', { type: 'date' })}
+            ${coaField('serial', 'Serial No.', { ph: 'e.g. 2026-11-001' })}${coaField('rcc', 'Responsibility center code')}
+            ${coaField('fund', 'Fund cluster', { ph: 'e.g. 01' })}${coaField('officer', 'Supply / property custodian')}
+            ${coaField('acctStaff', 'Accounting staff (posted by)', { span: true })}
+          </div>`;
+        foot.innerHTML = coaPrintBtn('printIssuedReport()', `Print ${sup ? 'RSMI' : 'RSPI'}`, rows.length);
+      },
+      lost({ body, foot, title, back }) {
+        title.textContent = 'Lost, stolen, damaged or destroyed';
+        const ppe = coaVal('lostType') === 'ppe';
+        const list = lostUnits(ppe);
+        const type = ppe ? 'ppe' : 'sep';
+        if (!coaLostSel || coaLostSel.type !== type) {
+          // units reported lost by teachers start ticked; names filled in for the other type go
+          coaLostSel = { type, ids: new Set(list.filter(x => x.reportedBy).map(x => x.unit.id)) };
+          ['lostOfficer', 'lostDesig', 'lostOffice'].forEach(k => { if (coaLostAuto[k] && coaOpts[k] === coaLostAuto[k]) delete coaOpts[k]; });
+          coaLostAuto = {};
+        }
+        const picked = list.filter(x => coaLostSel.ids.has(x.unit.id));
+        if (!coaOpts.lostOfficer && picked.length) {
+          const holder = unitHolder(picked[0].unit);
+          const m = holder && memberList.find(t => t.name === holder);
+          const auto = { lostOfficer: holder || schoolInfo.custodian || '', lostDesig: m ? m.position || '' : schoolInfo.position || '', lostOffice: m ? m.office || '' : '' };
+          Object.keys(auto).forEach(k => { if (!coaOpts[k] && auto[k]) { coaOpts[k] = auto[k]; coaLostAuto[k] = auto[k]; } });
+        }
+        const nature = new Set(String(coaVal('lostNature') || '').split(',').filter(Boolean));
+        body.innerHTML = `${back}
+          ${coaSeg('lostType', [['ppe', 'RLSDDP', '₱50,000 and up'], ['sep', 'RLSDDSP', 'below ₱50,000']])}
+          <p class="text-[11px] font-bold uppercase text-slate-500">Units · ${picked.length} ticked</p>
+          ${list.length > 6 ? `<input type="search" oninput="coaFilterUnits(this.value)" placeholder="Find a property number or item" aria-label="Find a unit" class="pr-in">` : ''}
+          <div id="coaLostUnits" class="rounded-xl border border-slate-200 divide-y divide-slate-100 max-h-64 overflow-y-auto">${list.length ? list.map(x => `
+            <label class="px-3 py-2 flex items-center gap-3 cursor-pointer" data-q="${escapeHTML(`${x.unit.no} ${x.item.name} ${unitHolder(x.unit) || ''}`.toLowerCase())}">
+              <input type="checkbox" ${coaLostSel.ids.has(x.unit.id) ? 'checked' : ''} onchange="coaToggleLost('${x.unit.id}')" data-lost-unit="${x.unit.id}" class="w-5 h-5 accent-brand-600 shrink-0">
+              <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900"><span class="font-mono">${escapeHTML(x.unit.no)}</span> · ${escapeHTML(x.item.name)}</span>
+                <span class="block text-[11px] text-slate-600">${escapeHTML([unitHolder(x.unit) && `With ${unitHolder(x.unit)}`, unitDocLabel(x.unit), x.unit.loc].filter(Boolean).join(' · ') || 'In stock')}</span></span>
+              ${x.reportedBy ? `<span class="shrink-0 text-[11px] font-bold text-rose-700 bg-rose-50 rounded-full px-2 py-0.5">Reported lost</span>` : ''}
+            </label>`).join('') : `<p class="px-3 py-4 text-center text-xs text-slate-500">No tagged equipment ${ppe ? 'of ₱50,000 or more' : 'below ₱50,000'}. Tag units with property numbers first.</p>`}</div>
+          <p class="text-[11px] font-bold uppercase text-slate-500">Nature of property</p>
+          <div class="grid grid-cols-4 gap-1.5">${LOST_NATURE.map(([k, label]) => `<button type="button" onclick="coaToggleNature('${k}')" data-nature="${k}" aria-pressed="${nature.has(k)}" class="h-10 rounded-xl border text-xs font-bold ${nature.has(k) ? 'bg-rose-50 border-rose-300 text-rose-800' : 'bg-white border-slate-200 text-slate-600'}">${label}</button>`).join('')}</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            ${coaField('lostNo', `${ppe ? 'RLSDDP' : 'RLSDDSP'} No.`, { ph: 'e.g. 2026-001' })}${coaField('lostDate', 'Date', { type: 'date' })}
+            ${coaField('lostOfficer', 'Accountable officer')}${coaField('lostDesig', 'Designation')}
+            ${coaField('lostOffice', 'Department / office', { span: true })}
+            ${coaField('lostCirc', 'Circumstances', { area: true, span: true, ph: 'What happened, where and when' })}
+            <label class="block text-[11px] font-bold uppercase text-slate-500">Police notified<select data-coa="lostPolice" class="pr-in"><option value="">–</option><option value="yes" ${coaVal('lostPolice') === 'yes' ? 'selected' : ''}>Yes</option><option value="no" ${coaVal('lostPolice') === 'no' ? 'selected' : ''}>No</option></select></label>
+            ${coaField('lostPoliceDate', 'Date reported to police', { type: 'date' })}
+            ${coaField('lostStation', 'Police station', { span: true })}
+            ${coaField('lostSupervisor', 'Noted by (immediate supervisor)', { span: true })}
+            ${coaField('lostId', 'Government issued ID', { ph: 'e.g. UMID' })}${coaField('lostIdNo', 'ID No.')}
+            ${coaField('lostIdDate', 'ID date issued', { type: 'date' })}${coaField('fund', 'Fund cluster', { ph: 'e.g. 01' })}
+          </div>`;
+        foot.innerHTML = coaPrintBtn('printLostReport()', `Print ${ppe ? 'RLSDDP' : 'RLSDDSP'}`, picked.length);
+      },
+      stock({ body, foot, title, back }) {
+        title.textContent = 'Stock cards';
+        const list = stockItems();
+        body.innerHTML = `${back}
+          ${coaNote('', 'One card per supply in stock: quantities received and every RIS issued, with the balance after each. Appendix 58.')}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${coaField('stockFrom', 'From', { type: 'date' })}${coaField('fund', 'Fund cluster', { ph: 'e.g. 01' })}</div>
+          ${coaItemList(list, 'printStockCards', i => `${i.qty} ${i.unit || 'unit'} on hand · re-order point ${i.minQty}`)}`;
+        foot.innerHTML = coaPrintBtn('printStockCards()', `Print all ${list.length} stock cards`, list.length);
+      },
+      reorder({ body, foot, title, back }) {
+        title.textContent = 'Supplies to reorder';
+        const rows = reorderRows();
+        const total = rows.reduce((n, x) => n + x.order * (x.item.price || 0), 0);
+        body.innerHTML = `${back}
+          <div id="coaReorderStats" class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-700"><b>${rows.length} ${rows.length === 1 ? 'supply' : 'supplies'}</b> at or below the re-order point · estimated <b class="font-mono">₱${peso2(total)}</b></div>
+          <div id="coaReorder" class="rounded-xl border border-slate-200 divide-y divide-slate-100">${rows.length ? rows.map(x => `
+            <div class="px-3 py-2 flex items-center gap-3">
+              <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900">${escapeHTML(x.item.name)}</span>
+                <span class="block text-[11px] ${x.item.qty ? 'text-amber-800' : 'text-rose-700'}">${x.item.qty ? `${x.item.qty} ${escapeHTML(x.item.unit || '')} left` : 'Out of stock'} · re-order point ${x.item.minQty}</span></span>
+              <span class="shrink-0 text-right"><span class="block text-xs font-extrabold text-slate-900">Order ${x.order}</span><span class="block text-[11px] font-mono text-slate-600">₱${peso2(x.order * (x.item.price || 0))}</span></span>
+            </div>`).join('') : '<p class="px-3 py-4 text-center text-xs text-slate-500">No supplies at or below their re-order point.</p>'}</div>
+          ${coaNote('', 'Suggested order brings each item up to twice its re-order point. Set the re-order point (Min alert qty) in each item’s sheet.')}
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="exportReorderCSV()" ${rows.length ? '' : 'disabled'} class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-download-simple"></i> CSV</button>
+            <button id="coaReorderPr" onclick="reorderToPr()" ${rows.length ? '' : 'disabled'} class="h-11 rounded-xl bg-brand-50 hover:bg-brand-100 disabled:opacity-50 text-sm font-bold text-brand-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-file-text"></i> Purchase Request</button>
+          </div>`;
+        foot.innerHTML = coaPrintBtn('printReorderList()', 'Print reorder list', rows.length);
+      }
+    };
 
     // ---- Invite poster for the faculty room -------------------------------------------------
     async function printInvitePoster() {
@@ -11627,6 +12137,12 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-forms-alerts', date: 'Nov 2026', title: 'More forms, smarter alerts', points: [
+        'Reports → Government forms: Property Card and SPC, Stock Card, RegSPI, RSPI and RSMI for the month, RLSDDP / RLSDDSP for lost or damaged property, and a supplies reorder list that turns into a Purchase Request.',
+        'The bell now tells you when a teacher joins, when a supply falls to its alert level or runs out, and reminds teachers to tap Received (the custodian hears after 3 days).',
+        'Easier to read: darker buttons and grey text, labels for icon buttons, and a tidier APP-CSE Summary on phones.',
+        'The Catalog search stays at the top while you scroll; Home and Reports use the same cards as Inventory.'
+      ] },
       { id: '2026-11-background', date: 'Nov 2026', title: 'Choose where the background picture shows', points: [
         'More → Appearance → Background picture on: tick Home, Inventory, Catalog or Reports. Home is on by default.',
         'Teachers can turn the picture on their screen on or off.'
