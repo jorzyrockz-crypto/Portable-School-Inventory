@@ -8,36 +8,38 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="CustodianPro">
   <meta name="theme-color" content="#122e76">
+  <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="0fea176b6c35">
+  <meta name="app-version" content="33f8ef535672">
   <meta name="application-name" content="CustodianPro">
-  <meta name="description" content="Effortless classroom and equipment tracking for school property custodians and teachers: QR property tags, physical count, RIS/ICS releases, supply requests and Appendix 60 purchase requests. Free, works offline on phones and tablets.">
+  <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://custodianpro.vercel.app/">
 
   <!-- Sharing: link previews in Messenger, Facebook, Viber, WhatsApp, Telegram, LinkedIn and X
-       for the app and teacher invite links. Image: assets/brand/og-image.png (1200×630, the
-       banner); absolute URLs because those apps fetch it from outside. -->
+       for the app and teacher invite links. Image: assets/brand/og-image.png (1200×630), drawn
+       from the real app by tests/e2e/make-banner.mjs. Absolute URLs because those apps fetch it
+       from outside; change ?v= when the picture changes so Facebook/Messenger fetch it again. -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="CustodianPro">
   <meta property="og:locale" content="en_PH">
   <meta property="og:url" content="https://custodianpro.vercel.app/">
   <meta property="og:title" content="CustodianPro – School Inventory">
-  <meta property="og:description" content="Effortless classroom &amp; equipment tracking for property custodians and teachers. QR tags, physical count, RIS/ICS releases and supply requests. Works offline.">
-  <meta property="og:image" content="https://custodianpro.vercel.app/assets/brand/og-image.png">
-  <meta property="og:image:secure_url" content="https://custodianpro.vercel.app/assets/brand/og-image.png">
+  <meta property="og:description" content="Property and supplies for school property custodians and teachers: QR tags, physical count, ICS/PAR/RIS, COA forms and supply requests. Free, works offline.">
+  <meta property="og:image" content="https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-12">
+  <meta property="og:image:secure_url" content="https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-12">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="CustodianPro School Inventory – effortless classroom and equipment tracking: track any resource, QR and barcode scanning, organize classrooms, collaborate">
+  <meta property="og:image:alt" content="CustodianPro School Inventory: the app on two phones (My Items and Home) with QR property tags and physical count, ICS, PAR, RIS, ITR and year-end COA forms, and supply requests from teachers. Free, works offline.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="CustodianPro – School Inventory">
-  <meta name="twitter:description" content="Effortless classroom &amp; equipment tracking for property custodians and teachers. Works offline.">
-  <meta name="twitter:image" content="https://custodianpro.vercel.app/assets/brand/og-image.png">
-  <meta name="twitter:image:alt" content="CustodianPro School Inventory banner">
-  <link rel="image_src" href="https://custodianpro.vercel.app/assets/brand/og-image.png">
+  <meta name="twitter:description" content="Property and supplies for school custodians and teachers: QR tags, physical count, ICS/PAR/RIS, COA forms and supply requests. Free, works offline.">
+  <meta name="twitter:image" content="https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-12">
+  <meta name="twitter:image:alt" content="CustodianPro School Inventory: the app on two phones (My Items and Home) with QR property tags and physical count, ICS, PAR, RIS, ITR and year-end COA forms, and supply requests from teachers. Free, works offline.">
+  <link rel="image_src" href="https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-12">
   <!-- Search engines: what this web app is -->
   <script type="application/ld+json">
   {
@@ -46,16 +48,40 @@
     "name": "CustodianPro – School Inventory",
     "alternateName": "CustodianPro",
     "url": "https://custodianpro.vercel.app/",
-    "description": "Effortless classroom and equipment tracking for school property custodians and teachers: QR property tags, physical count, RIS/ICS releases, supply requests and Appendix 60 purchase requests. Works offline.",
-    "image": "https://custodianpro.vercel.app/assets/brand/og-image.png",
-    "screenshot": "https://custodianpro.vercel.app/assets/screenshots/phone-home.png",
+    "description": "School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.",
+    "image": "https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-12",
+    "screenshot": [
+      "https://custodianpro.vercel.app/assets/screenshots/phone-home.png",
+      "https://custodianpro.vercel.app/assets/screenshots/phone-items.png",
+      "https://custodianpro.vercel.app/assets/screenshots/tablet-items.png"
+    ],
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Android, iOS, Windows, ChromeOS, macOS (web browser)",
     "browserRequirements": "Requires a modern browser such as Chrome, Edge or Safari",
     "inLanguage": "en",
     "isAccessibleForFree": true,
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "PHP" },
-    "sameAs": ["https://github.com/jorzyrockz-crypto/Portable-School-Inventory"]
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "PHP"
+    },
+    "sameAs": [
+      "https://github.com/jorzyrockz-crypto/Portable-School-Inventory"
+    ],
+    "featureList": [
+      "QR property tags and scanning",
+      "Physical count with condition (serviceable, needs repair, unserviceable)",
+      "ICS, PAR, RIS, ITR/PTR and RRSP slips",
+      "Year-end RPCPPE / RPCSP and IIRUP / IIRUSP reports",
+      "Supply requests from teachers and Appendix 60 Purchase Requests",
+      "Read a paper ICS with the camera",
+      "Works offline; installable on phones, tablets and computers"
+    ],
+    "audience": {
+      "@type": "Audience",
+      "audienceType": "School property custodians and teachers (DepEd, Philippines)"
+    },
+    "countriesSupported": "PH"
   }
   </script>
   <!-- Offline-ready PWA: everything below is served locally and precached by sw.js -->
@@ -107,7 +133,7 @@
     .safe-top { padding-top: env(safe-area-inset-top); }
     /* Installed on a computer with the title bar folded into the app (Window Controls
        Overlay): our own navy title bar sits beside Chrome's window buttons and carries the
-       update notice and unread count. Elsewhere it is hidden. */
+       app-update notice (only that: other notifications stay in the bell). Elsewhere hidden. */
     #titleBar { display: none; }
     html.wco #titleBar {
       display: flex; align-items: center; gap: 0.5rem; position: fixed; top: 0; left: 0; right: 0; z-index: 65;
@@ -294,9 +320,6 @@
     <span class="flex-1"></span>
     <button id="tbUpdate" onclick="applyUpdate()" class="hidden shrink-0 h-6 px-2.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-900 text-[11px] font-extrabold items-center gap-1" title="A new version is ready">
       <i class="ph-bold ph-arrow-clockwise"></i> Update ready · Restart
-    </button>
-    <button id="tbBell" onclick="openNotifPanel()" class="hidden shrink-0 h-6 px-2 rounded-full bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold items-center gap-1" aria-label="Notifications">
-      <i class="ph-bold ph-bell"></i><span id="tbBellCount"></span>
     </button>
   </div>
 
@@ -11068,7 +11091,6 @@
       count.classList.toggle('hidden', !n);
       btn.setAttribute('aria-label', n ? `Notifications, ${n} unread` : 'Notifications');
       if (renderNotifBell._last !== n) { renderNotifBell._last = n; updateAppBadge(n); }
-      renderAppTitle();
       if (!document.getElementById('notifPanel').classList.contains('hidden')) renderNotifPanel();
     }
 
@@ -11276,13 +11298,17 @@
     }
 
     // =========================================================================
-    // APP UPDATES: when a new version has downloaded in the background, say so where people
-    // look first:
-    //   - the window title ("Update ready · …"): Chrome's tab and the installed app's title bar;
-    //   - our own navy title bar when the installed app on a computer folds Chrome's title bar
-    //     into the page (Window Controls Overlay);
-    //   - a bar under the header, the bell list (and a phone notification when the app is in
-    //     the background and those are turned on), and More → About & what's new.
+    // APP UPDATES: when a new version has downloaded in the background, say so in Chrome's
+    // title bar whenever there is one. The title bar is used for app updates only; other
+    // notifications (requests, releases…) stay in the bell, the app-icon badge and phone
+    // notifications.
+    //   - Computer, title bar folded into the app (Window Controls Overlay): our navy title bar
+    //     with "Update ready · Restart". That is the whole notice.
+    //   - Computer, normal title bar or a browser tab: the window title starts with
+    //     "Update ready ·", plus the Restart bar under the header (a title bar can't be tapped).
+    //   - Phone or tablet (no title bar): the Restart bar, an item in the bell (and a phone
+    //     notification when the app is in the background), and a toast.
+    //   - Everywhere: an Update tag on More → About & what's new.
     // The page knows its own version (meta app-version, written by `npm run build`, equal to
     // the sw.js cache version), so a worker that brings the version already running is not
     // announced. "What's new" appears once after each update.
@@ -11298,6 +11324,10 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-titlebar-share', date: 'Nov 2026', title: 'Cleaner title bar, new link preview', points: [
+        'On a computer, the title bar now shows only app updates (Update ready · Restart). Requests and other notifications stay in the bell.',
+        'Links to CustodianPro show a new preview picture with the app as it looks today.'
+      ] },
       { id: '2026-11-phone-layout', date: 'Nov 2026', title: 'Easier to use on a phone', points: [
         'Pop-ups (item details, property numbers, school info, ICS scan…) now slide up from the bottom, within reach of your thumb.',
         'My Items: each item shows its value and quantity on one line, with clear Property nos. · Release · Edit buttons below.',
@@ -11334,25 +11364,28 @@
       ] }
     ];
 
+    // Is there a Chrome title bar (window title or tab) the person can see? Computers yes;
+    // phones and tablets (touch first) no.
+    const titleBarFolded = () => document.documentElement.classList.contains('wco');
+    const hasTitleBar = () => titleBarFolded() || !(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+
+    // The title bar carries app updates only (no unread count).
     function renderAppTitle() {
-      const n = notifUnread();
-      document.title = `${n ? `(${n}) ` : ''}${appUpdate.ready ? 'Update ready · ' : ''}${BASE_TITLE}`;
+      document.title = `${appUpdate.ready ? 'Update ready · ' : ''}${BASE_TITLE}`;
       const school = (document.getElementById('headerSchoolName') || {}).textContent || '';
       document.getElementById('tbSchool').textContent = school && school !== 'Set School Info' ? `· ${school}` : '';
       const up = document.getElementById('tbUpdate');
       up.classList.toggle('hidden', !appUpdate.ready);
       up.classList.toggle('flex', appUpdate.ready);
-      const bell = document.getElementById('tbBell');
-      const showBell = !!notifScope();
-      bell.classList.toggle('hidden', !showBell);
-      bell.classList.toggle('flex', showBell);
-      document.getElementById('tbBellCount').textContent = n ? String(n > 99 ? '99+' : n) : '';
     }
 
     // Installed on a computer: Chrome can fold its title bar into the page.
     function syncTitleBarMode() {
       const o = navigator.windowControlsOverlay;
-      document.documentElement.classList.toggle('wco', !!(o && o.visible));
+      const on = !!(o && o.visible);
+      if (document.documentElement.classList.contains('wco') === on) return;
+      document.documentElement.classList.toggle('wco', on);
+      if (appUpdate.ready) renderUpdateUI();
     }
 
     function checkSwUpdate(force) {
@@ -11394,6 +11427,7 @@
       appUpdate.newVersion = version || '';
       appUpdate.manual = false;
       renderUpdateUI();
+      if (hasTitleBar()) return;                 // announced in the title bar (renderAppTitle)
       if (notifScope()) {
         addNotif({ title: 'A new version of CustodianPro is ready', body: 'Tap to restart and update. Your inventory stays on this device.', icon: 'ph-arrow-clockwise', tone: 'brand', go: 'update' });
       } else {
@@ -11403,7 +11437,8 @@
 
     function renderUpdateUI() {
       const snoozed = sessionStorage.getItem(UPDATE_SNOOZE_KEY) === '1';
-      document.getElementById('updateBar').classList.toggle('hidden', !appUpdate.ready || snoozed);
+      // The folded title bar has its own Restart button, so the bar under the header is not needed.
+      document.getElementById('updateBar').classList.toggle('hidden', !appUpdate.ready || snoozed || titleBarFolded());
       document.getElementById('moreUpdateDot').classList.toggle('hidden', !appUpdate.ready);
       renderAppTitle();
       renderAbout();
@@ -11411,7 +11446,7 @@
     function snoozeUpdate() {
       sessionStorage.setItem(UPDATE_SNOOZE_KEY, '1');
       renderUpdateUI();
-      showToast('Update when you’re ready: tap Restart in the title bar or More → About', 'ph-clock');
+      showToast(titleBarFolded() ? 'Update when you’re ready: tap Restart in the title bar' : 'Update when you’re ready: More → About → Restart', 'ph-clock');
     }
 
     async function applyUpdate() {

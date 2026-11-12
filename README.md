@@ -69,6 +69,28 @@ CustodianPro is laid out for a 360–430 px phone first and widens on tablets an
 - Toasts sit above the bottom tabs, move to the top while a sheet is open (also when the sheet opens after the toast), and go to the bottom on the sign-in screen so the logo stays visible.
 - `tests/e2e/phone-layout.mjs` checks this at 390 × 844: no sideways scrolling, no small buttons, sheets anchored to the bottom, full peso amounts on Reports.
 
+## Sharing and link previews
+
+Links to CustodianPro (and teacher invite links) show a large preview in Messenger, Facebook, Viber, WhatsApp, Telegram, LinkedIn and X:
+
+- `index.html` `<head>`: description, Open Graph and X (`twitter:`) tags, canonical address and WebApplication structured data (features, screenshots, free).
+- `assets/brand/og-image.png` (1200×630): the banner, **drawn from the real app**. It shows the current Home and My Items screens, so it never shows features the app doesn't have. The image URL carries `?v=<date>`; change it when the picture changes so Facebook and Messenger fetch it again.
+- `assets/brand/social-preview.png` (1280×640): the same banner for GitHub (**Settings → General → Social preview**; uploaded by hand).
+- `assets/brand/banner.png` / `.webp` (1024×434): the README header and **More → About**.
+
+To redraw after a UI change (with the site served on `BASE_URL`):
+
+```bash
+cd tests/e2e
+node make-screenshots.mjs   # assets/screenshots/ (install sheet), used by the banner
+node make-banner.mjs        # assets/brand/og-image.png, social-preview.png, banner.png/.webp
+```
+
+## Planning notes
+
+- [`docs/NOTIFICATIONS_PLAN.md`](docs/NOTIFICATIONS_PLAN.md): which channel is for what (title bar = app updates only), today's notifications, and where new ones would help (low stock, teacher joined, confirm-receipt reminders, year-end count, sync problems, push via FCM).
+- [`docs/UI_REVIEW.md`](docs/UI_REVIEW.md): UI inspection findings across phone, tablet and computer, light and dark, with suggested fixes.
+
 ## Home screen: encode without distractions
 
 The app opens on **Home**, which only asks one thing: *What are you encoding?*
@@ -359,8 +381,11 @@ A bell in the header (next to **More**) shows what happened and how many you hav
 
 A new version downloads in the background (checked when the app opens, when it comes back to the front, and every hour). Nothing restarts by itself; you choose when:
 
-- **Title bar.** The window title starts with *Update ready ·*, so it shows on the Chrome tab and in the title bar of the installed app on a computer. When that installed app hides Chrome's title bar (the chevron next to the window buttons), CustodianPro draws its own navy title bar with an **Update ready · Restart** button and the unread count.
-- **In the app.** A bar under the header (**Restart** or **Later**), an item in the bell, a phone notification if those are on and the app is in the background, and an *Update* tag on **More → About & what's new**.
+Chrome's title bar is used **for app updates only**, whenever there is one. Other notifications (requests, releases, reports) never go to the title bar; they stay in the bell, on the app-icon badge and in phone notifications.
+
+- **On a computer (title bar).** The window title starts with *Update ready ·*, so it shows on the Chrome tab and in the title bar of the installed app. When that installed app hides Chrome's title bar (the chevron next to the window buttons), CustodianPro draws its own navy title bar with an **Update ready · Restart** button. That is the whole notice, so there's no bell item and no toast. With a normal title bar, the **Restart** bar under the header is shown as well, because a window title can't be clicked.
+- **On a phone or tablet (no title bar).** A bar under the header (**Restart** or **Later**), an item in the bell (or a toast before sign-in), and a phone notification if those are on and the app is in the background.
+- **Everywhere.** An *Update* tag on **More → About & what's new**.
 - **Afterwards.** *Updated ·* with **What's new** appears once. **More → About & what's new** shows the version, a **Check for updates** button, the latest changes (`WHATS_NEW` in `index.html`; add an entry for each noticeable release) and **Share app link**.
 
 - **While the app is closed.** On Android, once CustodianPro is installed and used now and then, Chrome lets it check about every 12 hours (Periodic Background Sync; no server needed). A new version is downloaded and announced once with a phone notification, *CustodianPro update ready*; tapping it opens About. **More → About** says whether this is on. Other browsers (iPhone, Firefox) check the next time the app opens.
@@ -426,6 +451,7 @@ node app-updates.mjs                  # update notices (title bar), Restart, Wha
 node login-theme.mjs                  # sign-in screen, teacher code / invite link, sign out, light/dark
 node coa-forms.mjs                    # welcome tour, poster, PAR, ITR/PTR transfers, RRSP, RPCPPE/IIRUP, background update check
 node phone-layout.mjs                 # 390 px phone: no sideways scroll, 32 px+ buttons, bottom sheets, toast placement
+# (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```
 

@@ -1,6 +1,7 @@
-// App updates: a new version downloaded by the service worker is announced in the window
-// title, in the app's own title bar (installed on a computer, Window Controls Overlay), with a
-// bar under the header and in More → About; Restart loads it; "What's new" once afterwards; a
+// App updates: a new version downloaded by the service worker is announced in Chrome's title
+// bar whenever there is one (window title; the app's own navy bar when installed on a computer
+// with Window Controls Overlay), never with the unread count. Phones (no title bar) get the bar
+// under the header, a toast / bell item; everyone gets More → About; Restart loads it; "What's new" once afterwards; a
 // worker that brings the version already running is not announced. Also the About sheet
 // (banner, share), link-preview tags and the manifest.
 // Runs its own little web server so it can hand out a "new" sw.js like a real deploy would.
@@ -76,7 +77,8 @@ try {
   check(await visible(p, 'updateBar'), 'bar under the header: “A new version is ready · Restart”');
   check(await visible(p, 'moreUpdateDot'), 'More → About shows an “Update” tag');
   check(await ev(p, () => !!document.getElementById('aboutRestart')), 'About sheet offers Restart');
-  check(/A new version is ready/.test(await toastText(p)) && /Restart/.test(await toastText(p)), 'toast with Restart');
+  check(await ev(p, () => hasTitleBar()), 'a computer has a title bar');
+  check(!/new version is ready/i.test(await toastText(p)), `computer: no update toast; the title bar carries the notice (${await toastText(p) || 'no toast'})`);
   await ev(p, () => closeAbout());
 
   out('4 installed on a computer with Chrome’s title bar folded in');
@@ -90,11 +92,14 @@ try {
   check(tb.shown && tb.top === 0 && tb.h === 33 && tb.bg === 'rgb(18, 46, 118)', `navy title bar at the top (${tb.h}px)`);
   check(tb.up, 'title bar: “Update ready · Restart”');
   check(tb.header === '33px' && tb.pad === '33px', 'header and page sit below it');
+  check(!(await visible(p, 'updateBar')), 'the bar under the header steps aside (Restart is in the title bar)');
+  check(await ev(p, () => !document.getElementById('tbBell') && !/^\(\d+\)/.test(document.title)), 'title bar: app updates only (no bell, no unread count)');
   await p.screenshot({ path: '/tmp/e2e_u_titlebar.png' });
 
   out('5 Later, then Restart');
   await ev(p, () => snoozeUpdate());
   check(!(await visible(p, 'updateBar')) && (await ev(p, () => document.title.startsWith('Update ready'))), 'Later hides the bar; title still says Update ready');
+  check(/Restart in the title bar/.test(await toastText(p)), 'Later points to the title bar');
   await ev(p, () => openSchoolModal());
   await ev(p, () => { window.__stay = 1; applyUpdate(); });
   await until(p, () => !document.getElementById('appDialog').classList.contains('hidden'), 'restart question');
@@ -107,6 +112,18 @@ try {
   await Promise.all([p.waitForNavigation({ waitUntil: 'networkidle0' }), p.click('#tbUpdate')]);
   await until(p, () => /up to date/.test(document.getElementById('appToast').innerText), 'up to date toast', 5000);
   check(await ev(p, () => !appUpdate.ready && document.title === BASE_TITLE && document.getElementById('updateBar').classList.contains('hidden')), 'after Restart: “CustodianPro is up to date”, notices gone');
+
+  out('5b a phone has no title bar: bar under the header + toast');
+  const ph = await browser.newPage();
+  await ph.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+  ph.on('pageerror', e => errors.push(String(e)));
+  await ph.goto(BASE, { waitUntil: 'networkidle0' });
+  check(await ev(ph, () => !hasTitleBar()), 'phone: no title bar');
+  await ev(ph, () => markUpdateReady('0123456789ab'));
+  await sleep(300);
+  check(await visible(ph, 'updateBar'), 'phone: bar under the header with Restart');
+  check(/A new version is ready/.test(await toastText(ph)) && /Restart/.test(await toastText(ph)), 'phone: toast with Restart');
+  await ph.close();
 
   out('6 What’s new once after an update');
   await ev(p, () => localStorage.setItem(SEEN_RELEASE_KEY, '2026-10-requests'));
@@ -149,7 +166,7 @@ try {
   check(await ev(p, () => document.querySelector('#aboutPanel img').naturalWidth) === 1024, 'banner works offline (precached webp)');
   await p.setOfflineMode(false);
   const meta = await ev(p, () => Object.fromEntries([...document.querySelectorAll('meta[property^="og:"], meta[name^="twitter:"]')].map(m => [m.getAttribute('property') || m.name, m.content])));
-  const OG = 'https://custodianpro.vercel.app/assets/brand/og-image.png';
+  const OG = 'https://custodianpro.vercel.app/assets/brand/og-image.png?v=2026-11-12';
   check(meta['og:image'] === OG && meta['og:image:secure_url'] === OG && meta['twitter:image'] === OG && meta['og:image:type'] === 'image/png', 'og:image / X card: the banner (og-image.png)');
   check(meta['og:image:width'] === '1200' && meta['og:image:height'] === '630' && meta['twitter:card'] === 'summary_large_image', '1200×630, large preview card');
   check(meta['og:title'] === 'CustodianPro – School Inventory' && meta['twitter:title'] === meta['og:title'] && /property custodians/.test(meta['og:description']) && meta['og:url'] === 'https://custodianpro.vercel.app/' && meta['og:locale'] === 'en_PH', 'title, description, address, locale');
@@ -157,6 +174,8 @@ try {
     ld: JSON.parse(document.querySelector('script[type="application/ld+json"]').textContent) }));
   check(seo.title === 'CustodianPro – School Inventory & APP-CSE 2027' && seo.canonical === 'https://custodianpro.vercel.app/' && seo.desc.length > 80 && seo.desc.length <= 300, `page title “${seo.title}”, canonical, description`);
   check(seo.ld['@type'] === 'WebApplication' && seo.ld.image === OG && seo.ld.offers.price === '0', 'structured data (WebApplication) parses');
+  check(/COA forms/.test(meta['og:description']) && /ICS, PAR, RIS/.test(meta['og:image:alt']) && meta['twitter:image:alt'] === meta['og:image:alt'], 'previews mention the government forms; image described for screen readers');
+  check(Array.isArray(seo.ld.featureList) && seo.ld.featureList.length >= 5 && seo.ld.screenshot.length === 3, 'structured data lists features and screenshots');
   const og = await (await import('node:module')).createRequire(import.meta.url)('../../node_modules/sharp')(path.join(ROOT, 'assets/brand/og-image.png')).metadata();
   check(og.width === 1200 && og.height === 630 && fs.statSync(path.join(ROOT, 'assets/brand/og-image.png')).size < 1024 * 1024, `og-image.png ${og.width}×${og.height}, under 1 MB`);
   check(!/brand\/[a-z-]+\.png/.test(SW), 'preview images deployed, not precached');
