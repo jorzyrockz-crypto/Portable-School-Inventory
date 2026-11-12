@@ -10,7 +10,7 @@
  *   in its own cache the first time it is used, so app updates don't download it again.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
-const CACHE = 'custodianpro-c990dc9d15d9';
+const CACHE = 'custodianpro-aafe35a5f150';
 const PRECACHE_URLS = [
     "./",
     "./index.html",
@@ -28,7 +28,6 @@ const PRECACHE_URLS = [
     "./assets/icons/favicon-32.png",
     "./assets/icons/icon-192.png",
     "./assets/icons/icon-512.png",
-    "./assets/icons/icon.svg",
     "./assets/icons/maskable-512.png",
     "./assets/vendor/fflate.LICENSE.txt",
     "./assets/vendor/fflate.js",
