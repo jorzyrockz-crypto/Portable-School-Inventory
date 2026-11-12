@@ -402,7 +402,7 @@ Chrome's title bar is used **for app updates only**, whenever there is one. Othe
 
 - **While the app is closed.** On Android, once CustodianPro is installed and used now and then, Chrome lets it check about every 12 hours (Periodic Background Sync; no server needed). A new version is downloaded and announced once with a phone notification, *CustodianPro update ready*; tapping it opens About. **More → About** says whether this is on. Other browsers (iPhone, Firefox) check the next time the app opens.
 
-`npm run build` writes the version into `index.html` (`<meta name="app-version">`, the same value as the `sw.js` cache version). A new service worker that brings the version already running is not announced.
+`npm run build` writes the version into `index.html` (`<meta name="app-version">`, the same value as the `sw.js` cache version). A new service worker that brings the version already running is not announced. One exception: the page is fetched from the network first, so when the app is opened right after a deploy, the page can already be the new version while its styles still come from the previous version's cache (for example, spacing that is new in this release is missing). The page asks the worker in charge which version served it; if that differs from its own version, the update is announced anyway, and **Restart** puts page and styles back in step. `tests/e2e/app-updates.mjs` step 10 checks this.
 
 ## Works offline
 

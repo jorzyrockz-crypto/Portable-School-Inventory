@@ -16,7 +16,9 @@ const ROOT = path.resolve(new URL('../..', import.meta.url).pathname);
 const SW = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
 const VERSION = SW.match(/const CACHE = 'custodianpro-([0-9a-f]{12})'/)[1];
 const NEW_VERSION = '0123456789ab';
+const DEPLOY_VERSION = 'fedcba987654';
 let swVariant = '';      // '' as built · 'same' different bytes, same version · 'new' next release
+                         // · 'deploy' a release whose page arrives before its worker
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.webmanifest': 'application/manifest+json',
   '.png': 'image/png', '.webp': 'image/webp', '.woff2': 'font/woff2', '.json': 'application/json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.gz': 'application/gzip' };
 const server = http.createServer((req, res) => {
@@ -24,6 +26,15 @@ const server = http.createServer((req, res) => {
   let file = path.join(ROOT, decodeURIComponent(url.pathname));
   if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end(); }
   if (url.pathname.endsWith('/')) file = path.join(file, 'index.html');
+  if (swVariant === 'deploy' && (url.pathname === '/' || url.pathname === '/index.html')) {
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/(<meta name="app-version" content=")[^"]*/, `$1${DEPLOY_VERSION}`);
+    res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-cache' });
+    return res.end(html);
+  }
+  if (url.pathname === '/sw.js' && swVariant === 'deploy') {
+    res.writeHead(200, { 'Content-Type': 'text/javascript', 'Cache-Control': 'no-cache' });
+    return res.end(SW.replace(`custodianpro-${VERSION}`, `custodianpro-${DEPLOY_VERSION}`));
+  }
   if (url.pathname === '/sw.js' && swVariant) {
     const body = swVariant === 'new' ? SW.replace(`custodianpro-${VERSION}`, `custodianpro-${NEW_VERSION}`) : SW + '\n// same release, rebuilt\n';
     res.writeHead(200, { 'Content-Type': 'text/javascript', 'Cache-Control': 'no-cache' });
@@ -183,6 +194,19 @@ try {
   const m = await cdp.send('Page.getAppManifest');
   const inst = await cdp.send('Page.getInstallabilityErrors');
   check(m.errors.length === 0 && inst.installabilityErrors.length === 0 && JSON.parse(m.data).display_override[0] === 'window-controls-overlay', 'manifest valid, installable, title bar mode offered');
+
+  out('10 opened right after a deploy: new page, previous styles → still announced');
+  // The page is fetched from the network first, so it is already the new version while the
+  // worker still in charge serves the previous version's CSS. That mix must say "Update ready".
+  swVariant = 'deploy';
+  await p.reload({ waitUntil: 'networkidle0' });
+  check(await ev(p, () => APP_VERSION) === DEPLOY_VERSION, `page is the new release (${DEPLOY_VERSION})`);
+  check(await ev(p, async () => loadedAssetsVersion && await loadedAssetsVersion) === NEW_VERSION, `its styles came from the previous worker (${NEW_VERSION})`);
+  await until(p, () => appUpdate.ready, 'mixed versions announced', 15000);
+  check(await ev(p, () => appUpdate.ready && document.title.startsWith('Update ready')), 'announced: “Update ready” in the title bar');
+  await Promise.all([p.waitForNavigation({ waitUntil: 'networkidle0' }), ev(p, () => applyUpdate())]);
+  await sleep(1500);
+  check(await ev(p, async () => !appUpdate.ready && (await loadedAssetsVersion) === APP_VERSION), 'after Restart page and styles match; nothing announced');
 } catch (e) {
   check(false, 'unexpected error: ' + (e && e.stack || e));
 } finally {

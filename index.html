@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="34700b1f79de">
+  <meta name="app-version" content="2310609a3d8d">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -218,6 +218,12 @@
         border: 1px solid #e2e8f0; background: #fff; color: #334155; font-size: 0.75rem; font-weight: 700; white-space: nowrap; transition: background-color .15s, color .15s; }
       .ledger-tab:hover { background: #f8fafc; }
       .ledger-tab.hidden { display: none; }
+      /* Computers (no touch-first screen): a little more room between the title and the saved chip,
+         and a slimmer chip. Tablets keep their scaled-up look. */
+      @media screen and (not (pointer: coarse)) {
+        #masterLedgerSection h3 { column-gap: 0.75rem; }
+        #invSyncChip { line-height: 1rem; padding-top: 0.2rem; padding-bottom: 0.2rem; }
+      }
       .ledger-tab.seg-on { background: #4338ca; border-color: #4338ca; color: #fff; }
       .ledger-tab.seg-on i { color: #fff; }
       .ledger-tab .ledger-n { font-family: "JetBrains Mono Variable", "JetBrains Mono", monospace; font-weight: 700; opacity: 0.75; }
@@ -7227,6 +7233,10 @@
 
       if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
       let hadWorker = !!navigator.serviceWorker.controller;
+      // Ask now (before an update replaces it) which version served this page's styles, fonts
+      // and icons. The page itself is fetched from the network first, so right after a deploy it
+      // can be the new version while its CSS still came from the previous version's cache.
+      if (navigator.serviceWorker.controller) loadedAssetsVersion = workerVersion(navigator.serviceWorker.controller);
       navigator.serviceWorker.register('./sw.js').then((reg) => {
         swReg = reg;
         reg.addEventListener('updatefound', () => {
@@ -11492,6 +11502,7 @@
     // announced. "What's new" appears once after each update.
     // =========================================================================
     var swReg = null;
+    var loadedAssetsVersion; // Promise<string>: version of the worker that served this page's assets (no initializer: set earlier)
     const APP_VERSION = (document.querySelector('meta[name="app-version"]') || {}).content || '';
     const BASE_TITLE = document.title;
     const SEEN_RELEASE_KEY = 'custodian_seen_release_v1';
@@ -11598,7 +11609,11 @@
     }
     async function onWorkerUpdated(worker) {
       const v = await workerVersion(worker);
-      if (v && APP_VERSION && v === APP_VERSION) {           // this page is already that version
+      // Styles from an older version under a newer page (opened right after a deploy): the page
+      // looks wrong until it restarts, so this is announced like any update.
+      const assets = loadedAssetsVersion ? await loadedAssetsVersion : '';
+      const mixed = !!(assets && APP_VERSION && assets !== APP_VERSION);
+      if (v && APP_VERSION && v === APP_VERSION && !mixed) { // this page is already that version
         if (appUpdate.manual) showToast('You have the latest version', 'ph-check-circle');
         appUpdate.manual = false;
         renderAbout();
