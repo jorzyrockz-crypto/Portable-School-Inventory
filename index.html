@@ -70,7 +70,30 @@
       body { background: white; padding-bottom: 0; color: black; }
       body.printing-labels #printReportSection { display: none !important; }
       body:not(.printing-labels) #printLabelsSection { display: none !important; }
+      body.printing-pr #printReportSection, body.printing-pr #printLabelsSection { display: none !important; }
+      body:not(.printing-pr) #printPrSection { display: none !important; }
+      @page { margin: 12mm; }
     }
+      .more-item { display: flex; width: 100%; align-items: center; gap: 0.75rem; padding: 0.7rem 0.5rem; border-radius: 0.75rem;
+      font-size: 0.875rem; font-weight: 600; color: #334155; text-align: left; }
+    .more-item:hover, .more-item:active { background: #f1f5f9; }
+    .more-item i { font-size: 1.15rem; }
+    .pr-in { display: block; width: 100%; height: 2.5rem; margin-top: 0.25rem; padding: 0 0.75rem; border: 1px solid #cbd5e1;
+      border-radius: 0.75rem; font-size: 0.875rem; font-weight: 500; color: #0f172a; text-transform: none; letter-spacing: normal; outline: none; background: #fff; }
+    .pr-in:focus { border-color: #6366f1; }
+    .pr-form { font-family: Arial, Helvetica, sans-serif; color: #000; font-size: 10.5pt; max-width: 190mm; margin: 0 auto; }
+    .pr-appx { text-align: right; font-style: italic; font-size: 10pt; }
+    .pr-form h1 { text-align: center; font-size: 14pt; font-weight: 700; margin: 4pt 0 10pt; letter-spacing: 0.5pt; }
+    .pr-top { display: flex; justify-content: space-between; gap: 12pt; margin-bottom: 4pt; }
+    .pr-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .pr-table td, .pr-table th { border: 1px solid #000; padding: 3pt 5pt; vertical-align: top; overflow-wrap: anywhere; }
+    .pr-table th { overflow-wrap: normal; }
+    .pr-table td.pr-sn { white-space: nowrap; font-size: 8.5pt; }
+    .pr-table th { text-align: center; font-weight: 700; vertical-align: middle; }
+    .pr-table .c { text-align: center; } .pr-table .r { text-align: right; }
+    .pr-table .pr-blank td { height: 15pt; }
+    .pr-table .pr-sig { height: 28pt; }
+    .pr-table .pr-purpose { height: 40pt; }
   </style>
 </head>
 <body class="text-slate-800 antialiased selection:bg-brand-500 selection:text-white pb-28">
@@ -78,64 +101,26 @@
   <!-- TOP STICKY NAVIGATION & CONTROLS (Portrait Tablet Optimized) -->
   <header class="safe-top sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm no-print">
     
-    <!-- Top Bar: App Identity & School Actions -->
-    <div class="max-w-4xl mx-auto px-4 pt-3 pb-2 flex items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="w-11 h-11 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
-          <i class="ph-bold ph-package text-2xl"></i>
+    <!-- Top bar: identity + school, everything else lives in the More menu -->
+    <div class="max-w-4xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+      <button onclick="switchMainView('HOME')" class="flex items-center gap-2.5 min-w-0 text-left" title="Home">
+        <div class="w-9 h-9 shrink-0 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+          <i class="ph-bold ph-package text-xl"></i>
         </div>
-        <div>
+        <div class="min-w-0">
           <div class="flex items-center gap-2">
-            <h1 class="font-extrabold text-lg tracking-tight text-slate-900 leading-none">CustodianPro</h1>
-            <span class="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider bg-brand-50 text-brand-700 rounded-md border border-brand-200">APP-CSE 2027</span>
-          </div>
-          <p class="text-xs text-slate-500 mt-1 font-medium flex items-center gap-2">
-            <span>School General Inventory & Supply System</span>
+            <h1 class="font-extrabold text-base tracking-tight text-slate-900 leading-none">CustodianPro</h1>
             <span id="offlineBadge" class="hidden items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold uppercase tracking-wider" title="No internet connection. Your counts are still saved on this device.">
               <i class="ph-bold ph-wifi-slash"></i> Offline
             </span>
-          </p>
+          </div>
+          <p id="headerSchoolName" class="text-xs text-slate-500 mt-0.5 font-medium truncate max-w-[60vw] sm:max-w-md">Set School Info</p>
         </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="flex items-center gap-2">
-        <button onclick="openCustomItemModal()" class="h-10 px-3 rounded-xl bg-brand-50 hover:bg-brand-100 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-brand-700 border border-brand-200" title="Add Custom Supply or Equipment">
-          <i class="ph-bold ph-plus-circle text-base"></i>
-          <span class="hidden sm:inline">Custom Item</span>
-        </button>
-        <button onclick="openSchoolModal()" class="h-10 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition flex items-center gap-2 text-xs font-semibold text-slate-700">
-          <i class="ph-bold ph-buildings text-base text-brand-600"></i>
-          <span id="headerSchoolName" class="max-w-[130px] truncate">Set School Info</span>
-        </button>
-        <button onclick="exportCSV()" class="h-10 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-white shadow-sm">
-          <i class="ph-bold ph-download-simple text-base"></i>
-          <span>Export CSV</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- PRIMARY VIEW SWITCHER: General Inventory Dashboard vs. Item Catalog -->
-    <div class="max-w-4xl mx-auto px-4 py-2">
-      <div class="grid grid-cols-2 bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
-        <button 
-          onclick="switchMainView('DASHBOARD')" 
-          id="navBtn-DASHBOARD"
-          class="h-10 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition bg-white text-brand-600 shadow-sm"
-        >
-          <i class="ph-bold ph-chart-pie-slice text-lg"></i>
-          <span>General Inventory Dashboard</span>
-        </button>
-        <button 
-          onclick="switchMainView('CATALOG')" 
-          id="navBtn-CATALOG"
-          class="h-10 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition text-slate-600 hover:text-slate-900"
-        >
-          <i class="ph-bold ph-list-bullets text-lg"></i>
-          <span>Item Catalog & Counter</span>
-          <span id="navBadgeCount" class="px-2 py-0.5 text-[11px] rounded-full bg-brand-100 text-brand-700 font-mono">0</span>
-        </button>
-      </div>
+      </button>
+      <button onclick="openMoreMenu()" id="moreMenuBtn" class="h-10 px-3 shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-slate-700" aria-label="More">
+        <i class="ph-bold ph-list text-lg"></i>
+        <span class="hidden sm:inline">More</span>
+      </button>
     </div>
 
     <!-- CATALOG-ONLY CONTROLS (Search & Category Pills) -->
@@ -183,60 +168,110 @@
     </div>
   </header>
 
-  <!-- BACKUP REMINDER (data lives only on this device) -->
-  <div id="backupReminder" class="hidden max-w-4xl mx-auto px-4 pt-3 no-print">
-    <div class="rounded-2xl border border-amber-300 bg-amber-50 p-3.5 flex flex-col sm:flex-row sm:items-center gap-3 shadow-sm">
-      <div class="flex items-start gap-3 flex-1 min-w-0">
-        <div class="w-9 h-9 shrink-0 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
-          <i class="ph-bold ph-cloud-arrow-up text-xl"></i>
-        </div>
-        <div class="min-w-0">
-          <p class="text-sm font-extrabold text-amber-900">Back up your inventory</p>
-          <p class="text-xs text-amber-800 mt-0.5">
-            <span id="backupReminderText">You have changes that are not in a backup file yet.</span>
-            Counts are stored only on this device &mdash; clearing browser data or losing the device erases them.
-          </p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2 shrink-0">
-        <button onclick="snoozeBackupReminder()" class="h-10 px-3.5 rounded-xl bg-white border border-amber-200 text-xs font-bold text-amber-800 active:scale-95 transition">Later</button>
-        <button onclick="exportBackupJSON()" class="h-10 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-xs font-bold text-white shadow-sm flex items-center gap-1.5 active:scale-95 transition">
-          <i class="ph-bold ph-floppy-disk text-base"></i> Back up now
-        </button>
-      </div>
+  <!-- ===================================================================== -->
+  <!-- VIEW 0: HOME – one job: start encoding                               -->
+  <!-- ===================================================================== -->
+  <section id="viewHome" class="max-w-xl mx-auto px-4 pt-5 space-y-5 no-print">
+
+    <!-- Backup reminder (only when a backup is overdue) -->
+    <div id="backupReminder" class="hidden rounded-2xl border border-amber-300 bg-amber-50 px-3.5 py-3 flex items-center gap-3">
+      <i class="ph-bold ph-cloud-arrow-up text-xl text-amber-700 shrink-0"></i>
+      <p class="flex-1 min-w-0 text-xs text-amber-900"><span class="font-extrabold">Back up your inventory.</span> <span id="backupReminderText">You have changes that are not in a backup file yet.</span></p>
+      <button onclick="snoozeBackupReminder()" class="h-9 px-3 shrink-0 rounded-xl bg-white border border-amber-200 text-xs font-bold text-amber-800 active:scale-95 transition">Later</button>
+      <button onclick="exportBackupJSON()" class="h-9 px-3 shrink-0 rounded-xl bg-amber-600 hover:bg-amber-700 text-xs font-bold text-white active:scale-95 transition">Back up</button>
     </div>
-  </div>
 
-  <!-- ===================================================================== -->
-  <!-- VIEW 1: GENERAL INVENTORY DASHBOARD (Default View)                    -->
-  <!-- ===================================================================== -->
-  <section id="viewDashboard" class="max-w-4xl mx-auto px-4 pt-4 space-y-5 no-print">
-
-    <!-- Empty Inventory Onboarding Banner (Shows only when 0 items are counted) -->
-    <div id="dashboardEmptyBanner" class="hidden bg-gradient-to-r from-brand-600 to-indigo-700 rounded-2xl p-5 text-white shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <div class="space-y-1">
-        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[11px] font-bold uppercase tracking-wider">
-          <i class="ph-fill ph-sparkle"></i> Ready for Inventory Count
-        </div>
-        <h2 class="text-lg font-extrabold">Your General Inventory is Currently Empty</h2>
-        <p class="text-xs text-indigo-100 max-w-lg">Start adding quantities in the Item Catalog, import your existing Excel/CSV inventory list, or load realistic sample school inventory data to explore the dashboard metrics.</p>
+    <div>
+      <label for="homeSearch" class="block text-lg font-extrabold text-slate-900 mb-2.5">What are you encoding?</label>
+      <div class="relative">
+        <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xl pointer-events-none"></i>
+        <input id="homeSearch" type="text" inputmode="search" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go"
+          placeholder="Find an item – name or code"
+          oninput="renderHome()" onkeydown="homeSearchKey(event)"
+          class="w-full h-14 pl-12 pr-12 rounded-2xl border-2 border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 bg-white text-base font-semibold text-slate-900 shadow-sm outline-none transition">
+        <button id="homeSearchClear" onclick="clearHomeSearch(true)" class="hidden absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-200 text-slate-600 items-center justify-center" aria-label="Clear search">
+          <i class="ph-bold ph-x text-sm"></i>
+        </button>
       </div>
-      <div class="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
-        <button onclick="openImport()" class="flex-1 sm:flex-initial h-11 px-4 rounded-xl bg-white text-brand-700 hover:bg-indigo-50 active:scale-95 font-extrabold text-xs shadow-sm transition flex items-center justify-center gap-1.5">
-          <i class="ph-bold ph-file-arrow-up text-base"></i>
-          <span>Import Excel / CSV</span>
+      <div id="homeResults" class="hidden mt-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100"></div>
+    </div>
+
+    <div id="homeIdle" class="space-y-5">
+      <div id="homeTiles" class="grid grid-cols-3 gap-3">
+        <button onclick="openIcsScanner()" class="rounded-2xl bg-white border border-slate-200 hover:border-violet-300 shadow-sm p-4 flex flex-col items-center text-center gap-1.5 active:scale-95 transition">
+          <span class="w-11 h-11 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="ph-bold ph-file-text text-2xl"></i></span>
+          <span class="text-sm font-extrabold text-slate-800">Scan ICS</span>
+          <span class="text-[11px] text-slate-500 leading-tight">Photo of a custodian slip</span>
         </button>
-        <button onclick="openIcsScanner()" class="flex-1 sm:flex-initial h-11 px-4 rounded-xl bg-white text-brand-700 hover:bg-indigo-50 active:scale-95 font-extrabold text-xs shadow-sm transition flex items-center justify-center gap-1.5">
-          <i class="ph-bold ph-file-text text-base"></i>
-          <span>Scan ICS</span>
+        <button onclick="openImport()" class="rounded-2xl bg-white border border-slate-200 hover:border-sky-300 shadow-sm p-4 flex flex-col items-center text-center gap-1.5 active:scale-95 transition">
+          <span class="w-11 h-11 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center"><i class="ph-bold ph-file-arrow-up text-2xl"></i></span>
+          <span class="text-sm font-extrabold text-slate-800">Import</span>
+          <span class="text-[11px] text-slate-500 leading-tight">Excel or CSV list</span>
         </button>
-        <button onclick="loadSampleInventory()" class="flex-1 sm:flex-initial h-11 px-4 rounded-xl bg-white text-brand-700 hover:bg-indigo-50 active:scale-95 font-extrabold text-xs shadow-sm transition flex items-center justify-center gap-1.5">
-          <i class="ph-bold ph-magic-wand text-base"></i>
-          <span>Load Sample Inventory</span>
+        <button id="homeCountTile" onclick="homeCountAction()" class="rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 shadow-sm p-4 flex flex-col items-center text-center gap-1.5 active:scale-95 transition">
+          <span class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="ph-bold ph-list-checks text-2xl"></i></span>
+          <span id="homeCountTitle" class="text-sm font-extrabold text-slate-800">Count</span>
+          <span id="homeCountSub" class="text-[11px] text-slate-500 leading-tight">Physical count</span>
+          <span id="homeCountBarWrap" class="hidden w-full h-1.5 rounded-full bg-slate-100 overflow-hidden mt-0.5"><span id="homeCountBar" class="block h-full bg-emerald-500 rounded-full" style="width:0%"></span></span>
         </button>
-        <button onclick="switchMainView('CATALOG')" class="flex-1 sm:flex-initial h-11 px-4 rounded-xl bg-brand-900/40 hover:bg-brand-900/60 active:scale-95 text-white font-bold text-xs border border-white/20 transition flex items-center justify-center gap-1.5">
-          <span>Open Catalog</span>
-          <i class="ph-bold ph-arrow-right"></i>
+        <button id="homeQrTile" onclick="openScanner()" class="hidden rounded-2xl bg-white border border-slate-200 hover:border-violet-300 shadow-sm p-4 flex-col items-center text-center gap-1.5 active:scale-95 transition">
+          <span class="w-11 h-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center"><i class="ph-bold ph-scan text-2xl"></i></span>
+          <span class="text-sm font-extrabold text-slate-800">Scan tag</span>
+          <span class="text-[11px] text-slate-500 leading-tight">QR property label</span>
+        </button>
+      </div>
+
+      <!-- Supply requests: teachers request, the custodian reviews → Purchase Request -->
+      <div id="homeReqCard" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-center gap-3">
+        <button onclick="openRequestsView()" class="flex-1 min-w-0 flex items-center gap-3 text-left">
+          <span class="relative w-11 h-11 shrink-0 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <i class="ph-bold ph-tray text-2xl"></i>
+            <span id="homeReqBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-extrabold items-center justify-center">0</span>
+          </span>
+          <span class="min-w-0">
+            <span class="block text-sm font-extrabold text-slate-800">Supply requests</span>
+            <span id="homeReqSub" class="block text-[11px] text-slate-500 truncate">Teachers request supplies · you approve</span>
+          </span>
+        </button>
+        <button onclick="openRequestForm()" class="shrink-0 h-10 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 transition">
+          <i class="ph-bold ph-plus"></i> Request
+        </button>
+      </div>
+
+      <div id="homeRecentWrap" class="hidden">
+        <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Recently encoded</h2>
+        <div id="homeRecent" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100"></div>
+      </div>
+
+      <div id="homeWelcome" class="hidden rounded-2xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600 space-y-1.5">
+        <p class="font-bold text-slate-800">Start by searching for an item above.</p>
+        <p class="text-xs">Type a few letters of the item name or its code, e.g. <em>bond paper</em> or <em>laptop</em>, then enter the quantity you have on hand. Or scan an ICS or import your Excel list.</p>
+        <button onclick="loadSampleInventory()" class="text-xs font-bold text-brand-600 hover:underline">Just exploring? Load sample data</button>
+      </div>
+
+      <button id="homeStatus" onclick="switchMainView('REPORTS')" class="w-full flex items-center justify-between gap-2 px-1 text-xs text-slate-500 hover:text-slate-700">
+        <span id="homeStatusText" class="truncate">No items encoded yet</span>
+        <span class="shrink-0 font-bold text-brand-600 flex items-center gap-1">Reports <i class="ph-bold ph-caret-right"></i></span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- VIEW 3: REPORTS (totals, condition, property tags, categories, rooms) -->
+  <!-- ===================================================================== -->
+  <section id="viewDashboard" class="hidden max-w-4xl mx-auto px-4 pt-4 space-y-5 no-print">
+
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-extrabold text-slate-900 leading-tight">Reports</h2>
+        <p class="text-xs text-slate-500">APP-CSE 2027 &middot; general inventory</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="printReport()" class="h-10 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-slate-700">
+          <i class="ph-bold ph-printer text-base"></i><span class="hidden sm:inline">Print</span>
+        </button>
+        <button onclick="openSummaryModal()" class="h-10 px-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-white shadow-sm">
+          <i class="ph-bold ph-receipt text-base"></i><span>APP-CSE Summary</span>
         </button>
       </div>
     </div>
@@ -321,31 +356,6 @@
         </div>
       </div>
 
-    </div>
-
-    <!-- PHYSICAL COUNT PROGRESS (check off items as they are counted) -->
-    <div id="countPanel" class="hidden bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm">
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2 min-w-0">
-          <div class="w-8 h-8 shrink-0 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
-            <i class="ph-bold ph-clipboard-text text-lg"></i>
-          </div>
-          <div class="min-w-0">
-            <h3 id="countTitle" class="font-extrabold text-sm text-slate-900 leading-tight truncate">Physical Count</h3>
-            <p id="countSubtitle" class="text-[11px] text-slate-500">Check off each item as you count it and see what is left.</p>
-          </div>
-        </div>
-        <div id="countActions" class="flex items-center gap-2 shrink-0"></div>
-      </div>
-      <div id="countProgressWrap" class="hidden mt-3">
-        <div class="flex items-baseline justify-between text-xs mb-1">
-          <span class="font-bold text-slate-700"><span id="countDone" class="font-mono">0</span> of <span id="countScope" class="font-mono">0</span> items counted</span>
-          <span id="countPct" class="font-mono font-extrabold text-sky-700">0%</span>
-        </div>
-        <div class="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
-          <div id="countBar" class="h-full bg-sky-500 transition-all duration-300" style="width:0%"></div>
-        </div>
-      </div>
     </div>
 
     <!-- EQUIPMENT CONDITION STRIP (Serviceable / Needs Repair / Unserviceable) -->
@@ -461,7 +471,7 @@
       </div>
 
       <!-- Right 1 Col: Room / Location Breakdown & Quick Tools -->
-      <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5 flex flex-col justify-between space-y-4">
+      <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5">
         <div>
           <h3 class="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2 mb-1">
             <i class="ph-bold ph-map-pin-line text-emerald-600"></i>
@@ -474,47 +484,39 @@
           </div>
         </div>
 
-        <!-- Quick Custodian Actions Box -->
-        <div class="pt-3 border-t border-slate-100 space-y-2">
-          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Quick Custodian Tools</span>
-          <div class="grid grid-cols-2 gap-2">
-            <button onclick="loadSampleInventory()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition">
-              <i class="ph-bold ph-magic-wand text-brand-600"></i>
-              <span>Sample Data</span>
-            </button>
-            <button onclick="printReport()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition">
-              <i class="ph-bold ph-printer text-slate-600"></i>
-              <span>Print Report</span>
-            </button>
-            <button onclick="exportBackupJSON()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition" title="Save backup file to device">
-              <i class="ph-bold ph-floppy-disk text-emerald-600"></i>
-              <span>Backup Data</span>
-            </button>
-            <button onclick="document.getElementById('restoreFileInput').click()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition" title="Restore from backup JSON">
-              <i class="ph-bold ph-upload-simple text-amber-600"></i>
-              <span>Restore</span>
-            </button>
-            <input type="file" id="restoreFileInput" accept=".json,application/json" class="hidden" onchange="importBackupJSON(event)">
-            <button onclick="openImport()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition" title="Import an Excel (.xlsx) or CSV inventory list">
-              <i class="ph-bold ph-file-arrow-up text-sky-600"></i>
-              <span>Import</span>
-            </button>
-            <button onclick="openHistory()" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition" title="Every change: counts, condition, tags, scans">
-              <i class="ph-bold ph-list-magnifying-glass text-brand-600"></i>
-              <span>History</span>
-            </button>
-            <button onclick="openIcsScanner()" class="col-span-2 h-10 px-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm" title="Photograph a printed Inventory Custodian Slip to encode it">
-              <i class="ph-bold ph-file-text"></i>
-              <span>Scan ICS (Inventory Custodian Slip)</span>
-            </button>
-          </div>
-          <p id="backupStatusLine" class="text-[11px] text-slate-500 flex items-center gap-1.5">
-            <i class="ph-bold ph-clock-counter-clockwise"></i>
-            <span id="backupStatusText">Last backup: never</span>
-          </p>
-        </div>
       </div>
 
+    </div>
+
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- VIEW 1: MY ITEMS (what the school has; physical count runs here)      -->
+  <!-- ===================================================================== -->
+  <section id="viewItems" class="hidden max-w-4xl mx-auto px-4 pt-4 space-y-4 no-print">
+    <!-- PHYSICAL COUNT PROGRESS (check off items as they are counted) -->
+    <div id="countPanel" class="hidden bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2 min-w-[13rem] flex-1">
+          <div class="w-8 h-8 shrink-0 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+            <i class="ph-bold ph-clipboard-text text-lg"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 id="countTitle" class="font-extrabold text-sm text-slate-900 leading-tight truncate">Physical Count</h3>
+            <p id="countSubtitle" class="text-[11px] text-slate-500">Check off each item as you count it and see what is left.</p>
+          </div>
+        </div>
+        <div id="countActions" class="flex items-center gap-2 shrink-0"></div>
+      </div>
+      <div id="countProgressWrap" class="hidden mt-3">
+        <div class="flex items-baseline justify-between text-xs mb-1">
+          <span class="font-bold text-slate-700"><span id="countDone" class="font-mono">0</span> of <span id="countScope" class="font-mono">0</span> items counted</span>
+          <span id="countPct" class="font-mono font-extrabold text-sky-700">0%</span>
+        </div>
+        <div class="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
+          <div id="countBar" class="h-full bg-sky-500 transition-all duration-300" style="width:0%"></div>
+        </div>
+      </div>
     </div>
 
     <!-- BOTTOM SECTION: GENERAL INVENTORY MASTER LEDGER -->
@@ -525,9 +527,8 @@
         <div>
           <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
             <i class="ph-bold ph-clipboard-text text-brand-600 text-lg"></i>
-            <span>General Inventory Master Ledger</span>
+            <span>My Items</span>
           </h3>
-          <p class="text-xs text-slate-500">Real-time list of all active supplies, equipment, and stock levels</p>
         </div>
 
         <!-- Ledger Filter Tabs -->
@@ -561,7 +562,7 @@
             type="text" 
             id="ledgerSearchInput"
             oninput="renderDashboardLedger()"
-            placeholder="Filter ledger by item, code, or room..." 
+            placeholder="Filter by item, code, or room..." 
             class="w-full h-9 pl-8 pr-3 bg-white rounded-lg border border-slate-200 text-xs font-medium outline-none focus:border-brand-500"
           >
         </div>
@@ -631,6 +632,45 @@
   <!-- ===================================================================== -->
   <!-- OFFICIAL PRINTABLE REPORT VIEW (Only visible when printing)           -->
   <!-- ===================================================================== -->
+  <!-- SUPPLY REQUESTS (custodian): review, approve, prepare Purchase Requests -->
+  <section id="viewRequests" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <button onclick="switchMainView('HOME')" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-1"><i class="ph-bold ph-caret-left"></i> Home</button>
+        <h1 class="text-xl font-extrabold text-slate-900">Supply requests</h1>
+        <p id="reqViewSchool" class="text-xs text-slate-500 truncate"></p>
+      </div>
+      <span id="reqViewStatus" class="shrink-0 mt-6 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold"></span>
+      <div id="reqViewActions" class="hidden shrink-0 flex items-center gap-1.5 pt-5">
+        <button onclick="openInvite()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-user-plus text-brand-600"></i> Invite</button>
+        <button onclick="openRequestForm()" class="h-9 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-plus"></i> New</button>
+      </div>
+    </div>
+    <div id="reqViewBody" class="space-y-3"></div>
+  </section>
+
+  <!-- REQUEST SUPPLIES (teacher phones): only their own requests -->
+  <section id="viewRequester" class="hidden max-w-xl mx-auto px-4 pt-5 space-y-5 no-print">
+    <div>
+      <p id="rqHello" class="text-sm text-slate-500"></p>
+      <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Request supplies</h1>
+      <p id="rqSchool" class="text-xs text-slate-500"></p>
+    </div>
+    <button onclick="openRequestForm()" class="w-full h-16 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-extrabold text-base shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition">
+      <i class="ph-bold ph-plus-circle text-2xl"></i> New supply request
+    </button>
+    <p id="rqSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
+    <div>
+      <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">My requests</h2>
+      <div id="rqList" class="space-y-2"></div>
+    </div>
+    <div id="rqAccount" class="text-[11px] -mb-2"></div>
+    <div class="flex items-center justify-between gap-3 text-xs pb-6">
+      <button onclick="editMyDetails()" class="font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-user-circle"></i> Change my name or office</button>
+      <button onclick="leaveSchool()" class="font-bold text-slate-400 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-sign-out"></i> Leave</button>
+    </div>
+  </section>
+
   <section id="printReportSection" class="print-only max-w-4xl mx-auto p-6 text-black">
     <div class="text-center border-b-2 border-black pb-4 mb-4">
       <p class="text-xs uppercase tracking-widest font-semibold">Republic of the Philippines</p>
@@ -698,6 +738,7 @@
 
   <!-- QR PROPERTY LABELS (printed instead of the report while body has .printing-labels) -->
   <section id="printLabelsSection" class="print-only"></section>
+  <section id="printPrSection" class="print-only"></section>
 
   <!-- TOAST (status messages, e.g. "ready to work offline") -->
   <div id="appToast" role="status" aria-live="polite" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-[70] items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-2xl no-print">
@@ -706,36 +747,270 @@
     <button id="appToastAction" class="hidden ml-2 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-amber-300 font-bold"></button>
   </div>
 
-  <!-- BOTTOM FLOATING SUMMARY BAR (iPad Portrait Dock Style) -->
-  <div class="safe-bottom fixed bottom-0 inset-x-0 z-30 bg-slate-900/95 backdrop-blur-md text-white border-t border-slate-800 shadow-2xl no-print">
-    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-      
-      <div class="flex items-center gap-5 sm:gap-6">
+  <!-- BOTTOM TAB BAR -->
+  <nav id="tabBar" class="safe-bottom fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_16px_rgba(15,23,42,0.06)] no-print">
+    <div class="max-w-xl mx-auto grid grid-cols-4">
+      <button onclick="switchMainView('HOME')" data-view="HOME" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-brand-600">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 "></span>
+        <i class="ph-bold ph-house text-[22px]"></i>
+        <span class="flex items-center gap-1">Home</span>
+      </button>
+      <button onclick="switchMainView('ITEMS')" data-view="ITEMS" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-clipboard-text text-[22px]"></i>
+        <span class="flex items-center gap-1">My Items <span id="navBadgeCount" class="px-1.5 rounded-full bg-brand-100 text-brand-700 font-mono text-[10px]">0</span></span>
+      </button>
+      <button onclick="switchMainView('CATALOG')" data-view="CATALOG" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-books text-[22px]"></i>
+        <span class="flex items-center gap-1">Catalog</span>
+      </button>
+      <button onclick="switchMainView('REPORTS')" data-view="REPORTS" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-chart-pie-slice text-[22px]"></i>
+        <span class="flex items-center gap-1">Reports</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MORE MENU (tools that used to crowd the dashboard) -->
+  <div id="moreMenu" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-start sm:justify-end no-print" onclick="if (event.target === this) closeMoreMenu()">
+    <div class="bg-white w-full sm:w-80 sm:mt-16 sm:mr-4 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 max-h-[88vh] overflow-y-auto safe-bottom">
+      <div class="px-5 pt-4 pb-2 flex items-center justify-between">
+        <h3 class="font-extrabold text-base text-slate-900">More</h3>
+        <button onclick="closeMoreMenu()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div class="px-3 pb-4 space-y-3">
         <div>
-          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">General Inventory</span>
-          <div class="flex items-baseline gap-1.5">
-            <span id="dockTotalItems" class="text-xl font-extrabold text-white">0</span>
-            <span class="text-xs text-slate-400 font-medium">SKUs</span>
-            <span class="text-xs text-brand-400 font-mono">(<span id="dockTotalUnits">0</span> units)</span>
-          </div>
+          <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Add &amp; import</p>
+          <button onclick="closeMoreMenu(); openCustomItemModal()" class="more-item"><i class="ph-bold ph-plus-circle text-brand-600"></i> Add a custom item</button>
+          <button onclick="closeMoreMenu(); openImport()" class="more-item"><i class="ph-bold ph-file-arrow-up text-sky-600"></i> Import Excel / CSV</button>
+          <button onclick="closeMoreMenu(); openIcsScanner()" class="more-item"><i class="ph-bold ph-file-text text-violet-600"></i> Scan ICS</button>
+          <button onclick="closeMoreMenu(); openScanner()" class="more-item"><i class="ph-bold ph-scan text-slate-600"></i> Scan a QR property tag</button>
         </div>
-
-        <div class="h-8 w-px bg-slate-700"></div>
-
         <div>
-          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Valuation</span>
-          <span id="dockTotalAmount" class="text-xl font-extrabold text-emerald-400 font-mono">₱0.00</span>
+          <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Reports &amp; files</p>
+          <button onclick="closeMoreMenu(); openSummaryModal()" class="more-item"><i class="ph-bold ph-receipt text-brand-600"></i> APP-CSE summary</button>
+          <button id="moreReqItem" onclick="closeMoreMenu(); openRequestsView()" class="more-item"><i class="ph-bold ph-tray text-amber-600"></i> Supply requests &amp; purchase requests</button>
+          <button onclick="closeMoreMenu(); printReport()" class="more-item"><i class="ph-bold ph-printer text-slate-600"></i> Print report</button>
+          <button onclick="closeMoreMenu(); exportCSV()" class="more-item"><i class="ph-bold ph-download-simple text-emerald-600"></i> Export inventory (CSV)</button>
+          <button onclick="closeMoreMenu(); exportRegisterCSV()" class="more-item"><i class="ph-bold ph-file-csv text-emerald-600"></i> Property register (CSV)</button>
+        </div>
+        <div>
+          <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Data &amp; settings</p>
+          <button onclick="closeMoreMenu(); openSchoolModal()" class="more-item"><i class="ph-bold ph-buildings text-brand-600"></i> School &amp; custodian info</button>
+          <button onclick="closeMoreMenu(); exportBackupJSON()" class="more-item"><i class="ph-bold ph-floppy-disk text-emerald-600"></i> Back up now</button>
+          <button onclick="closeMoreMenu(); document.getElementById('restoreFileInput').click()" class="more-item"><i class="ph-bold ph-upload-simple text-amber-600"></i> Restore a backup</button>
+          <button onclick="closeMoreMenu(); openHistory()" class="more-item"><i class="ph-bold ph-list-magnifying-glass text-brand-600"></i> Change history</button>
+          <button onclick="closeMoreMenu(); loadSampleInventory()" class="more-item"><i class="ph-bold ph-magic-wand text-slate-500"></i> Load sample data</button>
+          <p id="backupStatusLine" class="px-2 pt-2 text-[11px] text-slate-500 flex items-center gap-1.5">
+            <i class="ph-bold ph-clock-counter-clockwise"></i>
+            <span id="backupStatusText">Last backup: never</span>
+          </p>
         </div>
       </div>
+    </div>
+  </div>
+  <input type="file" id="restoreFileInput" accept=".json,application/json" class="hidden no-print" onchange="importBackupJSON(event)">
 
-      <div class="flex items-center gap-2">
-        <button onclick="openScanner()" class="h-12 px-4 rounded-xl bg-white/10 hover:bg-white/15 active:scale-95 transition font-bold text-xs sm:text-sm flex items-center gap-2" title="Scan a QR property label">
-          <i class="ph-bold ph-scan text-lg text-violet-300"></i>
-          <span>Scan</span>
+  <!-- ENCODE SHEET: quantity + room for one item, then straight on to the next -->
+  <!-- NEW SUPPLY REQUEST (teachers, or the custodian for a walk-in) -->
+  <div id="reqFormModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeRequestForm()">
+    <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[94vh] flex flex-col safe-bottom">
+      <div class="px-5 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-slate-100">
+        <div class="min-w-0">
+          <h3 class="font-extrabold text-base text-slate-900">New supply request</h3>
+          <p id="rfFrom" class="text-xs text-slate-500 truncate"></p>
+        </div>
+        <button onclick="closeRequestForm()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div class="px-5 py-4 space-y-4 overflow-y-auto">
+        <div id="rfWho" class="hidden grid grid-cols-2 gap-2">
+          <div class="col-span-2">
+            <label for="rfName" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Requested by</label>
+            <input id="rfName" type="text" maxlength="80" placeholder="Name of teacher / staff" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-amber-500 outline-none">
+          </div>
+          <input id="rfPosition" type="text" maxlength="80" placeholder="Position, e.g. Teacher III" class="h-10 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
+          <input id="rfOffice" type="text" maxlength="80" placeholder="Office / grade &amp; section" class="h-10 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
+        </div>
+        <div>
+          <label for="rfSearch" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Add items</label>
+          <div class="relative">
+            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+            <input id="rfSearch" type="text" inputmode="search" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="Search, e.g. bond paper, chalk, ballpen"
+              oninput="renderReqSearch()" onkeydown="reqSearchKey(event)"
+              class="w-full h-12 pl-9 pr-3 rounded-xl border-2 border-slate-200 focus:border-amber-500 text-sm font-semibold outline-none">
+          </div>
+          <div id="rfResults" class="hidden mt-1.5 rounded-xl border border-slate-200 overflow-hidden divide-y divide-slate-100"></div>
+        </div>
+        <div id="rfLines" class="space-y-2"></div>
+        <div class="grid grid-cols-3 gap-2">
+          <div class="col-span-2">
+            <label for="rfPurpose" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Purpose</label>
+            <input id="rfPurpose" type="text" maxlength="300" placeholder="e.g. for Grade 7 science activity" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
+          </div>
+          <div>
+            <label for="rfNeeded" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Needed by</label>
+            <input id="rfNeeded" type="date" class="w-full h-10 px-2 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
+          </div>
+        </div>
+      </div>
+      <div class="px-5 py-3 border-t border-slate-100 flex items-center gap-2">
+        <button onclick="closeRequestForm()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Cancel</button>
+        <button id="rfSendBtn" onclick="sendRequest()" class="flex-1 h-12 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 transition">
+          <i class="ph-bold ph-paper-plane-tilt"></i> <span id="rfSendLabel">Send request</span>
         </button>
-        <button onclick="openSummaryModal()" class="h-12 px-4 sm:px-5 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-95 transition font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-brand-500/25">
-          <i class="ph-bold ph-receipt text-lg"></i>
-          <span>APP-CSE Summary</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVIEW A REQUEST (custodian): check stock, edit, approve / decline -->
+  <div id="reqReviewModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeReview()">
+    <div class="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[94vh] flex flex-col safe-bottom">
+      <div class="px-5 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-slate-100">
+        <div id="revHead" class="min-w-0"></div>
+        <button onclick="closeReview()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div class="px-5 py-4 space-y-3 overflow-y-auto">
+        <div id="revLines" class="space-y-2.5"></div>
+        <button onclick="addReviewLine()" class="w-full h-10 rounded-xl border border-dashed border-slate-300 text-xs font-bold text-slate-500 hover:border-brand-400 hover:text-brand-600 flex items-center justify-center gap-1.5"><i class="ph-bold ph-plus"></i> Add a line</button>
+        <div>
+          <label for="revNote" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Note to the requester <span class="normal-case font-medium text-slate-400">(optional)</span></label>
+          <input id="revNote" type="text" maxlength="300" placeholder="e.g. 5 reams released today, the rest after purchase" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none">
+        </div>
+      </div>
+      <div class="px-5 py-3 border-t border-slate-100 space-y-2">
+        <p id="revSummary" class="text-xs text-slate-600"></p>
+        <div id="revButtons" class="flex items-center gap-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREPARE PURCHASE REQUEST (Appendix 60) from approved requests -->
+  <div id="prModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print">
+    <div class="bg-white w-full sm:max-w-3xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[96vh] flex flex-col safe-bottom">
+      <div class="px-5 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-slate-100">
+        <div class="min-w-0">
+          <h3 class="font-extrabold text-base text-slate-900">Purchase Request</h3>
+          <p id="prSub" class="text-xs text-slate-500">Appendix 60 · check every line before saving</p>
+        </div>
+        <button onclick="closePr()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div class="px-5 py-4 space-y-4 overflow-y-auto">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <label class="col-span-2 sm:col-span-2 text-[11px] font-bold uppercase text-slate-500">Entity name<input id="prEntity" type="text" class="pr-in"></label>
+          <label class="text-[11px] font-bold uppercase text-slate-500">Fund cluster<input id="prFund" type="text" placeholder="e.g. 01" class="pr-in"></label>
+          <label class="text-[11px] font-bold uppercase text-slate-500">Office / section<input id="prOffice" type="text" placeholder="e.g. Supply Office" class="pr-in"></label>
+          <label class="text-[11px] font-bold uppercase text-slate-500">PR No.<input id="prNo" type="text" class="pr-in font-mono"></label>
+          <label class="text-[11px] font-bold uppercase text-slate-500">Date<input id="prDate" type="date" class="pr-in"></label>
+          <label class="col-span-2 sm:col-span-3 text-[11px] font-bold uppercase text-slate-500">Responsibility center code<input id="prRcc" type="text" class="pr-in"></label>
+        </div>
+        <div>
+          <p class="text-[11px] font-bold uppercase text-slate-500 mb-1.5">Items</p>
+          <div id="prLines" class="space-y-2"></div>
+          <p class="mt-2 text-right text-sm font-extrabold text-slate-900">Total <span id="prTotal" class="font-mono">₱0.00</span></p>
+        </div>
+        <label class="block text-[11px] font-bold uppercase text-slate-500">Purpose<textarea id="prPurpose" rows="3" class="pr-in h-auto py-2 normal-case"></textarea></label>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="text-[11px] font-bold uppercase text-slate-500">Requested by<input id="prReqName" type="text" placeholder="Printed name" class="pr-in"></label>
+          <label class="text-[11px] font-bold uppercase text-slate-500">Approved by<input id="prApprName" type="text" placeholder="Printed name" class="pr-in"></label>
+          <input id="prReqDesig" type="text" placeholder="Designation" class="pr-in mt-0">
+          <input id="prApprDesig" type="text" placeholder="Designation, e.g. School Principal" class="pr-in mt-0">
+        </div>
+      </div>
+      <div class="px-5 py-3 border-t border-slate-100 flex items-center gap-2">
+        <button onclick="closePr()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Cancel</button>
+        <button id="prSaveBtn" onclick="savePr()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 transition">
+          <i class="ph-bold ph-printer"></i> Save &amp; print
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INVITE TEACHERS (custodian) -->
+  <div id="inviteModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeInvite()">
+    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-bottom">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h3 class="font-extrabold text-base text-slate-900">Invite teachers</h3>
+          <p class="text-xs text-slate-500">Send this link to your faculty group chat. Teachers tap it, type their name, and can request supplies from their phones.</p>
+        </div>
+        <button onclick="closeInvite()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="inviteQr" class="mx-auto w-48 h-48 rounded-xl border border-slate-200 p-2 bg-white flex items-center justify-center text-xs text-slate-400">QR code</div>
+      <input id="inviteLink" type="text" readonly onclick="this.select()" class="w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-mono text-slate-600">
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="copyInvite()" class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-copy"></i> Copy link</button>
+        <button onclick="shareInvite()" class="h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-share-network"></i> Share</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JOIN A SCHOOL (teacher opens the invite link) -->
+  <div id="joinModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print">
+    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-bottom">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-amber-600">Request supplies</p>
+          <h3 id="joinSchool" class="font-extrabold text-lg text-slate-900 leading-snug">Connecting…</h3>
+          <p class="text-xs text-slate-500">Your name goes on every request you send to the property custodian.</p>
+        </div>
+        <button onclick="closeJoin()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div class="space-y-2">
+        <input id="joinName" type="text" maxlength="80" autocomplete="name" placeholder="Your full name" class="w-full h-12 px-3 rounded-xl border-2 border-slate-200 focus:border-amber-500 text-sm font-semibold outline-none">
+        <input id="joinPosition" type="text" maxlength="80" placeholder="Position, e.g. Teacher III" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
+        <input id="joinOffice" type="text" maxlength="80" placeholder="Office or grade &amp; section, e.g. Grade 7 – Rizal" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
+      </div>
+      <p id="joinError" class="hidden text-xs font-semibold text-rose-600"></p>
+      <button id="joinBtn" onclick="submitJoin()" class="w-full h-12 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2">
+        <i class="ph-bold ph-check"></i> <span id="joinBtnLabel">Continue</span>
+      </button>
+      <div id="joinGoogleWrap" class="space-y-1.5">
+        <button id="joinGoogleBtn" onclick="joinWithGoogle()" class="w-full h-11 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-50 text-slate-800 font-bold text-sm flex items-center justify-center gap-2.5">
+          <svg viewBox="0 0 48 48" class="w-5 h-5 shrink-0" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Continue with Google
+        </button>
+        <p class="text-[11px] text-slate-400 text-center">Optional · keeps your requests if you change phones</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="encodeSheet" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeEncodeSheet()" onkeydown="if (event.key === 'Escape') closeEncodeSheet()">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 safe-bottom space-y-4">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p id="encCode" class="font-mono text-[11px] text-slate-400"></p>
+          <h3 id="encName" class="font-extrabold text-base text-slate-900 leading-snug"></h3>
+          <p id="encNow" class="text-xs text-slate-500 mt-0.5"></p>
+        </div>
+        <button onclick="closeEncodeSheet()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div>
+        <label for="encQty" class="block text-[11px] font-bold uppercase text-slate-500 mb-1.5">Quantity on hand</label>
+        <div class="flex items-center gap-2">
+          <button onclick="encStep(-1)" class="w-14 h-14 shrink-0 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 text-2xl flex items-center justify-center transition" aria-label="Minus one"><i class="ph-bold ph-minus"></i></button>
+          <input id="encQty" type="number" inputmode="numeric" min="0" enterkeyhint="done" onfocus="this.select()" onkeydown="if (event.key === 'Enter') { event.preventDefault(); saveEncode(); }"
+            class="flex-1 min-w-0 h-14 text-center text-3xl font-extrabold font-mono text-slate-900 rounded-2xl border-2 border-slate-200 focus:border-brand-500 outline-none">
+          <button onclick="encStep(1)" class="w-14 h-14 shrink-0 rounded-2xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white text-2xl flex items-center justify-center shadow-sm transition" aria-label="Plus one"><i class="ph-bold ph-plus"></i></button>
+        </div>
+        <div class="flex items-center justify-between mt-2">
+          <span id="encUnit" class="text-xs font-semibold text-slate-500"></span>
+          <div class="flex gap-1.5">
+            <button onclick="encStep(5)" class="h-8 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">+5</button>
+            <button onclick="encStep(10)" class="h-8 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">+10</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label for="encNote" class="block text-[11px] font-bold uppercase text-slate-500 mb-1.5">Room / location <span class="normal-case font-medium text-slate-400">(optional)</span></label>
+        <div id="encRooms" class="flex flex-wrap gap-1.5 mb-2"></div>
+        <input id="encNote" type="text" placeholder="e.g. Faculty Room" oninput="markEncodeRoom()" onkeydown="if (event.key === 'Enter') { event.preventDefault(); saveEncode(); }"
+          class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
+      </div>
+      <div class="flex items-center gap-2 pt-1">
+        <button onclick="encodeMoreDetails()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition">More details</button>
+        <button id="encSaveBtn" onclick="saveEncode()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 transition">
+          <i class="ph-bold ph-check"></i> Save &amp; next
         </button>
       </div>
     </div>
@@ -1193,6 +1468,7 @@
   </div>
 
   <!-- APPLICATION JAVASCRIPT & COMPLETE PDF DATASET -->
+  <script src="firebase-config.js"></script>
   <script>
     // =========================================================================
     // 1. CATEGORIES MAPPING (From APP-CSE 2027 PDF)
@@ -1647,7 +1923,7 @@
     let schoolInfo = { school: "", uacs: "", custodian: "", position: "" };
 
     // View & Filter States
-    let activeMainView = 'DASHBOARD'; // 'DASHBOARD' | 'CATALOG'
+    let activeMainView = 'HOME'; // 'HOME' | 'ITEMS' | 'CATALOG' | 'REPORTS'
     let showAllDashboardCats = false;
     let ledgerFilter = 'ALL'; // 'ALL' | 'EQUIPMENT' | 'CONSUMABLE' | 'LOW'
 
@@ -1781,45 +2057,46 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
       markUnsavedChanges();
       updateDockStats();
-      if (activeMainView === 'DASHBOARD') {
-        renderDashboard();
-      } else {
+      if (activeMainView === 'CATALOG') {
         renderPrintReport();
+        renderHome();
+      } else {
+        renderDashboard(); // also refreshes Home, My Items and the print report
       }
     }
 
     // =========================================================================
     // 4. VIEW NAVIGATION (DASHBOARD <-> CATALOG)
     // =========================================================================
+    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester' };
+
     function switchMainView(viewName) {
+      if (viewName === 'DASHBOARD') viewName = 'REPORTS'; // old name
+      if (!MAIN_VIEWS[viewName]) viewName = 'HOME';
+      if (isTeacherDevice()) viewName = 'REQUESTER'; // a teacher's phone: supply requests only
+      else if (viewName === 'REQUESTER') viewName = 'HOME';
+      document.getElementById('tabBar').classList.toggle('hidden', viewName === 'REQUESTER');
+      document.getElementById('moreMenuBtn').classList.toggle('hidden', viewName === 'REQUESTER');
       activeMainView = viewName;
-      const dashSection = document.getElementById('viewDashboard');
-      const catSection = document.getElementById('viewCatalog');
-      const catControls = document.getElementById('catalogHeaderControls');
-      const btnDash = document.getElementById('navBtn-DASHBOARD');
-      const btnCat = document.getElementById('navBtn-CATALOG');
-
-      if (viewName === 'DASHBOARD') {
-        dashSection.classList.remove('hidden');
-        catSection.classList.add('hidden');
-        catControls.classList.add('hidden');
-
-        btnDash.className = "h-10 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition bg-white text-brand-600 shadow-sm";
-        btnCat.className = "h-10 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition text-slate-600 hover:text-slate-900";
-        renderDashboard();
-      } else {
-        dashSection.classList.add('hidden');
-        catSection.classList.remove('hidden');
-        catControls.classList.remove('hidden');
-
-        btnCat.className = "h-10 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition bg-white text-brand-600 shadow-sm";
-        btnDash.className = "h-10 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition text-slate-600 hover:text-slate-900";
-        renderItems();
-      }
+      Object.entries(MAIN_VIEWS).forEach(([key, id]) =>
+        document.getElementById(id).classList.toggle('hidden', key !== viewName));
+      document.getElementById('catalogHeaderControls').classList.toggle('hidden', viewName !== 'CATALOG');
+      document.querySelectorAll('#tabBar .tab-btn').forEach(btn => {
+        const on = btn.dataset.view === viewName;
+        btn.classList.toggle('text-brand-600', on);
+        btn.classList.toggle('text-slate-500', !on);
+        btn.setAttribute('aria-current', on ? 'page' : 'false');
+        btn.querySelector('.tab-ind').classList.toggle('opacity-0', !on);
+      });
+      if (viewName === 'CATALOG') renderItems();
+      else renderDashboard();
+      if (viewName === 'REQUESTS') renderRequestsView();
+      if (viewName === 'REQUESTER') renderRequesterView();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function filterLedgerAndScroll(filterType) {
+      if (activeMainView !== 'ITEMS') switchMainView('ITEMS');
       setLedgerFilter(filterType);
       document.getElementById('masterLedgerSection')?.scrollIntoView({ behavior: 'smooth' });
     }
@@ -1846,13 +2123,7 @@
     // =========================================================================
     function renderDashboard() {
       const activeItems = items.filter(i => i.qty > 0);
-      const emptyBanner = document.getElementById('dashboardEmptyBanner');
-
-      if (activeItems.length === 0) {
-        emptyBanner.classList.remove('hidden');
-      } else {
-        emptyBanner.classList.add('hidden');
-      }
+      renderHome();
 
       // Compute KPIs
       let totalVal = 0;
@@ -2520,9 +2791,6 @@
         }
       });
 
-      document.getElementById('dockTotalItems').textContent = activeCount;
-      document.getElementById('dockTotalUnits').textContent = totalUnits.toLocaleString();
-      document.getElementById('dockTotalAmount').textContent = formatCurrency(totalAmount);
       document.getElementById('count-SELECTED').textContent = activeCount;
       document.getElementById('navBadgeCount').textContent = activeCount;
     }
@@ -2816,6 +3084,8 @@
       renderItems();
       renderDashboard();
       closeCustomItemModal();
+      showToast(`Added ${name.length > 34 ? name.slice(0, 32) + '…' : name}: ${qty} ${unit}`, 'ph-plus-circle');
+      if (activeMainView === 'HOME') clearHomeSearch(true); // same "save & next" flow as the encode sheet
     }
 
     // SUMMARY MODAL
@@ -3626,7 +3896,7 @@
     }
 
     function printReport() {
-      document.body.classList.remove('printing-labels');
+      document.body.classList.remove('printing-labels', 'printing-pr');
       window.print();
     }
 
@@ -3659,6 +3929,7 @@
       rows.forEach(({ unit }) => { unit.printed = now; });
       saveState();
       if (unitsModalCode) renderUnitsModal();
+      document.body.classList.remove('printing-pr');
       document.body.classList.add('printing-labels');
       window.print();
     }
@@ -4010,7 +4281,14 @@
     function recordHistory() {
       const ctx = historyContext;
       if (ctx && ctx.summary) {
-        changeHistory.push(historyEntry(ctx.summary.kind, ctx.summary.text, ctx.summary.code || null));
+        const e = historyEntry(ctx.summary.kind, ctx.summary.text, ctx.summary.code || null);
+        if (ctx.summary.track && !e.c) {
+          // Bulk saves (ICS, import) are one entry; keep the item codes for "Recently encoded".
+          const sig = st => st ? `${parseInt(st.qty, 10) || 0}|${(st.units || []).length}|${st.note || ''}` : '0|0|';
+          const touched = Object.keys(userState).filter(code => sig(historyBase[code]) !== sig(userState[code]));
+          if (touched.length) e.cs = touched.slice(0, 50);
+        }
+        changeHistory.push(e);
       } else {
         diffForHistory(historyBase, userState, ctx).forEach(addHistoryEntry);
       }
@@ -4300,7 +4578,8 @@
       persistCountSession();
       logHistory('system', `Started ${countSession.name}`);
       markUnsavedChanges();
-      renderDashboard();
+      if (activeMainView !== 'ITEMS') switchMainView('ITEMS');
+      else renderDashboard();
       showToast('Count started – tap the check button on each item as you count it', 'ph-clipboard-text');
     }
 
@@ -4335,8 +4614,8 @@
 
     function renderCountPanel() {
       const panel = document.getElementById('countPanel');
-      const hasItems = items.some(i => i.qty > 0);
-      panel.classList.toggle('hidden', !hasItems && !countSession);
+      // Started from the Count tile on Home; only shown while a count is running.
+      panel.classList.toggle('hidden', !countSession);
       document.getElementById('ledgerTab-UNCOUNTED').classList.toggle('hidden', !countSession);
       const actions = document.getElementById('countActions');
       const wrap = document.getElementById('countProgressWrap');
@@ -4787,7 +5066,7 @@
       localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
       rebuildCatalogList();
       const fileName = st.fileName;
-      saveStateWith({ summary: { kind: 'system', text:
+      saveStateWith({ summary: { kind: 'system', track: true, text:
         `Imported “${fileName}”: ${plural(plan.matched, 'catalog item')} updated` +
         `${plan.created ? `, ${plural(plan.created, 'custom item')} added` : ''}` +
         `${plan.skipped ? `, ${plural(plan.skipped, 'row')} skipped` : ''} (${st.mode === 'add' ? 'added to' : 'replaced'} quantities)` } });
@@ -5006,7 +5285,8 @@
           it.totalCost = Math.round(it.qty * it.unitCost * 100) / 100;
         }
         if (it.qty === null) { it.qty = 1; it.notes.push('Quantity not found – please check'); }
-        it.desc = it.desc.replace(/\s{2,}/g, ' ').replace(/^[^A-Za-z0-9(]+/, '').trim();
+        it.desc = it.desc.replace(/\s{2,}/g, ' ').replace(/^[^A-Za-z0-9(]+/, '').trim()
+          .replace(/([a-z][a-z.)]*)\s+[Il|]$/, '$1'); // table border misread as a letter
         it.itemNo = it.itemNo.replace(/\s{2,}/g, ' ').trim();
       });
 
@@ -5606,7 +5886,7 @@
       rebuildCatalogList();
       const peso = '₱' + plan.value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const label = h.icsNo ? `ICS No. ${h.icsNo}` : 'an ICS';
-      saveStateWith({ summary: { kind: 'tag', code: plan.lines.length === 1 ? plan.lines[0].code : null, text:
+      saveStateWith({ summary: { kind: 'tag', track: true, code: plan.lines.length === 1 ? plan.lines[0].code : null, text:
         `Encoded ${label}${h.date ? ` (${formatShortDate(h.date + 'T00:00:00')})` : ''}` +
         `${h.receivedBy ? ` – received by ${h.receivedBy}` : ''}: ${plural(plan.lines.length, 'line')}, ${plural(plan.units, 'item')}, ${peso}` +
         `${st.opts.addStock ? '' : ' (assigned existing stock)'}${newUnits ? ` · ${plural(newUnits, 'property record')}` : ''}` } });
@@ -5747,9 +6027,309 @@
     }
 
     // =========================================================================
+    // HOME: search → encode sheet → next item (plus tiles, recents, status)
+    // =========================================================================
+    let encodeCode = null;
+
+    function homeQuery() {
+      const input = document.getElementById('homeSearch');
+      return input ? input.value.trim() : '';
+    }
+
+    // Every word must appear in the name, code or room; names that start with the
+    // query rank first, then items the school already has.
+    // What teachers and custodians actually type → how the APP-CSE catalog names it.
+    const SEARCH_ALIASES = { BALLPEN: 'BALLPOINT PEN', BALLPENS: 'BALLPOINT PEN', SIGNPEN: 'SIGN PEN' };
+    function homeSearchItems(query, limit = 8) {
+      const raw = query.toUpperCase().split(/\s+/).filter(Boolean);
+      if (!raw.length) return { list: [], total: 0 };
+      const words = raw.map(w => SEARCH_ALIASES[w] || w);
+      const q = words.join(' ');
+      const hits = [];
+      items.forEach(item => {
+        const name = item.name.toUpperCase();
+        const hay = `${name} ${item.code.toUpperCase()} ${(item.note || '').toUpperCase()}`;
+        if (!words.every(w => hay.includes(w))) return;
+        let score = name.startsWith(q) ? 4 : item.code.toUpperCase().startsWith(q) ? 3.5
+          : new RegExp(`(^|[^A-Z0-9])${words[0].replace(/[^A-Z0-9]/g, '')}`).test(name) ? 2 : 1;
+        if (item.qty > 0) score += 0.5;
+        hits.push({ item, score });
+      });
+      hits.sort((a, b) => b.score - a.score || a.item.name.localeCompare(b.item.name));
+      return { list: hits.slice(0, limit).map(h => h.item), total: hits.length };
+    }
+
+    function homeItemRowHTML(item, sub = '') {
+      const qtyChip = item.qty > 0
+        ? `<span class="shrink-0 min-w-[2.5rem] text-center px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-sm font-extrabold font-mono">${item.qty}</span>`
+        : `<span class="shrink-0 px-2 py-1 rounded-lg bg-brand-50 text-brand-700 text-[11px] font-bold">Encode</span>`;
+      return `
+        <button onclick="openEncodeSheet('${item.code}')" class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 active:bg-slate-100 transition">
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-bold text-slate-900 truncate">${escapeHTML(item.name)}</span>
+            <span class="block text-[11px] text-slate-400 truncate">${sub || `<span class="font-mono">${escapeHTML(item.code)}</span> · ${escapeHTML(item.unit)}${item.note ? ` · ${escapeHTML(item.note)}` : ''}`}</span>
+          </span>
+          ${qtyChip}
+          <i class="ph-bold ph-caret-right text-slate-300 shrink-0"></i>
+        </button>`;
+    }
+
+    function recentEncodedItems(limit = 5) {
+      const seen = new Set();
+      const list = [];
+      for (let i = changeHistory.length - 1; i >= 0 && list.length < limit; i--) {
+        const e = changeHistory[i];
+        const codes = e.cs || (e.c && ['count', 'edit', 'tag', 'condition'].includes(e.k) ? [e.c] : []);
+        for (const code of codes) {
+          if (seen.has(code) || list.length >= limit) continue;
+          seen.add(code);
+          const item = items.find(it => it.code === code);
+          if (item && item.qty > 0) list.push({ item, t: e.t });
+        }
+      }
+      return list;
+    }
+
+    function renderHome() {
+      const view = document.getElementById('viewHome');
+      if (!view) return;
+      const query = homeQuery();
+      const results = document.getElementById('homeResults');
+      document.getElementById('homeSearchClear').classList.toggle('hidden', !query);
+      document.getElementById('homeSearchClear').classList.toggle('flex', !!query);
+      // While searching, only the results are shown.
+      document.getElementById('homeIdle').classList.toggle('hidden', !!query);
+      results.classList.toggle('hidden', !query);
+      if (query) {
+        const { list, total } = homeSearchItems(query);
+        results.innerHTML = list.map(item => homeItemRowHTML(item)).join('') +
+          (total > list.length ? `
+            <button onclick="homeSeeAllInCatalog()" class="w-full px-4 py-3 text-left text-xs font-bold text-brand-600 hover:bg-slate-50">See all ${total} matches in the Catalog</button>` : '') + `
+          <button onclick="homeAddCustom()" class="w-full flex items-center gap-2 px-4 py-3 text-left text-xs font-bold text-slate-600 hover:bg-slate-50">
+            <i class="ph-bold ph-plus-circle text-brand-600 text-base"></i>
+            ${list.length ? 'Not listed?' : 'No match.'} Add “${escapeHTML(query.slice(0, 40))}” as a new item
+          </button>`;
+        return;
+      }
+
+      // Tiles: count state + QR tile once units are tagged
+      const qrTile = document.getElementById('homeQrTile');
+      const hasTags = allTaggedUnits().length > 0;
+      qrTile.classList.toggle('hidden', !hasTags);
+      qrTile.classList.toggle('flex', hasTags);
+      document.getElementById('homeTiles').className = `grid gap-3 ${hasTags ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`;
+      const barWrap = document.getElementById('homeCountBarWrap');
+      if (countSession) {
+        const { scope, counted } = countProgress();
+        const pct = scope.length ? Math.round(counted / scope.length * 100) : 0;
+        document.getElementById('homeCountTitle').textContent = 'Continue count';
+        document.getElementById('homeCountSub').textContent = `${counted} of ${scope.length} counted`;
+        document.getElementById('homeCountBar').style.width = pct + '%';
+        barWrap.classList.remove('hidden');
+      } else {
+        document.getElementById('homeCountTitle').textContent = 'Count';
+        document.getElementById('homeCountSub').textContent = 'Physical count';
+        barWrap.classList.add('hidden');
+      }
+
+      const recent = recentEncodedItems();
+      document.getElementById('homeRecentWrap').classList.toggle('hidden', !recent.length);
+      document.getElementById('homeRecent').innerHTML = recent.map(({ item, t }) =>
+        homeItemRowHTML(item, `${item.qty} ${escapeHTML(item.unit)}${item.note ? ` · ${escapeHTML(item.note)}` : ''} · ${escapeHTML(formatTimeAgo(t))}`)).join('');
+
+      const active = items.filter(i => i.qty > 0);
+      document.getElementById('homeWelcome').classList.toggle('hidden', active.length > 0 || recent.length > 0);
+      const total = active.reduce((sum, i) => sum + i.qty * i.price, 0);
+      const meta = getBackupMeta();
+      document.getElementById('homeStatusText').textContent = active.length
+        ? `${plural(active.length, 'item')} in stock · ${formatCurrency(total)} · ${meta.lastBackupAt ? `backed up ${formatTimeAgo(meta.lastBackupAt)}` : 'not backed up yet'}`
+        : 'No items encoded yet';
+    }
+
+    function homeSearchKey(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const first = homeSearchItems(homeQuery(), 1).list[0];
+        if (first) openEncodeSheet(first.code);
+      } else if (event.key === 'Escape') {
+        clearHomeSearch(true);
+      }
+    }
+
+    function clearHomeSearch(focus = false) {
+      const input = document.getElementById('homeSearch');
+      input.value = '';
+      renderHome();
+      if (focus) input.focus();
+    }
+
+    function homeSeeAllInCatalog() {
+      const query = homeQuery();
+      const input = document.getElementById('searchInput');
+      input.value = query;
+      handleSearch(query);
+      document.getElementById('homeSearch').value = ''; // the query now lives in the Catalog
+      switchMainView('CATALOG');
+    }
+
+    function homeAddCustom() {
+      const query = homeQuery();
+      openCustomItemModal();
+      document.getElementById('customName').value = query.toUpperCase();
+      const qty = document.getElementById('customQty');
+      setTimeout(() => { qty.focus(); qty.select(); }, 60); // name is filled in; quantity is next
+    }
+
+    function homeCountAction() {
+      if (countSession) {
+        switchMainView('ITEMS');
+        setLedgerFilter('UNCOUNTED');
+        return;
+      }
+      if (!items.some(i => i.qty > 0)) {
+        showToast('Encode your items first, then count them', 'ph-info');
+        return;
+      }
+      startCount(); // switches to My Items when the count starts
+    }
+
+    // ---- Encode sheet ---------------------------------------------------------
+    function encodeRoomChoices() {
+      const counts = new Map();
+      items.forEach(i => { if (i.qty > 0 && i.note && i.note.length <= 40 && !/[,;]/.test(i.note)) counts.set(i.note, (counts.get(i.note) || 0) + 1); });
+      const list = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([room]) => room).slice(0, 6);
+      ['Central Stockroom', 'Faculty Room', 'ICT / Computer Lab', 'Principal / Admin Office', 'School Library', 'School Clinic']
+        .forEach(room => { if (list.length < 6 && !list.includes(room)) list.push(room); });
+      return list;
+    }
+
+    function openEncodeSheet(code) {
+      const item = items.find(i => i.code === code);
+      if (!item) return;
+      encodeCode = code;
+      document.getElementById('encCode').textContent = item.code;
+      document.getElementById('encName').textContent = item.name;
+      const tagged = getUnits(code).length;
+      document.getElementById('encNow').textContent = (item.qty > 0
+        ? `On hand now: ${item.qty} ${item.unit}${item.note ? ` · ${item.note}` : ''}`
+        : 'Not in your inventory yet') + (tagged ? ` · ${tagged} with property numbers` : '');
+      document.getElementById('encUnit').textContent = item.unit;
+      const qty = document.getElementById('encQty');
+      qty.value = item.qty > 0 ? item.qty : '';
+      qty.placeholder = '0';
+      document.getElementById('encNote').value = item.note || '';
+      document.getElementById('encRooms').innerHTML = encodeRoomChoices().map(room => `
+        <button type="button" data-room="${escapeHTML(room)}" onclick="setEncodeRoom(this.dataset.room)" class="enc-room h-8 px-2.5 rounded-lg border text-xs font-semibold transition">${escapeHTML(room)}</button>`).join('');
+      markEncodeRoom();
+      document.getElementById('encodeSheet').classList.remove('hidden');
+      setTimeout(() => qty.focus(), 60);
+    }
+
+    function closeEncodeSheet() {
+      encodeCode = null;
+      document.getElementById('encodeSheet').classList.add('hidden');
+    }
+
+    function encStep(delta) {
+      const input = document.getElementById('encQty');
+      input.value = Math.max(0, (parseInt(input.value, 10) || 0) + delta);
+    }
+
+    function setEncodeRoom(room) {
+      const input = document.getElementById('encNote');
+      input.value = input.value === room ? '' : room;
+      markEncodeRoom();
+    }
+
+    function markEncodeRoom() {
+      const current = document.getElementById('encNote').value.trim();
+      document.querySelectorAll('#encRooms .enc-room').forEach(btn => {
+        const on = btn.dataset.room === current;
+        btn.classList.toggle('bg-brand-600', on);
+        btn.classList.toggle('text-white', on);
+        btn.classList.toggle('border-brand-600', on);
+        btn.classList.toggle('bg-white', !on);
+        btn.classList.toggle('text-slate-700', !on);
+        btn.classList.toggle('border-slate-200', !on);
+      });
+    }
+
+    function saveEncode() {
+      const item = items.find(i => i.code === encodeCode);
+      if (!item) return closeEncodeSheet();
+      const raw = document.getElementById('encQty').value.trim();
+      const qty = raw === '' ? item.qty : Math.max(0, parseInt(raw, 10) || 0);
+      const note = document.getElementById('encNote').value.trim();
+      const tagged = getUnits(item.code).length;
+      if (qty < tagged) {
+        // Keep the sheet open: saving would silently put the count back up to the tagged units.
+        showToast(`${tagged === 1 ? '1 unit has a property number' : `${tagged} units have property numbers`} – the count can't be lower. Remove units under Property Numbers first.`, 'ph-tag');
+        const input = document.getElementById('encQty');
+        input.value = tagged;
+        input.focus();
+        input.select();
+        return;
+      }
+      const prev = { qty: item.qty, note: item.note || '' };
+      closeEncodeSheet();
+      if (qty !== prev.qty || note !== prev.note) {
+        const setNote = value => {
+          item.note = value;
+          if (!userState[item.code]) userState[item.code] = { qty: item.qty };
+          userState[item.code].note = value;
+        };
+        if (note !== prev.note) setNote(note);
+        if (qty !== item.qty) updateItemQty(item, qty); // saves (and keeps tagged units)
+        else saveState();
+        showToast(`Saved ${item.name.length > 34 ? item.name.slice(0, 32) + '…' : item.name}: ${item.qty} ${item.unit}`, 'ph-check-circle', {
+          label: 'Undo',
+          onClick: () => {
+            setNote(prev.note);
+            if (item.qty !== prev.qty) updateItemQty(item, prev.qty);
+            else saveState();
+            showToast('Change undone', 'ph-arrow-counter-clockwise');
+          }
+        });
+      }
+      if (activeMainView === 'HOME') clearHomeSearch(true); // ready for the next item
+    }
+
+    function encodeMoreDetails() {
+      const code = encodeCode;
+      const qty = document.getElementById('encQty').value.trim();
+      const note = document.getElementById('encNote').value;
+      closeEncodeSheet();
+      openItemModal(code);
+      if (qty !== '') document.getElementById('modalItemQty').value = qty;
+      document.getElementById('modalItemNote').value = note;
+    }
+
+    // ---- More menu ------------------------------------------------------------
+    function openMoreMenu() {
+      updateBackupReminder();
+      document.getElementById('moreMenu').classList.remove('hidden');
+    }
+
+    function closeMoreMenu() {
+      document.getElementById('moreMenu').classList.add('hidden');
+    }
+
+    // =========================================================================
     // OFFLINE SUPPORT (service worker, persistent storage, connection badge)
     // =========================================================================
     // action = { label, onClick } adds a button (e.g. "Undo") and keeps the toast up longer.
+    // Bottom of the screen, unless a sheet or a sticky action button (e.g. Prepare Purchase
+    // Request) is there – then just under the header, so the toast never hides a button.
+    function placeToast() {
+      const toast = document.getElementById('appToast');
+      if (!toast) return;
+      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
+      const stickyAction = [...document.querySelectorAll('[data-toast-avoid]')].some(el => el.offsetParent !== null);
+      const top = sheetOpen || stickyAction;
+      toast.classList.toggle('bottom-24', !top);
+      toast.classList.toggle('top-20', top);
+    }
+
     function showToast(message, icon = 'ph-check-circle', action = null) {
       const toast = document.getElementById('appToast');
       if (!toast) return;
@@ -5757,6 +6337,7 @@
         toast.classList.add('hidden');
         toast.classList.remove('flex');
       };
+      placeToast();
       document.getElementById('appToastIcon').className = `ph-bold ${icon} text-lg text-emerald-400`;
       document.getElementById('appToastText').textContent = message;
       const btn = document.getElementById('appToastAction');
@@ -5804,11 +6385,1392 @@
       }).catch((err) => console.warn('Service worker registration failed:', err));
     }
 
+    // =========================================================================
+    // SUPPLY REQUESTS: teachers request supplies from their phones → the custodian
+    // reviews (stock on hand, edit, approve) → approved requests are combined into a
+    // Purchase Request (Appendix 60). Synced through Firebase (Auth + Firestore):
+    //   schools/{schoolId}                      name, ownerUid, custodians[]
+    //   schools/{schoolId}/requests/{id}        one teacher request (+ review)
+    //   schools/{schoolId}/purchaseRequests/{id} saved PRs
+    // Access rules: firestore.rules. Settings: firebase-config.js.
+    // `var` (not let) so view switching can ask about the role before this runs.
+    // =========================================================================
+    var REQ_ROLE_KEY = 'custodian_requests_role_v1'; // { role: 'custodian'|'teacher', schoolId, schoolName, email?, me? }
+    var PR_DEFAULTS_KEY = 'custodian_pr_defaults_v1';
+    var reqRole = null;
+    try { reqRole = JSON.parse(localStorage.getItem(REQ_ROLE_KEY) || 'null'); } catch (e) { reqRole = null; }
+    var cloud = { state: 'idle', sdk: null, auth: null, db: null, user: null, error: '', ready: null };
+    let reqList = [];           // custodian: every request of the school · teacher: own requests
+    let prList = [];            // custodian: saved Purchase Requests
+    let reqUnsubs = [];
+    let reqTab = 'pending';     // 'pending' | 'approved' | 'prs' | 'closed'
+    const reqUnpicked = new Set(); // approved requests the custodian left off the next PR
+    let reqDraft = null;        // new request form
+    let reviewState = null;     // request being reviewed
+    let prDraft = null;         // Purchase Request being prepared
+    let joinState = null;
+    let reqLineSeq = 0;
+    const newReqLineId = () => 'L' + Date.now().toString(36) + (++reqLineSeq).toString(36);
+
+    const REQ_STATUS = {
+      pending:   { label: 'Waiting for review', short: 'To review', cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'ph-hourglass-medium' },
+      approved:  { label: 'Approved', short: 'Approved', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: 'ph-check-circle' },
+      pr:        { label: 'On Purchase Request', short: 'On PR', cls: 'bg-brand-50 text-brand-700 border-brand-200', icon: 'ph-shopping-cart' },
+      closed:    { label: 'Supplied', short: 'Supplied', cls: 'bg-slate-100 text-slate-700 border-slate-200', icon: 'ph-package' },
+      declined:  { label: 'Declined', short: 'Declined', cls: 'bg-rose-50 text-rose-700 border-rose-200', icon: 'ph-x-circle' },
+      cancelled: { label: 'Cancelled', short: 'Cancelled', cls: 'bg-slate-100 text-slate-500 border-slate-200', icon: 'ph-prohibit' }
+    };
+
+    function isCustodianDevice() { return !!(reqRole && reqRole.role === 'custodian'); }
+    function isTeacherDevice() { return !!(reqRole && reqRole.role === 'teacher'); }
+    function cloudConfigured() { return !!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.projectId && window.FIREBASE_CONFIG.apiKey); }
+    function saveReqRole() {
+      if (reqRole) localStorage.setItem(REQ_ROLE_KEY, JSON.stringify(reqRole));
+      else localStorage.removeItem(REQ_ROLE_KEY);
+    }
+    function tsMillis(v) {
+      if (!v) return 0;
+      if (typeof v === 'number') return v;
+      if (typeof v.toMillis === 'function') return v.toMillis();
+      if (typeof v.seconds === 'number') return v.seconds * 1000;
+      return 0;
+    }
+    const reqTime = r => r.clientAt || tsMillis(r.createdAt) || 0;
+    function localISODate(d = new Date()) {
+      const z = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+    }
+    const peso2 = n => Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    function reqVal(id) { return (document.getElementById(id)?.value || '').trim(); }
+
+    function cloudErrorText(err) {
+      const code = String((err && (err.code || err.message)) || err || '');
+      if (/not-configured/.test(code)) return 'Supply requests are not set up yet (firebase-config.js).';
+      if (/Could not load/.test(code)) return 'Could not load the sync module. Open the app once while online.';
+      if (/network-request-failed|unavailable|offline|Failed to fetch/i.test(code)) return 'No internet connection. Try again when you are online.';
+      if (/invalid-credential|wrong-password|user-not-found|invalid-login/.test(code)) return 'Wrong email or password.';
+      if (/email-already-in-use/.test(code)) return 'That email already has an account. Tap Sign in instead.';
+      if (/weak-password/.test(code)) return 'Use a password with at least 6 characters.';
+      if (/invalid-email/.test(code)) return 'That email address does not look right.';
+      if (/missing-password/.test(code)) return 'Enter your password.';
+      if (/operation-not-allowed|admin-restricted/.test(code)) return 'This sign-in method is turned off in Firebase. See README · Supply requests setup.';
+      if (/too-many-requests/.test(code)) return 'Too many tries. Wait a few minutes and try again.';
+      if (/unauthorized-domain/.test(code)) return 'This website is not on the Firebase authorized domains list (README step 3).';
+      if (/permission-denied|insufficient permissions/i.test(code)) return 'Firebase refused access. Check that firestore.rules is published (README).';
+      if (/popup-closed-by-user|cancelled-popup-request|user-cancelled/.test(code)) return 'Google sign-in was cancelled.';
+      if (/popup-blocked/.test(code)) return 'The Google sign-in window was blocked. Allow pop-ups for this site and try again.';
+      if (/account-exists-with-different-credential/.test(code)) return 'This email already signs in with a password. Use email and password instead.';
+      if (/credential-already-in-use/.test(code)) return 'That Google account is already used on another phone.';
+      if (/no-school/.test(code)) return 'This invite link is not valid. Ask the property custodian for a new one.';
+      return 'Something went wrong: ' + code.replace(/^Firebase:\s*/, '').slice(0, 140);
+    }
+
+    // Loads the SDK (cached after first use) and restores the signed-in user.
+    function cloudStart() {
+      if (cloud.ready) return cloud.ready;
+      cloud.ready = (async () => {
+        if (!cloudConfigured()) throw new Error('not-configured');
+        cloud.state = 'loading';
+        if (typeof FirebaseSDK === 'undefined') await loadScript('assets/cloud/firebase.js');
+        const F = cloud.sdk = FirebaseSDK;
+        const app = F.initializeApp(window.FIREBASE_CONFIG);
+        cloud.auth = F.getAuth(app);
+        try {
+          // Offline: requests are kept on the phone and sent when it reconnects.
+          cloud.db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) });
+        } catch (e) {
+          cloud.db = F.initializeFirestore(app, {});
+        }
+        await new Promise(resolve => {
+          let first = true;
+          F.onAuthStateChanged(cloud.auth, user => {
+            cloud.user = user;
+            if (first) { first = false; resolve(); }
+          });
+        });
+        // Coming back from a full-page Google sign-in (used only when pop-ups are not allowed).
+        if (localStorage.getItem(GOOGLE_PENDING_KEY)) {
+          try {
+            const res = await F.getRedirectResult(cloud.auth);
+            if (res && res.user) cloud.user = res.user;
+          } catch (err) {
+            localStorage.removeItem(GOOGLE_PENDING_KEY);
+            cloud.redirectError = cloudErrorText(err);
+          }
+        }
+        cloud.state = 'ready';
+        cloud.error = '';
+      })().catch(err => {
+        cloud.ready = null;
+        cloud.state = 'error';
+        cloud.error = cloudErrorText(err);
+        throw err;
+      });
+      return cloud.ready;
+    }
+
+    // ---- Google sign-in ------------------------------------------------------------
+    const GOOGLE_PENDING_KEY = 'custodian_google_pending_v1';
+    const GOOGLE_G = '<svg viewBox="0 0 48 48" class="w-5 h-5 shrink-0" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+    function googleProvider() {
+      const prov = new cloud.sdk.GoogleAuthProvider();
+      prov.setCustomParameters({ prompt: 'select_account' });
+      return prov;
+    }
+    const googleCancelled = err => /popup-closed-by-user|cancelled-popup-request|user-cancelled/.test(String(err && err.code));
+    // link: upgrade this phone's anonymous teacher account (same uid, so its requests stay).
+    // pending: what to finish after a full-page redirect, if the pop-up cannot open.
+    async function googleSignIn({ link = false, pending = null } = {}) {
+      const F = cloud.sdk;
+      if (!navigator.onLine) throw Object.assign(new Error('offline'), { code: 'auth/network-request-failed' });
+      const current = cloud.auth.currentUser;
+      try {
+        if (link && current && current.isAnonymous) {
+          try {
+            return (await F.linkWithPopup(current, googleProvider())).user;
+          } catch (err) {
+            // This Google account already belongs to another phone: sign in to it instead.
+            const cred = /credential-already-in-use/.test(String(err && err.code)) && F.GoogleAuthProvider.credentialFromError(err);
+            if (cred) return (await F.signInWithCredential(cloud.auth, cred)).user;
+            throw err;
+          }
+        }
+        if (current && !current.isAnonymous && current.providerData && current.providerData.some(pd => pd.providerId === 'google.com')) return current;
+        return (await F.signInWithPopup(cloud.auth, googleProvider())).user;
+      } catch (err) {
+        if (pending && /popup-blocked|operation-not-supported-in-this-environment/.test(String(err && err.code))) {
+          localStorage.setItem(GOOGLE_PENDING_KEY, JSON.stringify(pending));
+          await F.signInWithRedirect(cloud.auth, googleProvider());
+          return new Promise(() => {}); // the page navigates away
+        }
+        throw err;
+      }
+    }
+
+    function reqCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'requests'); }
+    function prCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'purchaseRequests'); }
+
+    // Writes go to the phone's queue at once; this only reports failures.
+    function cloudWrite(promise, what) {
+      promise.catch(err => {
+        console.error(what, err);
+        showToast(`${what} failed: ${cloudErrorText(err)}`, 'ph-warning');
+      });
+    }
+
+    function stopRequestSync() {
+      reqUnsubs.forEach(off => { try { off(); } catch (e) {} });
+      reqUnsubs = [];
+    }
+
+    function subscribeRequests() {
+      stopRequestSync();
+      if (!reqRole || !cloud.db || !cloud.user) return;
+      const F = cloud.sdk;
+      const q = isCustodianDevice() ? reqCol() : F.query(reqCol(), F.where('uid', '==', cloud.user.uid));
+      const onErr = err => { console.error('sync', err); cloud.error = cloudErrorText(err); renderRequestsEverywhere(); };
+      reqUnsubs.push(F.onSnapshot(q, { includeMetadataChanges: true }, snap => {
+        reqList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
+        reqList.sort((a, b) => reqTime(b) - reqTime(a));
+        cloud.error = '';
+        renderRequestsEverywhere();
+      }, onErr));
+      if (isCustodianDevice()) {
+        reqUnsubs.push(F.onSnapshot(prCol(), snap => {
+          prList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+          prList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
+          renderRequestsEverywhere();
+        }, onErr));
+      }
+    }
+
+    // A phone updating from an older version can load the previous firebase-config.js once
+    // (the old service worker answers before the new one takes over). Re-read it then.
+    async function refreshCloudConfig() {
+      if (cloudConfigured() || !navigator.onLine) return;
+      try { await loadScript(`firebase-config.js?fresh=${Date.now()}`); } catch (e) { return; }
+      if (!cloudConfigured()) return;
+      if (reqRole) {
+        try {
+          await cloudStart();
+          if (!cloud.user && isTeacherDevice()) {
+            await cloud.sdk.signInAnonymously(cloud.auth);
+            cloud.user = cloud.auth.currentUser;
+          }
+          if (cloud.user) subscribeRequests();
+        } catch (err) {
+          cloud.error = cloudErrorText(err);
+        }
+      }
+      renderRequestsEverywhere();
+    }
+
+    async function initSupplyRequests() {
+      if (!initSupplyRequests.wired) {
+        initSupplyRequests.wired = true;
+        if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange', refreshCloudConfig);
+        refreshCloudConfig();
+      }
+      window.addEventListener('online', renderRequestsEverywhere);
+      window.addEventListener('offline', renderRequestsEverywhere);
+      window.addEventListener('hashchange', checkJoinLink);
+      if (isTeacherDevice()) switchMainView('REQUESTER');
+      renderRequestsEverywhere();
+      checkJoinLink();
+      const pendingGoogle = (() => { try { return JSON.parse(localStorage.getItem(GOOGLE_PENDING_KEY) || 'null'); } catch (e) { return null; } })();
+      if ((!reqRole && !pendingGoogle) || !cloudConfigured()) return;
+      try {
+        await cloudStart();
+        if (pendingGoogle) {
+          localStorage.removeItem(GOOGLE_PENDING_KEY);
+          if (cloud.user && !cloud.user.isAnonymous && pendingGoogle.mode === 'custodian') {
+            openRequestsView();
+            await finishCustodianConnect(cloud.user, pendingGoogle.schoolName || '', msg => showToast(msg, 'ph-warning'));
+            return;
+          }
+          if (cloud.redirectError) showToast(cloud.redirectError, 'ph-warning');
+          if (!reqRole) { renderRequestsEverywhere(); return; }
+        }
+        if (!cloud.user && isTeacherDevice()) {
+          await cloud.sdk.signInAnonymously(cloud.auth);
+          cloud.user = cloud.auth.currentUser;
+        }
+        if (cloud.user) subscribeRequests();
+      } catch (err) {
+        cloud.error = cloudErrorText(err);
+      }
+      renderRequestsEverywhere();
+    }
+
+    function renderRequestsEverywhere() {
+      renderHomeReqCard();
+      if (activeMainView === 'REQUESTS') renderRequestsView();
+      if (activeMainView === 'REQUESTER') renderRequesterView();
+    }
+
+    const reqLinesOf = r => (r.review && Array.isArray(r.review.lines) ? r.review.lines : (r.lines || []));
+    const reqBuyLines = r => (r.review && Array.isArray(r.review.lines) ? r.review.lines : []).filter(l => l.prQty > 0);
+    const reqBuyTotal = r => reqBuyLines(r).reduce((n, l) => n + l.prQty * (l.unitCost || 0), 0);
+    const reqWho = r => [r.position, r.office].filter(Boolean).join(' · ');
+
+    // ---- Home card (custodian devices) -----------------------------------------
+    function renderHomeReqCard() {
+      const sub = document.getElementById('homeReqSub');
+      if (!sub) return;
+      const pending = reqList.filter(r => r.status === 'pending').length;
+      const toBuy = reqList.filter(r => r.status === 'approved' && reqBuyLines(r).length).length;
+      let text;
+      if (!cloudConfigured()) text = 'Teachers request supplies from their phones · set up';
+      else if (!isCustodianDevice()) text = 'Connect to receive teachers’ requests';
+      else if (cloud.state === 'ready' && !cloud.user) text = 'Signed out · sign in to see requests';
+      else if (pending || toBuy) text = [pending && `${pending} waiting for review`, toBuy && `${toBuy} approved to purchase`].filter(Boolean).join(' · ');
+      else text = cloud.state === 'loading' ? 'Connecting…' : 'No new requests';
+      sub.textContent = text;
+      const badge = document.getElementById('homeReqBadge');
+      badge.textContent = pending > 99 ? '99+' : pending;
+      badge.classList.toggle('hidden', !pending);
+      badge.classList.toggle('flex', !!pending);
+    }
+
+    function openRequestsView() {
+      switchMainView('REQUESTS');
+      if (isCustodianDevice() && cloud.state === 'idle' && cloudConfigured()) {
+        cloudStart().then(() => { if (cloud.user) subscribeRequests(); }).catch(() => {}).finally(renderRequestsEverywhere);
+        renderRequestsView();
+      }
+    }
+
+    // ---- Custodian screen --------------------------------------------------------
+    function renderRequestsView() {
+      const body = document.getElementById('reqViewBody');
+      if (!body) return;
+      const connected = isCustodianDevice() && cloud.user;
+      document.getElementById('reqViewActions').classList.toggle('hidden', !connected);
+      document.getElementById('reqViewActions').classList.toggle('flex', !!connected);
+      // Signed out: sign-in + "How it works" side by side on wide screens.
+      document.getElementById('viewRequests').classList.toggle('lg:max-w-4xl', !connected);
+      document.getElementById('viewRequests').classList.toggle('lg:max-w-3xl', !!connected);
+      const status = document.getElementById('reqViewStatus');
+      const chip = (cls, icon, text) => { status.className = `shrink-0 mt-6 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold ${cls}`; status.innerHTML = `<i class="ph-bold ${icon}"></i> ${text}`; };
+      if (connected) status.classList.add('hidden');
+      else if (!cloudConfigured()) chip('bg-amber-50 border-amber-200 text-amber-700', 'ph-wrench', 'Setup needed');
+      else if (isCustodianDevice()) chip('bg-slate-100 border-slate-200 text-slate-600', 'ph-circle-notch animate-spin', 'Connecting');
+      else chip('bg-slate-100 border-slate-200 text-slate-600', 'ph-plugs', 'Not connected');
+      document.getElementById('reqViewSchool').textContent = isCustodianDevice()
+        ? `${reqRole.schoolName}${reqRole.email ? ` · ${reqRole.email}` : ''}` : 'Teachers request · you review, approve and prepare the Purchase Request';
+      if (!cloudConfigured()) { body.innerHTML = reqSignedOutLayout(reqSetupHTML(), false); return; }
+      if (isCustodianDevice() && (cloud.state === 'idle' || cloud.state === 'loading')) {
+        body.innerHTML = `<div class="rounded-2xl bg-white border border-slate-200 p-6 text-center text-sm text-slate-500"><i class="ph-bold ph-circle-notch animate-spin text-2xl text-brand-500"></i><p class="mt-2">Connecting to ${escapeHTML(reqRole.schoolName)}…</p></div>`;
+        return;
+      }
+      if (!connected) { body.innerHTML = reqSignedOutLayout(reqConnectHTML(), true); if (navigator.onLine) cloudStart().catch(() => {}); return; }
+
+      const pending = reqList.filter(r => r.status === 'pending');
+      const approved = reqList.filter(r => r.status === 'approved');
+      const closed = reqList.filter(r => ['declined', 'cancelled', 'closed', 'pr'].includes(r.status));
+      const counts = { pending: pending.length, approved: approved.length, prs: prList.length, closed: closed.length };
+      let html = `
+        ${cloud.error ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2">${escapeHTML(cloud.error)}</p>` : ''}
+        ${!navigator.onLine ? `<p class="rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-cloud-slash"></i> Offline · showing saved requests. Your changes are sent when you reconnect.</p>` : ''}
+        ${reqFlowHTML(counts)}
+        <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1 pt-1">${REQ_STAGES.find(st => st.key === reqTab).title}</h2>`;
+
+      if (reqTab === 'pending') {
+        html += pending.length ? pending.map(r => reqCardHTML(r)).join('')
+          : reqEmptyHTML('ph-tray', 'No requests waiting', 'New requests from teachers appear here. Tap Invite to send them the link.');
+      } else if (reqTab === 'approved') {
+        const buy = approved.filter(r => reqBuyLines(r).length);
+        const stockOnly = approved.filter(r => !reqBuyLines(r).length);
+        const picked = buy.filter(r => !reqUnpicked.has(r.id));
+        const total = picked.reduce((n, r) => n + reqBuyTotal(r), 0);
+        html += buy.length ? `
+          <p class="text-xs text-slate-500 px-1">Tick the requests to put on one Purchase Request. Items are added together.</p>
+          ${buy.map(r => reqCardHTML(r, { pick: true })).join('')}
+          <div class="sticky bottom-20 z-10" data-toast-avoid>
+            <button id="prPrepareBtn" onclick="openPrFromPicked()" ${picked.length ? '' : 'disabled'} class="w-full h-14 rounded-2xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white font-extrabold text-sm shadow-lg flex items-center justify-center gap-2">
+              <i class="ph-bold ph-file-plus text-lg"></i> Prepare Purchase Request · ${plural(picked.length, 'request')} · ₱${peso2(total)}
+            </button>
+          </div>` : '';
+        html += stockOnly.length ? `
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1 pt-2">All in stock · nothing to buy</p>
+          ${stockOnly.map(r => reqCardHTML(r, { supply: true })).join('')}` : '';
+        if (!approved.length) html += reqEmptyHTML('ph-shopping-cart', 'Nothing to purchase', 'Approved requests wait here until you put them on a Purchase Request.');
+      } else if (reqTab === 'prs') {
+        html += prList.length ? prList.map(prCardHTML).join('')
+          : reqEmptyHTML('ph-file-text', 'No Purchase Requests yet', 'Approve requests, then prepare a PR from the To purchase tab.');
+      } else {
+        html += closed.length ? closed.map(r => reqCardHTML(r)).join('') : reqEmptyHTML('ph-archive', 'Nothing here yet', 'Requests on a PR, supplied, declined or cancelled.');
+      }
+      html += `<button onclick="custodianSignOut()" class="text-[11px] font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 px-1 pt-2"><i class="ph-bold ph-sign-out"></i> Sign out of supply requests</button>`;
+      body.innerHTML = html;
+      placeToast();
+    }
+
+    // The four stages a request moves through; on the custodian screen they are the tabs.
+    const REQ_STAGES = [
+      { key: 'pending',  n: 1, label: 'To review',         title: 'Waiting for your review',      icon: 'ph-tray',          tone: 'amber',
+        hint: 'from teachers', how: 'Teachers send requests from their phones with your invite link. No account needed.' },
+      { key: 'approved', n: 2, label: 'To purchase',       title: 'Approved · ready for a Purchase Request', icon: 'ph-check-circle', tone: 'emerald',
+        hint: 'approved', how: 'Check each line against stock (asked, on hand, to buy), fix names, quantities and costs, then approve or decline.' },
+      { key: 'prs',      n: 3, label: 'Purchase requests', title: 'Purchase Requests (Appendix 60)', icon: 'ph-file-text',   tone: 'brand',
+        hint: 'Appendix 60', how: 'Combine approved requests into one PR. Only what is not in stock is bought. Print or export to CSV.' },
+      { key: 'closed',   n: 4, label: 'Closed',            title: 'Supplied, declined or cancelled', icon: 'ph-archive',     tone: 'slate',
+        hint: 'supplied · declined', how: 'Mark items delivered. Teachers see every status and your notes right away.' }
+    ];
+    const REQ_TONE = {
+      amber: 'bg-amber-50 text-amber-600', emerald: 'bg-emerald-50 text-emerald-600',
+      brand: 'bg-brand-50 text-brand-600', slate: 'bg-slate-100 text-slate-500'
+    };
+
+    function reqFlowHTML(counts) {
+      return `<nav aria-label="Request stages" class="grid grid-cols-2 sm:grid-cols-4 gap-2">${REQ_STAGES.map(st => {
+        const on = reqTab === st.key;
+        const n = counts[st.key] || 0;
+        const alert = st.key === 'pending' && n;
+        return `
+          <button onclick="setReqTab('${st.key}')" aria-current="${on ? 'page' : 'false'}" class="req-stage relative text-left rounded-2xl border p-3 transition ${on ? 'bg-white border-brand-400 ring-2 ring-brand-500/15 shadow-sm' : 'bg-white/60 border-slate-200 hover:bg-white hover:border-slate-300'}">
+            <span class="flex items-center justify-between gap-2">
+              <span class="w-8 h-8 rounded-lg ${REQ_TONE[st.tone]} flex items-center justify-center"><i class="ph-bold ${st.icon} text-lg"></i></span>
+              <span class="text-2xl font-extrabold font-mono ${alert ? 'text-rose-600' : on ? 'text-slate-900' : 'text-slate-400'}">${n}</span>
+            </span>
+            <span class="mt-2 block text-[13px] font-extrabold ${on ? 'text-slate-900' : 'text-slate-700'} leading-tight">${st.label}</span>
+            <span class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide">${st.n} · ${st.hint}</span>
+            ${alert ? '<span class="absolute top-2 left-2 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>' : ''}
+          </button>`;
+      }).join('')}</nav>`;
+    }
+
+    function reqHowItWorksHTML() {
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
+          <p class="text-sm font-extrabold text-slate-900">How it works</p>
+          <p class="text-xs text-slate-500">From a teacher’s request to a signed Purchase Request.</p>
+          <ol class="mt-4 space-y-0">${REQ_STAGES.map((st, i) => `
+            <li class="flex gap-3">
+              <span class="flex flex-col items-center">
+                <span class="w-9 h-9 shrink-0 rounded-xl ${REQ_TONE[st.tone]} flex items-center justify-center"><i class="ph-bold ${st.icon} text-lg"></i></span>
+                ${i < REQ_STAGES.length - 1 ? '<span class="w-px flex-1 bg-slate-200 my-1"></span>' : ''}
+              </span>
+              <span class="pb-4">
+                <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Step ${st.n} · ${st.label}</span>
+                <span class="block text-xs text-slate-600 leading-relaxed">${st.how}</span>
+              </span>
+            </li>`).join('')}
+          </ol>
+        </div>`;
+    }
+
+    // Signed out (or not set up): the main card on the left, how it works + teachers on the right.
+    function reqSignedOutLayout(mainHTML, withTeacher) {
+      return `
+        <div class="grid gap-4 lg:grid-cols-5 lg:items-start">
+          <div class="lg:col-span-3 space-y-4">${mainHTML}</div>
+          <div class="lg:col-span-2 space-y-4">
+            ${reqHowItWorksHTML()}
+            ${withTeacher ? reqTeacherCardHTML() : ''}
+          </div>
+        </div>`;
+    }
+
+    function reqTeacherCardHTML() {
+      return `
+        <div class="rounded-2xl bg-amber-50 border border-amber-200 p-4 space-y-2">
+          <p class="text-sm font-extrabold text-amber-900 flex items-center gap-2"><i class="ph-bold ph-chalkboard-teacher"></i> Are you a teacher?</p>
+          <p class="text-xs text-amber-800">Open the invite link your property custodian shared, or type the school code:</p>
+          <div class="flex gap-2">
+            <input id="rcCode" type="text" autocomplete="off" spellcheck="false" placeholder="School code" class="flex-1 min-w-0 h-10 px-3 rounded-xl border border-amber-300 bg-white text-sm font-mono focus:border-amber-500 outline-none">
+            <button onclick="openJoin(reqVal('rcCode'))" class="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-extrabold">Join</button>
+          </div>
+        </div>`;
+    }
+
+    function setReqTab(tab) {
+      reqTab = tab;
+      renderRequestsView();
+    }
+
+    function reqEmptyHTML(icon, title, text) {
+      return `<div class="rounded-2xl bg-white border border-slate-200 p-6 text-center">
+        <i class="ph-bold ${icon} text-3xl text-slate-300"></i>
+        <p class="mt-1 text-sm font-bold text-slate-700">${title}</p>
+        <p class="text-xs text-slate-500">${text}</p></div>`;
+    }
+
+    function reqStatusChip(r) {
+      const st = REQ_STATUS[r.status] || REQ_STATUS.pending;
+      return `<span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold ${st.cls}"><i class="ph-bold ${st.icon}"></i>${r.status === 'pr' && r.prNo ? `PR ${escapeHTML(r.prNo)}` : st.short}</span>`;
+    }
+
+    function reqCardHTML(r, { pick = false, supply = false } = {}) {
+      const lines = reqLinesOf(r);
+      const reviewed = !!(r.review && r.review.lines);
+      const summary = lines.slice(0, 3).map(l => `${reviewed ? l.approved : l.qty} ${escapeHTML(l.unit || '')} ${escapeHTML(l.desc)}`).join(' · ') + (lines.length > 3 ? ` · +${lines.length - 3} more` : '');
+      const buy = reqBuyLines(r);
+      const picked = pick && !reqUnpicked.has(r.id);
+      return `
+        <div class="rounded-2xl bg-white border ${picked ? 'border-brand-300 ring-2 ring-brand-500/10' : 'border-slate-200'} shadow-sm flex items-stretch overflow-hidden">
+          ${pick ? `<label class="shrink-0 w-12 flex items-center justify-center border-r border-slate-100 cursor-pointer"><input type="checkbox" ${picked ? 'checked' : ''} onchange="toggleReqPick('${r.id}', this.checked)" class="w-5 h-5 accent-brand-600" aria-label="Put on the Purchase Request"></label>` : ''}
+          <button onclick="openReview('${r.id}')" class="flex-1 min-w-0 p-3 text-left hover:bg-slate-50">
+            <span class="flex items-start justify-between gap-2">
+              <span class="min-w-0">
+                <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(r.name || 'Unnamed')}</span>
+                <span class="block text-[11px] text-slate-500 truncate">${escapeHTML(reqWho(r) || '—')} · ${escapeHTML(formatTimeAgo(reqTime(r)))}${r.neededBy ? ` · needed ${escapeHTML(formatShortDate(r.neededBy + 'T00:00:00'))}` : ''}</span>
+              </span>
+              ${reqStatusChip(r)}
+            </span>
+            <span class="block mt-1.5 text-xs text-slate-700 line-clamp-2">${summary}</span>
+            ${r.purpose ? `<span class="block mt-1 text-[11px] text-slate-500 truncate">Purpose: ${escapeHTML(r.purpose)}</span>` : ''}
+            ${pick ? `<span class="block mt-1.5 text-[11px] font-bold text-brand-700">To buy: ${plural(buy.length, 'item')} · ₱${peso2(reqBuyTotal(r))}</span>` : ''}
+            ${r.status === 'declined' && r.declineReason ? `<span class="block mt-1 text-[11px] text-rose-600">Reason: ${escapeHTML(r.declineReason)}</span>` : ''}
+          </button>
+          ${supply ? `<button onclick="markReqSupplied('${r.id}')" class="shrink-0 px-3 border-l border-slate-100 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50">Mark<br>supplied</button>` : ''}
+        </div>`;
+    }
+
+    function toggleReqPick(id, on) {
+      if (on) reqUnpicked.delete(id); else reqUnpicked.add(id);
+      renderRequestsView();
+    }
+
+    function prCardHTML(pr) {
+      const mine = reqList.filter(r => (pr.requestIds || []).includes(r.id));
+      const waiting = mine.filter(r => r.status === 'pr').length;
+      const delivered = !waiting && mine.length && mine.every(r => r.status === 'closed');
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-slate-900">PR No. <span class="font-mono">${escapeHTML(pr.prNo)}</span></p>
+              <p class="text-[11px] text-slate-500 truncate">${escapeHTML(pr.date ? formatShortDate(pr.date + 'T00:00:00') : '')} · ${plural((pr.lines || []).length, 'item')} · ${plural((pr.requestIds || []).length, 'request')}</p>
+            </div>
+            <p class="shrink-0 text-sm font-extrabold font-mono text-slate-900">₱${peso2(pr.total)}</p>
+          </div>
+          <p class="mt-1 text-[11px] text-slate-500 line-clamp-2">${escapeHTML(pr.purpose || '')}</p>
+          <div class="mt-2 flex gap-2">
+            <button onclick="printPrById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print</button>
+            <button onclick="exportPrCSVById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-file-csv"></i> CSV</button>
+            ${waiting ? `<button onclick="markPrDelivered('${pr.id}')" class="ml-auto h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white flex items-center gap-1.5"><i class="ph-bold ph-package"></i> Items delivered</button>`
+              : delivered ? `<span class="ml-auto h-9 px-2 text-xs font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Delivered</span>` : ''}
+          </div>
+        </div>`;
+    }
+
+    function reqSetupHTML() {
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3">
+          <div class="flex items-center gap-3">
+            <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="ph-bold ph-cloud-arrow-up text-2xl"></i></span>
+            <div><p class="text-sm font-extrabold text-slate-900">One-time setup needed</p><p class="text-xs text-slate-500">Requests travel between phones through your school’s free Firebase project.</p></div>
+          </div>
+          <ol class="list-decimal pl-5 text-xs text-slate-600 space-y-1">
+            <li>Create a Firebase project; turn on <b>Google</b>, <b>Email/Password</b> and <b>Anonymous</b> sign-in and <b>Firestore</b>.</li>
+            <li>Publish the rules from <span class="font-mono">firestore.rules</span>.</li>
+            <li>Paste the web app settings into <span class="font-mono">firebase-config.js</span> and commit.</li>
+          </ol>
+          <p class="text-xs text-slate-500">Step-by-step guide: README → <b>Supply requests</b>. Everything else in the app keeps working without it.</p>
+        </div>`;
+    }
+
+    function reqConnectHTML() {
+      const school = escapeHTML((reqRole && reqRole.schoolName) || schoolInfo.school || '');
+      const email = escapeHTML((reqRole && reqRole.email) || '');
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3">
+          <div class="flex items-center gap-3">
+            <span class="w-11 h-11 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-identification-badge text-2xl"></i></span>
+            <div>
+              <p class="text-sm font-extrabold text-slate-900">Property custodian sign-in</p>
+              <p class="text-xs text-slate-500">Receive your teachers’ requests. The first sign-in sets up your school.</p>
+            </div>
+          </div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">School (first sign-in only)
+            <input id="rcSchool" type="text" value="${school}" placeholder="School name" class="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium normal-case tracking-normal text-slate-900 focus:border-brand-500 outline-none">
+          </label>
+          <button id="rcGoogle" onclick="custodianGoogle()" class="w-full h-12 rounded-xl bg-white border-2 border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-800 text-sm font-extrabold flex items-center justify-center gap-2.5 shadow-sm">
+            ${GOOGLE_G} Continue with Google
+          </button>
+          <p id="rcError" class="hidden text-xs font-semibold text-rose-600"></p>
+          ${navigator.onLine ? '' : '<p class="text-xs font-semibold text-slate-500 flex items-center gap-1.5"><i class="ph-bold ph-cloud-slash"></i> Signing in needs internet once. After that, requests work offline.</p>'}
+          <div class="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider text-slate-400"><span class="flex-1 h-px bg-slate-200"></span>or with email<span class="flex-1 h-px bg-slate-200"></span></div>
+          <input id="rcEmail" type="email" value="${email}" autocomplete="username" placeholder="Email" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
+          <input id="rcPass" type="password" autocomplete="current-password" placeholder="Password (6+ characters)" onkeydown="if (event.key === 'Enter') custodianConnect(false)" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
+          <div class="grid grid-cols-2 gap-2">
+            <button id="rcSignIn" onclick="custodianConnect(false)" class="h-11 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-extrabold">Sign in</button>
+            <button id="rcCreate" onclick="custodianConnect(true)" class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-800 text-sm font-bold">Create account</button>
+          </div>
+          <button onclick="custodianResetPassword()" class="text-[11px] font-bold text-slate-500 hover:text-slate-800">Forgot password?</button>
+        </div>
+`;
+    }
+
+    async function custodianConnect(create) {
+      const email = reqVal('rcEmail');
+      const pass = document.getElementById('rcPass').value;
+      const schoolName = reqVal('rcSchool');
+      const errEl = document.getElementById('rcError');
+      const btns = ['rcSignIn', 'rcCreate', 'rcGoogle'].map(id => document.getElementById(id));
+      const busy = on => btns.forEach(b => { if (b) b.disabled = on; });
+      const fail = msg => { errEl.textContent = msg; errEl.classList.remove('hidden'); busy(false); };
+      errEl.classList.add('hidden');
+      if (!email || !pass) return fail('Enter your email and password.');
+      if (create && !schoolName) return fail('Enter the school name first.');
+      busy(true);
+      try {
+        await cloudStart();
+        const F = cloud.sdk;
+        const cred = create
+          ? await F.createUserWithEmailAndPassword(cloud.auth, email, pass)
+          : await F.signInWithEmailAndPassword(cloud.auth, email, pass);
+        await finishCustodianConnect(cred.user, schoolName, fail);
+      } catch (err) {
+        fail(cloudErrorText(err));
+      }
+    }
+
+    async function custodianGoogle() {
+      const errEl = document.getElementById('rcError');
+      const btns = ['rcSignIn', 'rcCreate', 'rcGoogle'].map(id => document.getElementById(id));
+      const busy = on => btns.forEach(b => { if (b) b.disabled = on; });
+      const fail = msg => { errEl.textContent = msg; errEl.classList.remove('hidden'); busy(false); };
+      const schoolName = reqVal('rcSchool');
+      errEl.classList.add('hidden');
+      busy(true);
+      try {
+        await cloudStart();
+        const user = await googleSignIn({ pending: { mode: 'custodian', schoolName } });
+        await finishCustodianConnect(user, schoolName, fail);
+      } catch (err) {
+        if (googleCancelled(err)) { busy(false); return; }
+        fail(cloudErrorText(err));
+      }
+    }
+
+    // Signed in (email or Google): find this custodian's school, or create it.
+    async function finishCustodianConnect(user, schoolName, fail) {
+      const F = cloud.sdk;
+      cloud.user = user;
+      const uid = user.uid;
+      const email = user.email || '';
+      const found = await F.getDocs(F.query(F.collection(cloud.db, 'schools'), F.where('custodians', 'array-contains', uid)));
+      let schoolId, name;
+      if (found.docs.length) {
+        schoolId = found.docs[0].id;
+        name = found.docs[0].data().name;
+      } else {
+        if (!schoolName) schoolName = (prompt('Name of your school (teachers will see this):', schoolInfo.school || '') || '').trim();
+        if (!schoolName) return fail('No school is linked to this account yet. Enter the school name and try again.');
+        const ref = F.doc(F.collection(cloud.db, 'schools'));
+        await F.setDoc(ref, { name: schoolName.slice(0, 120), ownerUid: uid, custodians: [uid], createdAt: F.serverTimestamp() });
+        schoolId = ref.id;
+        name = schoolName;
+      }
+      reqRole = { role: 'custodian', schoolId, schoolName: name, email };
+      saveReqRole();
+      if (!schoolInfo.school) {
+        schoolInfo.school = name;
+        localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+        updateSchoolHeader();
+      }
+      logHistory('system', `Connected supply requests for ${name} (${email})`);
+      subscribeRequests();
+      renderRequestsEverywhere();
+      showToast(found.docs.length ? `Connected to ${name}` : `${name} is ready · invite your teachers`, 'ph-cloud-check');
+      if (!found.docs.length) openInvite();
+    }
+
+    async function custodianResetPassword() {
+      const email = reqVal('rcEmail');
+      if (!email) { alert('Type your email first, then tap Forgot password.'); return; }
+      try {
+        await cloudStart();
+        await cloud.sdk.sendPasswordResetEmail(cloud.auth, email);
+        showToast(`Password reset email sent to ${email}`, 'ph-envelope');
+      } catch (err) {
+        alert(cloudErrorText(err));
+      }
+    }
+
+    async function custodianSignOut() {
+      if (!confirm('Sign out of supply requests on this device? Requests stay safe online; sign in again to see them.')) return;
+      stopRequestSync();
+      try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
+      cloud.user = null;
+      const email = reqRole && reqRole.email;
+      reqRole = null;
+      saveReqRole();
+      reqList = []; prList = [];
+      renderRequestsEverywhere();
+      if (email) setTimeout(() => { const el = document.getElementById('rcEmail'); if (el) el.value = email; }, 0);
+    }
+
+    // ---- Invite + join ---------------------------------------------------------
+    function inviteLink() {
+      return `${location.origin}${location.pathname}#join=${reqRole.schoolId}`;
+    }
+
+    async function openInvite() {
+      if (!isCustodianDevice()) return;
+      const link = inviteLink();
+      document.getElementById('inviteLink').value = link;
+      document.getElementById('inviteModal').classList.remove('hidden');
+      const box = document.getElementById('inviteQr');
+      try {
+        if (typeof qrcode !== 'function') await loadScript('assets/vendor/qrcode.js');
+        box.innerHTML = qrSVG(link);
+      } catch (e) {
+        box.textContent = 'QR code needs the app to be opened online once.';
+      }
+    }
+    function closeInvite() { document.getElementById('inviteModal').classList.add('hidden'); }
+    async function copyInvite() {
+      const link = document.getElementById('inviteLink').value;
+      try { await navigator.clipboard.writeText(link); }
+      catch (e) { const el = document.getElementById('inviteLink'); el.select(); document.execCommand('copy'); }
+      showToast('Invite link copied · paste it in your faculty chat', 'ph-copy');
+    }
+    async function shareInvite() {
+      const url = document.getElementById('inviteLink').value;
+      const data = { title: `${reqRole.schoolName} supply requests`, text: `Request school supplies from ${reqRole.schoolName}'s property custodian:`, url };
+      if (navigator.share) { try { await navigator.share(data); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+      copyInvite();
+    }
+
+    function checkJoinLink() {
+      const m = location.hash.match(/[#&]join=([A-Za-z0-9_-]{6,64})/);
+      if (!m) return;
+      history.replaceState(null, '', location.pathname + location.search);
+      openJoin(m[1]);
+    }
+
+    async function openJoin(schoolId, edit = false) {
+      schoolId = String(schoolId || '').trim();
+      if (!/^[A-Za-z0-9_-]{6,64}$/.test(schoolId)) { showToast('That school code does not look right', 'ph-warning'); return; }
+      if (isCustodianDevice() && reqRole.schoolId === schoolId) { showToast('This is your own school’s invite link · share it with your teachers', 'ph-info'); return; }
+      if (!edit && isCustodianDevice() &&
+          !confirm(`This device is signed in as the property custodian of ${reqRole.schoolName}. Use it to request supplies as a teacher instead?`)) return;
+      joinState = { schoolId, schoolName: '', edit };
+      const me = (isTeacherDevice() && reqRole.me) || {};
+      document.getElementById('joinName').value = me.name || '';
+      document.getElementById('joinPosition').value = me.position || '';
+      document.getElementById('joinOffice').value = me.office || '';
+      document.getElementById('joinError').classList.add('hidden');
+      document.getElementById('joinBtnLabel').textContent = edit ? 'Save' : 'Continue';
+      document.getElementById('joinGoogleWrap').classList.toggle('hidden', edit);
+      document.getElementById('joinSchool').textContent = edit ? reqRole.schoolName : 'Connecting…';
+      document.getElementById('joinModal').classList.remove('hidden');
+      if (edit) return;
+      const btn = document.getElementById('joinBtn');
+      const gBtn = document.getElementById('joinGoogleBtn');
+      btn.disabled = gBtn.disabled = true;
+      try {
+        await cloudStart();
+        const F = cloud.sdk;
+        if (isCustodianDevice()) { stopRequestSync(); await F.signOut(cloud.auth); cloud.user = null; }
+        if (!cloud.user) cloud.user = (await F.signInAnonymously(cloud.auth)).user;
+        const snap = await F.getDoc(F.doc(cloud.db, 'schools', schoolId));
+        if (!snap.exists()) throw new Error('no-school');
+        joinState.schoolName = snap.data().name || 'School';
+        document.getElementById('joinSchool').textContent = joinState.schoolName;
+        btn.disabled = gBtn.disabled = false;
+        setTimeout(() => document.getElementById('joinName').focus(), 50);
+      } catch (err) {
+        document.getElementById('joinSchool').textContent = 'Could not connect';
+        const e = document.getElementById('joinError');
+        e.textContent = cloudErrorText(err);
+        e.classList.remove('hidden');
+      }
+    }
+    function closeJoin() { joinState = null; document.getElementById('joinModal').classList.add('hidden'); }
+
+    function submitJoin() {
+      if (!joinState) return;
+      const me = { name: reqVal('joinName'), position: reqVal('joinPosition'), office: reqVal('joinOffice') };
+      if (!me.name) {
+        const e = document.getElementById('joinError');
+        e.textContent = 'Type your name so the custodian knows who is asking.';
+        e.classList.remove('hidden');
+        return;
+      }
+      const joining = !joinState.edit;
+      if (joining) reqRole = { role: 'teacher', schoolId: joinState.schoolId, schoolName: joinState.schoolName, me, email: joinState.email || '' };
+      else reqRole.me = me;
+      saveReqRole();
+      closeJoin();
+      if (joining) subscribeRequests();
+      switchMainView('REQUESTER');
+      showToast(`Hi ${me.name.split(' ')[0]}! Tap New supply request to ask for supplies.`, 'ph-hand-waving');
+    }
+
+    async function joinWithGoogle() {
+      if (!joinState || joinState.edit) return;
+      const errEl = document.getElementById('joinError');
+      const btns = [document.getElementById('joinBtn'), document.getElementById('joinGoogleBtn')];
+      errEl.classList.add('hidden');
+      btns.forEach(b => b.disabled = true);
+      try {
+        const user = await googleSignIn({ link: true });
+        cloud.user = user;
+        joinState.email = user.email || '';
+        const nameEl = document.getElementById('joinName');
+        if (!nameEl.value.trim() && user.displayName) nameEl.value = user.displayName;
+        btns.forEach(b => b.disabled = false);
+        if (!nameEl.value.trim()) { nameEl.focus(); return; }
+        submitJoin();
+      } catch (err) {
+        btns.forEach(b => b.disabled = false);
+        if (googleCancelled(err)) return;
+        errEl.textContent = cloudErrorText(err);
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    // Teacher phone that joined without Google: link it later (same account, nothing lost).
+    async function teacherLinkGoogle() {
+      if (!isTeacherDevice() || !cloud.user) return;
+      try {
+        const before = cloud.user.uid;
+        const user = await googleSignIn({ link: true });
+        cloud.user = user;
+        reqRole.email = user.email || '';
+        saveReqRole();
+        if (user.uid !== before) subscribeRequests(); // this Google account was set up on another phone
+        renderRequesterView();
+        showToast(`Signed in as ${user.email || 'your Google account'}`, 'ph-check-circle');
+      } catch (err) {
+        if (!googleCancelled(err)) showToast(cloudErrorText(err), 'ph-warning');
+      }
+    }
+
+    // ---- Teacher screen --------------------------------------------------------
+    function editMyDetails() { if (isTeacherDevice()) openJoin(reqRole.schoolId, true); }
+
+    async function leaveSchool() {
+      if (!confirm(`Stop requesting supplies from ${reqRole.schoolName} on this phone? Your sent requests stay with the custodian.`)) return;
+      stopRequestSync();
+      try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
+      cloud.user = null;
+      reqRole = null;
+      saveReqRole();
+      reqList = [];
+      switchMainView('HOME');
+      updateSchoolHeader();
+    }
+
+    function renderRequesterView() {
+      if (!isTeacherDevice()) return;
+      const me = reqRole.me || {};
+      document.getElementById('rqHello').textContent = `Hi ${me.name ? me.name.split(' ')[0] : 'there'}`;
+      document.getElementById('rqSchool').textContent = `To the property custodian of ${reqRole.schoolName}`;
+      const acct = document.getElementById('rqAccount');
+      if (acct) {
+        const u = cloud.user;
+        acct.innerHTML = u && !u.isAnonymous && u.email
+          ? `<span class="flex items-center gap-1.5 text-slate-400">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} ${escapeHTML(u.email)}</span>`
+          : u ? `<button onclick="teacherLinkGoogle()" class="font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} Sign in with Google to keep your requests if you change phones</button>` : '';
+      }
+      document.getElementById('headerSchoolName').textContent = reqRole.schoolName;
+      const sync = document.getElementById('rqSync');
+      const msg = cloud.error || (!navigator.onLine ? 'You are offline. New requests are sent automatically when you reconnect.' : '');
+      sync.innerHTML = msg ? `<i class="ph-bold ${cloud.error ? 'ph-warning text-rose-500' : 'ph-cloud-slash'}"></i> ${escapeHTML(msg)}` : '';
+      sync.classList.toggle('hidden', !msg);
+      sync.classList.toggle('flex', !!msg);
+      const list = document.getElementById('rqList');
+      list.innerHTML = reqList.length ? reqList.map(teacherReqCardHTML).join('') : `
+        <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
+          <i class="ph-bold ph-paper-plane-tilt text-3xl text-slate-300"></i>
+          <p class="mt-1 font-bold text-slate-700 text-sm">No requests yet</p>
+          <p>Your requests and their status show up here.</p>
+        </div>`;
+    }
+
+    function teacherReqCardHTML(r) {
+      const reviewed = !!(r.review && r.review.lines);
+      const lines = reqLinesOf(r).map(l => {
+        const asked = reviewed ? l.requested : l.qty;
+        const ok = reviewed ? l.approved : null;
+        const qtyText = ok === null ? `${asked}` : ok === asked ? `${ok}` : `<span class="line-through text-slate-400">${asked}</span> ${ok}`;
+        return `<li class="flex justify-between gap-3"><span class="min-w-0 truncate">${escapeHTML(l.desc)}</span><span class="shrink-0 font-mono font-bold">${qtyText} <span class="font-sans font-medium text-slate-400">${escapeHTML(l.unit || '')}</span></span></li>`;
+      }).join('');
+      const st = REQ_STATUS[r.status] || REQ_STATUS.pending;
+      const note = r.status === 'declined' ? (r.declineReason || '') : (r.review && r.review.note) || '';
+      const info = r.sending ? '<i class="ph-bold ph-cloud-arrow-up"></i> Sending…'
+        : r.status === 'pr' ? `Being purchased · PR No. ${escapeHTML(r.prNo || '')}`
+        : r.status === 'closed' ? 'Ready · get it from the property custodian'
+        : r.status === 'approved' ? 'Approved by the property custodian' : st.label;
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="text-xs font-bold text-slate-900">${escapeHTML(formatShortDate(reqTime(r)))}${r.neededBy ? ` · needed ${escapeHTML(formatShortDate(r.neededBy + 'T00:00:00'))}` : ''}</p>
+              <p class="text-[11px] text-slate-500 flex items-center gap-1">${info}</p>
+            </div>
+            ${reqStatusChip(r)}
+          </div>
+          <ul class="text-xs text-slate-700 space-y-0.5">${lines}</ul>
+          ${note ? `<p class="rounded-lg ${r.status === 'declined' ? 'bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-600'} text-[11px] px-2.5 py-1.5"><b>Custodian:</b> ${escapeHTML(note)}</p>` : ''}
+          ${r.status === 'pending' && !r.sending ? `<button onclick="cancelMyRequest('${r.id}')" class="text-[11px] font-bold text-slate-400 hover:text-rose-600">Cancel request</button>` : ''}
+        </div>`;
+    }
+
+    function cancelMyRequest(id) {
+      if (!confirm('Cancel this request?')) return;
+      const F = cloud.sdk;
+      cloudWrite(F.updateDoc(F.doc(reqCol(), id), { status: 'cancelled', updatedAt: F.serverTimestamp() }), 'Cancelling');
+      showToast('Request cancelled', 'ph-prohibit');
+    }
+
+    // ---- New request form (teacher, or custodian for a walk-in) --------------------
+    function openRequestForm() {
+      if (!cloudConfigured() || !reqRole || !cloud.user) {
+        openRequestsView();
+        if (cloudConfigured()) showToast(isCustodianDevice() ? 'Connecting… try again in a moment' : 'Sign in first to take requests', 'ph-info');
+        return;
+      }
+      reqDraft = { lines: [], forOther: isCustodianDevice() };
+      const me = (isTeacherDevice() && reqRole.me) || {};
+      document.getElementById('rfWho').classList.toggle('hidden', !reqDraft.forOther);
+      document.getElementById('rfWho').classList.toggle('grid', reqDraft.forOther);
+      document.getElementById('rfFrom').textContent = reqDraft.forOther
+        ? `Walk-in request · goes to ${reqRole.schoolName}’s list for review`
+        : `From ${[me.name, me.position, me.office].filter(Boolean).join(' · ')} · to ${reqRole.schoolName}`;
+      ['rfName', 'rfPosition', 'rfOffice', 'rfSearch', 'rfPurpose', 'rfNeeded'].forEach(id => { document.getElementById(id).value = ''; });
+      renderReqSearch();
+      renderReqLines();
+      document.getElementById('reqFormModal').classList.remove('hidden');
+      const first = document.getElementById(reqDraft.forOther ? 'rfName' : 'rfSearch');
+      setTimeout(() => { if (reqDraft) first.focus(); }, 60);
+    }
+    function closeRequestForm() { reqDraft = null; document.getElementById('reqFormModal').classList.add('hidden'); }
+
+    function renderReqSearch() {
+      const q = reqVal('rfSearch');
+      const box = document.getElementById('rfResults');
+      box.classList.toggle('hidden', !q);
+      if (!q) { box.innerHTML = ''; return; }
+      const { list } = homeSearchItems(q, 6);
+      box.innerHTML = list.map(item => `
+        <button onclick="addReqLine('${item.code}')" class="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-amber-50">
+          <i class="ph-bold ph-plus-circle text-amber-500 shrink-0"></i>
+          <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-slate-800 truncate">${escapeHTML(item.name)}</span><span class="block text-[11px] text-slate-400">${escapeHTML(item.unit)}</span></span>
+        </button>`).join('') + `
+        <button onclick="addReqLine(null)" class="w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs font-bold text-slate-600 hover:bg-amber-50">
+          <i class="ph-bold ph-pencil-simple text-slate-400"></i> ${list.length ? 'Not listed? ' : ''}Add “${escapeHTML(q.slice(0, 60))}” as typed
+        </button>`;
+    }
+
+    function reqSearchKey(event) {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      const q = reqVal('rfSearch');
+      if (!q) return;
+      const first = homeSearchItems(q, 1).list[0];
+      addReqLine(first ? first.code : null);
+    }
+
+    function addReqLine(code) {
+      if (!reqDraft) return;
+      const typed = reqVal('rfSearch');
+      const item = code ? items.find(i => i.code === code) : null;
+      const existing = item && reqDraft.lines.find(l => l.code === item.code);
+      if (existing) existing.qty += 1;
+      else if (item) reqDraft.lines.push({ id: newReqLineId(), code: item.code, desc: item.name, unit: item.unit, qty: 1 });
+      else if (typed) reqDraft.lines.push({ id: newReqLineId(), code: null, desc: typed.slice(0, 160), unit: 'piece', qty: 1 });
+      const input = document.getElementById('rfSearch');
+      input.value = '';
+      renderReqSearch();
+      renderReqLines();
+      const last = existing || reqDraft.lines[reqDraft.lines.length - 1];
+      const qty = last && document.getElementById(`rfq-${last.id}`);
+      if (qty) { qty.focus(); qty.select(); }
+    }
+
+    function renderReqLines() {
+      const box = document.getElementById('rfLines');
+      const lines = reqDraft ? reqDraft.lines : [];
+      box.innerHTML = lines.length ? lines.map(l => `
+        <div class="rounded-xl border border-slate-200 p-2.5 flex items-center gap-2">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-bold text-slate-800 leading-snug line-clamp-2">${escapeHTML(l.desc)}</p>
+            ${l.code ? `<p class="text-[11px] text-slate-400">${escapeHTML(l.unit)}</p>` : `<input value="${escapeHTML(l.unit)}" onchange="setReqLine('${l.id}', 'unit', this.value)" aria-label="Unit" class="mt-0.5 w-24 h-7 px-2 rounded-lg border border-slate-200 text-[11px]">`}
+          </div>
+          <button onclick="stepReqLine('${l.id}', -1)" class="w-9 h-9 shrink-0 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center" aria-label="Minus one"><i class="ph-bold ph-minus"></i></button>
+          <input id="rfq-${l.id}" type="number" inputmode="numeric" min="1" value="${l.qty}" onfocus="this.select()" oninput="setReqLine('${l.id}', 'qty', this.value)"
+            onkeydown="if (event.key === 'Enter') { event.preventDefault(); document.getElementById('rfSearch').focus(); }"
+            class="w-14 h-9 shrink-0 text-center rounded-lg border border-slate-300 font-mono font-bold text-sm focus:border-amber-500 outline-none">
+          <button onclick="stepReqLine('${l.id}', 1)" class="w-9 h-9 shrink-0 rounded-lg bg-amber-500 text-white flex items-center justify-center" aria-label="Plus one"><i class="ph-bold ph-plus"></i></button>
+          <button onclick="removeReqLine('${l.id}')" class="w-8 h-9 shrink-0 text-slate-300 hover:text-rose-500 flex items-center justify-center" aria-label="Remove"><i class="ph-bold ph-trash"></i></button>
+        </div>`).join('') : `<p class="text-xs text-slate-400 text-center py-2">Search above and tap an item to add it.</p>`;
+      const n = lines.reduce((s, l) => s + (l.qty > 0 ? 1 : 0), 0);
+      document.getElementById('rfSendLabel').textContent = n ? `Send request · ${plural(n, 'item')}` : 'Send request';
+    }
+
+    function setReqLine(id, key, value) {
+      const l = reqDraft && reqDraft.lines.find(x => x.id === id);
+      if (!l) return;
+      if (key === 'qty') l.qty = Math.max(0, Math.min(9999, parseInt(value, 10) || 0));
+      else l[key] = String(value).trim().slice(0, 20) || 'piece';
+    }
+    function stepReqLine(id, d) {
+      const l = reqDraft && reqDraft.lines.find(x => x.id === id);
+      if (!l) return;
+      l.qty = Math.max(1, Math.min(9999, l.qty + d));
+      document.getElementById(`rfq-${id}`).value = l.qty;
+    }
+    function removeReqLine(id) {
+      reqDraft.lines = reqDraft.lines.filter(l => l.id !== id);
+      renderReqLines();
+    }
+
+    function sendRequest() {
+      if (!reqDraft || !cloud.user) return;
+      const lines = reqDraft.lines.filter(l => l.qty > 0 && l.desc.trim())
+        .map(l => ({ id: l.id, code: l.code || null, desc: l.desc.trim().slice(0, 160), unit: (l.unit || 'piece').slice(0, 20), qty: l.qty }));
+      if (!lines.length) { showToast('Add at least one item', 'ph-info'); document.getElementById('rfSearch').focus(); return; }
+      const me = reqDraft.forOther
+        ? { name: reqVal('rfName'), position: reqVal('rfPosition'), office: reqVal('rfOffice') }
+        : (reqRole.me || {});
+      if (!me.name) { alert('Enter the name of the person requesting.'); document.getElementById('rfName').focus(); return; }
+      const F = cloud.sdk;
+      const ref = F.doc(reqCol());
+      const data = {
+        uid: cloud.user.uid, name: me.name.slice(0, 80), position: (me.position || '').slice(0, 80), office: (me.office || '').slice(0, 80),
+        purpose: reqVal('rfPurpose').slice(0, 300), neededBy: reqVal('rfNeeded'), lines: lines.slice(0, 50),
+        status: 'pending', createdAt: F.serverTimestamp(), clientAt: Date.now(), via: reqDraft.forOther ? 'custodian' : 'teacher'
+      };
+      cloudWrite(F.setDoc(ref, data), 'Sending the request');
+      closeRequestForm();
+      showToast(navigator.onLine ? (isCustodianDevice() ? `Request from ${me.name} added for review` : 'Request sent to the property custodian')
+        : 'Saved · it will be sent when you are back online', 'ph-paper-plane-tilt');
+      if (isCustodianDevice()) { reqTab = 'pending'; if (activeMainView === 'REQUESTS') renderRequestsView(); }
+    }
+
+    // ---- Review (custodian) ------------------------------------------------------
+    function reviewOnHand(l) {
+      const item = l.code && items.find(i => i.code === l.code);
+      return item ? item.qty : 0;
+    }
+    const reviewBuy = l => (l.prQty === null ? Math.max(0, l.approved - reviewOnHand(l)) : l.prQty);
+
+    function reviewLineFrom(l, reviewed) {
+      let code = l.code || null;
+      if (code && !items.some(i => i.code === code)) code = null; // a custom item this device does not have
+      if (!code && !reviewed) {
+        const best = suggestIcsMatches(l.desc, 1)[0];
+        if (best && best.score >= 3.4) code = best.item.code;
+      }
+      const item = code ? items.find(i => i.code === code) : null;
+      const requested = reviewed ? (l.requested ?? l.qty ?? 0) : (l.qty || 0);
+      return {
+        id: l.id || newReqLineId(), code, desc: l.desc || (item ? item.name : ''),
+        unit: l.unit || (item ? item.unit : 'piece'), requested,
+        approved: reviewed ? (l.approved ?? requested) : requested,
+        prQty: reviewed && typeof l.prQty === 'number' ? l.prQty : null,
+        unitCost: reviewed && typeof l.unitCost === 'number' ? l.unitCost : (item ? item.price : 0)
+      };
+    }
+
+    function openReview(id) {
+      const r = reqList.find(x => x.id === id);
+      if (!r) return;
+      const reviewed = !!(r.review && r.review.lines);
+      reviewState = { id, status: r.status, lines: reqLinesOf(r).map(l => reviewLineFrom(l, reviewed)) };
+      document.getElementById('revNote').value = (r.review && r.review.note) || '';
+      document.getElementById('revHead').innerHTML = `
+        <div class="flex items-center gap-2"><h3 class="font-extrabold text-base text-slate-900 truncate">${escapeHTML(r.name)}</h3>${reqStatusChip(r)}</div>
+        <p class="text-xs text-slate-500">${escapeHTML(reqWho(r) || '—')} · ${escapeHTML(formatShortDate(reqTime(r)))}${r.neededBy ? ` · needed by ${escapeHTML(formatShortDate(r.neededBy + 'T00:00:00'))}` : ''}</p>
+        ${r.purpose ? `<p class="text-xs text-slate-700 mt-0.5">Purpose: ${escapeHTML(r.purpose)}</p>` : ''}
+        ${r.status === 'pr' ? `<p class="text-xs font-bold text-brand-700 mt-0.5">On Purchase Request ${escapeHTML(r.prNo || '')} · read only</p>` : ''}`;
+      renderReview();
+      document.getElementById('reqReviewModal').classList.remove('hidden');
+    }
+    function closeReview() { reviewState = null; document.getElementById('reqReviewModal').classList.add('hidden'); }
+    const reviewEditable = () => reviewState && ['pending', 'approved'].includes(reviewState.status);
+
+    function renderReview() {
+      const st = reviewState;
+      const edit = reviewEditable();
+      const dis = edit ? '' : 'disabled';
+      document.getElementById('revLines').innerHTML = st.lines.map((l, i) => {
+        const opts = [];
+        if (l.code) opts.push(l.code);
+        suggestIcsMatches(l.desc, 6).forEach(s => { if (!opts.includes(s.item.code)) opts.push(s.item.code); });
+        const optHTML = opts.map(code => {
+          const item = items.find(it => it.code === code);
+          return item ? `<option value="${code}" ${code === l.code ? 'selected' : ''}>${escapeHTML(item.name.slice(0, 70))} · ${item.qty} on hand</option>` : '';
+        }).join('');
+        const onHand = reviewOnHand(l);
+        return `
+        <div class="rounded-xl border border-slate-200 p-3 space-y-2" data-rev="${l.id}">
+          <div class="flex items-start gap-2">
+            <span class="shrink-0 mt-2 text-[10px] font-bold text-slate-400 w-4">${i + 1}</span>
+            <input value="${escapeHTML(l.desc)}" ${dis} onchange="setReviewLine('${l.id}', 'desc', this.value)" aria-label="Description" class="flex-1 min-w-0 h-9 px-2.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-900">
+            ${edit ? `<button onclick="removeReviewLine('${l.id}')" class="w-8 h-9 shrink-0 text-slate-300 hover:text-rose-500 flex items-center justify-center" aria-label="Remove line"><i class="ph-bold ph-trash"></i></button>` : ''}
+          </div>
+          <select ${dis} onchange="setReviewLine('${l.id}', 'code', this.value)" aria-label="Inventory item" class="w-full h-9 px-2 rounded-lg border ${l.code ? 'border-emerald-300 bg-emerald-50/50' : 'border-slate-200'} text-xs">
+            ${optHTML}<option value="" ${l.code ? '' : 'selected'}>Not in my inventory · buy as described</option>
+          </select>
+          <div class="grid grid-cols-4 gap-2 text-center">
+            <div><p class="text-[10px] font-bold uppercase text-slate-400">Asked</p><p class="h-9 flex items-center justify-center font-mono font-bold text-slate-700">${l.requested}</p></div>
+            <div><p class="text-[10px] font-bold uppercase text-slate-400">Approve</p><input type="number" min="0" inputmode="numeric" value="${l.approved}" ${dis} onfocus="this.select()" oninput="setReviewLine('${l.id}', 'approved', this.value)" class="w-full h-9 text-center rounded-lg border border-slate-300 font-mono font-bold"></div>
+            <div><p class="text-[10px] font-bold uppercase text-slate-400">On hand</p><p class="h-9 flex items-center justify-center font-mono font-bold ${onHand >= l.approved ? 'text-emerald-600' : onHand ? 'text-amber-600' : 'text-slate-400'}">${l.code ? onHand : '—'}</p></div>
+            <div><p class="text-[10px] font-bold uppercase text-brand-600">To buy</p><input id="rev-buy-${l.id}" type="number" min="0" inputmode="numeric" value="${reviewBuy(l)}" ${dis} onfocus="this.select()" oninput="setReviewLine('${l.id}', 'prQty', this.value)" class="w-full h-9 text-center rounded-lg border border-brand-300 bg-brand-50/40 font-mono font-bold text-brand-800"></div>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <input value="${escapeHTML(l.unit)}" ${dis} onchange="setReviewLine('${l.id}', 'unit', this.value)" aria-label="Unit" class="w-20 h-8 px-2 rounded-lg border border-slate-200">
+            <span class="text-slate-400">at ₱</span>
+            <input type="number" min="0" step="0.01" inputmode="decimal" value="${l.unitCost || ''}" placeholder="0.00" ${dis} oninput="setReviewLine('${l.id}', 'unitCost', this.value)" aria-label="Unit cost" class="w-24 h-8 px-2 rounded-lg border border-slate-200 font-mono">
+            <span id="rev-tot-${l.id}" class="ml-auto font-mono font-bold text-slate-700">₱${peso2(reviewBuy(l) * (l.unitCost || 0))}</span>
+          </div>
+        </div>`;
+      }).join('');
+      document.getElementById('revNote').disabled = !edit;
+      updateReviewSummary();
+      const btn = (cls, onclick, html) => `<button onclick="${onclick}" class="${cls}">${html}</button>`;
+      document.getElementById('revButtons').innerHTML = !edit
+        ? btn('flex-1 h-12 rounded-xl bg-slate-100 text-sm font-bold text-slate-700', 'closeReview()', 'Close')
+        : btn('h-12 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-bold', 'declineRequest()', '<i class="ph-bold ph-x"></i> Decline') +
+          btn('flex-1 h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2', 'approveRequest()',
+            `<i class="ph-bold ph-check-circle"></i> ${st.status === 'approved' ? 'Save changes' : 'Approve'}`);
+    }
+
+    function updateReviewSummary() {
+      const st = reviewState;
+      const buy = st.lines.filter(l => reviewBuy(l) > 0);
+      const total = st.lines.reduce((n, l) => n + reviewBuy(l) * (l.unitCost || 0), 0);
+      const fromStock = st.lines.reduce((n, l) => n + Math.min(l.approved, reviewOnHand(l)), 0);
+      document.getElementById('revSummary').innerHTML = `To buy: <b>${plural(buy.length, 'item')}</b> · <b class="font-mono">₱${peso2(total)}</b>` +
+        (fromStock ? ` · ${fromStock} can be given from stock` : '') + (buy.some(l => !l.unitCost) ? ' · <span class="text-amber-600">some items have no unit cost</span>' : '');
+    }
+
+    function setReviewLine(id, key, value) {
+      const l = reviewState && reviewState.lines.find(x => x.id === id);
+      if (!l) return;
+      if (key === 'code') {
+        l.code = value || null;
+        const item = l.code && items.find(i => i.code === l.code);
+        if (item) { l.unit = item.unit; if (item.price) l.unitCost = item.price; }
+        l.prQty = null;
+        renderReview();
+        return;
+      }
+      if (key === 'approved') {
+        l.approved = Math.max(0, parseInt(value, 10) || 0);
+        if (l.prQty === null || l.prQty > l.approved) {
+          l.prQty = l.prQty === null ? null : l.approved;
+          document.getElementById(`rev-buy-${id}`).value = reviewBuy(l);
+        }
+      } else if (key === 'prQty') {
+        l.prQty = value === '' ? null : Math.max(0, parseInt(value, 10) || 0);
+      } else if (key === 'unitCost') {
+        l.unitCost = Math.max(0, parseFloat(value) || 0);
+      } else {
+        l[key] = String(value).trim().slice(0, key === 'unit' ? 20 : 160) || (key === 'unit' ? 'piece' : l[key]);
+      }
+      const tot = document.getElementById(`rev-tot-${id}`);
+      if (tot) tot.textContent = `₱${peso2(reviewBuy(l) * (l.unitCost || 0))}`;
+      updateReviewSummary();
+    }
+
+    function addReviewLine() {
+      if (!reviewEditable()) return;
+      reviewState.lines.push({ id: newReqLineId(), code: null, desc: '', unit: 'piece', requested: 0, approved: 1, prQty: null, unitCost: 0 });
+      renderReview();
+      const last = document.querySelector(`#revLines [data-rev="${reviewState.lines[reviewState.lines.length - 1].id}"] input`);
+      if (last) last.focus();
+    }
+    function removeReviewLine(id) {
+      reviewState.lines = reviewState.lines.filter(l => l.id !== id);
+      renderReview();
+    }
+
+    function approveRequest() {
+      const st = reviewState;
+      if (!st || !reviewEditable()) return;
+      const lines = st.lines.filter(l => l.desc.trim()).map(l => ({
+        id: l.id, code: l.code || null, desc: l.desc.trim(), unit: (l.unit || 'piece').trim(),
+        requested: l.requested, approved: l.approved, stock: reviewOnHand(l), prQty: Math.max(0, reviewBuy(l)),
+        unitCost: Math.round((l.unitCost || 0) * 100) / 100
+      }));
+      if (!lines.some(l => l.approved > 0)) { alert('Approve at least one item, or tap Decline.'); return; }
+      const F = cloud.sdk;
+      const wasApproved = st.status === 'approved';
+      const r = reqList.find(x => x.id === st.id);
+      cloudWrite(F.updateDoc(F.doc(reqCol(), st.id), {
+        status: 'approved',
+        review: { lines, note: reqVal('revNote').slice(0, 300), by: schoolInfo.custodian || reqRole.email || '', atMs: Date.now(), at: F.serverTimestamp() },
+        updatedAt: F.serverTimestamp()
+      }), 'Approving');
+      const buy = lines.filter(l => l.prQty > 0).length;
+      closeReview();
+      showToast(wasApproved ? 'Changes saved' : `Approved ${r ? r.name.split(' ')[0] + '’s' : 'the'} request · ${buy ? `${plural(buy, 'item')} to purchase` : 'all from stock'}`, 'ph-check-circle');
+    }
+
+    function declineRequest() {
+      const st = reviewState;
+      if (!st) return;
+      const reason = prompt('Reason for declining (the requester will see this):', reqVal('revNote'));
+      if (reason === null) return;
+      const F = cloud.sdk;
+      cloudWrite(F.updateDoc(F.doc(reqCol(), st.id), {
+        status: 'declined', declineReason: reason.trim().slice(0, 300),
+        review: { note: reason.trim().slice(0, 300), by: schoolInfo.custodian || reqRole.email || '', atMs: Date.now() },
+        updatedAt: F.serverTimestamp()
+      }), 'Declining');
+      closeReview();
+      showToast('Request declined', 'ph-x-circle');
+    }
+
+    function markReqSupplied(id) {
+      const F = cloud.sdk;
+      cloudWrite(F.updateDoc(F.doc(reqCol(), id), { status: 'closed', suppliedAtMs: Date.now(), updatedAt: F.serverTimestamp() }), 'Updating');
+      showToast('Marked as supplied from stock', 'ph-package');
+    }
+
+    // Items bought on a PR arrived: close its requests so teachers see "Supplied".
+    function markPrDelivered(prId) {
+      const pr = prList.find(p => p.id === prId);
+      if (!pr) return;
+      const open = reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr');
+      if (!open.length) return;
+      if (!confirm(`Items on PR No. ${pr.prNo} were delivered?\n\nThis marks ${plural(open.length, 'request')} as supplied (${open.map(r => r.name).join(', ')}).`)) return;
+      const F = cloud.sdk;
+      const batch = F.writeBatch(cloud.db);
+      open.forEach(r => batch.update(F.doc(reqCol(), r.id), { status: 'closed', suppliedAtMs: Date.now(), updatedAt: F.serverTimestamp() }));
+      cloudWrite(batch.commit(), 'Updating');
+      showToast(`PR No. ${pr.prNo} delivered · ${plural(open.length, 'request')} supplied`, 'ph-package');
+    }
+
+    // ---- Purchase Request (Appendix 60) -------------------------------------------
+    function prDefaults() {
+      try { return JSON.parse(localStorage.getItem(PR_DEFAULTS_KEY) || '{}') || {}; } catch (e) { return {}; }
+    }
+    function nextPrNo(date) {
+      const ym = (date || localISODate()).slice(0, 7);
+      const used = prList.map(p => String(p.prNo || '')).filter(no => no.startsWith(ym + '-')).map(no => parseInt(no.slice(ym.length + 1), 10) || 0);
+      return `${ym}-${String(Math.max(0, ...used) + 1).padStart(3, '0')}`;
+    }
+    function listJoin(names) {
+      return names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+    }
+
+    function openPrFromPicked() {
+      const reqs = reqList.filter(r => r.status === 'approved' && reqBuyLines(r).length && !reqUnpicked.has(r.id));
+      if (!reqs.length) { showToast('Tick the approved requests to put on this PR', 'ph-info'); return; }
+      reqs.sort((a, b) => reqTime(a) - reqTime(b)); // oldest request first on the PR
+      const lines = new Map();
+      reqs.forEach(r => reqBuyLines(r).forEach(l => {
+        const item = l.code && items.find(i => i.code === l.code);
+        const key = l.code || 'D:' + normItemName(l.desc);
+        const cur = lines.get(key) || {
+          id: newReqLineId(), stockNo: item && !/^CUSTOM-/.test(item.code) ? item.code : '',
+          unit: l.unit, desc: item ? item.name : l.desc, qty: 0, unitCost: l.unitCost || 0
+        };
+        cur.qty += l.prQty;
+        if (!cur.unitCost && l.unitCost) cur.unitCost = l.unitCost;
+        lines.set(key, cur);
+      }));
+      const d = prDefaults();
+      const date = localISODate();
+      const who = reqs.map(r => `${r.name}${r.office ? ` (${r.office})` : r.position ? ` (${r.position})` : ''}`);
+      const purposes = [...new Set(reqs.map(r => (r.purpose || '').trim()).filter(Boolean))];
+      prDraft = {
+        requestIds: reqs.map(r => r.id), requesters: reqs.map(r => r.name),
+        lines: [...lines.values()].sort((a, b) => a.desc.localeCompare(b.desc))
+      };
+      const set = (id, v) => { document.getElementById(id).value = v || ''; };
+      set('prEntity', d.entity || schoolInfo.school);
+      set('prFund', d.fund);
+      set('prOffice', d.office);
+      set('prNo', nextPrNo(date));
+      set('prDate', date);
+      set('prRcc', d.rcc);
+      set('prPurpose', `Supplies requested by ${listJoin(who)}${purposes.length ? ` · ${purposes.join('; ')}` : ''}`.slice(0, 600));
+      set('prReqName', d.reqName || schoolInfo.custodian);
+      set('prReqDesig', d.reqDesig || schoolInfo.position);
+      set('prApprName', d.apprName || schoolInfo.head);
+      set('prApprDesig', d.apprDesig || 'School Principal');
+      document.getElementById('prSub').textContent = `Appendix 60 · from ${plural(reqs.length, 'approved request')} · check every line before saving`;
+      renderPrLines();
+      document.getElementById('prModal').classList.remove('hidden');
+    }
+    function closePr() { prDraft = null; document.getElementById('prModal').classList.add('hidden'); }
+
+    function renderPrLines() {
+      document.getElementById('prLines').innerHTML = prDraft.lines.map((l, i) => `
+        <div class="rounded-xl border border-slate-200 p-2.5 space-y-1.5">
+          <div class="flex items-center gap-2">
+            <span class="shrink-0 text-[10px] font-bold text-slate-400 w-4">${i + 1}</span>
+            <input value="${escapeHTML(l.desc)}" oninput="setPrLine('${l.id}', 'desc', this.value)" aria-label="Item description" class="flex-1 min-w-0 h-9 px-2.5 rounded-lg border border-slate-200 text-sm font-semibold">
+            <button onclick="removePrLine('${l.id}')" class="w-8 h-9 shrink-0 text-slate-300 hover:text-rose-500 flex items-center justify-center" aria-label="Remove"><i class="ph-bold ph-trash"></i></button>
+          </div>
+          <div class="grid grid-cols-6 sm:grid-cols-12 gap-x-1.5 gap-y-1 text-xs items-end pl-6">
+            <label class="col-span-4 sm:col-span-4 text-[10px] font-bold uppercase text-slate-400">Stock / property no.<input value="${escapeHTML(l.stockNo)}" oninput="setPrLine('${l.id}', 'stockNo', this.value)" class="mt-0.5 w-full h-8 px-2 rounded-lg border border-slate-200 font-mono text-[11px] normal-case font-normal text-slate-800"></label>
+            <label class="col-span-2 sm:col-span-2 text-[10px] font-bold uppercase text-slate-400">Unit<input value="${escapeHTML(l.unit)}" oninput="setPrLine('${l.id}', 'unit', this.value)" class="mt-0.5 w-full h-8 px-2 rounded-lg border border-slate-200 normal-case font-normal text-slate-800 text-xs"></label>
+            <label class="col-span-2 sm:col-span-2 text-[10px] font-bold uppercase text-slate-400">Qty<input type="number" min="1" value="${l.qty}" oninput="setPrLine('${l.id}', 'qty', this.value)" class="mt-0.5 w-full h-8 px-1 text-center rounded-lg border border-slate-300 font-mono font-bold text-slate-900 text-xs"></label>
+            <label class="col-span-2 sm:col-span-2 text-[10px] font-bold uppercase text-slate-400">Unit cost<input type="number" min="0" step="0.01" value="${l.unitCost || ''}" placeholder="0.00" oninput="setPrLine('${l.id}', 'unitCost', this.value)" class="mt-0.5 w-full h-8 px-1.5 rounded-lg border ${l.unitCost ? 'border-slate-200' : 'border-amber-300 bg-amber-50/50'} font-mono font-normal text-slate-800 text-xs"></label>
+            <span id="prl-tot-${l.id}" class="col-span-2 sm:col-span-2 h-8 flex items-center justify-end font-mono font-bold text-slate-700">${peso2(l.qty * l.unitCost)}</span>
+          </div>
+        </div>`).join('') || '<p class="text-xs text-slate-400">No items left on this PR.</p>';
+      updatePrTotal();
+    }
+    function setPrLine(id, key, value) {
+      const l = prDraft.lines.find(x => x.id === id);
+      if (!l) return;
+      if (key === 'qty') l.qty = Math.max(0, parseInt(value, 10) || 0);
+      else if (key === 'unitCost') l.unitCost = Math.max(0, parseFloat(value) || 0);
+      else l[key] = String(value).slice(0, key === 'desc' ? 200 : 40);
+      const tot = document.getElementById(`prl-tot-${id}`);
+      if (tot) tot.textContent = peso2(l.qty * l.unitCost);
+      updatePrTotal();
+    }
+    function removePrLine(id) {
+      prDraft.lines = prDraft.lines.filter(l => l.id !== id);
+      renderPrLines();
+    }
+    function updatePrTotal() {
+      const total = prDraft.lines.reduce((n, l) => n + l.qty * l.unitCost, 0);
+      document.getElementById('prTotal').textContent = `₱${peso2(total)}`;
+    }
+
+    function savePr() {
+      if (!prDraft) return;
+      const lines = prDraft.lines.filter(l => l.qty > 0 && l.desc.trim())
+        .map(l => ({ stockNo: l.stockNo.trim(), unit: l.unit.trim(), desc: l.desc.trim(), qty: l.qty, unitCost: Math.round(l.unitCost * 100) / 100 }));
+      if (!lines.length) { alert('The Purchase Request has no items.'); return; }
+      const prNo = reqVal('prNo');
+      if (!prNo) { alert('Enter the PR No.'); document.getElementById('prNo').focus(); return; }
+      if (prList.some(p => p.prNo === prNo) && !confirm(`PR No. ${prNo} was already used. Save another PR with the same number?`)) return;
+      if (lines.some(l => !l.unitCost) && !confirm('Some items have no unit cost. Save anyway?')) return;
+      const F = cloud.sdk;
+      const total = Math.round(lines.reduce((n, l) => n + l.qty * l.unitCost, 0) * 100) / 100;
+      const data = {
+        prNo, date: reqVal('prDate') || localISODate(), entity: reqVal('prEntity'), fund: reqVal('prFund'), office: reqVal('prOffice'),
+        rcc: reqVal('prRcc'), purpose: reqVal('prPurpose'), lines, total,
+        requestIds: prDraft.requestIds, requesters: prDraft.requesters,
+        requestedBy: { name: reqVal('prReqName'), designation: reqVal('prReqDesig') },
+        approvedBy: { name: reqVal('prApprName'), designation: reqVal('prApprDesig') },
+        createdMs: Date.now(), createdAt: F.serverTimestamp(), createdBy: cloud.user.uid
+      };
+      localStorage.setItem(PR_DEFAULTS_KEY, JSON.stringify({
+        entity: data.entity, fund: data.fund, office: data.office, rcc: data.rcc,
+        reqName: data.requestedBy.name, reqDesig: data.requestedBy.designation, apprName: data.approvedBy.name, apprDesig: data.approvedBy.designation
+      }));
+      const ref = F.doc(prCol());
+      const batch = F.writeBatch(cloud.db);
+      batch.set(ref, data);
+      data.requestIds.forEach(id => batch.update(F.doc(reqCol(), id), { status: 'pr', prNo, prId: ref.id, updatedAt: F.serverTimestamp() }));
+      cloudWrite(batch.commit(), 'Saving the Purchase Request');
+      logHistory('system', `Prepared Purchase Request ${prNo}: ${plural(lines.length, 'item')}, ₱${peso2(total)} (${plural(data.requestIds.length, 'request')})`);
+      closePr();
+      reqTab = 'prs';
+      renderRequestsEverywhere();
+      showToast(`PR No. ${prNo} saved · ₱${peso2(total)}`, 'ph-file-text');
+      printPr({ ...data, id: ref.id });
+    }
+
+    function prPrintHTML(pr) {
+      const e = v => escapeHTML(v || '');
+      const date = pr.date ? new Date(pr.date + 'T00:00:00').toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+      const rows = (pr.lines || []).map(l => `
+        <tr><td class="pr-sn">${e(l.stockNo)}</td><td class="c">${e(l.unit)}</td><td>${e(l.desc)}</td><td class="c">${l.qty}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * l.unitCost)}</td></tr>`).join('');
+      const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 10 - (pr.lines || []).length));
+      return `
+        <div class="pr-form">
+          <div class="pr-appx">Appendix 60</div>
+          <h1>PURCHASE REQUEST</h1>
+          <div class="pr-top"><span>Entity Name: <b>${e(pr.entity)}</b></span><span>Fund Cluster: <b>${e(pr.fund)}</b></span></div>
+          <table class="pr-table">
+            <colgroup><col style="width:19%"><col style="width:9%"><col style="width:32%"><col style="width:11%"><col style="width:13%"><col style="width:16%"></colgroup>
+            <tr><td colspan="2" rowspan="2">Office/Section:<br><b>${e(pr.office)}</b></td><td colspan="2">PR No.: <b>${e(pr.prNo)}</b></td><td colspan="2" rowspan="2">Date: <b>${e(date)}</b></td></tr>
+            <tr><td colspan="2">Responsibility Center Code: <b>${e(pr.rcc)}</b></td></tr>
+            <tr><th>Stock/ Property No.</th><th>Unit</th><th>Item Description</th><th>Quantity</th><th>Unit Cost</th><th>Total Cost</th></tr>
+            ${rows}${blanks}
+            <tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(pr.total)}</b></td></tr>
+            <tr><td colspan="6" class="pr-purpose">Purpose: ${e(pr.purpose)}</td></tr>
+            <tr><td></td><td colspan="2"><i>Requested by:</i></td><td colspan="3"><i>Approved by:</i></td></tr>
+            <tr><td>Signature:</td><td colspan="2" class="pr-sig"></td><td colspan="3" class="pr-sig"></td></tr>
+            <tr><td>Printed Name:</td><td colspan="2" class="c"><b>${e(pr.requestedBy && pr.requestedBy.name).toUpperCase()}</b></td><td colspan="3" class="c"><b>${e(pr.approvedBy && pr.approvedBy.name).toUpperCase()}</b></td></tr>
+            <tr><td>Designation:</td><td colspan="2" class="c">${e(pr.requestedBy && pr.requestedBy.designation)}</td><td colspan="3" class="c">${e(pr.approvedBy && pr.approvedBy.designation)}</td></tr>
+          </table>
+        </div>`;
+    }
+
+    function printPr(pr) {
+      document.getElementById('printPrSection').innerHTML = prPrintHTML(pr);
+      document.body.classList.remove('printing-labels');
+      document.body.classList.add('printing-pr');
+      const done = () => { document.body.classList.remove('printing-pr'); window.removeEventListener('afterprint', done); };
+      window.addEventListener('afterprint', done);
+      setTimeout(() => window.print(), 50);
+    }
+    function printPrById(id) { const pr = prList.find(p => p.id === id); if (pr) printPr(pr); }
+
+    function exportPrCSV(pr) {
+      const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const rows = [
+        ['PURCHASE REQUEST', '', '', '', '', 'Appendix 60'],
+        ['Entity Name', pr.entity, '', '', 'Fund Cluster', pr.fund],
+        ['Office/Section', pr.office, 'PR No.', pr.prNo, 'Date', pr.date],
+        ['Responsibility Center Code', pr.rcc],
+        [],
+        ['Stock/Property No.', 'Unit', 'Item Description', 'Quantity', 'Unit Cost', 'Total Cost'],
+        ...(pr.lines || []).map(l => [l.stockNo, l.unit, l.desc, l.qty, l.unitCost.toFixed(2), (l.qty * l.unitCost).toFixed(2)]),
+        ['', '', '', '', 'TOTAL', Number(pr.total || 0).toFixed(2)],
+        [],
+        ['Purpose', pr.purpose],
+        ['Requested by', pr.requestedBy && pr.requestedBy.name, pr.requestedBy && pr.requestedBy.designation],
+        ['Approved by', pr.approvedBy && pr.approvedBy.name, pr.approvedBy && pr.approvedBy.designation]
+      ];
+      downloadText('\ufeff' + rows.map(r => r.map(q).join(',')).join('\n'), `Purchase_Request_${String(pr.prNo).replace(/[^\w-]+/g, '_')}.csv`, 'text/csv;charset=utf-8;');
+    }
+    function exportPrCSVById(id) { const pr = prList.find(p => p.id === id); if (pr) exportPrCSV(pr); }
+
     // Boot App on Load
     window.addEventListener('DOMContentLoaded', () => {
       initApp();
       initOfflineSupport();
       updateBackupReminder();
+      initSupplyRequests();
       // Re-check when the app comes back to the foreground (iPad apps stay open for days).
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') updateBackupReminder();

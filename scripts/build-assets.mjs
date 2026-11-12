@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import subsetFont from 'subset-font';
+import { buildSync } from 'esbuild';
 
 const require = createRequire(import.meta.url);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -128,6 +129,33 @@ for (const [src, dest] of [
 }
 
 // ---------------------------------------------------------------------------
+// 4a. Firebase (Apache-2.0) for Supply Requests – only the functions src/firebase-entry.js
+//     re-exports, bundled to window.FirebaseSDK. ~670 KB, so like the OCR files it is NOT
+//     precached: it loads (and is cached) only on devices that use Supply Requests.
+//     The project settings live in firebase-config.js (edit that file, no rebuild needed).
+// ---------------------------------------------------------------------------
+// Every F.xxx / cloud.sdk.xxx the app calls must be re-exported, or that feature breaks only
+// on real phones (tests use a stand-in SDK) – fail the build instead.
+{
+  const entry = read(path.join(ROOT, 'src', 'firebase-entry.js'));
+  const exported = new Set(entry.match(/[A-Za-z]+/g));
+  const used = new Set([...read(path.join(ROOT, 'index.html')).matchAll(/\b(?:F|cloud\.sdk|FirebaseSDK)\.([A-Za-z]+)/g)].map(m => m[1]));
+  const missing = [...used].filter(n => !exported.has(n));
+  if (missing.length) throw new Error(`src/firebase-entry.js: also export ${missing.join(', ')} (used in index.html)`);
+}
+const CLOUD_DIR = path.join(ASSETS, 'cloud');
+fs.rmSync(CLOUD_DIR, { recursive: true, force: true });
+fs.mkdirSync(CLOUD_DIR, { recursive: true });
+const FIREBASE_VERSION = JSON.parse(read(path.join(NM, 'firebase', 'package.json'))).version;
+buildSync({
+  entryPoints: [path.join(ROOT, 'src', 'firebase-entry.js')],
+  outfile: path.join(CLOUD_DIR, 'firebase.js'),
+  bundle: true, minify: true, format: 'iife', globalName: 'FirebaseSDK', target: 'es2019',
+  legalComments: 'none', logLevel: 'error',
+  banner: { js: `/* Firebase JS SDK ${FIREBASE_VERSION} (Apache-2.0, Google LLC) – app, auth, firestore subset */` },
+});
+
+// ---------------------------------------------------------------------------
 // 4b. Text recognition for "Scan ICS" (Tesseract.js, Apache-2.0). ~7 MB, so it is NOT
 //     precached: the service worker keeps it in its own long-lived cache the first
 //     time someone scans an ICS (and Tesseract keeps the language data in IndexedDB).
@@ -169,7 +197,8 @@ const listFiles = (dir) =>
 const precache = [
   path.join(ROOT, 'index.html'),
   path.join(ROOT, 'manifest.webmanifest'),
-  ...listFiles(ASSETS).filter((p) => !p.startsWith(OCR_DIR + path.sep)),
+  path.join(ROOT, 'firebase-config.js'), // also network-first in sw.js, so edits apply without a rebuild
+  ...listFiles(ASSETS).filter((p) => !p.startsWith(OCR_DIR + path.sep) && !p.startsWith(CLOUD_DIR + path.sep)),
 ].filter((p) => fs.existsSync(p));
 
 const hash = createHash('sha256');
@@ -188,4 +217,5 @@ const kb = (p) => (fs.statSync(p).size / 1024).toFixed(1) + ' KB';
 console.log(`✓ assets/app.css (${kb(path.join(ASSETS, 'app.css'))})`);
 console.log(`✓ icons: ${usedIcons.size - missing.size} glyphs across ${usedWeights.join(', ')}`);
 console.log(`✓ sw.js  cache version ${version}, ${urls.length} precached URLs`);
+console.log(`✓ assets/cloud/firebase.js  Firebase ${FIREBASE_VERSION} (${(fs.statSync(path.join(CLOUD_DIR, 'firebase.js')).size / 1024).toFixed(0)} KB, cached on first use)`);
 console.log(`✓ assets/ocr/tesseract-${OCR_VERSION} (${(listFiles(OCR).reduce((n, p) => n + fs.statSync(p).size, 0) / 1048576).toFixed(1)} MB, cached on first use)`);

@@ -5,6 +5,72 @@ optimised for iPad/tablet use. It is a single static page (`index.html`) served 
 
 https://jorzyrockz-crypto.github.io/Portable-School-Inventory/
 
+## Home screen: encode without distractions
+
+The app opens on **Home**, which only asks one thing: *What are you encoding?*
+
+1. **Type a few letters** of the item name or its stock code. The catalog and your custom items are searched together.
+2. **Tap a result**, or press Enter for the top one. A sheet slides up with a big quantity stepper, the unit and one-tap room chips. The chips are rooms you already use plus common school rooms.
+3. **Save & next** saves the item, shows an **Undo** toast and clears the search, ready for the next item. Pressing Enter in the quantity field also saves. **More details** opens the full item editor for price, condition, units and so on.
+
+If nothing matches, the last row offers to add what you typed as a new custom item.
+
+When the search box is empty, Home shows:
+- three big tiles: **Scan ICS**, **Import** and **Count**. While a count is running, the Count tile shows a progress bar. A **Scan tag** tile appears once you have tagged units.
+- your last 5 **recently encoded** items, which you can tap to edit.
+- one status line with the number of items, total value and last backup. It links to Reports. The backup reminder appears here only when a backup is overdue.
+
+Everything else moved out of the way:
+
+| Where | What |
+| --- | --- |
+| **My Items** tab | your in-stock ledger, plus the physical count checklist while counting |
+| **Catalog** tab | the full APP-CSE catalog with part tabs and category filters |
+| **Reports** tab | valuation, condition, property tags, categories, rooms, print and APP-CSE summary |
+| **☰ More** menu | add custom item, import, scan ICS / QR, print, CSV exports, school info, backup, restore, change history, sample data |
+
+## Supply requests & Purchase Requests
+
+Teachers request supplies from their own phones; the custodian reviews each request, checks it against stock, approves it, and turns approved requests into a **Purchase Request (Appendix 60)**.
+
+**Teacher**
+1. Open the invite link (or scan the QR code) the custodian shared, then type your name, position and grade/section once.
+2. Tap **New supply request**, search for items (e.g. “bond paper”, “ballpen”) or type anything not in the catalog, set quantities, add a purpose and a needed-by date, and send.
+3. Follow the status on the same screen: *To review → Approved → Being purchased (PR No.) → Supplied*, or *Declined* with the custodian’s reason. A pending request can still be cancelled.
+
+A teacher’s phone only shows the request screen and only that teacher’s own requests — never the school inventory.
+
+**Custodian**
+1. On Home, tap **Supply requests** (also in ☰ More) and tap **Continue with Google** (or use email and password). The first sign-in creates your school.
+2. Tap **Invite** and send the link or QR code to your faculty group chat.
+3. **To review**: open a request to see *asked / on hand / to buy* for every line. Edit names, quantities, units and unit costs, link a line to an inventory item, add a note, then **Approve** or **Decline** (with a reason). You can also enter walk-in requests with **New**.
+4. **To purchase**: tick approved requests and tap **Prepare Purchase Request**. Only the quantity not in stock goes on the PR (asked minus on hand, editable). Identical items from several teachers are added together, and their names go in the Purpose.
+5. Check the PR header (entity, fund cluster, office, PR No., responsibility center code, date), the lines and the signatories, then **Save & print**. Saved PRs are listed under **Purchase requests**, where you can reprint them or export them to CSV. Mark a request **Supplied** once the items are handed over.
+
+### Supply requests: Firebase setup
+
+The app is connected to the Firebase project **russapps-custodian-pro** (settings in [`firebase-config.js`](firebase-config.js)). In the [Firebase console](https://console.firebase.google.com/project/russapps-custodian-pro), do these once:
+
+1. **Build → Authentication → Get started → Sign-in method**: turn on
+   - **Google** (custodian, and teachers who want their requests on every phone). Pick a support email and save.
+   - **Anonymous** (teachers who just type their name).
+   - **Email/Password** (optional: custodians without a Google account).
+2. **Authentication → Settings → Authorized domains**: add `jorzyrockz-crypto.github.io`. Without it, Google sign-in shows “This website is not on the Firebase authorized domains list”.
+3. **Build → Firestore Database → Create database**: pick a location near you (e.g. `asia-southeast1`, Singapore) and start in **production mode**.
+4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school, and nothing can be deleted.
+
+The config values are not secret; access is controlled by the published rules. To use a different project, replace the object in `firebase-config.js` (or set it to `null` to hide Supply requests).
+
+**Sign-in**
+- **Custodian:** *Continue with Google* (or email + password). The first sign-in creates the school; signing in on another phone or tablet finds it again.
+- **Teacher:** open the invite link, type your name, and tap *Continue* (no account needed), or *Continue with Google* to keep your requests when you change phones. You can also link Google later from the teacher screen.
+
+**Offline**
+- After the first online visit, the app and the sign-in stay on the phone.
+- Firestore keeps a copy of the requests and Purchase Requests on the device, so the lists open without signal.
+- New requests, approvals and PRs made offline are queued, marked *Sending…*, and sent automatically when the phone reconnects (also after the app is closed and reopened).
+- Signing in for the first time needs internet.
+
 ## Equipment condition tracking
 
 For equipment (ICS/PAR) items, the item editor records how many on-hand units are
