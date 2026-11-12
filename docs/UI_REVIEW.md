@@ -1,7 +1,7 @@
 # UI review: findings (November 2026)
 
 Build reviewed: `main` at 6221905 (phone layout, PR #14) plus this branch's title-bar change.
-**This is a report only.** Nothing listed below has been fixed yet.
+**Status (Nov 2026):** findings 1–4, 6–14 and 16 are fixed (see the update notes below the table). Finding 5 is partly addressed (tablet scaling). Finding 15 (a desktop layout) is still open.
 
 ## How it was checked
 
@@ -47,6 +47,22 @@ Nothing on any screen scrolls sideways, and no ids are duplicated.
 > **Update (Nov 2026):** *My Items* was renamed **Inventory** and redesigned (one row per item, tap for an item sheet). That fixes the cut-off My Items tabs (10: the filter chips now wrap), the grey strip (11) and the unnamed −/+ on My Items rows (3: the steppers moved into the item sheet as *One less / One more*). Catalog parts of 3 and 10 are still open.
 
 > **Update (Nov 2026, Catalog):** the Catalog got the same treatment: one row per item with a compact − qty + whose buttons are named *One less / One more* (fixes the Catalog part of 3), and a Category drop-down instead of the sideways-scrolling pills (fixes the Catalog part of 10). The grey "SHOWING 361 OF 361 ITEMS" line is now "361 items" in darker sentence-case text (16).
+
+> **Update (Nov 2026, review fixes):**
+> - **1:** buttons with white text use darker shades: amber-700, emerald-700, teal-700 and sky-700 (all at least 4.5:1). This covers Request / New / Send request, Release, Download CSV, Received / Approve and the count buttons.
+> - **2:** `text-slate-400` text became `text-slate-500` (4.76:1). On the one dark card, the labels use white at 75–80 %.
+> - **3:** every close ✕, the condition steppers, the label and print buttons and the Reports print button have a name.
+> - **4:** the APP-CSE Summary footer stacks on phones: Print report and Download CSV on top, then "Show in-stock items in the Catalog" and Close. The dark total card stacks too.
+> - **6:** the About version card wraps, so Check for updates moves under the text.
+> - **7:** on Reports, category names get their own line and room names wrap instead of being cut off.
+> - **8:** phones drop the school ID from the header ("Oquendo Elementary School").
+> - **9:** 10 px text is now 11 px.
+> - **12:** the Home status line wraps.
+> - **13:** the toast button no longer wraps.
+> - **14:** About uses the new description.
+> - **16:** grey-on-grey text uses slate-600.
+> - What's New draws "→" with the icon font, since the Inter subset has no arrow.
+> - `tests/e2e/phone-layout.mjs` now checks on every screen that each button has a name, white button text is at least 4.5:1, and no text uses the faint grey.
 
 ## Details and suggested fixes
 

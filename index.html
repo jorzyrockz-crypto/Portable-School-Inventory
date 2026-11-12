@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="abf2ba966682">
+  <meta name="app-version" content="dd3a58ba2cf2">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -430,17 +430,17 @@
         <div class="min-w-0">
           <div class="flex items-center gap-2">
             <h1 class="font-extrabold text-base tracking-tight text-slate-900 leading-none">CustodianPro</h1>
-            <span id="offlineBadge" class="hidden items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold uppercase tracking-wider" title="No internet connection. Your counts are still saved on this device.">
+            <span id="offlineBadge" class="hidden items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold uppercase tracking-wider" title="No internet connection. Your counts are still saved on this device.">
               <i class="ph-bold ph-wifi-slash"></i> Offline
             </span>
           </div>
-          <p id="headerSchoolName" class="text-xs text-slate-500 mt-0.5 font-medium truncate max-w-[60vw] sm:max-w-md">Set School Info</p>
+          <p id="headerSchoolName" class="text-xs text-slate-600 mt-0.5 font-medium truncate max-w-[60vw] sm:max-w-md">Set School Info</p>
         </div>
       </button>
       <div class="flex items-center gap-2 shrink-0">
       <button onclick="openNotifPanel()" id="notifBtn" class="hidden relative w-10 h-10 shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition items-center justify-center text-slate-700" aria-label="Notifications">
         <i class="ph-bold ph-bell text-lg"></i>
-        <span id="notifCount" class="hidden absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-600 text-white text-[10px] font-extrabold flex items-center justify-center ring-2 ring-white"></span>
+        <span id="notifCount" class="hidden absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-600 text-white text-[11px] font-extrabold flex items-center justify-center ring-2 ring-white"></span>
       </button>
       <button onclick="openMoreMenu()" id="moreMenuBtn" class="h-10 px-3 shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-slate-700" aria-label="More">
         <i class="ph-bold ph-list text-lg"></i>
@@ -460,7 +460,7 @@
         <p class="text-xs text-slate-500 mt-0.5 leading-snug">Opens from your home screen, full screen, even without signal.</p>
       </div>
       <button id="installBtn" onclick="installApp()" class="shrink-0 h-10 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold">Install</button>
-      <button onclick="dismissInstall()" class="shrink-0 w-8 h-8 rounded-full text-slate-400 hover:bg-slate-100 flex items-center justify-center" aria-label="Not now"><i class="ph-bold ph-x"></i></button>
+      <button onclick="dismissInstall()" class="shrink-0 w-8 h-8 rounded-full text-slate-500 hover:bg-slate-100 flex items-center justify-center" aria-label="Not now"><i class="ph-bold ph-x"></i></button>
     </div>
   </div>
 
@@ -473,7 +473,7 @@
         <p class="text-xs text-slate-600 mt-0.5 leading-snug">Restart to update. Your inventory stays on this device.</p>
       </div>
       <button id="updateBtn" onclick="applyUpdate()" class="shrink-0 h-10 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold">Restart</button>
-      <button onclick="snoozeUpdate()" class="shrink-0 w-8 h-8 rounded-full text-slate-400 hover:bg-white flex items-center justify-center" aria-label="Later"><i class="ph-bold ph-x"></i></button>
+      <button onclick="snoozeUpdate()" class="shrink-0 w-8 h-8 rounded-full text-slate-500 hover:bg-white flex items-center justify-center" aria-label="Later"><i class="ph-bold ph-x"></i></button>
     </div>
   </div>
 
@@ -487,13 +487,13 @@
       <i class="ph-bold ph-cloud-arrow-up text-xl text-amber-700 shrink-0"></i>
       <p class="flex-1 min-w-0 text-xs text-amber-900"><span class="font-extrabold">Back up your inventory.</span> <span id="backupReminderText">You have changes that are not in a backup file yet.</span></p>
       <button onclick="snoozeBackupReminder()" class="h-9 px-3 shrink-0 rounded-xl bg-white border border-amber-200 text-xs font-bold text-amber-800 active:scale-95 transition">Later</button>
-      <button onclick="exportBackupJSON()" class="h-9 px-3 shrink-0 rounded-xl bg-amber-600 hover:bg-amber-700 text-xs font-bold text-white active:scale-95 transition">Back up</button>
+      <button onclick="exportBackupJSON()" class="h-9 px-3 shrink-0 rounded-xl bg-amber-700 hover:bg-amber-800 text-xs font-bold text-white active:scale-95 transition">Back up</button>
     </div>
 
     <div>
       <label for="homeSearch" class="block text-lg font-extrabold text-slate-900 mb-2.5">What are you encoding?</label>
       <div class="relative">
-        <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xl pointer-events-none"></i>
+        <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xl pointer-events-none"></i>
         <input id="homeSearch" type="text" inputmode="search" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go"
           placeholder="Find an item – name or code"
           oninput="renderHome()" onkeydown="homeSearchKey(event)"
@@ -535,20 +535,20 @@
         <button onclick="openRequestsView()" class="flex-1 min-w-0 flex items-center gap-3 text-left">
           <span class="relative w-11 h-11 shrink-0 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
             <i class="ph-bold ph-tray text-2xl"></i>
-            <span id="homeReqBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-extrabold items-center justify-center">0</span>
+            <span id="homeReqBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-rose-500 text-white text-[11px] font-extrabold items-center justify-center">0</span>
           </span>
           <span class="min-w-0">
             <span class="block text-sm font-extrabold text-slate-800">Supply requests</span>
             <span id="homeReqSub" class="block text-[11px] text-slate-500 truncate">Teachers request supplies · you approve</span>
           </span>
         </button>
-        <button onclick="openRequestForm()" class="shrink-0 h-10 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 transition">
+        <button onclick="openRequestForm()" class="shrink-0 h-10 px-3 rounded-xl bg-amber-700 hover:bg-amber-800 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 transition">
           <i class="ph-bold ph-plus"></i> Request
         </button>
       </div>
 
       <div id="homeRecentWrap" class="hidden">
-        <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Recently encoded</h2>
+        <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Recently encoded</h2>
         <div id="homeRecent" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100"></div>
       </div>
 
@@ -558,8 +558,8 @@
         <button onclick="loadSampleInventory()" class="min-h-10 px-2 text-xs font-bold text-brand-600 hover:underline">Just exploring? Load sample data</button>
       </div>
 
-      <button id="homeStatus" onclick="switchMainView('REPORTS')" class="w-full min-h-10 flex items-center justify-between gap-2 px-1 text-xs text-slate-500 hover:text-slate-700">
-        <span id="homeStatusText" class="truncate">No items encoded yet</span>
+      <button id="homeStatus" onclick="switchMainView('REPORTS')" class="w-full min-h-10 flex items-center justify-between gap-2 px-1 text-xs text-slate-600 hover:text-slate-800">
+        <span id="homeStatusText" class="text-left leading-snug">No items encoded yet</span>
         <span class="shrink-0 font-bold text-brand-600 flex items-center gap-1">Reports <i class="ph-bold ph-caret-right"></i></span>
       </button>
     </div>
@@ -576,7 +576,7 @@
         <p class="text-xs text-slate-500">APP-CSE 2027 &middot; general inventory</p>
       </div>
       <div class="flex items-center gap-2">
-        <button onclick="printReport()" class="h-10 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-slate-700">
+        <button onclick="printReport()" aria-label="Print report" title="Print report" class="h-10 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-slate-700">
           <i class="ph-bold ph-printer text-base"></i><span class="hidden sm:inline">Print</span>
         </button>
         <button onclick="openSummaryModal()" class="h-10 px-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-white shadow-sm">
@@ -591,7 +591,7 @@
       <!-- KPI 1: Total Valuation -->
       <div onclick="openSummaryModal()" class="col-span-2 sm:col-span-1 bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-emerald-400 cursor-pointer shadow-sm flex flex-col justify-between transition">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Valuation</span>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Valuation</span>
           <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
             <i class="ph-bold ph-currency-circle-dollar text-lg"></i>
           </div>
@@ -608,14 +608,14 @@
       <!-- KPI 2: Active SKUs & Total Units -->
       <div onclick="filterLedgerAndScroll('ALL')" class="bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-brand-400 cursor-pointer shadow-sm flex flex-col justify-between transition">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Active Inventory</span>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Active Inventory</span>
           <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
             <i class="ph-bold ph-stack text-lg"></i>
           </div>
         </div>
         <div class="my-2 flex items-baseline gap-1.5">
           <span id="kpiActiveSkus" class="text-xl sm:text-2xl font-extrabold font-mono text-slate-900">0</span>
-          <span class="text-xs font-semibold text-slate-400">/ <span id="kpiTotalCatalogSkus">323</span> SKUs</span>
+          <span class="text-xs font-semibold text-slate-500">/ <span id="kpiTotalCatalogSkus">323</span> SKUs</span>
         </div>
         <div class="text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
           <span>Total Physical Units:</span>
@@ -626,7 +626,7 @@
       <!-- KPI 3: Equipment vs Consumables -->
       <div onclick="filterLedgerAndScroll('EQUIPMENT')" class="col-span-2 sm:col-span-1 order-last sm:order-none bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-blue-400 cursor-pointer shadow-sm flex flex-col justify-between transition">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Asset Breakdown</span>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Asset Breakdown</span>
           <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
             <i class="ph-bold ph-desktop-tower text-lg"></i>
           </div>
@@ -650,7 +650,7 @@
       <!-- KPI 4: Stock Alerts & Unpriced Items -->
       <div onclick="filterLedgerAndScroll('LOW')" class="bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-amber-400 cursor-pointer shadow-sm flex flex-col justify-between transition">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Attention Needed</span>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Attention Needed</span>
           <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
             <i class="ph-bold ph-warning-octagon text-lg"></i>
           </div>
@@ -715,21 +715,21 @@
       </div>
       <div class="grid grid-cols-3 gap-2.5 mt-3">
         <div class="rounded-xl bg-slate-50 border border-slate-100 p-2.5">
-          <span class="block text-[10px] font-bold uppercase text-slate-500">Tagged units</span>
-          <span class="font-mono font-extrabold text-base text-slate-900"><span id="tagsTagged">0</span><span class="text-xs font-semibold text-slate-400"> / <span id="tagsEquipUnits">0</span></span></span>
+          <span class="block text-[11px] font-bold uppercase text-slate-500">Tagged units</span>
+          <span class="font-mono font-extrabold text-base text-slate-900"><span id="tagsTagged">0</span><span class="text-xs font-semibold text-slate-500"> / <span id="tagsEquipUnits">0</span></span></span>
           <div class="h-1.5 mt-1 rounded-full bg-slate-200 overflow-hidden">
             <div id="tagsTaggedBar" class="h-full bg-violet-500 transition-all duration-300" style="width:0%"></div>
           </div>
         </div>
         <div class="rounded-xl bg-slate-50 border border-slate-100 p-2.5">
-          <span class="block text-[10px] font-bold uppercase text-slate-500">Verified in <span id="tagsYear">2026</span></span>
-          <span class="font-mono font-extrabold text-base text-emerald-700"><span id="tagsVerifiedYear">0</span><span class="text-xs font-semibold text-slate-400"> / <span id="tagsTaggedOf">0</span></span></span>
+          <span class="block text-[11px] font-bold uppercase text-slate-500">Verified in <span id="tagsYear">2026</span></span>
+          <span class="font-mono font-extrabold text-base text-emerald-700"><span id="tagsVerifiedYear">0</span><span class="text-xs font-semibold text-slate-500"> / <span id="tagsTaggedOf">0</span></span></span>
           <div class="h-1.5 mt-1 rounded-full bg-slate-200 overflow-hidden">
             <div id="tagsVerifiedBar" class="h-full bg-emerald-500 transition-all duration-300" style="width:0%"></div>
           </div>
         </div>
         <div class="rounded-xl bg-slate-50 border border-slate-100 p-2.5">
-          <span class="block text-[10px] font-bold uppercase text-slate-500">Verified today</span>
+          <span class="block text-[11px] font-bold uppercase text-slate-500">Verified today</span>
           <span id="tagsVerifiedToday" class="font-mono font-extrabold text-base text-slate-900">0</span>
         </div>
       </div>
@@ -760,7 +760,7 @@
         <h3 class="font-extrabold text-sm text-slate-900 leading-tight">Government forms</h3>
         <p class="text-[11px] text-slate-500">Physical count (RPCPPE / RPCSP) · unserviceable (IIRUP / IIRUSP) · transfers (PTR / ITR) · slips</p>
       </div>
-      <i class="ph-bold ph-caret-right text-slate-400"></i>
+      <i class="ph-bold ph-caret-right text-slate-500"></i>
     </button>
 
     <!-- MIDDLE ROW: Stock Health & Storage Location Distribution -->
@@ -948,7 +948,7 @@
 
       <!-- Nothing matches -->
       <div id="emptyState" class="hidden px-6 py-10 text-center">
-        <i class="ph-duotone ph-magnifying-glass text-4xl text-slate-400 mb-2 block"></i>
+        <i class="ph-duotone ph-magnifying-glass text-4xl text-slate-500 mb-2 block"></i>
         <p class="text-sm font-bold text-slate-800">Nothing matches</p>
         <p class="text-xs text-slate-600 mt-1 max-w-xs mx-auto">Try another word or category, or add it as a custom item.</p>
         <div class="mt-4 flex justify-center gap-2">
@@ -981,7 +981,7 @@
       <div id="reqViewActions" class="hidden shrink-0 flex items-center gap-1.5 w-full sm:w-auto sm:pt-5 [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center [&>button]:h-10 sm:[&>button]:h-9">
         <button onclick="openInvite()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-user-plus text-brand-600"></i> Invite</button>
 <button onclick="openTeachersView()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-teal-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-users-three text-teal-600"></i> Teachers</button>
-        <button onclick="openRequestForm()" class="h-9 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-plus"></i> New</button>
+        <button onclick="openRequestForm()" class="h-9 px-3 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-plus"></i> New</button>
       </div>
     </div>
     <div id="reqViewBody" class="space-y-3"></div>
@@ -1007,23 +1007,23 @@
     <p id="rqSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
     <div id="rqItemsPane" class="hidden space-y-5"></div>
     <div id="rqRequestsPane" class="space-y-5">
-    <button onclick="openRequestForm()" class="w-full h-16 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-extrabold text-base shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition">
+    <button onclick="openRequestForm()" class="w-full h-16 rounded-2xl bg-amber-700 hover:bg-amber-800 active:scale-[0.98] text-white font-extrabold text-base shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition">
       <i class="ph-bold ph-plus-circle text-2xl"></i> New supply request
     </button>
     <div>
-      <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">My requests</h2>
+      <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">My requests</h2>
       <div id="rqList" class="space-y-2"></div>
     </div>
     </div>
     <div>
-      <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Appearance</h2>
+      <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Appearance</h2>
       <div id="rqTheme" data-theme-switch></div>
       <div id="rqArt" data-art-switch class="mt-2"></div>
     </div>
     <div id="rqAccount" class="text-[11px] -mb-2"></div>
     <div class="flex items-center justify-between gap-3 text-xs pb-6">
       <button onclick="editMyDetails()" class="min-h-10 px-1 font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-user-circle"></i> Change my name or office</button>
-      <button onclick="leaveSchool()" class="min-h-10 px-1 font-bold text-slate-400 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-sign-out"></i> Leave</button>
+      <button onclick="leaveSchool()" class="min-h-10 px-1 font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-sign-out"></i> Leave</button>
     </div>
   </section>
 
@@ -1041,19 +1041,19 @@
     <!-- Print Summary Row -->
     <div class="grid grid-cols-4 gap-3 mb-4 text-xs border border-black p-3">
       <div>
-        <span class="block text-[10px] uppercase text-slate-600">Active SKUs</span>
+        <span class="block text-[11px] uppercase text-slate-600">Active SKUs</span>
         <strong id="printTotalSkus" class="text-sm font-mono">0</strong>
       </div>
       <div>
-        <span class="block text-[10px] uppercase text-slate-600">Part I (PS-DBM)</span>
+        <span class="block text-[11px] uppercase text-slate-600">Part I (PS-DBM)</span>
         <strong id="printPart1Val" class="text-sm font-mono">₱0.00</strong>
       </div>
       <div>
-        <span class="block text-[10px] uppercase text-slate-600">Part II (Other)</span>
+        <span class="block text-[11px] uppercase text-slate-600">Part II (Other)</span>
         <strong id="printPart2Val" class="text-sm font-mono">₱0.00</strong>
       </div>
       <div>
-        <span class="block text-[10px] uppercase text-slate-600">Total Valuation</span>
+        <span class="block text-[11px] uppercase text-slate-600">Total Valuation</span>
         <strong id="printGrandVal" class="text-sm font-mono">₱0.00</strong>
       </div>
     </div>
@@ -1076,7 +1076,7 @@
       </tbody>
     </table>
 
-    <p class="text-[10px] mt-1.5">Condition (equipment): S = Serviceable, R = Needs Repair, U = Unserviceable. N/A = consumable (RIS).</p>
+    <p class="text-[11px] mt-1.5">Condition (equipment): S = Serviceable, R = Needs Repair, U = Unserviceable. N/A = consumable (RIS).</p>
 
     <div class="grid grid-cols-2 gap-12 mt-12 text-xs">
       <div>
@@ -1123,7 +1123,7 @@
   <div id="appToast" role="status" aria-live="polite" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-[70] w-max max-w-[calc(100vw-2rem)] items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-2xl no-print">
     <i id="appToastIcon" class="ph-bold ph-check-circle text-lg text-emerald-400"></i>
     <span id="appToastText"></span>
-    <button id="appToastAction" class="hidden ml-2 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-amber-300 font-bold"></button>
+    <button id="appToastAction" class="hidden ml-2 shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-amber-300 font-bold"></button>
   </div>
 
   <!-- BOTTOM TAB BAR -->
@@ -1137,7 +1137,7 @@
       <button onclick="switchMainView('ITEMS')" data-view="ITEMS" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
         <i class="ph-bold ph-package text-[22px]"></i>
-        <span class="flex items-center gap-1">Inventory <span id="navBadgeCount" class="px-1.5 rounded-full bg-brand-100 text-brand-700 font-mono text-[10px]">0</span></span>
+        <span class="flex items-center gap-1">Inventory <span id="navBadgeCount" class="px-1.5 rounded-full bg-brand-100 text-brand-700 font-mono text-[11px]">0</span></span>
       </button>
       <button onclick="switchMainView('CATALOG')" data-view="CATALOG" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
@@ -1161,31 +1161,31 @@
       </div>
       <div class="px-3 pb-4 space-y-3">
         <div>
-          <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Add &amp; import</p>
+          <p class="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Add &amp; import</p>
           <button onclick="closeMoreMenu(); openCustomItemModal()" class="more-item"><i class="ph-bold ph-plus-circle text-brand-600"></i> Add a custom item</button>
           <button onclick="closeMoreMenu(); openImport()" class="more-item"><i class="ph-bold ph-file-arrow-up text-sky-600"></i> Import Excel / CSV</button>
           <button onclick="closeMoreMenu(); openIcsScanner()" class="more-item"><i class="ph-bold ph-file-text text-violet-600"></i> Scan ICS</button>
           <button onclick="closeMoreMenu(); openScanner()" class="more-item"><i class="ph-bold ph-scan text-slate-600"></i> Scan a QR property tag</button>
         </div>
         <div>
-          <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Reports &amp; files</p>
+          <p class="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Reports &amp; files</p>
           <button onclick="closeMoreMenu(); openSummaryModal()" class="more-item"><i class="ph-bold ph-receipt text-brand-600"></i> APP-CSE summary</button>
           <button id="moreReqItem" onclick="closeMoreMenu(); openRequestsView()" class="more-item"><i class="ph-bold ph-tray text-amber-600"></i> Supply requests &amp; purchase requests</button>
           <button onclick="closeMoreMenu(); openTeachersView()" class="more-item"><i class="ph-bold ph-users-three text-teal-600"></i> Released to teachers</button>
-          <button id="moreCoaItem" onclick="openCoa()" class="more-item"><i class="ph-bold ph-stamp text-brand-600"></i> Government forms <span class="ml-auto text-[10px] font-bold text-slate-400">RPCPPE · PTR · IIRUP</span></button>
+          <button id="moreCoaItem" onclick="openCoa()" class="more-item"><i class="ph-bold ph-stamp text-brand-600"></i> Government forms <span class="ml-auto text-[11px] font-bold text-slate-500">RPCPPE · PTR · IIRUP</span></button>
           <button onclick="closeMoreMenu(); printReport()" class="more-item"><i class="ph-bold ph-printer text-slate-600"></i> Print report</button>
           <button onclick="closeMoreMenu(); exportCSV()" class="more-item"><i class="ph-bold ph-download-simple text-emerald-600"></i> Export inventory (CSV)</button>
           <button onclick="closeMoreMenu(); exportRegisterCSV()" class="more-item"><i class="ph-bold ph-file-csv text-emerald-600"></i> Property register (CSV)</button>
         </div>
         <div>
-          <p class="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Appearance</p>
+          <p class="px-2 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Appearance</p>
           <div id="moreTheme" data-theme-switch class="px-1"></div>
           <p class="px-2 pt-3 pb-1.5 text-xs font-semibold text-slate-600">Background picture on</p>
           <div id="moreArt" data-art-switch class="px-1"></div>
         </div>
         <div id="moreAccount" class="hidden"></div>
         <div>
-          <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Data &amp; settings</p>
+          <p class="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Data &amp; settings</p>
           <button id="moreInstallItem" onclick="closeMoreMenu(); installApp()" class="more-item" style="display:none"><i class="ph-bold ph-device-mobile text-brand-600"></i> Install app on this phone</button>
           <button onclick="closeMoreMenu(); openSchoolModal()" class="more-item"><i class="ph-bold ph-buildings text-brand-600"></i> School &amp; custodian info</button>
           <button onclick="closeMoreMenu(); exportBackupJSON()" class="more-item"><i class="ph-bold ph-floppy-disk text-emerald-600"></i> Back up now</button>
@@ -1193,7 +1193,7 @@
           <button onclick="closeMoreMenu(); openHistory()" class="more-item"><i class="ph-bold ph-list-magnifying-glass text-brand-600"></i> Change history</button>
           <button onclick="closeMoreMenu(); loadSampleInventory()" class="more-item"><i class="ph-bold ph-magic-wand text-slate-500"></i> Load sample data</button>
           <button id="moreTourItem" onclick="openTour()" class="more-item"><i class="ph-bold ph-signpost text-teal-600"></i> Welcome tour</button>
-          <button id="moreAboutItem" onclick="closeMoreMenu(); openAbout()" class="more-item"><i class="ph-bold ph-info text-brand-600"></i> About &amp; what’s new <span id="moreUpdateDot" class="hidden ml-auto text-[10px] font-extrabold uppercase tracking-wider text-white bg-amber-500 rounded-full px-2 py-0.5">Update</span></button>
+          <button id="moreAboutItem" onclick="closeMoreMenu(); openAbout()" class="more-item"><i class="ph-bold ph-info text-brand-600"></i> About &amp; what’s new <span id="moreUpdateDot" class="hidden ml-auto text-[11px] font-extrabold uppercase tracking-wider text-white bg-amber-700 rounded-full px-2 py-0.5">Update</span></button>
           <p id="backupStatusLine" class="px-2 pt-2 text-[11px] text-slate-500 flex items-center gap-1.5">
             <i class="ph-bold ph-clock-counter-clockwise"></i>
             <span id="backupStatusText">Last backup: never</span>
@@ -1223,7 +1223,7 @@
   <div id="aboutPanel" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center no-print" onclick="if (event.target === this) closeAbout()">
     <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] flex flex-col safe-bottom overflow-hidden">
       <div class="relative shrink-0 bg-[#eef3fb]">
-        <img src="assets/brand/banner.webp" alt="CustodianPro School Inventory – effortless classroom and equipment tracking" width="1024" height="434" class="w-full h-auto block">
+        <img src="assets/brand/banner.webp" alt="CustodianPro School Inventory: property and supplies for school custodians and teachers" width="1024" height="434" class="w-full h-auto block">
         <button onclick="closeAbout()" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 text-slate-600 shadow flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
       <div id="aboutBody" class="p-4 space-y-4 overflow-y-auto"></div>
@@ -1252,7 +1252,7 @@
         <div>
           <label for="rfSearch" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Add items</label>
           <div class="relative">
-            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
             <input id="rfSearch" type="text" inputmode="search" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="Search, e.g. bond paper, chalk, ballpen"
               oninput="renderReqSearch()" onkeydown="reqSearchKey(event)"
               class="w-full h-12 pl-9 pr-3 rounded-xl border-2 border-slate-200 focus:border-amber-500 text-sm font-semibold outline-none">
@@ -1273,7 +1273,7 @@
       </div>
       <div class="px-5 py-3 border-t border-slate-100 flex items-center gap-2">
         <button onclick="closeRequestForm()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Cancel</button>
-        <button id="rfSendBtn" onclick="sendRequest()" class="flex-1 h-12 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 transition">
+        <button id="rfSendBtn" onclick="sendRequest()" class="flex-1 h-12 rounded-xl bg-amber-700 hover:bg-amber-800 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 transition">
           <i class="ph-bold ph-paper-plane-tilt"></i> <span id="rfSendLabel">Send request</span>
         </button>
       </div>
@@ -1291,7 +1291,7 @@
         <div id="revLines" class="space-y-2.5"></div>
         <button onclick="addReviewLine()" class="w-full h-10 rounded-xl border border-dashed border-slate-300 text-xs font-bold text-slate-500 hover:border-brand-400 hover:text-brand-600 flex items-center justify-center gap-1.5"><i class="ph-bold ph-plus"></i> Add a line</button>
         <div>
-          <label for="revNote" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Note to the requester <span class="normal-case font-medium text-slate-400">(optional)</span></label>
+          <label for="revNote" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Note to the requester <span class="normal-case font-medium text-slate-500">(optional)</span></label>
           <input id="revNote" type="text" maxlength="300" placeholder="e.g. 5 reams released today, the rest after purchase" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none">
         </div>
       </div>
@@ -1371,7 +1371,7 @@
             <div id="relLines" class="space-y-2"></div>
             <p id="relMissing" class="hidden mt-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] px-2.5 py-1.5"></p>
             <div class="mt-2 relative">
-              <i class="ph-bold ph-plus absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <i class="ph-bold ph-plus absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
               <input id="relAdd" list="relItemList" type="text" placeholder="Add an item in stock…" onchange="addRelItem(this)" class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none">
               <datalist id="relItemList"></datalist>
             </div>
@@ -1423,7 +1423,7 @@
     <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[96vh] flex flex-col">
       <div class="px-5 pt-4 flex items-center justify-between gap-3">
         <div id="tourDots" class="flex items-center gap-1.5" aria-hidden="true"></div>
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Getting started</span>
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Getting started</span>
       </div>
       <div id="tourBody" class="px-5 py-4 space-y-4 overflow-y-auto"></div>
       <div id="tourFoot" class="px-5 py-3 border-t border-slate-100 flex items-center gap-2 safe-pad"></div>
@@ -1459,17 +1459,17 @@
         <button onclick="closeInvite()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
       <div class="text-center">
-        <div id="inviteQr" class="keep-light mx-auto w-44 h-44 rounded-2xl border border-slate-200 p-2.5 bg-white flex items-center justify-center text-xs text-slate-400">QR code</div>
+        <div id="inviteQr" class="keep-light mx-auto w-44 h-44 rounded-2xl border border-slate-200 p-2.5 bg-white flex items-center justify-center text-xs text-slate-500">QR code</div>
         <p class="mt-2 text-[11px] text-slate-500">Teachers scan this with their phone camera, or tap the link you send them.</p>
       </div>
       <div class="rounded-xl bg-slate-50 border border-slate-200 divide-y divide-slate-200">
         <div class="px-3 py-2">
-          <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Invite link</p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Invite link</p>
           <p id="inviteLinkText" class="text-[11px] font-mono text-slate-700 break-all leading-snug select-all"></p>
         </div>
         <div class="px-3 py-2 flex items-center justify-between gap-2">
           <div class="min-w-0">
-            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">School code</p>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">School code</p>
             <p id="inviteCode" class="text-sm font-mono font-bold text-slate-900 truncate select-all"></p>
           </div>
           <button onclick="copyInviteCode()" class="shrink-0 h-8 px-2.5 rounded-lg bg-white border border-slate-200 hover:border-brand-300 text-[11px] font-bold text-slate-600 flex items-center gap-1"><i class="ph-bold ph-copy"></i> Copy</button>
@@ -1481,7 +1481,7 @@
         <button onclick="shareInvite()" class="h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-share-network"></i> Share</button>
       </div>
       <button id="invitePoster" onclick="printInvitePoster()" class="w-full h-11 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print a poster for the faculty room</button>
-      <p class="text-[11px] text-slate-400 text-center">Paste it in your faculty group chat. Teachers only see their own requests; you review every one.</p>
+      <p class="text-[11px] text-slate-500 text-center">Paste it in your faculty group chat. Teachers only see their own requests; you review every one.</p>
     </div>
   </div>
 
@@ -1502,14 +1502,14 @@
         <input id="joinOffice" type="text" maxlength="80" placeholder="Office or grade &amp; section, e.g. Grade 7 – Rizal" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
       </div>
       <p id="joinError" class="hidden text-xs font-semibold text-rose-600"></p>
-      <button id="joinBtn" onclick="submitJoin()" class="w-full h-12 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2">
+      <button id="joinBtn" onclick="submitJoin()" class="w-full h-12 rounded-xl bg-amber-700 hover:bg-amber-800 disabled:opacity-50 text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2">
         <i class="ph-bold ph-check"></i> <span id="joinBtnLabel">Continue</span>
       </button>
       <div id="joinGoogleWrap" class="space-y-1.5">
         <button id="joinGoogleBtn" onclick="joinWithGoogle()" class="w-full h-11 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-50 text-slate-800 font-bold text-sm flex items-center justify-center gap-2.5">
           <svg viewBox="0 0 48 48" class="w-5 h-5 shrink-0" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Continue with Google
         </button>
-        <p class="text-[11px] text-slate-400 text-center">Optional · keeps your requests if you change phones</p>
+        <p class="text-[11px] text-slate-500 text-center">Optional · keeps your requests if you change phones</p>
       </div>
     </div>
   </div>
@@ -1550,7 +1550,7 @@
         <div id="isRows" class="divide-y divide-slate-100"></div>
       </div>
       <div class="flex gap-2 p-4 border-t border-slate-200 bg-slate-50">
-        <button id="isRelease" onclick="itemSheetGo('release')" class="flex-1 h-14 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex flex-col items-center justify-center gap-0.5">
+        <button id="isRelease" onclick="itemSheetGo('release')" class="flex-1 h-14 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex flex-col items-center justify-center gap-0.5">
           <i class="ph-bold ph-hand-arrow-up text-lg"></i> Release
         </button>
         <button onclick="itemSheetGo('edit')" class="flex-1 h-14 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 text-xs font-bold flex flex-col items-center justify-center gap-0.5">
@@ -1567,7 +1567,7 @@
     <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 safe-pad space-y-4">
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
-          <p id="encCode" class="font-mono text-[11px] text-slate-400"></p>
+          <p id="encCode" class="font-mono text-[11px] text-slate-500"></p>
           <h3 id="encName" class="font-extrabold text-base text-slate-900 leading-snug"></h3>
           <p id="encNow" class="text-xs text-slate-500 mt-0.5"></p>
         </div>
@@ -1590,7 +1590,7 @@
         </div>
       </div>
       <div>
-        <label for="encNote" class="block text-[11px] font-bold uppercase text-slate-500 mb-1.5">Room / location <span class="normal-case font-medium text-slate-400">(optional)</span></label>
+        <label for="encNote" class="block text-[11px] font-bold uppercase text-slate-500 mb-1.5">Room / location <span class="normal-case font-medium text-slate-500">(optional)</span></label>
         <div id="encRooms" class="flex flex-wrap gap-1.5 mb-2"></div>
         <input id="encNote" type="text" placeholder="e.g. Faculty Room" oninput="markEncodeRoom()" onkeydown="if (event.key === 'Enter') { event.preventDefault(); saveEncode(); }"
           class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
@@ -1611,7 +1611,7 @@
         <div>
           <div class="flex items-center gap-2">
             <span id="modalItemCode" class="font-mono text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded">CODE</span>
-            <span id="modalItemTypeBadge" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-700">TYPE</span>
+            <span id="modalItemTypeBadge" class="text-[11px] font-bold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-700">TYPE</span>
           </div>
           <h3 id="modalItemName" class="font-bold text-base text-slate-900 mt-1.5">Item Name</h3>
         </div>
@@ -1619,7 +1619,7 @@
           <button onclick="openHistory(activeModalCode)" title="Change history of this item" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-brand-50 text-slate-500 hover:text-brand-600 flex items-center justify-center">
             <i class="ph-bold ph-clock-counter-clockwise"></i>
           </button>
-          <button onclick="closeItemModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+          <button aria-label="Close" onclick="closeItemModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
             <i class="ph-bold ph-x"></i>
           </button>
         </div>
@@ -1667,23 +1667,23 @@
           </div>
           <div class="grid grid-cols-3 gap-2">
             <div class="rounded-lg bg-white border border-emerald-200 p-2 text-center">
-              <span class="block text-[10px] font-bold uppercase text-emerald-700">Serviceable</span>
+              <span class="block text-[11px] font-bold uppercase text-emerald-700">Serviceable</span>
               <span id="modalCondServ" class="block h-9 leading-9 font-mono font-extrabold text-lg text-emerald-700">0</span>
             </div>
             <div class="rounded-lg bg-white border border-orange-200 p-2 text-center">
-              <span class="block text-[10px] font-bold uppercase text-orange-700">Needs Repair</span>
+              <span class="block text-[11px] font-bold uppercase text-orange-700">Needs Repair</span>
               <div class="flex items-center justify-center gap-1">
-                <button type="button" onclick="stepModalCondition('modalItemRepair', -1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
+                <button aria-label="One less for repair" type="button" onclick="stepModalCondition('modalItemRepair', -1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
                 <input type="number" id="modalItemRepair" min="0" oninput="updateModalConditionPreview()" class="w-10 h-9 text-center font-mono font-extrabold text-lg text-orange-700 bg-transparent outline-none">
-                <button type="button" onclick="stepModalCondition('modalItemRepair', 1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
+                <button aria-label="One more for repair" type="button" onclick="stepModalCondition('modalItemRepair', 1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
               </div>
             </div>
             <div class="rounded-lg bg-white border border-rose-200 p-2 text-center">
-              <span class="block text-[10px] font-bold uppercase text-rose-700">Unserviceable</span>
+              <span class="block text-[11px] font-bold uppercase text-rose-700">Unserviceable</span>
               <div class="flex items-center justify-center gap-1">
-                <button type="button" onclick="stepModalCondition('modalItemUnserv', -1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
+                <button aria-label="One less unserviceable" type="button" onclick="stepModalCondition('modalItemUnserv', -1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
                 <input type="number" id="modalItemUnserv" min="0" oninput="updateModalConditionPreview()" class="w-10 h-9 text-center font-mono font-extrabold text-lg text-rose-700 bg-transparent outline-none">
-                <button type="button" onclick="stepModalCondition('modalItemUnserv', 1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
+                <button aria-label="One more unserviceable" type="button" onclick="stepModalCondition('modalItemUnserv', 1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
               </div>
             </div>
           </div>
@@ -1745,7 +1745,7 @@
           <h2 class="font-extrabold text-lg text-slate-900">APP-CSE 2027 Official Summary</h2>
           <p class="text-xs text-slate-500">Computation based on PS-DBM Page 8 Guidelines</p>
         </div>
-        <button onclick="closeSummaryModal()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
+        <button aria-label="Close" onclick="closeSummaryModal()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
           <i class="ph-bold ph-x text-lg"></i>
         </button>
       </div>
@@ -1782,10 +1782,10 @@
         </div>
 
         <!-- Combined Overall Total -->
-        <div class="bg-slate-900 text-white p-4 rounded-xl flex items-center justify-between">
+        <div class="bg-slate-900 text-white p-4 rounded-xl flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <span class="text-xs uppercase tracking-wider text-slate-400 font-bold block">Combined School Procurement Budget</span>
-            <span class="text-xs text-slate-300">Part I Grand Total + Part II Total</span>
+            <span class="text-xs uppercase tracking-wider text-white/75 font-bold block">Combined School Procurement Budget</span>
+            <span class="text-xs text-white/80">Part I Grand Total + Part II Total</span>
           </div>
           <span id="sumOverallTotal" class="text-2xl font-mono font-extrabold text-emerald-400">₱0.00</span>
         </div>
@@ -1799,20 +1799,22 @@
         </div>
       </div>
 
-      <div class="p-4 border-t border-slate-200 flex justify-between items-center bg-slate-50 rounded-b-2xl">
-        <button onclick="switchMainView('CATALOG'); setPartFilter('SELECTED'); closeSummaryModal();" class="text-xs font-bold text-brand-600 hover:underline">
-          Open Active Items in Catalog
-        </button>
-        <div class="flex gap-2">
-          <button onclick="printReport()" class="h-10 px-4 rounded-xl bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5">
-            <i class="ph-bold ph-printer text-base"></i> Print Official Report
+      <!-- Phones: Print + CSV on top, then the Catalog link and Close; one row on wider screens -->
+      <div id="summaryFooter" class="p-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center justify-between gap-2">
+          <button onclick="switchMainView('CATALOG'); setPartFilter('SELECTED'); closeSummaryModal();" class="min-h-10 px-1 text-xs font-bold text-brand-600 hover:underline text-left">
+            Show in-stock items in the Catalog
           </button>
-          <button onclick="exportCSV()" class="h-10 px-4 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5">
+          <button onclick="closeSummaryModal()" class="sm:hidden shrink-0 h-10 px-4 rounded-xl bg-slate-200 text-slate-800 font-bold text-xs">Close</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2 sm:flex">
+          <button onclick="printReport()" class="h-10 px-4 rounded-xl bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 whitespace-nowrap">
+            <i class="ph-bold ph-printer text-base"></i> Print report
+          </button>
+          <button onclick="exportCSV()" class="h-10 px-4 rounded-xl bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 whitespace-nowrap">
             <i class="ph-bold ph-file-csv text-base"></i> Download CSV
           </button>
-          <button onclick="closeSummaryModal()" class="h-10 px-4 rounded-xl bg-slate-200 text-slate-800 font-bold text-xs">
-            Close
-          </button>
+          <button onclick="closeSummaryModal()" class="hidden sm:block h-10 px-4 rounded-xl bg-slate-200 text-slate-800 font-bold text-xs">Close</button>
         </div>
       </div>
     </div>
@@ -1823,7 +1825,7 @@
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
         <h3 class="font-extrabold text-base text-slate-900">School & Custodian Details</h3>
-        <button onclick="closeSchoolModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+        <button aria-label="Close" onclick="closeSchoolModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
           <i class="ph-bold ph-x"></i>
         </button>
       </div>
@@ -1869,7 +1871,7 @@
           <h3 class="font-extrabold text-base text-slate-900">Add Custom School Item</h3>
           <p class="text-xs text-slate-500">Added under Part II (Other Items)</p>
         </div>
-        <button onclick="closeCustomItemModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+        <button aria-label="Close" onclick="closeCustomItemModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
           <i class="ph-bold ph-x"></i>
         </button>
       </div>
@@ -1924,7 +1926,7 @@
           </h3>
           <p class="text-xs text-slate-500 mt-0.5">From an Excel (.xlsx) or CSV file &middot; one row per item</p>
         </div>
-        <button onclick="closeImport()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+        <button aria-label="Close" onclick="closeImport()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
           <i class="ph-bold ph-x"></i>
         </button>
       </div>
@@ -1950,7 +1952,7 @@
           </h3>
           <p class="text-xs text-slate-500 mt-0.5">Inventory Custodian Slip &middot; take a photo &middot; check &middot; save</p>
         </div>
-        <button onclick="closeIcsScanner()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+        <button aria-label="Close" onclick="closeIcsScanner()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
           <i class="ph-bold ph-x"></i>
         </button>
       </div>
@@ -1977,13 +1979,13 @@
             </h3>
             <p id="historySubtitle" class="text-xs text-slate-500 mt-0.5"></p>
           </div>
-          <button onclick="closeHistory()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+          <button aria-label="Close" onclick="closeHistory()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
             <i class="ph-bold ph-x"></i>
           </button>
         </div>
         <div id="historyItemFilter" class="hidden mt-2.5"></div>
         <div class="relative mt-3">
-          <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
           <input id="historySearch" type="text" oninput="historyFilter.limit = 150; renderHistory()" placeholder="Search changes, items, property numbers…" class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none">
         </div>
         <div id="historyKindChips" class="flex gap-1.5 mt-2.5 overflow-x-auto no-scrollbar"></div>
@@ -2005,12 +2007,12 @@
         <div class="min-w-0">
           <div class="flex items-center gap-2">
             <span id="unitsItemCode" class="font-mono text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded">CODE</span>
-            <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-violet-50 text-violet-700 inline-flex items-center gap-1"><i class="ph-bold ph-qr-code"></i> Property Numbers</span>
+            <span class="text-[11px] font-bold uppercase px-2 py-0.5 rounded bg-violet-50 text-violet-700 inline-flex items-center gap-1"><i class="ph-bold ph-qr-code"></i> Property Numbers</span>
           </div>
           <h3 id="unitsItemName" class="font-bold text-base text-slate-900 mt-1.5 leading-snug">Item Name</h3>
           <p id="unitsSummary" class="text-xs text-slate-500 mt-0.5"></p>
         </div>
-        <button onclick="closeUnitsModal()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+        <button aria-label="Close" onclick="closeUnitsModal()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
           <i class="ph-bold ph-x"></i>
         </button>
       </div>
@@ -2029,7 +2031,7 @@
       <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3 text-white">
         <div class="min-w-0">
           <h3 class="font-extrabold text-base flex items-center gap-2"><i class="ph-bold ph-scan text-violet-300"></i> Scan Property Tag</h3>
-          <p class="text-[11px] text-slate-400">Each match is marked as verified today &ndash; useful for the physical count</p>
+          <p class="text-[11px] text-slate-500">Each match is marked as verified today &ndash; useful for the physical count</p>
         </div>
         <div class="flex items-center gap-2.5 shrink-0">
           <span class="text-xs font-bold px-2.5 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300"><span id="scanSessionCount">0</span> verified</span>
@@ -2839,17 +2841,11 @@
 
         return `
           <div onclick="jumpToCategoryFromDashboard(${c.idx})" class="p-2.5 rounded-xl border ${hasActive ? 'border-slate-200 bg-slate-50/70 hover:border-brand-400' : 'border-slate-100 bg-white opacity-75'} cursor-pointer transition group">
-            <div class="flex items-center justify-between text-xs mb-1.5">
-              <div class="flex items-center gap-2 min-w-0 pr-2">
-                <span class="font-bold text-slate-800 group-hover:text-brand-600 truncate">${c.name}</span>
-                <span class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded ${hasActive ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-500'}">
-                  ${c.activeSkus}/${c.totalSkus} SKUs
-                </span>
-              </div>
-              <div class="text-right shrink-0 font-mono">
-                <span class="font-bold text-slate-900">${formatCurrency(c.val)}</span>
-                <span class="text-[10px] text-slate-400 ml-1">(${c.units} units)</span>
-              </div>
+            <!-- The name gets its own line (wraps instead of being cut off); counts and value below it -->
+            <p class="text-xs font-bold text-slate-800 group-hover:text-brand-600 leading-snug break-words">${c.name}</p>
+            <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs mt-1 mb-1.5">
+              <span class="px-1.5 py-0.5 text-[11px] font-mono font-bold rounded ${hasActive ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-600'}">${c.activeSkus}/${c.totalSkus} SKUs</span>
+              <span class="font-mono whitespace-nowrap"><span class="font-bold text-slate-900">${formatCurrency(c.val)}</span><span class="text-[11px] text-slate-600 ml-1">(${c.units} units)</span></span>
             </div>
             <div class="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden">
               <div class="h-full bg-brand-600 rounded-full transition-all duration-300" style="width: ${hasActive ? Math.max(4, pct) : 0}%"></div>
@@ -2862,7 +2858,7 @@
     function renderDashboardLocations(activeItems) {
       const container = document.getElementById('dashboardLocationsList');
       if (activeItems.length === 0) {
-        container.innerHTML = `<div class="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-slate-100">No active inventory locations yet.</div>`;
+        container.innerHTML = `<div class="p-4 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-slate-100">No active inventory locations yet.</div>`;
         return;
       }
 
@@ -2880,8 +2876,8 @@
       container.innerHTML = entries.map(([loc, data]) => `
         <div onclick="jumpToLocationFromDashboard('${loc.replace(/'/g, "\\'")}')" class="p-2.5 rounded-xl bg-slate-50 hover:bg-brand-50/50 border border-slate-200/70 flex items-center justify-between text-xs cursor-pointer transition">
           <div class="flex items-center gap-2 min-w-0 pr-2">
-            <i class="ph-fill ph-map-pin ${loc === 'Unassigned Room' ? 'text-slate-400' : 'text-emerald-600'} text-sm shrink-0"></i>
-            <span class="font-bold ${loc === 'Unassigned Room' ? 'text-slate-500 italic' : 'text-slate-800'} truncate">${loc}</span>
+            <i class="ph-fill ph-map-pin ${loc === 'Unassigned Room' ? 'text-slate-500' : 'text-emerald-600'} text-sm shrink-0"></i>
+            <span class="font-bold leading-snug break-words min-w-0 ${loc === 'Unassigned Room' ? 'text-slate-600 italic' : 'text-slate-800'}">${escapeHTML(loc)}</span>
           </div>
           <div class="shrink-0 font-mono text-right">
             <span class="px-2 py-0.5 rounded bg-white border border-slate-200 font-bold text-slate-700">${data.count} SKUs</span>
@@ -2981,7 +2977,7 @@
         const empty = !stocked.length;
         container.innerHTML = `
           <div class="px-6 py-10 text-center">
-            <i class="ph-duotone ph-package text-4xl text-slate-400 mb-2 block"></i>
+            <i class="ph-duotone ph-package text-4xl text-slate-500 mb-2 block"></i>
             <p class="text-sm font-bold text-slate-800">${empty ? 'Your inventory is empty' : 'Nothing matches'}</p>
             <p class="text-xs text-slate-600 mt-1 max-w-xs mx-auto">${empty
               ? 'Add what the school has: scan an ICS or import your Excel list from Home, or pick items in the Catalog.'
@@ -2999,7 +2995,7 @@
           const code = escapeHTML(item.code);
           const lead = countSession
             ? `<button data-code="${code}" onclick="event.stopPropagation(); toggleCounted(this.dataset.code)" aria-pressed="${counted}" aria-label="${counted ? 'Counted, tap to undo' : 'Mark as counted'}"
-                class="count-check w-11 h-11 shrink-0 rounded-xl flex items-center justify-center transition active:scale-95 ${counted ? 'bg-sky-600 text-white shadow-sm' : 'bg-white border-2 border-dashed border-slate-300 text-slate-400'}">
+                class="count-check w-11 h-11 shrink-0 rounded-xl flex items-center justify-center transition active:scale-95 ${counted ? 'bg-sky-700 text-white shadow-sm' : 'bg-white border-2 border-dashed border-slate-300 text-slate-500'}">
                 <i class="ph-bold ph-check text-lg"></i></button>`
             : `<span class="w-11 h-11 shrink-0 rounded-xl ${t.tone} flex items-center justify-center" title="${t.label}"><i class="ph-duotone ${t.icon} text-2xl"></i></span>`;
           return `
@@ -3016,7 +3012,7 @@
                 <p class="font-mono font-extrabold text-base text-slate-900 leading-tight">${item.qty}<span class="ml-1 font-sans text-xs font-semibold text-slate-500">${escapeHTML(item.unit)}</span></p>
                 <p class="font-mono text-xs font-bold text-emerald-700 mt-0.5 whitespace-nowrap">${formatCurrency(item.qty * item.price)}</p>
               </div>
-              <i class="ph-bold ph-caret-right text-slate-400 shrink-0 -mr-1" aria-hidden="true"></i>
+              <i class="ph-bold ph-caret-right text-slate-500 shrink-0 -mr-1" aria-hidden="true"></i>
             </div>`;
         }).join('');
       }
@@ -3086,7 +3082,7 @@
           <i class="ph-bold ${icon} text-lg text-slate-500 shrink-0"></i>
           <span class="text-xs font-semibold text-slate-600 w-24 shrink-0">${label}</span>
           <span class="flex-1 min-w-0 text-sm font-semibold text-slate-800 break-words">${value}</span>
-          ${onclick ? '<i class="ph-bold ph-caret-right text-slate-400 shrink-0"></i>' : ''}
+          ${onclick ? '<i class="ph-bold ph-caret-right text-slate-500 shrink-0"></i>' : ''}
         </${onclick ? 'button' : 'div'}>`;
       const rows = [
         line('ph-map-pin', 'Room', item.note ? escapeHTML(item.note) : '<span class="text-brand-700">Set a room</span>', "itemSheetGo('edit')"),
@@ -3129,7 +3125,7 @@
       if (countSession) {
         const done = isCounted(item.code);
         countBtn.innerHTML = done ? '<i class="ph-bold ph-arrow-counter-clockwise"></i> Counted · undo' : '<i class="ph-bold ph-check"></i> Mark as counted';
-        countBtn.className = `w-full h-12 rounded-xl text-sm font-bold flex items-center justify-center gap-2 ${done ? 'bg-slate-100 text-slate-700' : 'bg-sky-600 hover:bg-sky-700 text-white'}`;
+        countBtn.className = `w-full h-12 rounded-xl text-sm font-bold flex items-center justify-center gap-2 ${done ? 'bg-slate-100 text-slate-700' : 'bg-sky-700 hover:bg-sky-800 text-white'}`;
       }
       document.getElementById('isRelease').classList.toggle('hidden', !isCustodianDevice());
     }
@@ -3764,7 +3760,7 @@
 
       const listContainer = document.getElementById('summaryItemsList');
       if (activeItems.length === 0) {
-        listContainer.innerHTML = `<div class="p-6 text-center text-xs text-slate-400">No items in inventory yet.</div>`;
+        listContainer.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">No items in inventory yet.</div>`;
       } else {
         listContainer.innerHTML = activeItems.map(item => `
           <div class="p-3 flex items-center justify-between text-xs">
@@ -3827,7 +3823,10 @@
 
     function updateSchoolHeader() {
       const label = document.getElementById('headerSchoolName');
-      label.textContent = schoolInfo.school ? schoolInfo.school : 'Set School Info';
+      // Phones drop the school ID ("114656 - ") so the name fits; wider screens show it.
+      const m = (schoolInfo.school || '').match(/^(\d{5,7}\s*[-–]\s*)(.+)$/);
+      if (m) label.innerHTML = `<span class="hidden sm:inline">${escapeHTML(m[1])}</span>${escapeHTML(m[2])}`;
+      else label.textContent = schoolInfo.school ? schoolInfo.school : 'Set School Info';
     }
 
     // =========================================================================
@@ -4119,7 +4118,7 @@
     //  - The on-hand quantity can't drop below the number of tagged units.
     //  - The first "Tag units" carries over the condition counts already recorded.
     const UNIT_COND = {
-      S: { label: 'Serviceable', on: 'bg-emerald-600 text-white border-emerald-600', off: 'bg-white text-emerald-700 border-emerald-200' },
+      S: { label: 'Serviceable', on: 'bg-emerald-700 text-white border-emerald-700', off: 'bg-white text-emerald-700 border-emerald-200' },
       R: { label: 'Needs Repair', on: 'bg-orange-500 text-white border-orange-500', off: 'bg-white text-orange-700 border-orange-200' },
       U: { label: 'Unserviceable', on: 'bg-rose-600 text-white border-rose-600', off: 'bg-white text-rose-700 border-rose-200' }
     };
@@ -4254,7 +4253,7 @@
               <p class="font-bold">${headline}</p>
               <p class="mt-0.5 text-amber-800">New numbers: <span class="font-mono font-bold">${escapeHTML(next[0])}</span>${untagged > 1 ? ` to <span class="font-mono font-bold">${escapeHTML(next[next.length - 1])}</span>` : ''}. You can edit any number afterwards to match an existing sticker.</p>
             </div>
-            <button onclick="generateUnitTags()" class="shrink-0 h-10 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition">
+            <button onclick="generateUnitTags()" class="shrink-0 h-10 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition">
               <i class="ph-bold ph-tag"></i> Tag ${plural(untagged, 'unit')}
             </button>
           </div>`;
@@ -4284,7 +4283,7 @@
           <div class="py-10 text-center">
             <i class="ph-duotone ph-qr-code text-4xl text-slate-300 block mb-2"></i>
             <p class="text-sm font-bold text-slate-700">No units tagged yet</p>
-            <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Give each unit its own property number, print QR labels, then scan them during the physical count.</p>
+            <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Give each unit its own property number, print QR labels, then scan them during the physical count.</p>
           </div>`;
     }
 
@@ -4292,18 +4291,18 @@
       const code = item.code;
       const field = (key, label, placeholder) => `
         <label class="block min-w-0">
-          <span class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">${label}</span>
+          <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">${label}</span>
           <input type="text" value="${escapeHTML(u[key] || '')}" placeholder="${escapeHTML(placeholder)}" ${key === 'to' ? 'list="teacherNameList" autocomplete="off"' : ''} onchange="setUnitField('${code}', '${u.id}', '${key}', this.value)" class="w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
         </label>`;
       return `
         <div id="unitcard-${u.id}" class="rounded-xl border p-3 transition ${highlight ? 'border-emerald-300 ring-2 ring-emerald-400/40 bg-emerald-50/40' : 'border-slate-200 bg-white'}">
           <div class="flex items-center gap-2">
-            <span class="w-7 shrink-0 text-[11px] font-bold text-slate-400">#${idx + 1}</span>
+            <span class="w-7 shrink-0 text-[11px] font-bold text-slate-500">#${idx + 1}</span>
             <input type="text" value="${escapeHTML(u.no)}" aria-label="Property number" autocapitalize="characters" spellcheck="false" onchange="renameUnit('${code}', '${u.id}', this)" class="unit-no-input flex-1 min-w-0 h-10 px-3 rounded-lg border border-slate-300 font-mono font-extrabold text-sm text-slate-900 uppercase focus:border-brand-500 outline-none">
-            <button onclick="printUnitLabel('${code}', '${u.id}')" title="Print this label" class="w-10 h-10 shrink-0 rounded-lg bg-slate-100 hover:bg-violet-50 text-slate-600 hover:text-violet-700 flex items-center justify-center">
+            <button aria-label="Print this label" onclick="printUnitLabel('${code}', '${u.id}')" title="Print this label" class="w-10 h-10 shrink-0 rounded-lg bg-slate-100 hover:bg-violet-50 text-slate-600 hover:text-violet-700 flex items-center justify-center">
               <i class="ph-bold ph-printer"></i>
             </button>
-            <button onclick="removeUnitTag('${code}', '${u.id}')" title="Remove unit (disposed, transferred or lost)" class="w-10 h-10 shrink-0 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center">
+            <button aria-label="Remove unit (disposed, transferred or lost)" onclick="removeUnitTag('${code}', '${u.id}')" title="Remove unit (disposed, transferred or lost)" class="w-10 h-10 shrink-0 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center">
               <i class="ph-bold ph-trash"></i>
             </button>
           </div>
@@ -5109,7 +5108,7 @@
         <span class="inline-flex items-center gap-2 max-w-full pl-2.5 pr-1 py-1 rounded-lg bg-brand-50 border border-brand-100 text-brand-700 text-xs font-bold">
           <i class="ph-bold ph-funnel"></i>
           <span class="truncate">${escapeHTML(historyItemName(historyFilter.code))}</span>
-          <button onclick="setHistoryItem(null)" class="w-6 h-6 rounded-md hover:bg-brand-100 flex items-center justify-center" title="Show all items"><i class="ph-bold ph-x"></i></button>
+          <button aria-label="Show all items" onclick="setHistoryItem(null)" class="w-6 h-6 rounded-md hover:bg-brand-100 flex items-center justify-center" title="Show all items"><i class="ph-bold ph-x"></i></button>
         </span>` : '';
 
       document.getElementById('historyKindChips').innerHTML = [['ALL', 'All'], ...Object.entries(HISTORY_KINDS).map(([k, v]) => [k, v.label])]
@@ -5124,7 +5123,7 @@
           <div class="py-12 text-center">
             <i class="ph-duotone ph-clock-counter-clockwise text-4xl text-slate-300 block mb-2"></i>
             <p class="text-sm font-bold text-slate-700">${changeHistory.length ? 'No changes match this view' : 'Nothing recorded yet'}</p>
-            <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Counts, prices, locations, condition, property numbers and scans are recorded here as you work.</p>
+            <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Counts, prices, locations, condition, property numbers and scans are recorded here as you work.</p>
           </div>`;
         return;
       }
@@ -5135,7 +5134,7 @@
         const label = historyDayLabel(e.t);
         if (label !== day) {
           day = label;
-          html += `<p class="sticky top-0 z-10 bg-white/95 backdrop-blur pt-3 pb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">${label}</p>`;
+          html += `<p class="sticky top-0 z-10 bg-white/95 backdrop-blur pt-3 pb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">${label}</p>`;
         }
         const kind = HISTORY_KINDS[e.k] || HISTORY_KINDS.edit;
         const time = new Date(e.t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
@@ -5162,7 +5161,7 @@
 
     // The bundled Inter subset has no "→" glyph, so draw arrows with the icon font.
     function historyTextHTML(text) {
-      return escapeHTML(text).replace(/→/g, '<i class="ph-bold ph-arrow-right text-slate-400 text-xs mx-0.5"></i>');
+      return escapeHTML(text).replace(/→/g, '<i class="ph-bold ph-arrow-right text-slate-500 text-xs mx-0.5"></i>');
     }
 
     function exportHistoryCSV() {
@@ -5285,7 +5284,7 @@
         document.getElementById('countSubtitle').textContent = 'Check off each item as you count it and see what is left.';
         wrap.classList.add('hidden');
         actions.innerHTML = `
-          <button onclick="startCount()" class="h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition">
+          <button onclick="startCount()" class="h-10 px-4 rounded-xl bg-sky-700 hover:bg-sky-800 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition">
             <i class="ph-bold ph-play"></i> Start count
           </button>`;
         return;
@@ -5304,7 +5303,7 @@
         <button onclick="filterLedgerAndScroll('UNCOUNTED')" class="h-10 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
           <i class="ph-bold ph-list-checks"></i> Not counted (${scope.length - counted})
         </button>
-        <button onclick="finishCount()" class="h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition">
+        <button onclick="finishCount()" class="h-10 px-4 rounded-xl bg-sky-700 hover:bg-sky-800 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition">
           <i class="ph-bold ph-flag-checkered"></i> Finish
         </button>`;
     }
@@ -5622,17 +5621,17 @@
       applyBtn.textContent = ready ? `Import ${plural(plan.targets.length, 'item')}` : 'Import';
 
       const statusChip = r => r.status === 'match'
-        ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700"><i class="ph-bold ph-check"></i> Match</span>`
+        ? `<span class="inline-flex items-center gap-1 text-[11px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700"><i class="ph-bold ph-check"></i> Match</span>`
         : r.status === 'new'
-          ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-sky-50 text-sky-700"><i class="ph-bold ph-plus"></i> New</span>`
-          : `<span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500"><i class="ph-bold ph-minus"></i> Skip</span>`;
+          ? `<span class="inline-flex items-center gap-1 text-[11px] font-bold uppercase px-1.5 py-0.5 rounded bg-sky-50 text-sky-700"><i class="ph-bold ph-plus"></i> New</span>`
+          : `<span class="inline-flex items-center gap-1 text-[11px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500"><i class="ph-bold ph-minus"></i> Skip</span>`;
       const preview = plan.rows.slice(0, 80).map(r => `
         <tr class="border-b border-slate-100 align-top">
-          <td class="py-1.5 pr-2 font-mono text-[10px] text-slate-400">${r.line}</td>
+          <td class="py-1.5 pr-2 font-mono text-[11px] text-slate-500">${r.line}</td>
           <td class="py-1.5 pr-2">${statusChip(r)}</td>
           <td class="py-1.5 pr-2 text-xs text-slate-800">${escapeHTML(r.name || r.code)}
-            ${r.status === 'match' && normItemName(r.item.name) !== normItemName(r.name) ? `<span class="block text-[11px] text-emerald-700"><i class="ph-bold ph-arrow-right text-[10px]"></i> ${escapeHTML(r.item.name)}</span>` : ''}
-            ${r.status === 'skip' ? `<span class="block text-[11px] text-slate-400">${escapeHTML(r.why)}</span>` : ''}
+            ${r.status === 'match' && normItemName(r.item.name) !== normItemName(r.name) ? `<span class="block text-[11px] text-emerald-700"><i class="ph-bold ph-arrow-right text-[11px]"></i> ${escapeHTML(r.item.name)}</span>` : ''}
+            ${r.status === 'skip' ? `<span class="block text-[11px] text-slate-500">${escapeHTML(r.why)}</span>` : ''}
           </td>
           <td class="py-1.5 text-right font-mono text-xs font-bold text-slate-700">${r.qty === null ? '' : r.qty}</td>
         </tr>`).join('');
@@ -5682,16 +5681,16 @@
         </div>
 
         <div class="grid grid-cols-3 gap-2.5">
-          <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-2.5"><span class="block text-[10px] font-bold uppercase text-emerald-700">Catalog items</span><span id="importMatched" class="font-mono font-extrabold text-lg text-emerald-800">${plan.matched}</span></div>
-          <div class="rounded-xl bg-sky-50 border border-sky-100 p-2.5"><span class="block text-[10px] font-bold uppercase text-sky-700">New custom items</span><span id="importCreated" class="font-mono font-extrabold text-lg text-sky-800">${plan.created}</span></div>
-          <div class="rounded-xl bg-slate-50 border border-slate-200 p-2.5"><span class="block text-[10px] font-bold uppercase text-slate-500">Rows skipped</span><span id="importSkipped" class="font-mono font-extrabold text-lg text-slate-700">${plan.skipped}</span></div>
+          <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-2.5"><span class="block text-[11px] font-bold uppercase text-emerald-700">Catalog items</span><span id="importMatched" class="font-mono font-extrabold text-lg text-emerald-800">${plan.matched}</span></div>
+          <div class="rounded-xl bg-sky-50 border border-sky-100 p-2.5"><span class="block text-[11px] font-bold uppercase text-sky-700">New custom items</span><span id="importCreated" class="font-mono font-extrabold text-lg text-sky-800">${plan.created}</span></div>
+          <div class="rounded-xl bg-slate-50 border border-slate-200 p-2.5"><span class="block text-[11px] font-bold uppercase text-slate-500">Rows skipped</span><span id="importSkipped" class="font-mono font-extrabold text-lg text-slate-700">${plan.skipped}</span></div>
         </div>
         ${plan.merged > 0 ? `<p class="text-[11px] text-slate-500 -mt-2">${plural(plan.merged, 'duplicate row')} for the same item will be added together (e.g. the same item in several rooms).</p>` : ''}
 
         <div>
           <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Preview${plan.rows.length > 80 ? ' (first 80 rows)' : ''}</label>
           <div class="rounded-xl border border-slate-200 px-3 max-h-72 overflow-y-auto">
-            <table class="w-full text-left"><tbody>${preview || '<tr><td class="py-4 text-center text-xs text-slate-400">No rows below the header row.</td></tr>'}</tbody></table>
+            <table class="w-full text-left"><tbody>${preview || '<tr><td class="py-4 text-center text-xs text-slate-500">No rows below the header row.</td></tr>'}</tbody></table>
           </div>
         </div>`;
     }
@@ -6375,7 +6374,7 @@
             <div class="w-full max-w-sm">
               <div class="h-2.5 rounded-full bg-slate-100 overflow-hidden"><div id="icsProgressBar" class="h-full bg-violet-600 rounded-full transition-all duration-300" style="width:${Math.round((st.progress || 0) * 100)}%"></div></div>
               <p id="icsProgressLabel" class="text-xs font-semibold text-slate-600 mt-2">${escapeHTML(st.status || '')}</p>
-              <p class="text-[11px] text-slate-400 mt-1">This takes 5–20 seconds on a phone.</p>
+              <p class="text-[11px] text-slate-500 mt-1">This takes 5–20 seconds on a phone.</p>
             </div>
           </div>`;
         renderIcsSummary();
@@ -6388,7 +6387,7 @@
       const peso = n => n === null || n === undefined ? '' : '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const input = (label, key, value, extra = '') => `
         <label class="block min-w-0">
-          <span class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">${label}</span>
+          <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">${label}</span>
           <input ${extra} data-ics="h:${key}" value="${escapeHTML(value || '')}" onchange="setIcsHeader('${key}', this.value)" class="w-full h-10 px-2.5 rounded-lg border border-slate-300 text-sm font-semibold text-slate-800 focus:border-brand-500 outline-none">
         </label>`;
       const lineCard = (l, idx) => {
@@ -6404,20 +6403,20 @@
         const nos = st.opts.makeUnits ? (l.nos || expandItemNos(l.itemNo, l.qty)) : [];
         const lf = (label, key, value, cls = '', type = 'text', extra = '') => `
           <label class="block min-w-0 ${cls}">
-            <span class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">${label}</span>
+            <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">${label}</span>
             <input type="${type}" ${extra} data-ics="${l.id}:${key}" value="${escapeHTML(value ?? '')}" onchange="setIcsLine('${l.id}', '${key}', this.value)" class="w-full h-9 px-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-800 focus:border-brand-500 outline-none">
           </label>`;
         return `
           <div class="ics-line-card rounded-xl border p-3 space-y-2 ${errs.length ? 'border-rose-300 bg-rose-50/40' : off ? 'border-slate-200 bg-slate-50 opacity-60' : 'border-slate-200 bg-white'}">
             <div class="flex items-center gap-2">
               <input type="checkbox" ${l.include ? 'checked' : ''} onchange="setIcsLine('${l.id}', 'include', this.checked)" class="w-4 h-4 accent-violet-600 shrink-0" aria-label="Include line">
-              <span class="text-[11px] font-bold text-slate-400">Line ${idx + 1}</span>
+              <span class="text-[11px] font-bold text-slate-500">Line ${idx + 1}</span>
               <span class="flex-1"></span>
               ${total !== null ? `<span class="font-mono text-xs font-bold text-slate-700">${peso(total)}</span>` : ''}
-              <button onclick="removeIcsLine('${l.id}')" title="Remove line" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center"><i class="ph-bold ph-trash"></i></button>
+              <button aria-label="Remove line" onclick="removeIcsLine('${l.id}')" title="Remove line" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center"><i class="ph-bold ph-trash"></i></button>
             </div>
             <label class="block">
-              <span class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">Description</span>
+              <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">Description</span>
               <textarea rows="2" data-ics="${l.id}:desc" onchange="setIcsLine('${l.id}', 'desc', this.value)" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-800 focus:border-brand-500 outline-none">${escapeHTML(l.desc)}</textarea>
             </label>
             <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -6428,7 +6427,7 @@
               ${lf('Useful life', 'life', l.life, '')}
             </div>
             <label class="block">
-              <span class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">Save to</span>
+              <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">Save to</span>
               <select data-ics="${l.id}:target" onchange="setIcsLine('${l.id}', 'target', this.value)" class="w-full h-9 px-2 rounded-lg border ${l.target === 'NEW' ? 'border-sky-300 bg-sky-50' : l.target === 'SKIP' ? 'border-slate-200' : 'border-emerald-300 bg-emerald-50'} text-xs font-semibold text-slate-800 outline-none">
                 ${opts ? `<optgroup label="Catalog / your items">${opts}</optgroup>` : ''}
                 <option value="NEW" ${l.target === 'NEW' ? 'selected' : ''}>+ New custom item (use this description)</option>
@@ -6445,7 +6444,7 @@
 
       body.innerHTML = `
         <div class="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
-          ${st.photoUrl ? `<img src="${st.previewUrl || st.photoUrl}" alt="" onclick="window.open(this.src)" class="w-14 h-14 rounded-lg object-cover border border-slate-200 cursor-zoom-in shrink-0">` : `<i class="ph-duotone ph-clipboard-text text-3xl text-slate-400"></i>`}
+          ${st.photoUrl ? `<img src="${st.previewUrl || st.photoUrl}" alt="" onclick="window.open(this.src)" class="w-14 h-14 rounded-lg object-cover border border-slate-200 cursor-zoom-in shrink-0">` : `<i class="ph-duotone ph-clipboard-text text-3xl text-slate-500"></i>`}
           <div class="min-w-0 flex-1">
             <p class="text-sm font-extrabold text-slate-800">${st.lines.length ? `Found ${plural(st.lines.length, 'line')}` : 'No item lines found'}</p>
             <p class="text-[11px] text-slate-500">Check every field against the paper ICS before saving.</p>
@@ -6481,7 +6480,7 @@
         </div>
         <details class="rounded-xl border border-slate-200">
           <summary class="px-3.5 py-2.5 text-xs font-bold text-slate-600 cursor-pointer">Text read from the ${st.source === 'paste' ? 'pasted text' : 'photo'}</summary>
-          <pre class="px-3.5 pb-3 text-[10px] leading-snug text-slate-600 whitespace-pre-wrap break-words font-mono max-h-64 overflow-y-auto">${escapeHTML(st.text || '')}</pre>
+          <pre class="px-3.5 pb-3 text-[11px] leading-snug text-slate-600 whitespace-pre-wrap break-words font-mono max-h-64 overflow-y-auto">${escapeHTML(st.text || '')}</pre>
         </details>`;
       renderIcsSummary();
     }
@@ -6729,7 +6728,7 @@
         <button onclick="openEncodeSheet('${item.code}')" class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 active:bg-slate-100 transition">
           <span class="min-w-0 flex-1">
             <span class="block text-sm font-bold text-slate-900 truncate">${escapeHTML(item.name)}</span>
-            <span class="block text-[11px] text-slate-400 truncate">${sub || `<span class="font-mono">${escapeHTML(item.code)}</span> · ${escapeHTML(item.unit)}${item.note ? ` · ${escapeHTML(item.note)}` : ''}`}</span>
+            <span class="block text-[11px] text-slate-500 truncate">${sub || `<span class="font-mono">${escapeHTML(item.code)}</span> · ${escapeHTML(item.unit)}${item.note ? ` · ${escapeHTML(item.note)}` : ''}`}</span>
           </span>
           ${qtyChip}
           <i class="ph-bold ph-caret-right text-slate-300 shrink-0"></i>
@@ -6992,9 +6991,9 @@
       info:    { icon: 'ph-info',          box: 'bg-sky-50 text-sky-600',      ok: 'bg-brand-600 hover:bg-brand-700' },
       ask:     { icon: 'ph-question',      box: 'bg-brand-50 text-brand-600',  ok: 'bg-brand-600 hover:bg-brand-700' },
       write:   { icon: 'ph-pencil-simple', box: 'bg-brand-50 text-brand-600',  ok: 'bg-brand-600 hover:bg-brand-700' },
-      warn:    { icon: 'ph-warning',       box: 'bg-amber-50 text-amber-600',  ok: 'bg-amber-600 hover:bg-amber-700' },
+      warn:    { icon: 'ph-warning',       box: 'bg-amber-50 text-amber-600',  ok: 'bg-amber-700 hover:bg-amber-800' },
       danger:  { icon: 'ph-warning-circle', box: 'bg-rose-50 text-rose-600',   ok: 'bg-rose-600 hover:bg-rose-700' },
-      good:    { icon: 'ph-check-circle',  box: 'bg-emerald-50 text-emerald-600', ok: 'bg-emerald-600 hover:bg-emerald-700' }
+      good:    { icon: 'ph-check-circle',  box: 'bg-emerald-50 text-emerald-600', ok: 'bg-emerald-700 hover:bg-emerald-800' }
     };
     const dialogQueue = [];
     let dialogNow = null;
@@ -7533,7 +7532,7 @@
             offline: ['bg-slate-100 text-slate-600 border-slate-200', 'ph-cloud-slash', 'Offline · syncs later'],
             error:   ['bg-rose-50 text-rose-700 border-rose-200', 'ph-warning', 'Not syncing']
           }[s] || ['bg-slate-100 text-slate-600 border-slate-200', 'ph-cloud', ''];
-          el.className = `${look[0]} inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold whitespace-nowrap`;
+          el.className = `${look[0]} inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-bold whitespace-nowrap`;
           el.innerHTML = `<i class="ph-bold ${look[1]}"></i>${look[2]}`;
           el.title = invStatus.error || (invSync.lastAt ? `Last synced ${formatTimeAgo(invSync.lastAt)}` : '');
         }
@@ -7917,7 +7916,7 @@
         ${!navigator.onLine ? `<p class="rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-cloud-slash"></i> Offline · showing saved requests. Your changes are sent when you reconnect.</p>` : ''}
         ${teacherInboxHTML()}
         ${reqFlowHTML(counts)}
-        <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1 pt-1">${REQ_STAGES.find(st => st.key === reqTab).title}</h2>`;
+        <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1 pt-1">${REQ_STAGES.find(st => st.key === reqTab).title}</h2>`;
 
       if (reqTab === 'pending') {
         html += pending.length ? pending.map(r => reqCardHTML(r)).join('')
@@ -7936,7 +7935,7 @@
             </button>
           </div>` : '';
         html += stockOnly.length ? `
-          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1 pt-2">All in stock · nothing to buy</p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1 pt-2">All in stock · nothing to buy</p>
           ${stockOnly.map(r => reqCardHTML(r, { supply: true })).join('')}` : '';
         if (!approved.length) html += reqEmptyHTML('ph-shopping-cart', 'Nothing to purchase', 'Approved requests wait here until you put them on a Purchase Request.');
       } else if (reqTab === 'prs') {
@@ -7945,7 +7944,7 @@
       } else {
         html += closed.length ? closed.map(r => reqCardHTML(r, { supply: r.status === 'closed' })).join('') : reqEmptyHTML('ph-archive', 'Nothing here yet', 'Requests on a PR, supplied, declined or cancelled.');
       }
-      html += `<button onclick="custodianSignOut()" class="min-h-10 text-xs font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 px-1 mt-1"><i class="ph-bold ph-sign-out"></i> Sign out</button>`;
+      html += `<button onclick="custodianSignOut()" class="min-h-10 text-xs font-bold text-slate-500 hover:text-slate-700 flex items-center gap-1 px-1 mt-1"><i class="ph-bold ph-sign-out"></i> Sign out</button>`;
       body.innerHTML = html;
       placeToast();
     }
@@ -7975,10 +7974,10 @@
           <button onclick="setReqTab('${st.key}')" aria-current="${on ? 'page' : 'false'}" class="req-stage relative text-left rounded-2xl border p-3 transition ${on ? 'bg-white border-brand-400 ring-2 ring-brand-500/15 shadow-sm stage-on' : 'bg-white/60 border-slate-200 hover:bg-white hover:border-slate-300'}">
             <span class="flex items-center justify-between gap-2">
               <span class="w-8 h-8 rounded-lg ${REQ_TONE[st.tone]} flex items-center justify-center"><i class="ph-bold ${st.icon} text-lg"></i></span>
-              <span class="text-2xl font-extrabold font-mono ${alert ? 'text-rose-600' : on ? 'text-slate-900' : 'text-slate-400'}">${n}</span>
+              <span class="text-2xl font-extrabold font-mono ${alert ? 'text-rose-600' : on ? 'text-slate-900' : 'text-slate-500'}">${n}</span>
             </span>
             <span class="mt-2 block text-[13px] font-extrabold ${on ? 'text-slate-900' : 'text-slate-700'} leading-tight">${st.label}</span>
-            <span class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide">${st.n} · ${st.hint}</span>
+            <span class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide">${st.n} · ${st.hint}</span>
             ${alert ? '<span class="absolute top-2 left-2 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>' : ''}
           </button>`;
       }).join('')}</nav>`;
@@ -7996,7 +7995,7 @@
                 ${i < REQ_STAGES.length - 1 ? '<span class="w-px flex-1 bg-slate-200 my-1"></span>' : ''}
               </span>
               <span class="pb-4">
-                <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Step ${st.n} · ${st.label}</span>
+                <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-500">Step ${st.n} · ${st.label}</span>
                 <span class="block text-xs text-slate-600 leading-relaxed">${st.how}</span>
               </span>
             </li>`).join('')}
@@ -8023,7 +8022,7 @@
           <p class="text-xs text-amber-800">Open the invite link your property custodian shared, or type the school code:</p>
           <div class="flex gap-2">
             <input id="rcCode" type="text" autocomplete="off" spellcheck="false" placeholder="School code" class="flex-1 min-w-0 h-10 px-3 rounded-xl border border-amber-300 bg-white text-sm font-mono focus:border-amber-500 outline-none">
-            <button onclick="openJoin(reqVal('rcCode'))" class="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-extrabold">Join</button>
+            <button onclick="openJoin(reqVal('rcCode'))" class="h-10 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-sm font-extrabold">Join</button>
           </div>
         </div>`;
     }
@@ -8042,7 +8041,7 @@
 
     function reqStatusChip(r) {
       const st = REQ_STATUS[r.status] || REQ_STATUS.pending;
-      return `<span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold ${st.cls}"><i class="ph-bold ${st.icon}"></i>${r.status === 'pr' && r.prNo ? `PR ${escapeHTML(r.prNo)}` : st.short}</span>`;
+      return `<span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-bold ${st.cls}"><i class="ph-bold ${st.icon}"></i>${r.status === 'pr' && r.prNo ? `PR ${escapeHTML(r.prNo)}` : st.short}</span>`;
     }
 
     function reqCardHTML(r, { pick = false, supply = false } = {}) {
@@ -8094,7 +8093,7 @@
           <div class="mt-2 flex gap-2">
             <button onclick="printPrById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print</button>
             <button onclick="exportPrCSVById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-file-csv"></i> CSV</button>
-            ${waiting ? `<button onclick="markPrDelivered('${pr.id}')" class="ml-auto h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white flex items-center gap-1.5"><i class="ph-bold ph-package"></i> Items delivered</button>`
+            ${waiting ? `<button onclick="markPrDelivered('${pr.id}')" class="ml-auto h-9 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-xs font-bold text-white flex items-center gap-1.5"><i class="ph-bold ph-package"></i> Items delivered</button>`
               : delivered ? `<span class="ml-auto h-9 px-2 text-xs font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Delivered</span>` : ''}
           </div>
         </div>`;
@@ -8128,7 +8127,7 @@
               <p class="text-xs text-slate-500">Receive your teachers’ requests. The first sign-in sets up your school.</p>
             </div>
           </div>
-          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">School (first sign-in only)
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500">School (first sign-in only)
             <input id="rcSchool" type="text" value="${school}" placeholder="School name" class="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium normal-case tracking-normal text-slate-900 focus:border-brand-500 outline-none">
           </label>
           <button id="rcGoogle" onclick="custodianGoogle()" class="w-full h-12 rounded-xl bg-white border-2 border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-800 text-sm font-extrabold flex items-center justify-center gap-2.5 shadow-sm">
@@ -8136,7 +8135,7 @@
           </button>
           <p id="rcError" class="hidden text-xs font-semibold text-rose-600"></p>
           ${navigator.onLine ? '' : '<p class="text-xs font-semibold text-slate-500 flex items-center gap-1.5"><i class="ph-bold ph-cloud-slash"></i> Signing in needs internet once. After that, requests work offline.</p>'}
-          <div class="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider text-slate-400"><span class="flex-1 h-px bg-slate-200"></span>or with email<span class="flex-1 h-px bg-slate-200"></span></div>
+          <div class="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider text-slate-500"><span class="flex-1 h-px bg-slate-200"></span>or with email<span class="flex-1 h-px bg-slate-200"></span></div>
           <input id="rcEmail" type="email" value="${email}" autocomplete="username" placeholder="Email" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
           <input id="rcPass" type="password" autocomplete="current-password" placeholder="Password (6+ characters)" onkeydown="if (event.key === 'Enter') custodianConnect(false)" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
           <div class="grid grid-cols-2 gap-2">
@@ -8424,7 +8423,7 @@
       if (acct) {
         const u = cloud.user;
         acct.innerHTML = u && !u.isAnonymous && u.email
-          ? `<span class="flex items-center gap-1.5 text-slate-400">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} ${escapeHTML(u.email)}</span>`
+          ? `<span class="flex items-center gap-1.5 text-slate-500">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} ${escapeHTML(u.email)}</span>`
           : u ? `<button onclick="teacherLinkGoogle()" class="min-h-10 text-left font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} Sign in with Google to keep your requests if you change phones</button>` : '';
       }
       document.getElementById('headerSchoolName').textContent = reqRole.schoolName;
@@ -8448,8 +8447,8 @@
       const lines = reqLinesOf(r).map(l => {
         const asked = reviewed ? l.requested : l.qty;
         const ok = reviewed ? l.approved : null;
-        const qtyText = ok === null ? `${asked}` : ok === asked ? `${ok}` : `<span class="line-through text-slate-400">${asked}</span> ${ok}`;
-        return `<li class="flex justify-between gap-3"><span class="min-w-0 truncate">${escapeHTML(l.desc)}</span><span class="shrink-0 font-mono font-bold">${qtyText} <span class="font-sans font-medium text-slate-400">${escapeHTML(l.unit || '')}</span></span></li>`;
+        const qtyText = ok === null ? `${asked}` : ok === asked ? `${ok}` : `<span class="line-through text-slate-500">${asked}</span> ${ok}`;
+        return `<li class="flex justify-between gap-3"><span class="min-w-0 truncate">${escapeHTML(l.desc)}</span><span class="shrink-0 font-mono font-bold">${qtyText} <span class="font-sans font-medium text-slate-500">${escapeHTML(l.unit || '')}</span></span></li>`;
       }).join('');
       const st = REQ_STATUS[r.status] || REQ_STATUS.pending;
       const note = r.status === 'declined' ? (r.declineReason || '') : (r.review && r.review.note) || '';
@@ -8469,7 +8468,7 @@
           </div>
           <ul class="text-xs text-slate-700 space-y-0.5">${lines}</ul>
           ${note ? `<p class="rounded-lg ${r.status === 'declined' ? 'bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-600'} text-[11px] px-2.5 py-1.5"><b>Custodian:</b> ${escapeHTML(note)}</p>` : ''}
-          ${r.status === 'pending' && !r.sending ? `<button onclick="cancelMyRequest('${r.id}')" class="text-[11px] font-bold text-slate-400 hover:text-rose-600">Cancel request</button>` : ''}
+          ${r.status === 'pending' && !r.sending ? `<button onclick="cancelMyRequest('${r.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600">Cancel request</button>` : ''}
         </div>`;
     }
 
@@ -8512,10 +8511,10 @@
       box.innerHTML = list.map(item => `
         <button onclick="addReqLine('${item.code}')" class="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-amber-50">
           <i class="ph-bold ph-plus-circle text-amber-500 shrink-0"></i>
-          <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-slate-800 truncate">${escapeHTML(item.name)}</span><span class="block text-[11px] text-slate-400">${escapeHTML(item.unit)}</span></span>
+          <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-slate-800 truncate">${escapeHTML(item.name)}</span><span class="block text-[11px] text-slate-500">${escapeHTML(item.unit)}</span></span>
         </button>`).join('') + `
         <button onclick="addReqLine(null)" class="w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs font-bold text-slate-600 hover:bg-amber-50">
-          <i class="ph-bold ph-pencil-simple text-slate-400"></i> ${list.length ? 'Not listed? ' : ''}Add “${escapeHTML(q.slice(0, 60))}” as typed
+          <i class="ph-bold ph-pencil-simple text-slate-500"></i> ${list.length ? 'Not listed? ' : ''}Add “${escapeHTML(q.slice(0, 60))}” as typed
         </button>`;
     }
 
@@ -8552,15 +8551,15 @@
         <div class="rounded-xl border border-slate-200 p-2.5 flex items-center gap-2">
           <div class="min-w-0 flex-1">
             <p class="text-sm font-bold text-slate-800 leading-snug line-clamp-2">${escapeHTML(l.desc)}</p>
-            ${l.code ? `<p class="text-[11px] text-slate-400">${escapeHTML(l.unit)}</p>` : `<input value="${escapeHTML(l.unit)}" onchange="setReqLine('${l.id}', 'unit', this.value)" aria-label="Unit" class="mt-0.5 w-24 h-7 px-2 rounded-lg border border-slate-200 text-[11px]">`}
+            ${l.code ? `<p class="text-[11px] text-slate-500">${escapeHTML(l.unit)}</p>` : `<input value="${escapeHTML(l.unit)}" onchange="setReqLine('${l.id}', 'unit', this.value)" aria-label="Unit" class="mt-0.5 w-24 h-7 px-2 rounded-lg border border-slate-200 text-[11px]">`}
           </div>
           <button onclick="stepReqLine('${l.id}', -1)" class="w-9 h-9 shrink-0 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center" aria-label="Minus one"><i class="ph-bold ph-minus"></i></button>
           <input id="rfq-${l.id}" type="number" inputmode="numeric" min="1" value="${l.qty}" onfocus="this.select()" oninput="setReqLine('${l.id}', 'qty', this.value)"
             onkeydown="if (event.key === 'Enter') { event.preventDefault(); document.getElementById('rfSearch').focus(); }"
             class="w-14 h-9 shrink-0 text-center rounded-lg border border-slate-300 font-mono font-bold text-sm focus:border-amber-500 outline-none">
-          <button onclick="stepReqLine('${l.id}', 1)" class="w-9 h-9 shrink-0 rounded-lg bg-amber-500 text-white flex items-center justify-center" aria-label="Plus one"><i class="ph-bold ph-plus"></i></button>
+          <button onclick="stepReqLine('${l.id}', 1)" class="w-9 h-9 shrink-0 rounded-lg bg-amber-700 text-white flex items-center justify-center" aria-label="Plus one"><i class="ph-bold ph-plus"></i></button>
           <button onclick="removeReqLine('${l.id}')" class="w-8 h-9 shrink-0 text-slate-300 hover:text-rose-500 flex items-center justify-center" aria-label="Remove"><i class="ph-bold ph-trash"></i></button>
-        </div>`).join('') : `<p class="text-xs text-slate-400 text-center py-2">Search above and tap an item to add it.</p>`;
+        </div>`).join('') : `<p class="text-xs text-slate-500 text-center py-2">Search above and tap an item to add it.</p>`;
       const n = lines.reduce((s, l) => s + (l.qty > 0 ? 1 : 0), 0);
       document.getElementById('rfSendLabel').textContent = n ? `Send request · ${plural(n, 'item')}` : 'Send request';
     }
@@ -8663,7 +8662,7 @@
         return `
         <div class="rounded-xl border border-slate-200 p-3 space-y-2" data-rev="${l.id}">
           <div class="flex items-start gap-2">
-            <span class="shrink-0 mt-2 text-[10px] font-bold text-slate-400 w-4">${i + 1}</span>
+            <span class="shrink-0 mt-2 text-[11px] font-bold text-slate-500 w-4">${i + 1}</span>
             <input value="${escapeHTML(l.desc)}" ${dis} onchange="setReviewLine('${l.id}', 'desc', this.value)" aria-label="Description" class="flex-1 min-w-0 h-9 px-2.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-900">
             ${edit ? `<button onclick="removeReviewLine('${l.id}')" class="w-8 h-9 shrink-0 text-slate-300 hover:text-rose-500 flex items-center justify-center" aria-label="Remove line"><i class="ph-bold ph-trash"></i></button>` : ''}
           </div>
@@ -8671,14 +8670,14 @@
             ${optHTML}<option value="" ${l.code ? '' : 'selected'}>Not in my inventory · buy as described</option>
           </select>
           <div class="grid grid-cols-4 gap-2 text-center">
-            <div><p class="text-[10px] font-bold uppercase text-slate-400">Asked</p><p class="h-9 flex items-center justify-center font-mono font-bold text-slate-700">${l.requested}</p></div>
-            <div><p class="text-[10px] font-bold uppercase text-slate-400">Approve</p><input type="number" min="0" inputmode="numeric" value="${l.approved}" ${dis} onfocus="this.select()" oninput="setReviewLine('${l.id}', 'approved', this.value)" class="w-full h-9 text-center rounded-lg border border-slate-300 font-mono font-bold"></div>
-            <div><p class="text-[10px] font-bold uppercase text-slate-400">On hand</p><p class="h-9 flex items-center justify-center font-mono font-bold ${onHand >= l.approved ? 'text-emerald-600' : onHand ? 'text-amber-600' : 'text-slate-400'}">${l.code ? onHand : '—'}</p></div>
-            <div><p class="text-[10px] font-bold uppercase text-brand-600">To buy</p><input id="rev-buy-${l.id}" type="number" min="0" inputmode="numeric" value="${reviewBuy(l)}" ${dis} onfocus="this.select()" oninput="setReviewLine('${l.id}', 'prQty', this.value)" class="w-full h-9 text-center rounded-lg border border-brand-300 bg-brand-50/40 font-mono font-bold text-brand-800"></div>
+            <div><p class="text-[11px] font-bold uppercase text-slate-500">Asked</p><p class="h-9 flex items-center justify-center font-mono font-bold text-slate-700">${l.requested}</p></div>
+            <div><p class="text-[11px] font-bold uppercase text-slate-500">Approve</p><input type="number" min="0" inputmode="numeric" value="${l.approved}" ${dis} onfocus="this.select()" oninput="setReviewLine('${l.id}', 'approved', this.value)" class="w-full h-9 text-center rounded-lg border border-slate-300 font-mono font-bold"></div>
+            <div><p class="text-[11px] font-bold uppercase text-slate-500">On hand</p><p class="h-9 flex items-center justify-center font-mono font-bold ${onHand >= l.approved ? 'text-emerald-600' : onHand ? 'text-amber-600' : 'text-slate-500'}">${l.code ? onHand : '—'}</p></div>
+            <div><p class="text-[11px] font-bold uppercase text-brand-600">To buy</p><input id="rev-buy-${l.id}" type="number" min="0" inputmode="numeric" value="${reviewBuy(l)}" ${dis} onfocus="this.select()" oninput="setReviewLine('${l.id}', 'prQty', this.value)" class="w-full h-9 text-center rounded-lg border border-brand-300 bg-brand-50/40 font-mono font-bold text-brand-800"></div>
           </div>
           <div class="flex items-center gap-2 text-xs">
             <input value="${escapeHTML(l.unit)}" ${dis} onchange="setReviewLine('${l.id}', 'unit', this.value)" aria-label="Unit" class="w-20 h-8 px-2 rounded-lg border border-slate-200">
-            <span class="text-slate-400">at ₱</span>
+            <span class="text-slate-500">at ₱</span>
             <input type="number" min="0" step="0.01" inputmode="decimal" value="${l.unitCost || ''}" placeholder="0.00" ${dis} oninput="setReviewLine('${l.id}', 'unitCost', this.value)" aria-label="Unit cost" class="w-24 h-8 px-2 rounded-lg border border-slate-200 font-mono">
             <span id="rev-tot-${l.id}" class="ml-auto font-mono font-bold text-slate-700">₱${peso2(reviewBuy(l) * (l.unitCost || 0))}</span>
           </div>
@@ -8690,7 +8689,7 @@
       document.getElementById('revButtons').innerHTML = !edit
         ? btn('flex-1 h-12 rounded-xl bg-slate-100 text-sm font-bold text-slate-700', 'closeReview()', 'Close')
         : btn('h-12 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-bold', 'declineRequest()', '<i class="ph-bold ph-x"></i> Decline') +
-          btn('flex-1 h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2', 'approveRequest()',
+          btn('flex-1 h-12 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2', 'approveRequest()',
             `<i class="ph-bold ph-check-circle"></i> ${st.status === 'approved' ? 'Save changes' : 'Approve'}`) +
           (st.status === 'approved' ? btn('h-12 px-4 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 text-sm font-bold flex items-center gap-1.5', `openReleaseFromRequest('${st.id}')`, '<i class="ph-bold ph-hand-arrow-up"></i> Release') : '');
     }
@@ -8872,18 +8871,18 @@
       document.getElementById('prLines').innerHTML = prDraft.lines.map((l, i) => `
         <div class="rounded-xl border border-slate-200 p-2.5 space-y-1.5">
           <div class="flex items-center gap-2">
-            <span class="shrink-0 text-[10px] font-bold text-slate-400 w-4">${i + 1}</span>
+            <span class="shrink-0 text-[11px] font-bold text-slate-500 w-4">${i + 1}</span>
             <input value="${escapeHTML(l.desc)}" oninput="setPrLine('${l.id}', 'desc', this.value)" aria-label="Item description" class="flex-1 min-w-0 h-9 px-2.5 rounded-lg border border-slate-200 text-sm font-semibold">
             <button onclick="removePrLine('${l.id}')" class="w-8 h-9 shrink-0 text-slate-300 hover:text-rose-500 flex items-center justify-center" aria-label="Remove"><i class="ph-bold ph-trash"></i></button>
           </div>
           <div class="grid grid-cols-6 sm:grid-cols-12 gap-x-1.5 gap-y-1 text-xs items-end pl-6">
-            <label class="col-span-4 sm:col-span-4 text-[10px] font-bold uppercase text-slate-400">Stock / property no.<input value="${escapeHTML(l.stockNo)}" oninput="setPrLine('${l.id}', 'stockNo', this.value)" class="mt-0.5 w-full h-8 px-2 rounded-lg border border-slate-200 font-mono text-[11px] normal-case font-normal text-slate-800"></label>
-            <label class="col-span-2 sm:col-span-2 text-[10px] font-bold uppercase text-slate-400">Unit<input value="${escapeHTML(l.unit)}" oninput="setPrLine('${l.id}', 'unit', this.value)" class="mt-0.5 w-full h-8 px-2 rounded-lg border border-slate-200 normal-case font-normal text-slate-800 text-xs"></label>
-            <label class="col-span-2 sm:col-span-2 text-[10px] font-bold uppercase text-slate-400">Qty<input type="number" min="1" value="${l.qty}" oninput="setPrLine('${l.id}', 'qty', this.value)" class="mt-0.5 w-full h-8 px-1 text-center rounded-lg border border-slate-300 font-mono font-bold text-slate-900 text-xs"></label>
-            <label class="col-span-2 sm:col-span-2 text-[10px] font-bold uppercase text-slate-400">Unit cost<input type="number" min="0" step="0.01" value="${l.unitCost || ''}" placeholder="0.00" oninput="setPrLine('${l.id}', 'unitCost', this.value)" class="mt-0.5 w-full h-8 px-1.5 rounded-lg border ${l.unitCost ? 'border-slate-200' : 'border-amber-300 bg-amber-50/50'} font-mono font-normal text-slate-800 text-xs"></label>
+            <label class="col-span-4 sm:col-span-4 text-[11px] font-bold uppercase text-slate-500">Stock / property no.<input value="${escapeHTML(l.stockNo)}" oninput="setPrLine('${l.id}', 'stockNo', this.value)" class="mt-0.5 w-full h-8 px-2 rounded-lg border border-slate-200 font-mono text-[11px] normal-case font-normal text-slate-800"></label>
+            <label class="col-span-2 sm:col-span-2 text-[11px] font-bold uppercase text-slate-500">Unit<input value="${escapeHTML(l.unit)}" oninput="setPrLine('${l.id}', 'unit', this.value)" class="mt-0.5 w-full h-8 px-2 rounded-lg border border-slate-200 normal-case font-normal text-slate-800 text-xs"></label>
+            <label class="col-span-2 sm:col-span-2 text-[11px] font-bold uppercase text-slate-500">Qty<input type="number" min="1" value="${l.qty}" oninput="setPrLine('${l.id}', 'qty', this.value)" class="mt-0.5 w-full h-8 px-1 text-center rounded-lg border border-slate-300 font-mono font-bold text-slate-900 text-xs"></label>
+            <label class="col-span-2 sm:col-span-2 text-[11px] font-bold uppercase text-slate-500">Unit cost<input type="number" min="0" step="0.01" value="${l.unitCost || ''}" placeholder="0.00" oninput="setPrLine('${l.id}', 'unitCost', this.value)" class="mt-0.5 w-full h-8 px-1.5 rounded-lg border ${l.unitCost ? 'border-slate-200' : 'border-amber-300 bg-amber-50/50'} font-mono font-normal text-slate-800 text-xs"></label>
             <span id="prl-tot-${l.id}" class="col-span-2 sm:col-span-2 h-8 flex items-center justify-end font-mono font-bold text-slate-700">${peso2(l.qty * l.unitCost)}</span>
           </div>
-        </div>`).join('') || '<p class="text-xs text-slate-400">No items left on this PR.</p>';
+        </div>`).join('') || '<p class="text-xs text-slate-500">No items left on this PR.</p>';
       updatePrTotal();
     }
     function setPrLine(id, key, value) {
@@ -9326,8 +9325,8 @@
         const max = relMax(item);
         const q = relQty(l);
         const badge = l.equip
-          ? `<span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Equipment · ${isPPE(item) ? 'PAR' : 'ICS'}</span>`
-          : '<span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">Supply · RIS</span>';
+          ? `<span class="text-[11px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Equipment · ${isPPE(item) ? 'PAR' : 'ICS'}</span>`
+          : '<span class="text-[11px] font-bold uppercase px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">Supply · RIS</span>';
         let units = '';
         if (l.equip) {
           const free = relFreeUnits(item);
@@ -9375,7 +9374,7 @@
       document.getElementById('relSummary').innerHTML = docs.length ? `Creates ${docs.map(x => `<b>${escapeHTML(x)}</b>`).join(' and ')}` : 'Nothing to release yet';
       foot.innerHTML = `
         <button onclick="closeRelease()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Cancel</button>
-        <button id="relSaveBtn" onclick="confirmRelease()" ${docs.length ? '' : 'disabled'} class="flex-1 h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2">
+        <button id="relSaveBtn" onclick="confirmRelease()" ${docs.length ? '' : 'disabled'} class="flex-1 h-12 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:bg-slate-300 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2">
           <i class="ph-bold ph-hand-arrow-up text-lg"></i> Release</button>`;
     }
 
@@ -9667,7 +9666,7 @@
                   <p class="text-xs font-bold text-slate-900">${escapeHTML(r.kind)} ${r.no ? `No. <span class="font-mono">${escapeHTML(r.no)}</span>` : ''} · ${escapeHTML(date(r.date))}</p>
                   <p class="text-[11px] text-slate-600 line-clamp-2">${r.lines.map(l => `${l.qty} ${escapeHTML(l.unit || '')} ${escapeHTML(l.desc)}`).join(' · ')}</p>
                 </div>
-                <button onclick="ackRelease('${r.id}')" class="shrink-0 h-10 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-check"></i> Received</button>
+                <button onclick="ackRelease('${r.id}')" class="shrink-0 h-10 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-check"></i> Received</button>
               </div>`).join('')}
             <p class="text-[11px] text-emerald-800">Check the items first. Tap <b>Received</b> to let the custodian know you have them.</p>
           </div>`;
@@ -9675,7 +9674,7 @@
       html += `
         <div>
           <div class="flex items-end justify-between gap-2 mb-2 px-1">
-            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Accountable equipment · ICS / PAR</h2>
+            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Accountable equipment · ICS / PAR</h2>
             ${h.equipment.length ? `<span class="text-[11px] font-bold text-slate-500">${plural(h.equipment.length, 'item')} · ₱${peso2(value)}</span>` : ''}
           </div>
           <div class="space-y-2">${h.equipment.length ? h.equipment.map(teacherUnitCardHTML).join('') : `
@@ -9686,7 +9685,7 @@
             </div>`}</div>
         </div>
         <div>
-          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Supplies received · RIS</h2>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Supplies received · RIS</h2>
           <div class="space-y-2">${h.supplies.length ? h.supplies.map(teacherRisCardHTML).join('') : `
             <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
               <i class="ph-bold ph-package text-3xl text-slate-300"></i>
@@ -9704,8 +9703,8 @@
       const recent = last && Date.now() - (last.resolvedMs || last.createdMs || 0) < 30 * 86400000;
       let chip = '';
       if (last && open) chip = last.kind === 'return'
-        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold"><i class="ph-bold ph-${last.sending ? 'cloud-arrow-up' : 'hourglass-medium'}"></i> ${last.sending ? 'Sending…' : 'Return requested · waiting for the custodian'}</span>`
-        : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-bold"><i class="ph-bold ph-${last.sending ? 'cloud-arrow-up' : 'warning'}"></i> ${last.sending ? 'Sending…' : `Reported: ${escapeHTML(tReasonLabel(last.reason))}`}</span>`;
+        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-200 text-[11px] font-bold"><i class="ph-bold ph-${last.sending ? 'cloud-arrow-up' : 'hourglass-medium'}"></i> ${last.sending ? 'Sending…' : 'Return requested · waiting for the custodian'}</span>`
+        : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-rose-50 text-rose-700 border-rose-200 text-[11px] font-bold"><i class="ph-bold ph-${last.sending ? 'cloud-arrow-up' : 'warning'}"></i> ${last.sending ? 'Sending…' : `Reported: ${escapeHTML(tReasonLabel(last.reason))}`}</span>`;
       else if (last && recent && last.status === 'declined') chip = `<span class="block rounded-lg bg-slate-50 text-slate-600 text-[11px] px-2.5 py-1.5"><b>Custodian:</b> ${escapeHTML(last.reply || 'Return declined')}</span>`;
       else if (last && recent && last.status === 'done' && last.kind === 'problem') chip = `<span class="block rounded-lg bg-slate-50 text-slate-600 text-[11px] px-2.5 py-1.5"><b>Custodian:</b> ${escapeHTML(last.reply || (last.resolution === 'repair' ? 'Marked for repair' : last.resolution === 'unserv' ? 'Marked unserviceable' : 'Noted'))}</span>`;
       return `
@@ -9736,9 +9735,9 @@
               <p class="text-xs font-bold text-slate-900">RIS No. <span class="font-mono">${escapeHTML(r.no || '')}</span> · ${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</p>
               ${r.purpose ? `<p class="text-[11px] text-slate-500 truncate">${escapeHTML(r.purpose)}</p>` : ''}
             </div>
-            ${ack ? `<span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold"><i class="ph-bold ph-check-circle"></i> Received</span>` : ''}
+            ${ack ? `<span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-bold"><i class="ph-bold ph-check-circle"></i> Received</span>` : ''}
           </div>
-          <ul class="text-xs text-slate-700 space-y-0.5">${r.lines.map(l => `<li class="flex justify-between gap-3"><span class="min-w-0 truncate">${escapeHTML(l.desc)}</span><span class="shrink-0 font-mono font-bold">${l.qty} <span class="font-sans font-medium text-slate-400">${escapeHTML(l.unit || '')}</span></span></li>`).join('')}</ul>
+          <ul class="text-xs text-slate-700 space-y-0.5">${r.lines.map(l => `<li class="flex justify-between gap-3"><span class="min-w-0 truncate">${escapeHTML(l.desc)}</span><span class="shrink-0 font-mono font-bold">${l.qty} <span class="font-sans font-medium text-slate-500">${escapeHTML(l.unit || '')}</span></span></li>`).join('')}</ul>
           ${last ? `<p class="rounded-lg ${last.status === 'open' ? 'bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-600'} text-[11px] px-2.5 py-1.5">${last.status === 'open' ? `<b>Reported:</b> ${escapeHTML(tReasonLabel(last.reason))}${last.note ? ` · ${escapeHTML(last.note)}` : ''}` : `<b>Custodian:</b> ${escapeHTML(last.reply || 'Noted')}`}</p>` : ''}
           <button onclick="openTeacherReport('problem', '${r.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-warning"></i> Report a problem</button>
         </div>`;
@@ -9829,8 +9828,8 @@
           ${open.map(x => {
             const units = (x.units || []).map(u => u.no).filter(Boolean).join(', ');
             const ret = x.kind === 'return';
-            const action = ret ? ['acceptTeacherReturn', 'Received back', 'ph-arrow-u-down-left', 'bg-emerald-600 hover:bg-emerald-700']
-              : x.reason === 'repair' && x.units.length ? ['resolveTeacherReport', 'Mark for repair', 'ph-wrench', 'bg-amber-500 hover:bg-amber-600', 'repair']
+            const action = ret ? ['acceptTeacherReturn', 'Received back', 'ph-arrow-u-down-left', 'bg-emerald-700 hover:bg-emerald-800']
+              : x.reason === 'repair' && x.units.length ? ['resolveTeacherReport', 'Mark for repair', 'ph-wrench', 'bg-amber-700 hover:bg-amber-800', 'repair']
               : x.reason === 'unserv' && x.units.length ? ['resolveTeacherReport', 'Mark unserviceable', 'ph-x-circle', 'bg-rose-600 hover:bg-rose-700', 'unserv']
               : ['resolveTeacherReport', 'Noted', 'ph-check', 'bg-slate-700 hover:bg-slate-800', 'noted'];
             return `
@@ -9842,7 +9841,7 @@
                   <button onclick="${action[0]}('${x.id}'${action[4] ? `, '${action[4]}'` : ''})" class="h-9 px-3 rounded-lg ${action[3]} text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ${action[2]}"></i> ${action[1]}</button>
                   ${action[4] && action[4] !== 'noted' ? `<button onclick="resolveTeacherReport('${x.id}', 'noted')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Noted</button>` : ''}
                   ${ret ? `<button onclick="declineTeacherReport('${x.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Decline</button>` : ''}
-                  <span class="ml-auto text-[11px] text-slate-400">${escapeHTML(formatTimeAgo(x.createdMs))}</span>
+                  <span class="ml-auto text-[11px] text-slate-500">${escapeHTML(formatTimeAgo(x.createdMs))}</span>
                 </div>
               </div>`;
           }).join('')}
@@ -9983,11 +9982,11 @@
             </div>
             <div class="shrink-0 flex items-center gap-1.5 sm:pt-1 w-full sm:w-auto [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center [&>button]:h-10 sm:[&>button]:h-9">
               <button onclick="printAccountability()" ${withItems.length || people.some(p => p.ris.length) ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print all</button>
-              ${isCustodianDevice() && cloud.user ? `<button onclick="openRelease()" class="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release</button>` : ''}
+              ${isCustodianDevice() && cloud.user ? `<button onclick="openRelease()" class="h-9 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release</button>` : ''}
             </div>
           </div>
           <div class="relative mt-3">
-            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
             <input id="tvSearch" type="search" value="${escapeHTML(teachersQuery)}" oninput="setTeachersQuery(this.value)" placeholder="Find a teacher, item or property no." class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-brand-500 outline-none">
           </div>`;
         renderTeachersList(people);
@@ -10012,9 +10011,9 @@
       }
       body.innerHTML = list.length ? list.map(p => {
         const chips = [
-          p.toConfirm.length && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold"><i class="ph-bold ph-hourglass-medium"></i> ${p.toConfirm.length} to confirm</span>`,
-          p.open.length && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold"><i class="ph-bold ph-warning"></i> ${p.open.length} open</span>`,
-          !p.uid && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 text-[10px] font-bold">No account</span>`
+          p.toConfirm.length && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold"><i class="ph-bold ph-hourglass-medium"></i> ${p.toConfirm.length} to confirm</span>`,
+          p.open.length && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold"><i class="ph-bold ph-warning"></i> ${p.open.length} open</span>`,
+          !p.uid && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-bold">No account</span>`
         ].filter(Boolean).join('');
         return `
           <button onclick="openTeachersView('${escapeHTML(p.key)}')" class="w-full text-left rounded-2xl bg-white border border-slate-200 hover:border-slate-300 shadow-sm p-3 flex items-center gap-3">
@@ -10026,7 +10025,7 @@
             </span>
             <span class="shrink-0 text-right">
               <span class="block text-sm font-extrabold font-mono text-slate-900">${p.equipment.length}</span>
-              <span class="block text-[10px] font-bold uppercase text-slate-400">${p.equipment.length === 1 ? 'unit' : 'units'}</span>
+              <span class="block text-[11px] font-bold uppercase text-slate-500">${p.equipment.length === 1 ? 'unit' : 'units'}</span>
               ${p.value ? `<span class="block text-[11px] font-mono text-slate-500">₱${peso2(p.value)}</span>` : ''}
             </span>
           </button>`;
@@ -10052,33 +10051,33 @@
           </div>
         </div>
         <div class="mt-3 grid grid-cols-3 gap-2 text-center">
-          <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${p.equipment.length}</p><p class="text-[10px] font-bold uppercase text-slate-400">Equipment</p></div>
-          <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">₱${Math.round(p.value).toLocaleString('en-PH')}</p><p class="text-[10px] font-bold uppercase text-slate-400">Value</p></div>
-          <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${p.ris.length}</p><p class="text-[10px] font-bold uppercase text-slate-400">RIS slips</p></div>
+          <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${p.equipment.length}</p><p class="text-[11px] font-bold uppercase text-slate-500">Equipment</p></div>
+          <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">₱${Math.round(p.value).toLocaleString('en-PH')}</p><p class="text-[11px] font-bold uppercase text-slate-500">Value</p></div>
+          <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${p.ris.length}</p><p class="text-[11px] font-bold uppercase text-slate-500">RIS slips</p></div>
         </div>
         <div class="mt-3 flex flex-wrap gap-2">
           <button onclick="printAccountability('${escapeHTML(p.key)}')" class="h-10 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print accountability</button>
-          ${connected ? `<button onclick="openRelease({ teacherUid: ${p.uid ? `'${p.uid}'` : 'null'} })" class="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release more</button>` : ''}
+          ${connected ? `<button onclick="openRelease({ teacherUid: ${p.uid ? `'${p.uid}'` : 'null'} })" class="h-10 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release more</button>` : ''}
           ${connected && p.equipment.length ? `<button id="tvTransfer" onclick="openTransfer({ fromKey: '${escapeHTML(p.key).replace(/'/g, '&#39;')}' })" class="h-10 px-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>` : ''}
         </div>`;
 
       const condChip = u => {
         const c = UNIT_COND[u.cond] || UNIT_COND.S;
-        return u.cond && u.cond !== 'S' ? `<span class="inline-flex px-1.5 py-0.5 rounded-md border text-[10px] font-bold ${c.on}">${c.label}</span>` : '';
+        return u.cond && u.cond !== 'S' ? `<span class="inline-flex px-1.5 py-0.5 rounded-md border text-[11px] font-bold ${c.on}">${c.label}</span>` : '';
       };
       const confirmedUnit = u => p.uid && releaseList.some(r => r.teacherUid === p.uid && isIssueKind(r.kind) && r.lines.some(l => (l.units || []).some(x => x.id === u.id)) && tReports.some(x => x.kind === 'received' && x.releaseId === r.id));
       let html = '';
       if (p.open.length) html += `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-warning"></i> ${plural(p.open.length, 'open report')} · see <button onclick="openRequestsView()" class="underline font-bold">From teachers</button></p>`;
       html += `
         <div>
-          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Accountable equipment</h2>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Accountable equipment</h2>
           <div class="rounded-2xl bg-white border border-slate-200 shadow-sm divide-y divide-slate-100">
             ${p.equipment.length ? p.equipment.map(({ item, unit }) => `
               <div class="p-3 flex items-start gap-3" data-tunit="${unit.id}">
                 <div class="min-w-0 flex-1">
                   <p class="text-sm font-bold text-slate-900 leading-snug">${escapeHTML(item.name)}</p>
                   <p class="text-[11px] text-slate-500"><span class="font-mono font-bold text-slate-700">${escapeHTML(unit.no || '—')}</span>${unit.serial ? ` · S/N ${escapeHTML(unit.serial)}` : ''}${unit.ics ? ` · ${escapeHTML(unitDocLabel(unit))}` : ''}${unit.icsDate ? ` · ${escapeHTML(formatShortDate(unit.icsDate + 'T00:00:00'))}` : ''}${unit.loc ? ` · ${escapeHTML(unit.loc)}` : ''}</p>
-                  <p class="mt-1 flex flex-wrap gap-1">${condChip(unit)}${confirmedUnit(unit) ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold"><i class="ph-bold ph-check-circle"></i> Confirmed</span>' : ''}</p>
+                  <p class="mt-1 flex flex-wrap gap-1">${condChip(unit)}${confirmedUnit(unit) ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-bold"><i class="ph-bold ph-check-circle"></i> Confirmed</span>' : ''}</p>
                 </div>
                 <div class="shrink-0 text-right space-y-1">
                   <p class="text-xs font-mono font-bold text-slate-700">₱${peso2(item.price)}</p>
@@ -10089,7 +10088,7 @@
           </div>
         </div>
         <div>
-          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Supplies received · RIS</h2>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Supplies received · RIS</h2>
           <div class="rounded-2xl bg-white border border-slate-200 shadow-sm divide-y divide-slate-100">
             ${p.ris.length ? p.ris.map(r => {
               const ok = tReports.some(x => x.kind === 'received' && x.releaseId === r.id);
@@ -10097,7 +10096,7 @@
               <div class="p-3">
                 <div class="flex items-center justify-between gap-2">
                   <p class="text-xs font-bold text-slate-900">RIS No. <span class="font-mono">${escapeHTML(r.no || '')}</span> · ${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</p>
-                  <span class="flex items-center gap-1.5">${p.uid ? (ok ? '<span class="text-[10px] font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Confirmed</span>' : '<span class="text-[10px] font-bold text-amber-700">Not confirmed yet</span>') : ''}
+                  <span class="flex items-center gap-1.5">${p.uid ? (ok ? '<span class="text-[11px] font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Confirmed</span>' : '<span class="text-[11px] font-bold text-amber-700">Not confirmed yet</span>') : ''}
                     <button onclick="printReleaseById('${r.id}')" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Print RIS"><i class="ph-bold ph-printer"></i></button></span>
                 </div>
                 <p class="text-[11px] text-slate-600">${r.lines.map(l => `${l.qty} ${escapeHTML(l.unit || '')} ${escapeHTML(l.desc)}`).join(' · ')}</p>
@@ -10111,7 +10110,7 @@
           : r.source === 'existing' ? 'Linked (assigned before joining)' : r.source === 'assigned' ? 'Assigned' : 'Released';
         html += `
           <div>
-            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">History</h2>
+            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">History</h2>
             <ol class="rounded-2xl bg-white border border-slate-200 shadow-sm divide-y divide-slate-100">
               ${p.records.map(r => `
                 <li class="p-3 flex items-start gap-3">
@@ -10119,10 +10118,10 @@
                   <span class="min-w-0 flex-1">
                     <span class="block text-xs font-bold text-slate-900">${escapeHTML(label(r))}${relDocName(r) ? ` · ${escapeHTML(relDocName(r))}` : ''}</span>
                     <span class="block text-[11px] text-slate-600 line-clamp-2">${r.lines.map(l => `${l.qty} ${escapeHTML(l.desc)}${(l.units || []).length ? ` (${escapeHTML(l.units.map(u => u.no).join(', '))})` : ''}`).join(' · ')}</span>
-                    ${r.purpose ? `<span class="block text-[11px] text-slate-400 truncate">${escapeHTML(r.purpose)}</span>` : ''}
+                    ${r.purpose ? `<span class="block text-[11px] text-slate-500 truncate">${escapeHTML(r.purpose)}</span>` : ''}
                   </span>
                   <span class="shrink-0 text-right">
-                    <span class="block text-[11px] text-slate-400">${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span>
+                    <span class="block text-[11px] text-slate-500">${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span>
                     ${relPrintable(r) ? `<button onclick="printReleaseById('${r.id}')" class="mt-1 ml-auto w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Print ${escapeHTML(relDocName(r) || r.kind)}"><i class="ph-bold ph-printer"></i></button>` : ''}
                   </span>
                 </li>`).join('')}
@@ -10246,9 +10245,9 @@
               <summary class="text-[11px] font-bold text-slate-600 cursor-pointer select-none"><i class="ph-bold ph-path"></i> Accountability history (${trail.length})</summary>
               <ol class="mt-1.5 space-y-1">${trail.map(r => `
                 <li class="flex items-start gap-2 text-[11px] text-slate-600">
-                  <span class="shrink-0 w-20 text-slate-400">${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span>
+                  <span class="shrink-0 w-20 text-slate-500">${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span>
                   <span class="min-w-0 flex-1"><b class="text-slate-800">${escapeHTML(relDocName(r) || r.kind)}</b> · ${escapeHTML(trailText(r))}</span>
-                  ${relPrintable(r) ? `<button onclick="printReleaseById('${r.id}')" class="shrink-0 text-slate-400 hover:text-slate-700" aria-label="Print"><i class="ph-bold ph-printer"></i></button>` : ''}
+                  ${relPrintable(r) ? `<button onclick="printReleaseById('${r.id}')" class="shrink-0 text-slate-500 hover:text-slate-700" aria-label="Print"><i class="ph-bold ph-printer"></i></button>` : ''}
                 </li>`).join('')}</ol>
             </details>` : '<span class="flex-1"></span>'}
             ${canMove ? `<button onclick="closeUnitsModal(); openTransfer({ fromKey: '${escapeHTML(key).replace(/'/g, '&#39;')}', unitIds: ['${u.id}'] })" class="shrink-0 h-8 px-2.5 rounded-lg bg-white border border-slate-200 hover:border-brand-300 text-[11px] font-bold text-slate-600 flex items-center gap-1"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>` : ''}
@@ -10468,7 +10467,7 @@
             <input id="xferOtherPos" type="text" value="${escapeHTML(xfer.otherPos)}" oninput="xferSet('otherPos', this.value)" placeholder="Position, e.g. Teacher I" class="pr-in mt-0">
           </div>
         </div>
-        <label class="block text-[11px] font-bold uppercase text-slate-500">New room / location ${xfer.to === '__same' ? '' : '<span class="normal-case font-semibold text-slate-400">(optional)</span>'}
+        <label class="block text-[11px] font-bold uppercase text-slate-500">New room / location ${xfer.to === '__same' ? '' : '<span class="normal-case font-semibold text-slate-500">(optional)</span>'}
           <input id="xferLoc" type="text" list="xferLocList" value="${escapeHTML(xfer.loc)}" oninput="xferSet('loc', this.value)" onchange="renderTransfer()" placeholder="e.g. Room 12 · Grade 7 Sampaguita" class="pr-in">
           <datalist id="xferLocList">${locs.map(l => `<option value="${escapeHTML(l)}"></option>`).join('')}</datalist>
         </label>
@@ -10612,7 +10611,7 @@
         : `<label class="${cls} block text-[11px] font-bold uppercase text-slate-500">${label}<input data-coa="${key}" type="${opts.type || 'text'}" value="${v}" placeholder="${escapeHTML(opts.ph || '')}" class="pr-in"></label>`;
     }
     const coaSeg = (key, options) => `<div class="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100">${options.map(([k, label, sub]) => `
-      <button type="button" data-coa-opt="${key}:${k}" onclick="coaSetOpt('${key}', '${k}')" class="rounded-lg py-1.5 text-xs font-bold leading-tight transition ${coaVal(key) === k ? 'bg-white text-slate-900 shadow-sm seg-on' : 'text-slate-500 hover:text-slate-800'}">${label}<span class="block text-[10px] font-semibold opacity-70">${sub}</span></button>`).join('')}</div>`;
+      <button type="button" data-coa-opt="${key}:${k}" onclick="coaSetOpt('${key}', '${k}')" class="rounded-lg py-1.5 text-xs font-bold leading-tight transition ${coaVal(key) === k ? 'bg-white text-slate-900 shadow-sm seg-on' : 'text-slate-500 hover:text-slate-800'}">${label}<span class="block text-[11px] font-semibold opacity-70">${sub}</span></button>`).join('')}</div>`;
 
     function renderCoa() {
       const body = document.getElementById('coaBody');
@@ -10631,9 +10630,9 @@
         body.innerHTML = `${back}
           ${coaSeg('countType', [['ppe', 'RPCPPE', '₱50,000 and up'], ['sep', 'RPCSP', 'below ₱50,000']])}
           <div id="coaCountStats" class="grid grid-cols-3 gap-2 text-center">
-            <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${card}</p><p class="text-[10px] font-bold uppercase text-slate-400">Per card</p></div>
-            <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-emerald-700">${counted}</p><p class="text-[10px] font-bold uppercase text-slate-400">Counted</p></div>
-            <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono ${missing.length ? 'text-rose-600' : 'text-slate-900'}">${missing.length}</p><p class="text-[10px] font-bold uppercase text-slate-400">Not found</p></div>
+            <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${card}</p><p class="text-[11px] font-bold uppercase text-slate-500">Per card</p></div>
+            <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-emerald-700">${counted}</p><p class="text-[11px] font-bold uppercase text-slate-500">Counted</p></div>
+            <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono ${missing.length ? 'text-rose-600' : 'text-slate-900'}">${missing.length}</p><p class="text-[11px] font-bold uppercase text-slate-500">Not found</p></div>
           </div>
           ${!rows.length ? `<p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">No equipment ${ppe ? 'of ₱50,000 or more' : 'below ₱50,000'} in your inventory.</p>` : ''}
           ${missing.length ? `<div class="rounded-xl bg-rose-50 border border-rose-200 px-3 py-2 text-[11px] text-rose-800"><b>Not found since ${escapeHTML(formatShortDate(coaVal('since') + 'T00:00:00'))}:</b> ${missing.slice(0, 8).map(r => escapeHTML(r.unit ? r.unit.no : r.item.name)).join(', ')}${missing.length > 8 ? ` +${missing.length - 8} more` : ''}. Scan their tags (Scan Tags) or check the item during the count to mark them found.</div>` : ''}
@@ -10690,7 +10689,7 @@
           <div class="flex flex-wrap gap-1.5">${kinds.map(k => `<button onclick="coaSlipKind='${k}'; renderCoa()" data-slip-kind="${k}" class="h-8 px-3 rounded-lg border text-[11px] font-bold ${coaSlipKind === k ? 'bg-slate-900 border-slate-900 text-white seg-on' : 'bg-white border-slate-200 text-slate-600'}">${k === 'ALL' ? 'All' : k}</button>`).join('')}</div>
           <div id="coaSlips" class="rounded-xl border border-slate-200 divide-y divide-slate-100">
             ${list.length ? list.slice(0, 80).map(r => `<div class="px-3 py-2 flex items-center gap-3">
-              <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900">${escapeHTML(relDocName(r))} <span class="font-semibold text-slate-400">· ${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span></span>
+              <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900">${escapeHTML(relDocName(r))} <span class="font-semibold text-slate-500">· ${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span></span>
                 <span class="block text-[11px] text-slate-500 truncate">${escapeHTML(r.kind === 'RETURN' ? `From ${r.teacherName}` : r.source === 'transfer' ? trailText(r) : `To ${r.teacherName}`)} · ${escapeHTML(relNotifSummary(r))}</span></span>
               <button onclick="printReleaseById('${r.id}')" class="shrink-0 w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Print ${escapeHTML(relDocName(r))}"><i class="ph-bold ph-printer"></i></button>
             </div>`).join('') : `<p class="px-3 py-4 text-center text-xs text-slate-500">${cloud.user ? 'No slips yet. They are made when you release, transfer or take back items.' : 'Sign in to see the slips saved for your school.'}</p>`}
@@ -10704,8 +10703,8 @@
       const card = (id, icon, tint, name, forms, sub, action) => `
         <button id="${id}" onclick="${action}" class="w-full text-left rounded-2xl border border-slate-200 bg-white hover:border-brand-300 p-3 flex items-center gap-3">
           <span class="w-10 h-10 shrink-0 rounded-xl ${tint} flex items-center justify-center"><i class="ph-bold ${icon} text-xl"></i></span>
-          <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">${name} <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">${forms}</span></span><span class="block text-[11px] text-slate-500 leading-snug">${sub}</span></span>
-          <i class="ph-bold ph-caret-right text-slate-400"></i>
+          <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">${name} <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">${forms}</span></span><span class="block text-[11px] text-slate-500 leading-snug">${sub}</span></span>
+          <i class="ph-bold ph-caret-right text-slate-500"></i>
         </button>`;
       body.innerHTML = `
         ${card('coaGoCount', 'ph-clipboard-text', 'bg-sky-50 text-sky-600', 'Physical count report', 'RPCPPE · RPCSP', `${seenYear} of ${eqUnits.length} tagged units counted this year · from your scans and checks`, "coaGo('count')")}
@@ -10928,7 +10927,7 @@
             return `<button type="button" data-tour-pick="${k}" aria-pressed="${on}" onclick="tourChoose('${k}')" class="w-full text-left rounded-2xl border-2 p-3 flex items-center gap-3 transition ${on ? 'border-brand-500 bg-brand-50/60 stage-on' : 'border-slate-200 bg-white hover:border-slate-300'}">
               <span class="w-10 h-10 shrink-0 rounded-xl ${tint} flex items-center justify-center"><i class="ph-bold ${icon} text-xl"></i></span>
               <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">${title}</span><span class="block text-[11px] text-slate-500">${sub}</span></span>
-              <span class="w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center ${on ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300'}">${on ? '<i class="ph-bold ph-check text-[10px]"></i>' : ''}</span>
+              <span class="w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center ${on ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300'}">${on ? '<i class="ph-bold ph-check text-[11px]"></i>' : ''}</span>
             </button>`;
           }).join('')}</div>`;
         foot.innerHTML = `
@@ -10942,9 +10941,9 @@
         ${head('ph-users-three', 'bg-teal-50 text-teal-600', 'Invite your teachers', 'They scan this with their phone camera to request supplies and to see the items released to them.')}
         ${canInvite ? `
           <div class="flex items-center gap-4">
-            <div id="tourQr" class="keep-light w-32 h-32 shrink-0 rounded-2xl border border-slate-200 p-2 bg-white flex items-center justify-center text-[10px] text-slate-400">QR code</div>
+            <div id="tourQr" class="keep-light w-32 h-32 shrink-0 rounded-2xl border border-slate-200 p-2 bg-white flex items-center justify-center text-[11px] text-slate-500">QR code</div>
             <div class="min-w-0 space-y-2">
-              <div><p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">School code</p><p class="text-sm font-mono font-bold text-slate-900 break-all">${escapeHTML(reqRole.schoolId)}</p></div>
+              <div><p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">School code</p><p class="text-sm font-mono font-bold text-slate-900 break-all">${escapeHTML(reqRole.schoolId)}</p></div>
               <button onclick="openInvite()" class="h-9 px-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-share-network"></i> Share link</button>
               <button id="tourPoster" onclick="printInvitePoster()" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print poster</button>
             </div>
@@ -11309,11 +11308,11 @@
             <span class="flex-1 min-w-0">
               <span class="block text-sm leading-snug ${n.read ? 'font-semibold text-slate-700' : 'font-extrabold text-slate-900'}">${escapeHTML(n.title)}</span>
               ${n.body ? `<span class="block text-xs text-slate-500 mt-0.5 line-clamp-2">${escapeHTML(n.body)}</span>` : ''}
-              <span class="block text-[11px] text-slate-400 mt-1">${escapeHTML(notifAgo(n.at))}</span>
+              <span class="block text-[11px] text-slate-500 mt-1">${escapeHTML(notifAgo(n.at))}</span>
             </span>
             ${n.read ? '' : '<span class="w-2.5 h-2.5 rounded-full bg-brand-600 mt-1.5 shrink-0" aria-label="Unread"></span>'}
           </button>`).join('')}</div>`
-          : `<div class="text-center py-10 text-slate-400"><i class="ph-duotone ph-bell text-4xl block mb-2"></i>
+          : `<div class="text-center py-10 text-slate-500"><i class="ph-duotone ph-bell text-4xl block mb-2"></i>
               <p class="text-sm font-semibold text-slate-500">No notifications yet</p><p class="text-xs mt-1 px-6">${empty}</p></div>`}`;
     }
 
@@ -11661,25 +11660,25 @@
             <i class="ph-bold ph-arrow-clockwise text-xl text-amber-600"></i>
             <div class="flex-1 min-w-0"><p class="text-sm font-extrabold text-slate-900">A new version is ready</p><p class="text-xs text-slate-600">Restart to update. Your inventory stays on this device.</p></div>
             <button id="aboutRestart" onclick="applyUpdate()" class="shrink-0 h-10 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold">Restart</button></div>`
-        : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-3 flex items-center gap-3">
+        : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-3 flex flex-wrap items-center gap-3">
             <i class="ph-bold ph-check-circle text-xl text-emerald-600"></i>
-            <div class="flex-1 min-w-0"><p class="text-sm font-bold text-slate-900">Version ${escapeHTML(APP_VERSION || 'dev')}</p><p class="text-xs text-slate-500">Updates download by themselves; you are told when one is ready.</p></div>
+            <div class="flex-1 min-w-[11rem]"><p class="text-sm font-bold text-slate-900">Version ${escapeHTML(APP_VERSION || 'dev')}</p><p class="text-xs text-slate-600">Updates download by themselves; you are told when one is ready.</p></div>
             <button id="aboutCheck" onclick="checkForUpdates()" ${appUpdate.checking ? 'disabled' : ''} class="shrink-0 h-10 px-3 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-sm font-bold text-slate-700 disabled:opacity-60">${appUpdate.checking ? 'Checking…' : 'Check for updates'}</button></div>`;
       body.innerHTML = `
         <div>
           <h3 class="text-lg font-extrabold text-slate-900 leading-tight">CustodianPro · School Inventory</h3>
-          <p class="text-sm text-slate-500 mt-0.5">Effortless classroom &amp; equipment tracking for property custodians and teachers. Works offline.</p>
+          <p class="text-sm text-slate-500 mt-0.5">Property and supplies for school custodians and teachers: QR tags, physical count, ICS/PAR/RIS, COA forms and supply requests. Works offline.</p>
         </div>
         ${status}
         ${bgSyncNoteHTML()}
         <div>
-          <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">What’s new</p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">What’s new</p>
           <div class="space-y-3">${WHATS_NEW.slice(0, 3).map((r, i) => `
             <div data-release="${r.id}">
-              <p class="text-sm font-extrabold text-slate-800 flex items-center gap-2">${escapeHTML(r.title)}
-                <span class="text-[10px] font-bold text-slate-400">${escapeHTML(r.date)}</span>
-                ${i === 0 ? '<span class="text-[10px] font-extrabold uppercase tracking-wider text-brand-700 bg-brand-50 rounded-full px-2 py-0.5">Latest</span>' : ''}</p>
-              <ul class="mt-1 space-y-1">${r.points.map(pt => `<li class="text-xs text-slate-600 leading-snug flex gap-1.5"><span class="text-brand-500">•</span><span>${escapeHTML(pt)}</span></li>`).join('')}</ul>
+              <p class="text-sm font-extrabold text-slate-800 flex flex-wrap items-center gap-x-2 gap-y-0.5">${escapeHTML(r.title)}
+                <span class="text-[11px] font-bold text-slate-500 whitespace-nowrap">${escapeHTML(r.date)}</span>
+                ${i === 0 ? '<span class="text-[11px] font-extrabold uppercase tracking-wider text-brand-700 bg-brand-50 rounded-full px-2 py-0.5 whitespace-nowrap">Latest</span>' : ''}</p>
+              <ul class="mt-1 space-y-1">${r.points.map(pt => `<li class="text-xs text-slate-600 leading-snug flex gap-1.5"><span class="text-brand-500">•</span><span>${historyTextHTML(pt)}</span></li>`).join('')}</ul>
             </div>`).join('')}</div>
         </div>
         <div class="grid grid-cols-2 gap-2">
@@ -11755,7 +11754,7 @@
       document.querySelectorAll('[data-theme-switch]').forEach(el => {
         el.innerHTML = `<div role="radiogroup" aria-label="Appearance" class="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100">${opts.map(([key, icon, label]) => `
           <button type="button" role="radio" aria-checked="${pref === key}" data-theme-opt="${key}" onclick="setTheme('${key}')"
-            class="h-9 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${pref === key ? 'bg-white text-slate-900 shadow-sm seg-on' : 'text-slate-500 hover:text-slate-800'}"><i class="ph-bold ${icon}"></i> ${label}</button>`).join('')}</div>`;
+            class="h-9 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${pref === key ? 'bg-white text-slate-900 shadow-sm seg-on' : 'text-slate-600 hover:text-slate-800'}"><i class="ph-bold ${icon}"></i> ${label}</button>`).join('')}</div>`;
       });
     }
     function initTheme() {
@@ -11853,13 +11852,13 @@
                 <p class="text-xs text-slate-500">Your property custodian shares an invite link or a school code.</p>
               </div>
             </div>
-            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Invite link or school code
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500">Invite link or school code
               <input id="gateCode" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"
                 placeholder="Paste the link or type the code" onkeydown="if (event.key === 'Enter') gateJoin()"
                 class="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium normal-case tracking-normal text-slate-900 focus:border-teal-500 outline-none">
             </label>
             <p id="gateCodeError" class="hidden text-xs font-semibold text-rose-600"></p>
-            <button id="gateJoinBtn" onclick="gateJoin()" class="w-full h-12 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-sign-in"></i> Continue</button>
+            <button id="gateJoinBtn" onclick="gateJoin()" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-sign-in"></i> Continue</button>
             <p class="text-[11px] text-slate-500">Got the link in a message? Open it on this phone and it brings you straight to the next step.</p>
           </div>`;
       }
@@ -11867,7 +11866,7 @@
         <button onclick="gateGo('${step}')" data-gate-role="${step}" class="w-full rounded-2xl border border-slate-200 bg-white hover:border-brand-300 hover:bg-slate-50 p-3.5 flex items-center gap-3 text-left active:scale-[0.99] transition">
           <span class="w-11 h-11 shrink-0 rounded-xl ${tint} flex items-center justify-center"><i class="ph-bold ${icon} text-2xl"></i></span>
           <span class="flex-1 min-w-0"><span class="block text-sm font-extrabold text-slate-900">${title}</span><span class="block text-xs text-slate-500 leading-snug">${sub}</span></span>
-          <i class="ph-bold ph-caret-right text-slate-400"></i>
+          <i class="ph-bold ph-caret-right text-slate-500"></i>
         </button>`;
       return `
         <div class="rounded-3xl bg-white/90 backdrop-blur-xl border border-white/80 shadow-2xl p-5 space-y-3">
@@ -11931,7 +11930,7 @@
       const opt = (key, icon, label) => {
         const checked = on.includes(key);
         return `<button type="button" role="checkbox" aria-checked="${checked}" data-art-opt="${key}" onclick="toggleArtPage('${key}')"
-          class="h-10 px-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition ${checked ? 'bg-white text-slate-900 shadow-sm seg-on' : 'text-slate-500 hover:text-slate-800'}">
+          class="h-10 px-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition ${checked ? 'bg-white text-slate-900 shadow-sm seg-on' : 'text-slate-600 hover:text-slate-800'}">
           <i class="ph-bold ${icon} text-sm"></i><span class="flex-1 text-left truncate">${label}</span>
           <span class="art-box ${checked ? 'is-on' : ''}"><i class="ph-bold ph-check"></i></span></button>`;
       };
@@ -11949,7 +11948,7 @@
       el.classList.toggle('hidden', !isCustodianDevice());
       if (!isCustodianDevice()) { el.innerHTML = ''; return; }
       el.innerHTML = `
-        <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Account</p>
+        <p class="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Account</p>
         <div class="px-2 py-1.5 flex items-center gap-3">
           <span class="w-9 h-9 shrink-0 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-user"></i></span>
           <span class="min-w-0 flex-1"><span class="block text-sm font-bold text-slate-800 truncate">${escapeHTML(reqRole.email || 'Property custodian')}</span>
