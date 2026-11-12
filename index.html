@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="a1e8d8e0f4fc">
+  <meta name="app-version" content="abf2ba966682">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -262,6 +262,12 @@
       font-size: 0.875rem; font-weight: 600; color: #334155; text-align: left; }
     .more-item:hover, .more-item:active { background: #f1f5f9; }
     .more-item i { font-size: 1.15rem; }
+    /* the tick box on the "Background picture on" switches */
+    .art-box { flex: none; width: 1.125rem; height: 1.125rem; border-radius: 0.35rem; border: 1.5px solid #cbd5e1; display: inline-flex;
+      align-items: center; justify-content: center; font-size: 0.7rem; color: transparent; }
+    .art-box.is-on { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+    html.dark .art-box { border-color: #475569; }
+    html.dark .art-box.is-on { background: #6366f1; border-color: #6366f1; color: #fff; }
     .pr-in { display: block; width: 100%; height: 2.5rem; margin-top: 0.25rem; padding: 0 0.75rem; border: 1px solid #cbd5e1;
       border-radius: 0.75rem; font-size: 0.875rem; font-weight: 500; color: #0f172a; text-transform: none; letter-spacing: normal; outline: none; background: #fff; }
     .pr-in:focus { border-color: #6366f1; }
@@ -369,6 +375,12 @@
         body.page-art, html.dark body.page-art { background-position: 0 0, center calc(3.5rem - 3vw); }
         body.page-art { background-image: linear-gradient(to bottom, rgb(var(--page) / 0.3) 0, rgb(var(--page) / 0.72) 10rem, rgb(var(--page)) 19rem), url(assets/brand/login-landscape.webp); }
         html.dark body.page-art { background-image: linear-gradient(to bottom, rgb(var(--page) / 0.4) 0, rgb(var(--page) / 0.8) 10rem, rgb(var(--page)) 19rem), url(assets/brand/login-landscape-dark.webp); }
+      }
+      /* Phones: Inventory and Catalog normally run edge to edge under the top bar. With the picture
+         on, the card floats (gap + rounded corners, as on wider screens) so the picture shows. */
+      @media (max-width: 639px) {
+        body.page-art #viewItems, body.page-art #viewCatalog { padding-top: 1rem; }
+        body.page-art #masterLedgerSection, body.page-art #catalogSection { margin-left: 0; margin-right: 0; border-width: 1px; border-radius: 1rem; }
       }
       /* the header turns to frosted glass so the art shows through */
       body.page-art > header.safe-top { background-color: rgb(255 255 255 / 0.62); }
@@ -1006,6 +1018,7 @@
     <div>
       <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Appearance</h2>
       <div id="rqTheme" data-theme-switch></div>
+      <div id="rqArt" data-art-switch class="mt-2"></div>
     </div>
     <div id="rqAccount" class="text-[11px] -mb-2"></div>
     <div class="flex items-center justify-between gap-3 text-xs pb-6">
@@ -1167,6 +1180,8 @@
         <div>
           <p class="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Appearance</p>
           <div id="moreTheme" data-theme-switch class="px-1"></div>
+          <p class="px-2 pt-3 pb-1.5 text-xs font-semibold text-slate-600">Background picture on</p>
+          <div id="moreArt" data-art-switch class="px-1"></div>
         </div>
         <div id="moreAccount" class="hidden"></div>
         <div>
@@ -11459,6 +11474,10 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-background', date: 'Nov 2026', title: 'Choose where the background picture shows', points: [
+        'More → Appearance → Background picture on: tick Home, Inventory, Catalog or Reports. Home is on by default.',
+        'Teachers can turn the picture on their screen on or off.'
+      ] },
       { id: '2026-11-catalog', date: 'Nov 2026', title: 'A tidier Catalog', points: [
         'One row per item with its price and code, and a small − / + on the right, so more items fit on the screen.',
         'Pick a category from one drop-down instead of scrolling sideways through 30 pills.',
@@ -11723,6 +11742,7 @@
         requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('theme-switching')));
       }
       renderThemeSwitches();
+      renderArtSwitches();
     }
     function setTheme(pref) {
       if (pref === 'light' || pref === 'dark') localStorage.setItem(THEME_KEY, pref);
@@ -11744,7 +11764,10 @@
         if (darkQuery.addEventListener) darkQuery.addEventListener('change', applyTheme);
         else if (darkQuery.addListener) darkQuery.addListener(applyTheme);
       }
-      window.addEventListener('storage', e => { if (e.key === THEME_KEY) applyTheme(); }); // another tab
+      window.addEventListener('storage', e => { // another tab
+        if (e.key === THEME_KEY) applyTheme();
+        if (e.key === ART_KEY) { syncPageArt(); renderArtSwitches(); }
+      });
     }
 
     // =========================================================================
@@ -11878,10 +11901,45 @@
       openJoin(m[1]);
     }
 
-    // ---- Art behind the top of Home (and the teacher's screen) -------------------------
+    // ---- Faded school art behind the top of the page ----------------------------------
+    // More → Appearance → "Background picture on": each tab can be switched on or off (saved on
+    // this device, like light / dark). Default: Home only, plus the teacher's screen.
+    var ART_KEY = 'custodian_page_art_v1'; // JSON list of views · missing = default
+    var ART_DEFAULT = ['HOME', 'REQUESTER'];
+    var ART_PAGES = [['HOME', 'ph-house', 'Home'], ['ITEMS', 'ph-package', 'Inventory'], ['CATALOG', 'ph-books', 'Catalog'], ['REPORTS', 'ph-chart-pie-slice', 'Reports']];
+    function artPages() {
+      try {
+        const v = JSON.parse(localStorage.getItem(ART_KEY));
+        if (Array.isArray(v)) return v.filter(k => k === 'REQUESTER' || ART_PAGES.some(p => p[0] === k));
+      } catch (e) {}
+      return ART_DEFAULT.slice();
+    }
+    function toggleArtPage(key) {
+      const list = artPages();
+      const i = list.indexOf(key);
+      if (i >= 0) list.splice(i, 1); else list.push(key);
+      localStorage.setItem(ART_KEY, JSON.stringify(list));
+      syncPageArt();
+      renderArtSwitches();
+    }
     function syncPageArt() {
       const gated = document.documentElement.classList.contains('gated');
-      document.body.classList.toggle('page-art', !gated && (activeMainView === 'HOME' || activeMainView === 'REQUESTER'));
+      document.body.classList.toggle('page-art', !gated && artPages().includes(activeMainView));
+    }
+    function renderArtSwitches() {
+      const on = artPages();
+      const opt = (key, icon, label) => {
+        const checked = on.includes(key);
+        return `<button type="button" role="checkbox" aria-checked="${checked}" data-art-opt="${key}" onclick="toggleArtPage('${key}')"
+          class="h-10 px-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition ${checked ? 'bg-white text-slate-900 shadow-sm seg-on' : 'text-slate-500 hover:text-slate-800'}">
+          <i class="ph-bold ${icon} text-sm"></i><span class="flex-1 text-left truncate">${label}</span>
+          <span class="art-box ${checked ? 'is-on' : ''}"><i class="ph-bold ph-check"></i></span></button>`;
+      };
+      document.querySelectorAll('[data-art-switch]').forEach(el => {
+        el.innerHTML = el.id === 'rqArt'
+          ? `<div class="grid p-1 rounded-xl bg-slate-100">${opt('REQUESTER', 'ph-image', 'Background picture')}</div>`
+          : `<div role="group" aria-label="Background picture on" class="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100">${ART_PAGES.map(p => opt(...p)).join('')}</div>`;
+      });
     }
 
     // ---- More → Account -------------------------------------------------------------
