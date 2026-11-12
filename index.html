@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="3958b1118ddf">
+  <meta name="app-version" content="61dde252aac2">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -12580,6 +12580,12 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-depreciation', date: 'Nov 2026', title: 'Depreciation, count season and a computer layout', points: [
+        'Each tagged unit can keep its date acquired and useful life. They fill the Property Card, RegSPI and IIRUP, and items of P50,000 and up show straight-line depreciation and carrying amount.',
+        'From 1 December the bell keeps track of the year-end count. It also warns about requests waiting over 2 days, units in Needs repair for over a month, and changes that have not reached your account.',
+        'Quiet hours: phone notifications wait from 7 PM to 6 AM (change the times under the bell).',
+        'On a computer the tabs move to a sidebar, and Inventory and Catalog show more columns. Tablet buttons are bigger.'
+      ] },
       { id: '2026-11-forms-alerts', date: 'Nov 2026', title: 'More forms, smarter alerts', points: [
         'Reports → Government forms: Property Card and SPC, Stock Card, RegSPI, RSPI and RSMI for the month, RLSDDP / RLSDDSP for lost or damaged property, and a supplies reorder list that turns into a Purchase Request.',
         'The bell now tells you when a teacher joins, when a supply falls to its alert level or runs out, and reminds teachers to tap Received (the custodian hears after 3 days).',

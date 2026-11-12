@@ -85,6 +85,8 @@ CustodianPro is laid out for a 360–430 px phone first and widens on tablets an
 - Toasts sit above the bottom tabs, move to the top while a sheet is open (also when the sheet opens after the toast), and go to the bottom on the sign-in screen so the logo stays visible.
 - `tests/e2e/phone-layout.mjs` checks this at 390 × 844: no sideways scrolling, no small buttons, sheets anchored to the bottom, full peso amounts on Reports.
 - **Touch tablets** (700 px and wider, `pointer: coarse`) scale the whole UI with the screen width: the root font size becomes `100vw / 42`, between 16 and 20 px, and every size is in rem. The phone-first column then fills the screen (686 of 800 px in portrait) instead of sitting small in the middle. The fixed-px caption classes (`text-[10px]`, `text-[11px]`…) are switched to rem inside that rule. Computers (mouse) and phones keep 16 px. A browser tab zoomed by Chrome reports a narrower width, so it is not enlarged twice. `tests/e2e/tablet-layout.mjs` checks this.
+- On touch tablets (640 × 600 px and up), chips, tabs and small links are at least 2.5rem (about 40 px) tall.
+- **Computers** (mouse, 1024 px and wider) get a **left sidebar** instead of the bottom tabs: Home, Inventory, Catalog and Reports, then Supply requests (with the number waiting), Teachers and Forms. The top bar spans the window. Inventory and Catalog widen into tables with column headings: category, tagged units (and how many are with teachers) and unit cost in Inventory; category, APP part and value in Catalog. Touch tablets and phones keep the bottom tabs.
 
 ## Inventory (was *My Items*)
 
@@ -379,6 +381,13 @@ Every release, assignment and return is kept as a record under the school (`rele
 | **Supplies to reorder** | Supplies at or below their re-order point (*Min alert qty*), with a suggested order up to twice that level. Print it, download a CSV, or tap **Purchase Request** to start a PR (Appendix 60) with those lines. Out-of-stock items only appear if they were stocked before. |
 | **Slips & receipts** | Every RIS, ICS, PAR, ITR, PTR and RRSP made, filtered by form, to print again. |
 
+### Date acquired, useful life and depreciation
+
+Each tagged unit's card (Property Numbers) has **Date acquired** and **Estimated useful life**. Scanning an ICS on receipt fills the date with the slip's date. Later ICS/PAR/PTR dates are issue dates, so they are not used. Filling in one unit offers to copy the value to the item's other units. A blank useful life uses the usual life for the category (10 years for furniture and measuring equipment, 5 years for the rest), marked *est.* Both are columns in the property register CSV.
+
+- They fill the Date Acquired and Estimated Useful Life columns on the Property Card, RegSPI, PAR, ICS/ITR/PTR and IIRUP. A card's first line is the real receipt date instead of *Balance forward* when every unit has one.
+- **Depreciation** (PPE only, ₱50,000 and up): straight-line, 5 % residual value, charged monthly from the month after acquisition. The unit card shows the carrying amount, and the IIRUP fills *Accumulated Depreciation* and *Carrying Amount* with a total row. Semi-expendable property is expensed when issued, so it shows none.
+
 The inventory committee, COA representative, fund cluster and similar names are remembered for next year; *As at* is always today unless changed. The cards and the Stock Card start with *Balance forward* on the chosen date and are worked out backwards from today's quantity, so the last line always matches Inventory. Since November 2026 the change history also keeps how much each item changed in bulk saves (deliveries, imports, ICS scans), so those show up as receipts.
 
 ## A teacher's My Items
@@ -428,14 +437,17 @@ A bell in the header (next to **More**) shows what happened and how many you hav
 
 | Who | Is told when |
 | --- | --- |
-| Property custodian | a teacher sends a supply request · confirms receipt of released items · reports a problem · wants to return an item · **joins the school** · an item falls to its **low-stock alert** or **runs out** · a release is **still not confirmed after 3 days** |
-| Teacher | a request is approved, declined (with the reason) or ready to pick up · items are released to them (RIS/ICS) · a return is accepted or not · a report is answered · **reminder to tap Received** 2 days and again 7 days after a release |
+| Property custodian | a teacher sends a supply request · confirms receipt of released items · reports a problem · wants to return an item · **joins the school** · an item falls to its **low-stock alert** or **runs out** · a release is **still not confirmed after 3 days** · a request has **waited over 2 days** · units have been in **Needs repair over a month** (suggests the IIRUP) · **year-end count** progress |
+| Teacher | a request is approved, declined (with the reason) or ready to pick up · items are released to them (RIS/ICS) · a return is accepted or not · a report is answered · **reminder to tap Received** 2 days and again 7 days after a release · **year-end count**: check the items you hold |
+| Everyone | **changes not saved to the account** for a day, or sign-in expired (also a bar under the header, with *Fix*) |
 
 - **Nothing for your own actions.** A custodian typing in a walk-in request, or a teacher sending a report, gets no notification for it.
 - **No repeats.** Each phone remembers what it has already shown, so reloading the app doesn't repeat anything. Changes made while the app was closed appear the next time it opens.
 - **Low stock** follows each item that is in stock. It is announced once when the item reaches its *Min alert qty* (set in the item sheet) and again if it runs out; restocking resets it. Tapping it opens Inventory with the *Low stock* filter. Items stocked for the first time below their alert are not announced.
 - **Reminders** are worked out on the phone when the app opens (and every 30 minutes while open). Releases older than 30 days are left alone.
-- **Also tell me about** at the bottom of the bell sheet turns *Low stock* and the reminders off or on (both on by default).
+- **Year-end count** runs from 1 December to 31 January, once a week: *82 of 138 units counted · report due 31 Jan*, a reminder in the last 14 days and a note when every unit is counted.
+- **Also tell me about** at the bottom of the bell sheet turns each kind off or on (all on by default).
+- **Quiet hours** (shown once phone notifications are on): from 7:00 PM to 6:00 AM by default, phone notifications wait. They still appear in the bell, and when quiet hours end, a background app shows one summary such as *3 notifications overnight*.
 - **On the phone.** In the bell sheet, tap **Turn on** under *Get these on your phone too* (the app never asks by itself). Notifications then appear even when you're in another app, **as long as CustodianPro is open or was used recently**. Android may stop a background app after a while; there is no push server, so a phone where the app is fully closed won't get notified.
 
 ## App updates
