@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="dd3a58ba2cf2">
+  <meta name="app-version" content="c5d60bf44c2b">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -238,6 +238,8 @@
         border-radius: 0.4rem; font-size: 0.6875rem; font-weight: 700; }
       .inv-flag i { flex: none; }
       @media (min-width: 640px) { .inv-row { padding: 0.8rem 1.25rem; } }
+      /* Catalog search, category and chips stay pinned under the top bar (--hdr-h is its height) */
+      .cat-tools { position: sticky; top: var(--hdr-h, 0px); z-index: 20; background: #fff; }
       /* Catalog rows: same white rows as Inventory; tap the name for details, small − qty + on the
          right (the quantity is greyed out at 0) */
       .cat-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.75rem 0.55rem 0.25rem; transition: background-color .15s; }
@@ -300,6 +302,7 @@
       html.dark .inv-name { color: #f1f5f9; }
       html.dark .cat-plus { background: rgb(99 102 241 / 0.2); color: #c7d2fe; }
       @media (hover: hover) { html.dark .cat-main:hover { background: #172033; } }
+      html.dark .cat-tools { background: rgb(18 26 43); }
       html.dark .cat-step { background: rgb(23 32 51); border-color: #243044; }
       html.dark .cat-minus { background: #1c2638; color: #e2e8f0; }
       @media (hover: hover) { html.dark .cat-minus:hover { background: #3b1d2a; color: #fda4af; } }
@@ -490,40 +493,40 @@
       <button onclick="exportBackupJSON()" class="h-9 px-3 shrink-0 rounded-xl bg-amber-700 hover:bg-amber-800 text-xs font-bold text-white active:scale-95 transition">Back up</button>
     </div>
 
-    <div>
+    <div id="homeSearchCard" class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5">
       <label for="homeSearch" class="block text-lg font-extrabold text-slate-900 mb-2.5">What are you encoding?</label>
       <div class="relative">
         <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xl pointer-events-none"></i>
         <input id="homeSearch" type="text" inputmode="search" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go"
           placeholder="Find an item – name or code"
           oninput="renderHome()" onkeydown="homeSearchKey(event)"
-          class="w-full h-14 pl-12 pr-12 rounded-2xl border-2 border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 bg-white text-base font-semibold text-slate-900 shadow-sm outline-none transition">
+          class="w-full h-14 pl-12 pr-12 rounded-2xl border-2 border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 bg-slate-50 focus:bg-white text-base font-semibold text-slate-900 shadow-sm outline-none transition">
         <button id="homeSearchClear" onclick="clearHomeSearch(true)" class="hidden absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-200 text-slate-600 items-center justify-center" aria-label="Clear search">
           <i class="ph-bold ph-x text-sm"></i>
         </button>
       </div>
-      <div id="homeResults" class="hidden mt-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100"></div>
+      <div id="homeResults" class="hidden mt-2 bg-white rounded-2xl border border-slate-200/90 overflow-hidden divide-y divide-slate-100"></div>
     </div>
 
     <div id="homeIdle" class="space-y-5">
       <div id="homeTiles" class="grid grid-cols-3 gap-3">
-        <button onclick="openIcsScanner()" class="rounded-2xl bg-white border border-slate-200 hover:border-violet-300 shadow-sm p-4 flex flex-col items-center text-center gap-1.5 active:scale-95 transition">
+        <button onclick="openIcsScanner()" class="rounded-2xl bg-white border border-slate-200/90 hover:border-violet-300 shadow-sm p-4 flex flex-col items-center text-center gap-1.5 active:scale-95 transition">
           <span class="w-11 h-11 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="ph-bold ph-file-text text-2xl"></i></span>
           <span class="text-sm font-extrabold text-slate-800">Scan ICS</span>
           <span class="text-[11px] text-slate-500 leading-tight">Photo of a custodian slip</span>
         </button>
-        <button onclick="openImport()" class="rounded-2xl bg-white border border-slate-200 hover:border-sky-300 shadow-sm p-4 flex flex-col items-center text-center gap-1.5 active:scale-95 transition">
+        <button onclick="openImport()" class="rounded-2xl bg-white border border-slate-200/90 hover:border-sky-300 shadow-sm p-4 flex flex-col items-center text-center gap-1.5 active:scale-95 transition">
           <span class="w-11 h-11 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center"><i class="ph-bold ph-file-arrow-up text-2xl"></i></span>
           <span class="text-sm font-extrabold text-slate-800">Import</span>
           <span class="text-[11px] text-slate-500 leading-tight">Excel or CSV list</span>
         </button>
-        <button id="homeCountTile" onclick="homeCountAction()" class="rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 shadow-sm p-4 flex flex-col items-center text-center gap-1.5 active:scale-95 transition">
+        <button id="homeCountTile" onclick="homeCountAction()" class="rounded-2xl bg-white border border-slate-200/90 hover:border-emerald-300 shadow-sm p-4 flex flex-col items-center text-center gap-1.5 active:scale-95 transition">
           <span class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="ph-bold ph-list-checks text-2xl"></i></span>
           <span id="homeCountTitle" class="text-sm font-extrabold text-slate-800">Count</span>
           <span id="homeCountSub" class="text-[11px] text-slate-500 leading-tight">Physical count</span>
           <span id="homeCountBarWrap" class="hidden w-full h-1.5 rounded-full bg-slate-100 overflow-hidden mt-0.5"><span id="homeCountBar" class="block h-full bg-emerald-500 rounded-full" style="width:0%"></span></span>
         </button>
-        <button id="homeQrTile" onclick="openScanner()" class="hidden rounded-2xl bg-white border border-slate-200 hover:border-violet-300 shadow-sm p-4 flex-col items-center text-center gap-1.5 active:scale-95 transition">
+        <button id="homeQrTile" onclick="openScanner()" class="hidden rounded-2xl bg-white border border-slate-200/90 hover:border-violet-300 shadow-sm p-4 flex-col items-center text-center gap-1.5 active:scale-95 transition">
           <span class="w-11 h-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center"><i class="ph-bold ph-scan text-2xl"></i></span>
           <span class="text-sm font-extrabold text-slate-800">Scan tag</span>
           <span class="text-[11px] text-slate-500 leading-tight">QR property label</span>
@@ -531,7 +534,7 @@
       </div>
 
       <!-- Supply requests: teachers request, the custodian reviews → Purchase Request -->
-      <div id="homeReqCard" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-center gap-3">
+      <div id="homeReqCard" class="rounded-2xl bg-white border border-slate-200/90 shadow-sm p-3 flex items-center gap-3">
         <button onclick="openRequestsView()" class="flex-1 min-w-0 flex items-center gap-3 text-left">
           <span class="relative w-11 h-11 shrink-0 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
             <i class="ph-bold ph-tray text-2xl"></i>
@@ -549,7 +552,7 @@
 
       <div id="homeRecentWrap" class="hidden">
         <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Recently encoded</h2>
-        <div id="homeRecent" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100"></div>
+        <div id="homeRecent" class="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden divide-y divide-slate-100"></div>
       </div>
 
       <div id="homeWelcome" class="hidden rounded-2xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600 space-y-1.5">
@@ -570,10 +573,11 @@
   <!-- ===================================================================== -->
   <section id="viewDashboard" class="hidden max-w-4xl mx-auto px-4 pt-4 space-y-5 no-print">
 
-    <div class="flex items-center justify-between gap-3">
-      <div>
+    <!-- Page heading in a white card, like Inventory and Catalog -->
+    <div id="reportsHead" class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5 flex items-center justify-between gap-3">
+      <div class="min-w-0">
         <h2 class="text-lg font-extrabold text-slate-900 leading-tight">Reports</h2>
-        <p class="text-xs text-slate-500">APP-CSE 2027 &middot; general inventory</p>
+        <p class="text-xs text-slate-600 mt-0.5">APP-CSE 2027 &middot; general inventory</p>
       </div>
       <div class="flex items-center gap-2">
         <button onclick="printReport()" aria-label="Print report" title="Print report" class="h-10 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-slate-700">
@@ -896,8 +900,8 @@
   <!-- ===================================================================== -->
   <main id="viewCatalog" class="hidden max-w-4xl mx-auto px-4 sm:pt-8 no-print">
     <!-- One card like Inventory: title + summary + Custom item, search + category, chips, then the rows -->
-    <div id="catalogSection" class="bg-white -mx-4 sm:mx-0 rounded-none sm:rounded-2xl border-y sm:border border-slate-200/90 shadow-sm overflow-hidden">
-      <div class="p-4 sm:p-5 border-b border-slate-200 space-y-3">
+    <div id="catalogSection" class="bg-white -mx-4 sm:mx-0 rounded-none sm:rounded-2xl border-y sm:border border-slate-200/90 shadow-sm">
+      <div class="px-4 pt-4 sm:px-5 sm:pt-5">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <h3 class="font-extrabold text-lg text-slate-900">Catalog</h3>
@@ -913,6 +917,9 @@
             <i class="ph-bold ph-plus"></i> Custom item
           </button>
         </div>
+      </div>
+      <!-- Search, category and chips stay pinned under the top bar while the list scrolls -->
+      <div id="catalogTools" class="cat-tools px-4 pt-3 pb-3 sm:px-5 sm:pb-4 border-b border-slate-200 space-y-3">
         <div class="flex items-center gap-2">
           <div class="relative flex-1 min-w-0">
             <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base pointer-events-none"></i>
@@ -11900,6 +11907,16 @@
       openJoin(m[1]);
     }
 
+    // ---- Height of the sticky top bar (--hdr-h), so the Catalog tools can pin under it ----
+    function trackHeaderHeight() {
+      const header = document.querySelector('body > header');
+      if (!header) return;
+      const set = () => document.documentElement.style.setProperty('--hdr-h', `${Math.round(header.getBoundingClientRect().height)}px`);
+      set();
+      if (window.ResizeObserver) new ResizeObserver(set).observe(header);
+      else window.addEventListener('resize', set);
+    }
+
     // ---- Faded school art behind the top of the page ----------------------------------
     // More → Appearance → "Background picture on": each tab can be switched on or off (saved on
     // this device, like light / dark). Default: Home only, plus the teacher's screen.
@@ -11960,6 +11977,7 @@
     // Boot App on Load
     window.addEventListener('DOMContentLoaded', () => {
       initTheme();
+      trackHeaderHeight();
       initApp();
       initOfflineSupport();
       updateBackupReminder();

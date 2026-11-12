@@ -136,6 +136,16 @@ try {
     await ev(a, s => eval(s), close);
   }
 
+  out('5b Card look');
+  const look = await ev(a, () => {
+    const st = el => { const c = getComputedStyle(el); return [c.backgroundColor, c.borderTopColor, c.borderRadius].join(' | '); };
+    switchMainView('HOME'); const home = st(document.getElementById('homeSearchCard'));
+    switchMainView('DASHBOARD'); const rep = st(document.getElementById('reportsHead'));
+    switchMainView('ITEMS'); const inv = getComputedStyle(document.getElementById('masterLedgerSection'));
+    return { home, rep, inv: [inv.backgroundColor, inv.borderTopColor].join(' | ') };
+  });
+  check(look.home === look.rep && look.home.startsWith(look.inv), `Home and Reports headings use the Inventory / Catalog card (${look.home})`);
+
   out('6 Catalog');
   await ev(a, () => switchMainView('CATALOG'));
   await screen(a, 'Catalog');
@@ -149,6 +159,14 @@ try {
   check(same.title === 'Catalog' && same.searchInCard && !same.c.inHeader, 'Catalog: title, search and chips are in a card below the top bar');
   check(same.c.top === same.i.top && same.c.bg === same.i.bg && same.c.radius === same.i.radius, `Catalog card sits and looks like the Inventory card (top ${same.c.top} / ${same.i.top})`);
   check(same.plainRows, 'Catalog rows are plain white like Inventory (no tint or coloured bar)');
+  const pin = await ev(a, async () => {
+    scrollTo(0, 1500); await new Promise(r => setTimeout(r, 200));
+    const hdr = document.querySelector('body > header').getBoundingClientRect().bottom;
+    const t = document.getElementById('catalogTools').getBoundingClientRect();
+    const r = { hdr: Math.round(hdr), top: Math.round(t.top), y: scrollY, opaque: getComputedStyle(document.getElementById('catalogTools')).backgroundColor };
+    scrollTo(0, 0); return r;
+  });
+  check(pin.y > 500 && Math.abs(pin.top - pin.hdr) <= 1 && !/rgba\(0, 0, 0, 0\)/.test(pin.opaque), `Catalog search and chips stay pinned under the top bar while scrolling (${pin.top} / ${pin.hdr})`);
   const cat = await ev(a, () => [...document.querySelectorAll('#itemsContainer .cat-row')].slice(0, 12).map(r => ({
     h: r.getBoundingClientRect().height, right: r.getBoundingClientRect().right,
     steps: [...r.querySelectorAll('.cat-step button')].map(b => (b.getAttribute('aria-label') || '') + ':' + Math.round(b.getBoundingClientRect().height))
