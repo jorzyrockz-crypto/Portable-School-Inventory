@@ -134,6 +134,15 @@ for (const [src, dest] of [
 //     precached: it loads (and is cached) only on devices that use Supply Requests.
 //     The project settings live in firebase-config.js (edit that file, no rebuild needed).
 // ---------------------------------------------------------------------------
+// Every F.xxx / cloud.sdk.xxx the app calls must be re-exported, or that feature breaks only
+// on real phones (tests use a stand-in SDK) – fail the build instead.
+{
+  const entry = read(path.join(ROOT, 'src', 'firebase-entry.js'));
+  const exported = new Set(entry.match(/[A-Za-z]+/g));
+  const used = new Set([...read(path.join(ROOT, 'index.html')).matchAll(/\b(?:F|cloud\.sdk|FirebaseSDK)\.([A-Za-z]+)/g)].map(m => m[1]));
+  const missing = [...used].filter(n => !exported.has(n));
+  if (missing.length) throw new Error(`src/firebase-entry.js: also export ${missing.join(', ')} (used in index.html)`);
+}
 const CLOUD_DIR = path.join(ASSETS, 'cloud');
 fs.rmSync(CLOUD_DIR, { recursive: true, force: true });
 fs.mkdirSync(CLOUD_DIR, { recursive: true });

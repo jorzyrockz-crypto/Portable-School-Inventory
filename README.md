@@ -41,24 +41,35 @@ Teachers request supplies from their own phones; the custodian reviews each requ
 A teacher’s phone only shows the request screen and only that teacher’s own requests — never the school inventory.
 
 **Custodian**
-1. On Home, tap **Supply requests** (also in ☰ More) and sign in with an email and password. The first sign-in creates your school.
+1. On Home, tap **Supply requests** (also in ☰ More) and tap **Continue with Google** (or use email and password). The first sign-in creates your school.
 2. Tap **Invite** and send the link or QR code to your faculty group chat.
 3. **To review**: open a request to see *asked / on hand / to buy* for every line. Edit names, quantities, units and unit costs, link a line to an inventory item, add a note, then **Approve** or **Decline** (with a reason). You can also enter walk-in requests with **New**.
 4. **To purchase**: tick approved requests and tap **Prepare Purchase Request**. Only the quantity not in stock goes on the PR (asked minus on hand, editable). Identical items from several teachers are added together, and their names go in the Purpose.
 5. Check the PR header (entity, fund cluster, office, PR No., responsibility center code, date), the lines and the signatories, then **Save & print**. Saved PRs are listed under **Purchase requests**, where you can reprint them or export them to CSV. Mark a request **Supplied** once the items are handed over.
 
-### Supply requests: Firebase setup (one time, ~10 minutes)
+### Supply requests: Firebase setup
 
-Requests travel through your own free Firebase project (Spark plan). Until it is set up, the rest of the app works as usual and the Supply requests card shows these steps.
+The app is connected to the Firebase project **russapps-custodian-pro** (settings in [`firebase-config.js`](firebase-config.js)). In the [Firebase console](https://console.firebase.google.com/project/russapps-custodian-pro), do these once:
 
-1. Go to <https://console.firebase.google.com>, click **Create a project**, and give it a name (Google Analytics is not needed).
-2. **Build → Authentication → Get started → Sign-in method**: turn on **Email/Password** (for the custodian) and **Anonymous** (for teachers).
-3. **Authentication → Settings → Authorized domains**: add `jorzyrockz-crypto.github.io`.
-4. **Build → Firestore Database → Create database**: pick a location near you (e.g. `asia-southeast1`, Singapore) and start in **production mode**.
-5. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests, and only the custodian read all requests and create Purchase Requests.
-6. **Project settings (⚙) → Your apps → Web (`</>`)**: register an app, copy the `firebaseConfig` object, paste it into [`firebase-config.js`](firebase-config.js) in place of `null`, and commit to `main`.
+1. **Build → Authentication → Get started → Sign-in method**: turn on
+   - **Google** (custodian, and teachers who want their requests on every phone). Pick a support email and save.
+   - **Anonymous** (teachers who just type their name).
+   - **Email/Password** (optional: custodians without a Google account).
+2. **Authentication → Settings → Authorized domains**: add `jorzyrockz-crypto.github.io`. Without it, Google sign-in shows “This website is not on the Firebase authorized domains list”.
+3. **Build → Firestore Database → Create database**: pick a location near you (e.g. `asia-southeast1`, Singapore) and start in **production mode**.
+4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school, and nothing can be deleted.
 
-The config values are not secret; access is controlled by the published rules. Phones pick up the new config the next time they open the app online.
+The config values are not secret; access is controlled by the published rules. To use a different project, replace the object in `firebase-config.js` (or set it to `null` to hide Supply requests).
+
+**Sign-in**
+- **Custodian:** *Continue with Google* (or email + password). The first sign-in creates the school; signing in on another phone or tablet finds it again.
+- **Teacher:** open the invite link, type your name, and tap *Continue* (no account needed), or *Continue with Google* to keep your requests when you change phones. You can also link Google later from the teacher screen.
+
+**Offline**
+- After the first online visit, the app and the sign-in stay on the phone.
+- Firestore keeps a copy of the requests and Purchase Requests on the device, so the lists open without signal.
+- New requests, approvals and PRs made offline are queued, marked *Sending…*, and sent automatically when the phone reconnects (also after the app is closed and reopened).
+- Signing in for the first time needs internet.
 
 ## Equipment condition tracking
 

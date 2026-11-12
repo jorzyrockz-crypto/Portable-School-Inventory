@@ -3,10 +3,12 @@
 export { initializeApp } from 'firebase/app';
 export {
   getAuth, onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword,
-  createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, updateProfile
+  createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, updateProfile,
+  GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
+  linkWithPopup, signInWithCredential
 } from 'firebase/auth';
 export {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, collection, getDoc, setDoc, updateDoc, addDoc, query, where, orderBy, limit,
+  doc, collection, getDoc, getDocs, setDoc, updateDoc, addDoc, query, where, orderBy, limit,
   onSnapshot, serverTimestamp, runTransaction, writeBatch, arrayUnion
 } from 'firebase/firestore';

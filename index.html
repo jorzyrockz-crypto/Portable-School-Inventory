@@ -663,6 +663,7 @@
       <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">My requests</h2>
       <div id="rqList" class="space-y-2"></div>
     </div>
+    <div id="rqAccount" class="text-[11px] -mb-2"></div>
     <div class="flex items-center justify-between gap-3 text-xs pb-6">
       <button onclick="editMyDetails()" class="font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-user-circle"></i> Change my name or office</button>
       <button onclick="leaveSchool()" class="font-bold text-slate-400 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-sign-out"></i> Leave</button>
@@ -964,6 +965,12 @@
       <button id="joinBtn" onclick="submitJoin()" class="w-full h-12 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2">
         <i class="ph-bold ph-check"></i> <span id="joinBtnLabel">Continue</span>
       </button>
+      <div id="joinGoogleWrap" class="space-y-1.5">
+        <button id="joinGoogleBtn" onclick="joinWithGoogle()" class="w-full h-11 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-50 text-slate-800 font-bold text-sm flex items-center justify-center gap-2.5">
+          <svg viewBox="0 0 48 48" class="w-5 h-5 shrink-0" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Continue with Google
+        </button>
+        <p class="text-[11px] text-slate-400 text-center">Optional · keeps your requests if you change phones</p>
+      </div>
     </div>
   </div>
 
@@ -6439,6 +6446,10 @@
       if (/too-many-requests/.test(code)) return 'Too many tries. Wait a few minutes and try again.';
       if (/unauthorized-domain/.test(code)) return 'This website is not on the Firebase authorized domains list (README step 3).';
       if (/permission-denied|insufficient permissions/i.test(code)) return 'Firebase refused access. Check that firestore.rules is published (README).';
+      if (/popup-closed-by-user|cancelled-popup-request|user-cancelled/.test(code)) return 'Google sign-in was cancelled.';
+      if (/popup-blocked/.test(code)) return 'The Google sign-in window was blocked. Allow pop-ups for this site and try again.';
+      if (/account-exists-with-different-credential/.test(code)) return 'This email already signs in with a password. Use email and password instead.';
+      if (/credential-already-in-use/.test(code)) return 'That Google account is already used on another phone.';
       if (/no-school/.test(code)) return 'This invite link is not valid. Ask the property custodian for a new one.';
       return 'Something went wrong: ' + code.replace(/^Firebase:\s*/, '').slice(0, 140);
     }
@@ -6466,6 +6477,16 @@
             if (first) { first = false; resolve(); }
           });
         });
+        // Coming back from a full-page Google sign-in (used only when pop-ups are not allowed).
+        if (localStorage.getItem(GOOGLE_PENDING_KEY)) {
+          try {
+            const res = await F.getRedirectResult(cloud.auth);
+            if (res && res.user) cloud.user = res.user;
+          } catch (err) {
+            localStorage.removeItem(GOOGLE_PENDING_KEY);
+            cloud.redirectError = cloudErrorText(err);
+          }
+        }
         cloud.state = 'ready';
         cloud.error = '';
       })().catch(err => {
@@ -6475,6 +6496,44 @@
         throw err;
       });
       return cloud.ready;
+    }
+
+    // ---- Google sign-in ------------------------------------------------------------
+    const GOOGLE_PENDING_KEY = 'custodian_google_pending_v1';
+    const GOOGLE_G = '<svg viewBox="0 0 48 48" class="w-5 h-5 shrink-0" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+    function googleProvider() {
+      const prov = new cloud.sdk.GoogleAuthProvider();
+      prov.setCustomParameters({ prompt: 'select_account' });
+      return prov;
+    }
+    const googleCancelled = err => /popup-closed-by-user|cancelled-popup-request|user-cancelled/.test(String(err && err.code));
+    // link: upgrade this phone's anonymous teacher account (same uid, so its requests stay).
+    // pending: what to finish after a full-page redirect, if the pop-up cannot open.
+    async function googleSignIn({ link = false, pending = null } = {}) {
+      const F = cloud.sdk;
+      if (!navigator.onLine) throw Object.assign(new Error('offline'), { code: 'auth/network-request-failed' });
+      const current = cloud.auth.currentUser;
+      try {
+        if (link && current && current.isAnonymous) {
+          try {
+            return (await F.linkWithPopup(current, googleProvider())).user;
+          } catch (err) {
+            // This Google account already belongs to another phone: sign in to it instead.
+            const cred = /credential-already-in-use/.test(String(err && err.code)) && F.GoogleAuthProvider.credentialFromError(err);
+            if (cred) return (await F.signInWithCredential(cloud.auth, cred)).user;
+            throw err;
+          }
+        }
+        if (current && !current.isAnonymous && current.providerData && current.providerData.some(pd => pd.providerId === 'google.com')) return current;
+        return (await F.signInWithPopup(cloud.auth, googleProvider())).user;
+      } catch (err) {
+        if (pending && /popup-blocked|operation-not-supported-in-this-environment/.test(String(err && err.code))) {
+          localStorage.setItem(GOOGLE_PENDING_KEY, JSON.stringify(pending));
+          await F.signInWithRedirect(cloud.auth, googleProvider());
+          return new Promise(() => {}); // the page navigates away
+        }
+        throw err;
+      }
     }
 
     function reqCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'requests'); }
@@ -6521,9 +6580,20 @@
       if (isTeacherDevice()) switchMainView('REQUESTER');
       renderRequestsEverywhere();
       checkJoinLink();
-      if (!reqRole || !cloudConfigured()) return;
+      const pendingGoogle = (() => { try { return JSON.parse(localStorage.getItem(GOOGLE_PENDING_KEY) || 'null'); } catch (e) { return null; } })();
+      if ((!reqRole && !pendingGoogle) || !cloudConfigured()) return;
       try {
         await cloudStart();
+        if (pendingGoogle) {
+          localStorage.removeItem(GOOGLE_PENDING_KEY);
+          if (cloud.user && !cloud.user.isAnonymous && pendingGoogle.mode === 'custodian') {
+            openRequestsView();
+            await finishCustodianConnect(cloud.user, pendingGoogle.schoolName || '', msg => showToast(msg, 'ph-warning'));
+            return;
+          }
+          if (cloud.redirectError) showToast(cloud.redirectError, 'ph-warning');
+          if (!reqRole) { renderRequestsEverywhere(); return; }
+        }
         if (!cloud.user && isTeacherDevice()) {
           await cloud.sdk.signInAnonymously(cloud.auth);
           cloud.user = cloud.auth.currentUser;
@@ -6587,7 +6657,7 @@
         body.innerHTML = `<div class="rounded-2xl bg-white border border-slate-200 p-6 text-center text-sm text-slate-500"><i class="ph-bold ph-circle-notch animate-spin text-2xl text-brand-500"></i><p class="mt-2">Connecting to ${escapeHTML(reqRole.schoolName)}…</p></div>`;
         return;
       }
-      if (!connected) { body.innerHTML = reqConnectHTML(); return; }
+      if (!connected) { body.innerHTML = reqConnectHTML(); if (navigator.onLine) cloudStart().catch(() => {}); return; }
 
       const pending = reqList.filter(r => r.status === 'pending');
       const approved = reqList.filter(r => r.status === 'approved');
@@ -6711,7 +6781,7 @@
             <div><p class="text-sm font-extrabold text-slate-900">One-time setup needed</p><p class="text-xs text-slate-500">Requests travel between phones through your school’s free Firebase project.</p></div>
           </div>
           <ol class="list-decimal pl-5 text-xs text-slate-600 space-y-1">
-            <li>Create a Firebase project; turn on <b>Email/Password</b> and <b>Anonymous</b> sign-in and <b>Firestore</b>.</li>
+            <li>Create a Firebase project; turn on <b>Google</b>, <b>Email/Password</b> and <b>Anonymous</b> sign-in and <b>Firestore</b>.</li>
             <li>Publish the rules from <span class="font-mono">firestore.rules</span>.</li>
             <li>Paste the web app settings into <span class="font-mono">firebase-config.js</span> and commit.</li>
           </ol>
@@ -6726,12 +6796,19 @@
         <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3">
           <div>
             <p class="text-sm font-extrabold text-slate-900">Property custodian</p>
-            <p class="text-xs text-slate-500">Sign in to receive your teachers’ requests. First time? Enter the school name and tap Create account.</p>
+            <p class="text-xs text-slate-500">Sign in to receive your teachers’ requests. The first sign-in sets up your school.</p>
           </div>
-          <input id="rcSchool" type="text" value="${school}" placeholder="School name" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">School (first sign-in only)
+            <input id="rcSchool" type="text" value="${school}" placeholder="School name" class="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium normal-case tracking-normal text-slate-900 focus:border-brand-500 outline-none">
+          </label>
+          <button id="rcGoogle" onclick="custodianGoogle()" class="w-full h-12 rounded-xl bg-white border-2 border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-800 text-sm font-extrabold flex items-center justify-center gap-2.5 shadow-sm">
+            ${GOOGLE_G} Continue with Google
+          </button>
+          <p id="rcError" class="hidden text-xs font-semibold text-rose-600"></p>
+          ${navigator.onLine ? '' : '<p class="text-xs font-semibold text-slate-500 flex items-center gap-1.5"><i class="ph-bold ph-cloud-slash"></i> Signing in needs internet once. After that, requests work offline.</p>'}
+          <div class="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider text-slate-400"><span class="flex-1 h-px bg-slate-200"></span>or with email<span class="flex-1 h-px bg-slate-200"></span></div>
           <input id="rcEmail" type="email" value="${email}" autocomplete="username" placeholder="Email" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
           <input id="rcPass" type="password" autocomplete="current-password" placeholder="Password (6+ characters)" onkeydown="if (event.key === 'Enter') custodianConnect(false)" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
-          <p id="rcError" class="hidden text-xs font-semibold text-rose-600"></p>
           <div class="grid grid-cols-2 gap-2">
             <button id="rcSignIn" onclick="custodianConnect(false)" class="h-11 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-extrabold">Sign in</button>
             <button id="rcCreate" onclick="custodianConnect(true)" class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-800 text-sm font-bold">Create account</button>
@@ -6753,7 +6830,7 @@
       const pass = document.getElementById('rcPass').value;
       const schoolName = reqVal('rcSchool');
       const errEl = document.getElementById('rcError');
-      const btns = ['rcSignIn', 'rcCreate'].map(id => document.getElementById(id));
+      const btns = ['rcSignIn', 'rcCreate', 'rcGoogle'].map(id => document.getElementById(id));
       const busy = on => btns.forEach(b => { if (b) b.disabled = on; });
       const fail = msg => { errEl.textContent = msg; errEl.classList.remove('hidden'); busy(false); };
       errEl.classList.add('hidden');
@@ -6766,35 +6843,61 @@
         const cred = create
           ? await F.createUserWithEmailAndPassword(cloud.auth, email, pass)
           : await F.signInWithEmailAndPassword(cloud.auth, email, pass);
-        cloud.user = cred.user;
-        const uid = cred.user.uid;
-        const found = await F.getDocs(F.query(F.collection(cloud.db, 'schools'), F.where('custodians', 'array-contains', uid)));
-        let schoolId, name;
-        if (found.docs.length) {
-          schoolId = found.docs[0].id;
-          name = found.docs[0].data().name;
-        } else {
-          if (!schoolName) return fail('No school is linked to this account yet. Enter the school name and try again.');
-          const ref = F.doc(F.collection(cloud.db, 'schools'));
-          await F.setDoc(ref, { name: schoolName.slice(0, 120), ownerUid: uid, custodians: [uid], createdAt: F.serverTimestamp() });
-          schoolId = ref.id;
-          name = schoolName;
-        }
-        reqRole = { role: 'custodian', schoolId, schoolName: name, email };
-        saveReqRole();
-        if (!schoolInfo.school) {
-          schoolInfo.school = name;
-          localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
-          updateSchoolHeader();
-        }
-        logHistory('system', `Connected supply requests for ${name} (${email})`);
-        subscribeRequests();
-        renderRequestsEverywhere();
-        showToast(found.docs.length ? `Connected to ${name}` : `${name} is ready · invite your teachers`, 'ph-cloud-check');
-        if (!found.docs.length) openInvite();
+        await finishCustodianConnect(cred.user, schoolName, fail);
       } catch (err) {
         fail(cloudErrorText(err));
       }
+    }
+
+    async function custodianGoogle() {
+      const errEl = document.getElementById('rcError');
+      const btns = ['rcSignIn', 'rcCreate', 'rcGoogle'].map(id => document.getElementById(id));
+      const busy = on => btns.forEach(b => { if (b) b.disabled = on; });
+      const fail = msg => { errEl.textContent = msg; errEl.classList.remove('hidden'); busy(false); };
+      const schoolName = reqVal('rcSchool');
+      errEl.classList.add('hidden');
+      busy(true);
+      try {
+        await cloudStart();
+        const user = await googleSignIn({ pending: { mode: 'custodian', schoolName } });
+        await finishCustodianConnect(user, schoolName, fail);
+      } catch (err) {
+        if (googleCancelled(err)) { busy(false); return; }
+        fail(cloudErrorText(err));
+      }
+    }
+
+    // Signed in (email or Google): find this custodian's school, or create it.
+    async function finishCustodianConnect(user, schoolName, fail) {
+      const F = cloud.sdk;
+      cloud.user = user;
+      const uid = user.uid;
+      const email = user.email || '';
+      const found = await F.getDocs(F.query(F.collection(cloud.db, 'schools'), F.where('custodians', 'array-contains', uid)));
+      let schoolId, name;
+      if (found.docs.length) {
+        schoolId = found.docs[0].id;
+        name = found.docs[0].data().name;
+      } else {
+        if (!schoolName) schoolName = (prompt('Name of your school (teachers will see this):', schoolInfo.school || '') || '').trim();
+        if (!schoolName) return fail('No school is linked to this account yet. Enter the school name and try again.');
+        const ref = F.doc(F.collection(cloud.db, 'schools'));
+        await F.setDoc(ref, { name: schoolName.slice(0, 120), ownerUid: uid, custodians: [uid], createdAt: F.serverTimestamp() });
+        schoolId = ref.id;
+        name = schoolName;
+      }
+      reqRole = { role: 'custodian', schoolId, schoolName: name, email };
+      saveReqRole();
+      if (!schoolInfo.school) {
+        schoolInfo.school = name;
+        localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+        updateSchoolHeader();
+      }
+      logHistory('system', `Connected supply requests for ${name} (${email})`);
+      subscribeRequests();
+      renderRequestsEverywhere();
+      showToast(found.docs.length ? `Connected to ${name}` : `${name} is ready · invite your teachers`, 'ph-cloud-check');
+      if (!found.docs.length) openInvite();
     }
 
     async function custodianResetPassword() {
@@ -6874,11 +6977,13 @@
       document.getElementById('joinOffice').value = me.office || '';
       document.getElementById('joinError').classList.add('hidden');
       document.getElementById('joinBtnLabel').textContent = edit ? 'Save' : 'Continue';
+      document.getElementById('joinGoogleWrap').classList.toggle('hidden', edit);
       document.getElementById('joinSchool').textContent = edit ? reqRole.schoolName : 'Connecting…';
       document.getElementById('joinModal').classList.remove('hidden');
       if (edit) return;
       const btn = document.getElementById('joinBtn');
-      btn.disabled = true;
+      const gBtn = document.getElementById('joinGoogleBtn');
+      btn.disabled = gBtn.disabled = true;
       try {
         await cloudStart();
         const F = cloud.sdk;
@@ -6888,7 +6993,7 @@
         if (!snap.exists()) throw new Error('no-school');
         joinState.schoolName = snap.data().name || 'School';
         document.getElementById('joinSchool').textContent = joinState.schoolName;
-        btn.disabled = false;
+        btn.disabled = gBtn.disabled = false;
         setTimeout(() => document.getElementById('joinName').focus(), 50);
       } catch (err) {
         document.getElementById('joinSchool').textContent = 'Could not connect';
@@ -6909,13 +7014,53 @@
         return;
       }
       const joining = !joinState.edit;
-      if (joining) reqRole = { role: 'teacher', schoolId: joinState.schoolId, schoolName: joinState.schoolName, me };
+      if (joining) reqRole = { role: 'teacher', schoolId: joinState.schoolId, schoolName: joinState.schoolName, me, email: joinState.email || '' };
       else reqRole.me = me;
       saveReqRole();
       closeJoin();
       if (joining) subscribeRequests();
       switchMainView('REQUESTER');
       showToast(`Hi ${me.name.split(' ')[0]}! Tap New supply request to ask for supplies.`, 'ph-hand-waving');
+    }
+
+    async function joinWithGoogle() {
+      if (!joinState || joinState.edit) return;
+      const errEl = document.getElementById('joinError');
+      const btns = [document.getElementById('joinBtn'), document.getElementById('joinGoogleBtn')];
+      errEl.classList.add('hidden');
+      btns.forEach(b => b.disabled = true);
+      try {
+        const user = await googleSignIn({ link: true });
+        cloud.user = user;
+        joinState.email = user.email || '';
+        const nameEl = document.getElementById('joinName');
+        if (!nameEl.value.trim() && user.displayName) nameEl.value = user.displayName;
+        btns.forEach(b => b.disabled = false);
+        if (!nameEl.value.trim()) { nameEl.focus(); return; }
+        submitJoin();
+      } catch (err) {
+        btns.forEach(b => b.disabled = false);
+        if (googleCancelled(err)) return;
+        errEl.textContent = cloudErrorText(err);
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    // Teacher phone that joined without Google: link it later (same account, nothing lost).
+    async function teacherLinkGoogle() {
+      if (!isTeacherDevice() || !cloud.user) return;
+      try {
+        const before = cloud.user.uid;
+        const user = await googleSignIn({ link: true });
+        cloud.user = user;
+        reqRole.email = user.email || '';
+        saveReqRole();
+        if (user.uid !== before) subscribeRequests(); // this Google account was set up on another phone
+        renderRequesterView();
+        showToast(`Signed in as ${user.email || 'your Google account'}`, 'ph-check-circle');
+      } catch (err) {
+        if (!googleCancelled(err)) showToast(cloudErrorText(err), 'ph-warning');
+      }
     }
 
     // ---- Teacher screen --------------------------------------------------------
@@ -6938,6 +7083,13 @@
       const me = reqRole.me || {};
       document.getElementById('rqHello').textContent = `Hi ${me.name ? me.name.split(' ')[0] : 'there'}`;
       document.getElementById('rqSchool').textContent = `To the property custodian of ${reqRole.schoolName}`;
+      const acct = document.getElementById('rqAccount');
+      if (acct) {
+        const u = cloud.user;
+        acct.innerHTML = u && !u.isAnonymous && u.email
+          ? `<span class="flex items-center gap-1.5 text-slate-400">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} ${escapeHTML(u.email)}</span>`
+          : u ? `<button onclick="teacherLinkGoogle()" class="font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} Sign in with Google to keep your requests if you change phones</button>` : '';
+      }
       document.getElementById('headerSchoolName').textContent = reqRole.schoolName;
       const sync = document.getElementById('rqSync');
       const msg = cloud.error || (!navigator.onLine ? 'You are offline. New requests are sent automatically when you reconnect.' : '');

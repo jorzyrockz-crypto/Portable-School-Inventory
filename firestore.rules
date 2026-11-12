@@ -7,15 +7,17 @@ rules_version = '2';
 //   schools/{schoolId}/requests/{id}          supply requests from teachers
 //   schools/{schoolId}/purchaseRequests/{id}  Purchase Requests (Appendix 60)
 //
-// Teachers sign in anonymously from the invite link: they can send requests and see
-// or cancel only their own. The property custodian signs in with email + password
-// and sees, reviews and approves every request of their school.
+// Teachers join from the invite link (anonymously, or with Google to keep their requests
+// across phones): they can send requests and see or cancel only their own. The property
+// custodian signs in with Google or email + password and sees, reviews and approves
+// every request of their school.
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
-    function withPassword() {
-      return signedIn() && request.auth.token.firebase.sign_in_provider == 'password';
+    // A real account (not an anonymous teacher) may set up a school.
+    function withAccount() {
+      return signedIn() && request.auth.token.firebase.sign_in_provider in ['password', 'google.com'];
     }
     function isCustodian(schoolId) {
       return signedIn() &&
@@ -28,7 +30,7 @@ service cloud.firestore {
       allow get: if signedIn();
       // A custodian finds their own school on a new device (query: custodians array-contains uid).
       allow list: if signedIn() && request.auth.uid in resource.data.custodians;
-      allow create: if withPassword()
+      allow create: if withAccount()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.custodians == [request.auth.uid]
         && shortText(request.resource.data.name, 120);
