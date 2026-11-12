@@ -13,7 +13,7 @@
   <!-- Offline-ready PWA: everything below is served locally and precached by sw.js -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
-  <link rel="icon" type="image/svg+xml" href="assets/icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <!-- Compiled Tailwind + self-hosted Inter / JetBrains Mono + Phosphor icons (npm run build) -->
   <link rel="stylesheet" href="assets/app.css">
@@ -108,9 +108,7 @@
     <!-- Top bar: identity + school, everything else lives in the More menu -->
     <div class="max-w-4xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
       <button onclick="switchMainView('HOME')" class="flex items-center gap-2.5 min-w-0 text-left" title="Home">
-        <div class="w-9 h-9 shrink-0 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
-          <i class="ph-bold ph-package text-xl"></i>
-        </div>
+        <img src="assets/icons/icon-192.png" alt="" width="36" height="36" class="w-9 h-9 shrink-0 drop-shadow-sm">
         <div class="min-w-0">
           <div class="flex items-center gap-2">
             <h1 class="font-extrabold text-base tracking-tight text-slate-900 leading-none">CustodianPro</h1>

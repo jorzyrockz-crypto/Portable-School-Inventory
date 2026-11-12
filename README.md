@@ -286,7 +286,7 @@ npm run serve   # http://localhost:8080
 | `tailwind.config.js` | Theme (brand colours, fonts) |
 | `src/sw.template.js` | Service-worker source; `npm run build` writes `sw.js` |
 | `scripts/build-assets.mjs` | Compiles Tailwind, self-hosts fonts, subsets icon fonts, copies the QR libraries to `assets/vendor/`, writes `sw.js` |
-| `scripts/build-icons.mjs` | Regenerates the home-screen icons (`npm run icons`) |
+| `scripts/build-icons.mjs` | Regenerates the home-screen icons from `src/app-icon.png` (`npm run icons`): rounded tile, Android maskable and iPhone versions |
 | `manifest.webmanifest` | PWA metadata (name, icons, colours) |
 
 Generated files (`assets/`, `sw.js`) are committed so GitHub Pages can serve them directly.
