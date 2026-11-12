@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="89fd62218868">
+  <meta name="app-version" content="8f8df8870fb2">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -4473,6 +4473,7 @@
       const unit = findUnit(code, id);
       const item = items.find(i => i.code === code);
       if (!unit || !item || !UNIT_COND[cond]) return;
+      if (unit.cond !== cond) unit.condAt = Date.now();
       unit.cond = cond;
       syncUnitCondition(item);
       saveState();
@@ -7500,6 +7501,7 @@
         cloud.error = '';
         renderRequestsEverywhere();
         notifFromRequests(snap.metadata);
+        if (!(snap.metadata && snap.metadata.fromCache)) notifReminders();
       }, onErr));
       if (isCustodianDevice()) {
         reqUnsubs.push(F.onSnapshot(prCol(), snap => {
@@ -10039,6 +10041,7 @@
           const found = findUnitWithItem(uid);
           if (!found) return;
           found.unit.cond = action === 'repair' ? 'R' : 'U';
+          found.unit.condAt = Date.now();
           syncUnitCondition(found.item);
           touched.push(found);
         });
@@ -11728,7 +11731,7 @@
     const NOTIF_MAX = 60;
     let notifState = null;      // { scope, items: [], seen: {}, primed: {} }
     let notifPrefs = (() => {
-      const def = { system: true, lowStock: true, reminders: true };
+      const def = { system: true, lowStock: true, reminders: true, waiting: true, count: true };
       try { return Object.assign(def, JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY) || '{}')); }
       catch (e) { return def; }
     })();
@@ -11979,7 +11982,112 @@
     const needsReceipt = r => (isIssueKind(r.kind) || r.kind === 'RIS') && !r.sameHolder && !r.sending;
     const relDocNo = r => `${r.kind} ${r.no || ''}`.trim();
     function notifReminders(now = Date.now()) {
-      if (!notifScope() || notifPrefs.reminders === false) return;
+      if (!notifScope()) return;
+      if (notifPrefs.reminders !== false) notifReceiptReminders(now);
+      if (notifPrefs.waiting !== false && isCustodianDevice()) { notifWaitingRequests(now); notifLongRepairs(now); }
+      if (notifPrefs.count !== false) notifCountSeason(now);
+    }
+
+    // ---- Supply requests waiting for review more than 2 days (custodian) ----
+    const REQ_WAIT_DAYS = 2;
+    function notifWaitingRequests(now) {
+      if (!cloud.user) return;
+      const st = loadNotifs();
+      const due = reqList.filter(r => !r.sending && (r.status || 'pending') === 'pending' && reqTime(r)
+        && (now - reqTime(r)) / 864e5 >= REQ_WAIT_DAYS && !st.seen['rw:' + r.id]);
+      if (!due.length) return;
+      due.forEach(r => { st.seen['rw:' + r.id] = 1; });
+      saveNotifs();
+      const days = r => plural(Math.floor((now - reqTime(r)) / 864e5), 'day');
+      const r = due[0];
+      addNotif(due.length === 1
+        ? { title: `${r.name || 'A teacher'}’s request is waiting ${days(r)}`, body: `${reqNotifSummary(r)} · approve, decline or ask for changes`, icon: 'ph-hourglass-medium', tone: 'amber', go: 'requests' }
+        : { title: `${due.length} supply requests waiting more than ${REQ_WAIT_DAYS} days`, body: due.slice(0, 4).map(x => `${x.name || 'A teacher'} (${days(x)})`).join(', ') + (due.length > 4 ? ` + ${due.length - 4} more` : ''), icon: 'ph-hourglass-medium', tone: 'amber', go: 'requests' });
+    }
+
+    // ---- Units in Needs repair for more than a month (custodian) ----
+    // unit.condAt is set when a unit is marked; units marked before that existed count from the
+    // first time this phone saw them in Needs repair (kept on the phone).
+    const REPAIR_DAYS = 30;
+    const REPAIR_SEEN_KEY = 'custodian_repair_since_v1';
+    function repairSinceMap(now) {
+      let map = {};
+      try { map = JSON.parse(localStorage.getItem(REPAIR_SEEN_KEY) || '{}') || {}; } catch (e) { map = {}; }
+      const next = {};
+      items.forEach(item => {
+        const units = getUnits(item.code);
+        if (units.length) units.filter(u => u.cond === 'R').forEach(u => { next[u.id] = u.condAt || map[u.id] || now; });
+        else if ((item.repair || 0) > 0) next['i:' + item.code] = map['i:' + item.code] || now;
+      });
+      localStorage.setItem(REPAIR_SEEN_KEY, JSON.stringify(next));
+      return next;
+    }
+    function notifLongRepairs(now) {
+      const since = repairSinceMap(now);
+      const st = loadNotifs();
+      const due = [];
+      items.forEach(item => {
+        const units = getUnits(item.code);
+        const list = units.length ? units.filter(u => u.cond === 'R').map(u => ({ key: u.id, label: `${item.name} ${u.no}` }))
+          : (item.repair || 0) > 0 ? [{ key: 'i:' + item.code, label: `${item.name} (${item.repair})` }] : [];
+        list.forEach(x => {
+          const t = since[x.key];
+          if (t && (now - t) / 864e5 >= REPAIR_DAYS && st.seen['rp:' + x.key] !== t) due.push({ ...x, t });
+        });
+      });
+      if (!due.length) return;
+      due.forEach(x => { st.seen['rp:' + x.key] = x.t; });
+      saveNotifs();
+      addNotif({
+        title: due.length === 1 ? `In Needs repair for over a month: ${due[0].label}` : `${due.length} units in Needs repair for over a month`,
+        body: `${due.length > 1 ? due.slice(0, 3).map(x => x.label).join(', ') + (due.length > 3 ? ` + ${due.length - 3} more · ` : ' · ') : ''}If it cannot be fixed, mark it Unserviceable and print the IIRUP from Forms.`,
+        icon: 'ph-wrench', tone: 'rose', go: 'repair'
+      });
+    }
+
+    // ---- Year-end physical count (1 December – 31 January) ----
+    // The count is as at 31 December and the report (RPCPPE / RPCSP) is due 31 January. Once a
+    // week the custodian sees how many tagged units were checked since 1 December; teachers are
+    // asked to check the items they hold.
+    function countSeason(now) {
+      const d = new Date(now);
+      const y = d.getMonth() === 11 ? d.getFullYear() : d.getMonth() === 0 ? d.getFullYear() - 1 : 0;
+      if (!y) return null;
+      const start = new Date(y, 11, 1).getTime();
+      return { year: y, start, week: Math.floor((now - start) / (7 * 864e5)), due: new Date(y + 1, 0, 31).getTime() };
+    }
+    function notifCountSeason(now) {
+      const season = countSeason(now);
+      if (!season) return;
+      const st = loadNotifs();
+      const key = 'yc:' + season.year;
+      const last = st.seen[key];
+      if (last !== undefined && last >= season.week) return;
+      const daysLeft = Math.ceil((season.due - now) / 864e5);
+      const dueText = daysLeft <= 14 ? `report due 31 Jan (${plural(Math.max(0, daysLeft), 'day')} left)` : 'report due 31 Jan';
+      if (isCustodianDevice()) {
+        const units = allTaggedUnits();
+        const counted = units.filter(x => x.unit.seen && x.unit.seen >= season.start).length;
+        if (last === 'done') return;
+        st.seen[key] = units.length && counted >= units.length ? 'done' : season.week;
+        saveNotifs();
+        addNotif(units.length
+          ? counted >= units.length
+            ? { title: `Year-end count done: all ${units.length} units checked`, body: 'Print the RPCPPE and RPCSP from Forms · due 31 Jan', icon: 'ph-seal-check', tone: 'emerald', go: 'count' }
+            : { title: `Year-end count: ${counted} of ${units.length} units counted`, body: `${dueText} · scan the QR labels or use Count on Home`, icon: 'ph-clipboard-text', tone: 'brand', go: 'count' }
+          : { title: 'Year-end physical count', body: `Count the property as at 31 December · ${dueText}`, icon: 'ph-clipboard-text', tone: 'brand', go: 'count' });
+      } else if (isTeacherDevice()) {
+        if (!myRelLoaded) return;
+        const held = teacherHoldings(myReleases).equipment.length;
+        if (!held) return;
+        st.seen[key] = season.week;
+        saveNotifs();
+        addNotif({ title: `Year-end count: check the ${plural(held, 'item')} you hold`, body: 'Make sure each one is still with you and working · report a problem if not', icon: 'ph-clipboard-text', tone: 'teal', go: 'teacher-items' });
+      }
+    }
+
+    // ---- Reminders to tap Received ----
+    function notifReceiptReminders(now) {
       const st = loadNotifs();
       const age = r => (now - (r.createdMs || now)) / 864e5;
       const daysAgo = r => plural(Math.floor(age(r)), 'day');
@@ -12146,8 +12254,11 @@
         </div>`;
       const prefs = isTeacherDevice()
         ? sw('reminders', 'Reminders to tap Received', '2 and 7 days after items are released to you')
+          + sw('count', 'Year-end count', 'Once a week in December and January: check the items you hold')
         : sw('lowStock', 'Low stock', 'When an item falls to its alert level or runs out')
-          + sw('reminders', 'Unconfirmed releases', 'When a teacher has not tapped Received after 3 days');
+          + sw('reminders', 'Unconfirmed releases', 'When a teacher has not tapped Received after 3 days')
+          + sw('waiting', 'Waiting too long', 'Requests not reviewed after 2 days · units in Needs repair for a month')
+          + sw('count', 'Year-end count', 'Once a week from 1 December: units counted, report due 31 January');
       body.innerHTML = `
         ${notifPermissionCard()}
         ${items.length ? `<div class="divide-y divide-slate-100 rounded-2xl border border-slate-200 overflow-hidden bg-white">${items.map(n => `
@@ -12171,7 +12282,7 @@
       notifPrefs[key] = !!on;
       localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(notifPrefs));
       renderNotifPanel();
-      if (on && key === 'reminders') notifReminders();
+      if (on && ['reminders', 'waiting', 'count'].includes(key)) notifReminders();
     }
 
     function openNotif(id) {
@@ -12200,6 +12311,13 @@
         switchMainView('HOME');
         checkSyncProblem();
         window.scrollTo({ top: 0 });
+      } else if (n.go === 'repair') {
+        switchMainView('ITEMS');
+        setLedgerFilter('CONDITION');
+        window.scrollTo({ top: 0 });
+      } else if (n.go === 'count') {
+        openCoa();
+        coaGo('count');
       } else if (n.go === 'low') {
         switchMainView('ITEMS');
         setLedgerFilter('LOW');
