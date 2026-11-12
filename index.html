@@ -7,7 +7,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="CustodianPro">
-  <meta name="theme-color" content="#4f46e5">
+  <meta name="theme-color" content="#122e76">
   <title>CustodianPro | General Inventory & APP-CSE 2027</title>
 
   <!-- Offline-ready PWA: everything below is served locally and precached by sw.js -->
@@ -119,10 +119,16 @@
           <p id="headerSchoolName" class="text-xs text-slate-500 mt-0.5 font-medium truncate max-w-[60vw] sm:max-w-md">Set School Info</p>
         </div>
       </button>
+      <div class="flex items-center gap-2 shrink-0">
+      <button onclick="openNotifPanel()" id="notifBtn" class="hidden relative w-10 h-10 shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition items-center justify-center text-slate-700" aria-label="Notifications">
+        <i class="ph-bold ph-bell text-lg"></i>
+        <span id="notifCount" class="hidden absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-600 text-white text-[10px] font-extrabold flex items-center justify-center ring-2 ring-white"></span>
+      </button>
       <button onclick="openMoreMenu()" id="moreMenuBtn" class="h-10 px-3 shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-slate-700" aria-label="More">
         <i class="ph-bold ph-list text-lg"></i>
         <span class="hidden sm:inline">More</span>
       </button>
+      </div>
     </div>
 
     <!-- CATALOG-ONLY CONTROLS (Search & Category Pills) -->
@@ -169,6 +175,19 @@
       </div>
     </div>
   </header>
+
+  <!-- Install as an app (shown when Chrome offers it, until installed or dismissed) -->
+  <div id="installBar" class="hidden max-w-4xl mx-auto px-4 pt-3 no-print">
+    <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-center gap-3">
+      <img src="assets/icons/icon-192.png" alt="" width="40" height="40" class="w-10 h-10 shrink-0">
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-extrabold text-slate-900 leading-tight">Install CustodianPro</p>
+        <p class="text-xs text-slate-500 mt-0.5 leading-snug">Opens from your home screen, full screen, even without signal.</p>
+      </div>
+      <button id="installBtn" onclick="installApp()" class="shrink-0 h-10 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold">Install</button>
+      <button onclick="dismissInstall()" class="shrink-0 w-8 h-8 rounded-full text-slate-400 hover:bg-slate-100 flex items-center justify-center" aria-label="Not now"><i class="ph-bold ph-x"></i></button>
+    </div>
+  </div>
 
   <!-- ===================================================================== -->
   <!-- VIEW 0: HOME – one job: start encoding                               -->
@@ -816,6 +835,7 @@
         </div>
         <div>
           <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Data &amp; settings</p>
+          <button id="moreInstallItem" onclick="closeMoreMenu(); installApp()" class="more-item" style="display:none"><i class="ph-bold ph-device-mobile text-brand-600"></i> Install app on this phone</button>
           <button onclick="closeMoreMenu(); openSchoolModal()" class="more-item"><i class="ph-bold ph-buildings text-brand-600"></i> School &amp; custodian info</button>
           <button onclick="closeMoreMenu(); exportBackupJSON()" class="more-item"><i class="ph-bold ph-floppy-disk text-emerald-600"></i> Back up now</button>
           <button onclick="closeMoreMenu(); document.getElementById('restoreFileInput').click()" class="more-item"><i class="ph-bold ph-upload-simple text-amber-600"></i> Restore a backup</button>
@@ -831,6 +851,20 @@
   </div>
   <input type="file" id="restoreFileInput" accept=".json,application/json" class="hidden no-print" onchange="importBackupJSON(event)">
 
+
+  <!-- Notifications -->
+  <div id="notifPanel" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-start sm:justify-end no-print" onclick="if (event.target === this) closeNotifPanel()">
+    <div class="bg-white w-full sm:w-96 sm:mt-16 sm:mr-4 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 max-h-[88vh] flex flex-col safe-bottom">
+      <div class="px-5 pt-4 pb-3 flex items-center justify-between gap-2 border-b border-slate-100">
+        <h3 class="font-extrabold text-base text-slate-900">Notifications</h3>
+        <div class="flex items-center gap-1.5">
+          <button id="notifReadAll" onclick="markAllNotifsRead()" class="hidden h-8 px-2.5 rounded-lg text-xs font-bold text-brand-700 hover:bg-brand-50">Mark all read</button>
+          <button onclick="closeNotifPanel()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+        </div>
+      </div>
+      <div id="notifBody" class="p-3 space-y-3 overflow-y-auto"></div>
+    </div>
+  </div>
   <!-- ENCODE SHEET: quantity + room for one item, then straight on to the next -->
   <!-- NEW SUPPLY REQUEST (teachers, or the custodian for a walk-in) -->
   <div id="reqFormModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeRequestForm()">
@@ -6444,7 +6478,7 @@
     function placeToast() {
       const toast = document.getElementById('appToast');
       if (!toast) return;
-      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
+      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
       const stickyAction = [...document.querySelectorAll('[data-toast-avoid]')].some(el => el.offsetParent !== null);
       const top = sheetOpen || stickyAction;
       toast.classList.toggle('bottom-24', !top);
@@ -6713,6 +6747,7 @@
         reqList.sort((a, b) => reqTime(b) - reqTime(a));
         cloud.error = '';
         renderRequestsEverywhere();
+        notifFromRequests(snap.metadata);
       }, onErr));
       if (isCustodianDevice()) {
         reqUnsubs.push(F.onSnapshot(prCol(), snap => {
@@ -7094,6 +7129,7 @@
     }
 
     function renderRequestsEverywhere() {
+      if (typeof renderNotifBell === 'function') renderNotifBell();
       renderHomeReqCard();
       if (activeMainView === 'REQUESTS') renderRequestsView();
       if (activeMainView === 'REQUESTER') renderRequesterView();
@@ -8328,6 +8364,7 @@
       reqUnsubs.push(F.onSnapshot(tReportCol(), snap => {
         tReports = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
         renderRequestsEverywhere();
+        notifFromReports(snap.metadata);
       }, soft('teacher reports')));
     }
 
@@ -8830,10 +8867,12 @@
       reqUnsubs.push(F.onSnapshot(F.query(relCol(), F.where('teacherUid', '==', cloud.user.uid)), { includeMetadataChanges: true }, snap => {
         myReleases = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
         renderRequestsEverywhere();
+        notifFromMyReleases(snap.metadata);
       }, soft('my releases')));
       reqUnsubs.push(F.onSnapshot(F.query(tReportCol(), F.where('uid', '==', cloud.user.uid)), { includeMetadataChanges: true }, snap => {
         tReports = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
         renderRequestsEverywhere();
+        notifFromReports(snap.metadata);
       }, soft('my reports')));
     }
 
@@ -9447,12 +9486,428 @@
       return { added, created };
     }
 
+    // =========================================================================
+    // NOTIFICATIONS: a bell with a list on every connected phone, a count on the app icon,
+    // and phone (system) notifications while the app is open or was used recently.
+    // There is no push server. Events are worked out from the Firestore listeners the app
+    // already runs, compared with what this phone has already seen (kept in localStorage),
+    // so nothing is announced twice and changes made while the app was closed appear on the
+    // next open.
+    //   Custodian: new supply request · teacher confirmed receipt · problem report · return
+    //   Teacher:   request approved / declined / ready · items released to you ·
+    //              return accepted / not accepted · report answered
+    // =========================================================================
+    const NOTIF_KEY = 'custodian_notifications_v1';
+    const NOTIF_PREFS_KEY = 'custodian_notification_prefs_v1';
+    const NOTIF_MAX = 60;
+    let notifState = null;      // { scope, items: [], seen: {}, primed: {} }
+    let notifPrefs = (() => {
+      try { return Object.assign({ system: true }, JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY) || '{}')); }
+      catch (e) { return { system: true }; }
+    })();
+    let notifBurst = [];
+    let notifBurstTimer = null;
+    const NOTIF_TONE = {
+      amber: 'bg-amber-50 text-amber-600', emerald: 'bg-emerald-50 text-emerald-600', rose: 'bg-rose-50 text-rose-600',
+      teal: 'bg-teal-50 text-teal-600', brand: 'bg-brand-50 text-brand-600'
+    };
+
+    // Notifications belong to one school, role and account on one Firebase project.
+    function notifScope() {
+      if (!reqRole || !cloud.user) return '';
+      const project = (window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.projectId) || '';
+      return [project, reqRole.schoolId, reqRole.role, cloud.user.uid].join('|');
+    }
+    function loadNotifs() {
+      const scope = notifScope();
+      if (notifState && notifState.scope === scope) return notifState;
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(NOTIF_KEY) || 'null'); } catch (e) { saved = null; }
+      notifState = saved && saved.scope === scope
+        ? Object.assign({ items: [], seen: {}, primed: {} }, saved)
+        : { scope, items: [], seen: {}, primed: {} };
+      return notifState;
+    }
+    function saveNotifs() {
+      if (!notifState || !notifState.scope) return;
+      try { localStorage.setItem(NOTIF_KEY, JSON.stringify(notifState)); } catch (e) { /* storage full: keep in memory */ }
+    }
+    const notifUnread = () => (notifScope() ? loadNotifs().items.filter(n => !n.read).length : 0);
+
+    // entries = [{ key, sig, make(prevSig) → notification | null }]. The first server
+    // snapshot of each source only records what is already there (no flood of old history).
+    function notifCheck(source, entries, fromCache) {
+      if (!notifScope()) return;
+      const st = loadNotifs();
+      if (!st.primed[source]) {
+        if (fromCache) return;
+        entries.forEach(e => { st.seen[e.key] = e.sig; });
+        st.primed[source] = true;
+        saveNotifs();
+        return;
+      }
+      let changed = false;
+      entries.forEach(e => {
+        const prev = st.seen[e.key];
+        if (prev === e.sig) return;
+        st.seen[e.key] = e.sig;
+        changed = true;
+        const n = e.make(prev);
+        if (n) addNotif(n);
+      });
+      if (changed) saveNotifs();
+    }
+
+    function reqNotifSummary(r) {
+      const lines = reqLinesOf(r);
+      const first = lines[0] ? lines[0].desc : '';
+      return lines.length > 1 ? `${first} + ${lines.length - 1} more` : first;
+    }
+    function relNotifSummary(r) {
+      const lines = r.lines || [];
+      const l = lines[0];
+      const first = l ? `${l.qty || ''} ${l.unit || ''} ${l.desc || ''}`.replace(/\s+/g, ' ').trim() : '';
+      return lines.length > 1 ? `${first} + ${lines.length - 1} more` : first;
+    }
+    const fromCacheOf = meta => !!(meta && meta.fromCache);
+
+    function notifFromRequests(meta) {
+      const list = reqList.filter(r => !r.sending);
+      if (isCustodianDevice()) {
+        notifCheck('requests', list.map(r => ({
+          key: 'rq:' + r.id, sig: r.status || 'pending',
+          make: prev => (prev === undefined && (r.status || 'pending') === 'pending' && r.via !== 'custodian')
+            ? { title: `New supply request from ${r.name || 'a teacher'}`, body: reqNotifSummary(r), icon: 'ph-tray', tone: 'amber', go: 'requests' }
+            : null
+        })), fromCacheOf(meta));
+      } else if (isTeacherDevice()) {
+        notifCheck('requests', list.map(r => ({
+          key: 'rq:' + r.id, sig: r.status || 'pending',
+          make: () => {
+            const what = reqNotifSummary(r);
+            if (r.status === 'approved') return { title: 'Your supply request was approved', body: what, icon: 'ph-check-circle', tone: 'emerald', go: 'teacher-requests' };
+            if (r.status === 'declined') return { title: 'Your supply request was declined', body: [what, r.declineReason].filter(Boolean).join(' · '), icon: 'ph-x-circle', tone: 'rose', go: 'teacher-requests' };
+            if (r.status === 'closed') return { title: 'Ready · get it from the property custodian', body: what, icon: 'ph-package', tone: 'teal', go: 'teacher-requests' };
+            return null;
+          }
+        })), fromCacheOf(meta));
+      }
+    }
+
+    function notifFromMyReleases(meta) {
+      if (!isTeacherDevice()) return;
+      notifCheck('releases', myReleases.map(r => ({
+        key: 'rl:' + r.id, sig: 'seen',
+        make: () => (r.kind === 'ICS' || r.kind === 'RIS')
+          ? { title: 'New items released to you', body: `${r.kind} ${r.no || ''} · ${relNotifSummary(r)} · tap Received when you have them`, icon: 'ph-hand-arrow-down', tone: 'teal', go: 'teacher-items' }
+          : null
+      })), fromCacheOf(meta));
+    }
+
+    function notifFromReports(meta) {
+      if (isCustodianDevice()) {
+        notifCheck('reports', tReports.map(x => ({
+          key: 'tr:' + x.id, sig: 'seen',
+          make: prev => {
+            if (prev !== undefined) return null;
+            const who = x.name || 'A teacher';
+            const units = (x.units || []).map(u => u.no).filter(Boolean).join(', ');
+            if (x.kind === 'received') return { title: `${who} confirmed receipt`, body: [x.releaseNo, x.desc].filter(Boolean).join(' · '), icon: 'ph-check-circle', tone: 'emerald', go: 'teachers', person: x.uid || null };
+            if (x.status !== 'open') return null;
+            if (x.kind === 'return') return { title: `${who} wants to return an item`, body: [x.desc, units, x.note].filter(Boolean).join(' · '), icon: 'ph-arrow-u-down-left', tone: 'amber', go: 'inbox' };
+            if (x.kind === 'problem') return { title: `Problem reported by ${who}`, body: [tReasonLabel(x.reason), x.desc, units].filter(Boolean).join(' · '), icon: 'ph-warning', tone: 'rose', go: 'inbox' };
+            return null;
+          }
+        })), fromCacheOf(meta));
+      } else if (isTeacherDevice()) {
+        notifCheck('reports', tReports.filter(x => !x.sending && x.kind !== 'received').map(x => ({
+          key: 'tr:' + x.id, sig: x.status || 'open',
+          make: prev => {
+            if (!prev) return null;                // a report I just sent: nothing to announce
+            const what = [x.desc, (x.units || []).map(u => u.no).filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+            if (x.kind === 'return' && x.status === 'done') return { title: 'Return accepted', body: what ? `${what} is off your list` : 'The item is off your list', icon: 'ph-arrow-u-down-left', tone: 'emerald', go: 'teacher-items' };
+            if (x.kind === 'return' && x.status === 'declined') return { title: 'Return not accepted', body: [what, x.reply].filter(Boolean).join(' · '), icon: 'ph-x-circle', tone: 'rose', go: 'teacher-items' };
+            if (x.kind === 'problem' && (x.status === 'done' || x.status === 'declined')) return { title: 'The custodian answered your report', body: [what, x.reply].filter(Boolean).join(' · '), icon: 'ph-chat-text', tone: 'brand', go: 'teacher-items' };
+            return null;
+          }
+        })), fromCacheOf(meta));
+      }
+    }
+
+    function addNotif(n) {
+      const st = loadNotifs();
+      const item = { id: 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), at: Date.now(), read: false, ...n };
+      st.items.unshift(item);
+      st.items = st.items.slice(0, NOTIF_MAX);
+      saveNotifs();
+      renderNotifBell();
+      notifBurst.push(item);
+      clearTimeout(notifBurstTimer);
+      notifBurstTimer = setTimeout(flushNotifBurst, 250);
+    }
+
+    // Foreground: one toast (or "3 new notifications"). Background: phone notifications.
+    function flushNotifBurst() {
+      const batch = notifBurst;
+      notifBurst = [];
+      if (!batch.length) return;
+      if (document.visibilityState === 'visible') {
+        if (batch.length === 1) showToast(batch[0].title, batch[0].icon || 'ph-bell', { label: 'View', onClick: () => openNotif(batch[0].id) });
+        else showToast(`${batch.length} new notifications`, 'ph-bell', { label: 'View', onClick: openNotifPanel });
+      } else if (batch.length > 3) {
+        showSystemNotif({ id: '', title: `${batch.length} new notifications`, body: batch.slice(0, 3).map(b => b.title).join(' · '), at: Date.now() });
+      } else {
+        batch.forEach(showSystemNotif);
+      }
+    }
+
+    const systemNotifSupported = () => 'Notification' in window && 'serviceWorker' in navigator;
+    async function showSystemNotif(n) {
+      if (!systemNotifSupported() || Notification.permission !== 'granted' || !notifPrefs.system) return;
+      const opts = {
+        body: n.body || '', icon: 'assets/icons/icon-192.png', badge: 'assets/icons/badge-96.png',
+        tag: n.id || 'custodianpro-summary', data: { nid: n.id || '' }, timestamp: n.at || Date.now()
+      };
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg && reg.showNotification) { await reg.showNotification(n.title, opts); return; }
+      } catch (e) { /* fall back below */ }
+      try {
+        const x = new Notification(n.title, opts);       // desktop browsers without a worker
+        x.onclick = () => { window.focus(); if (n.id) openNotif(n.id); else openNotifPanel(); x.close(); };
+      } catch (e) { /* Android Chrome only allows worker notifications */ }
+    }
+
+    function updateAppBadge(count) {
+      try {
+        if (count && navigator.setAppBadge) navigator.setAppBadge(count).catch(() => {});
+        else if (!count && navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
+      } catch (e) { /* not supported */ }
+    }
+
+    function renderNotifBell() {
+      const btn = document.getElementById('notifBtn');
+      if (!btn) return;
+      const on = !!notifScope();
+      btn.classList.toggle('hidden', !on);
+      btn.classList.toggle('flex', on);
+      const n = notifUnread();
+      const count = document.getElementById('notifCount');
+      count.textContent = n > 9 ? '9+' : String(n);
+      count.classList.toggle('hidden', !n);
+      btn.setAttribute('aria-label', n ? `Notifications, ${n} unread` : 'Notifications');
+      if (renderNotifBell._last !== n) { renderNotifBell._last = n; updateAppBadge(n); }
+      if (!document.getElementById('notifPanel').classList.contains('hidden')) renderNotifPanel();
+    }
+
+    function openNotifPanel() {
+      closeMoreMenu();
+      document.getElementById('notifPanel').classList.remove('hidden');
+      renderNotifPanel();
+    }
+    function closeNotifPanel() {
+      document.getElementById('notifPanel').classList.add('hidden');
+    }
+    function notifAgo(ms) {
+      const s = Math.max(0, (Date.now() - ms) / 1000);
+      if (s < 60) return 'just now';
+      if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+      if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+      return formatShortDate(ms);
+    }
+
+    function notifPermissionCard() {
+      if (!systemNotifSupported()) return '';
+      const p = Notification.permission;
+      if (p === 'granted' && notifPrefs.system) {
+        return `<div class="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-xs text-emerald-800 flex items-start gap-2">
+          <i class="ph-bold ph-bell-ringing text-base mt-0.5"></i>
+          <div class="flex-1 min-w-0"><p class="font-bold">Phone notifications are on</p><p class="text-emerald-700 mt-0.5">They appear while CustodianPro is open or was used recently.</p></div>
+          <button onclick="setSystemNotifs(false)" class="shrink-0 h-8 px-2.5 rounded-lg bg-white border border-emerald-200 font-bold text-emerald-800">Turn off</button></div>`;
+      }
+      if (p === 'denied') {
+        return `<div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs text-slate-600 flex items-start gap-2">
+          <i class="ph-bold ph-bell-slash text-base mt-0.5"></i>
+          <p class="flex-1">Phone notifications are blocked for this site. To allow them, open Chrome’s menu, then <b>Settings · Site settings · Notifications</b>.</p></div>`;
+      }
+      return `<div class="rounded-xl bg-brand-50 border border-brand-200 px-3 py-2.5 text-xs text-slate-700 flex items-start gap-2">
+        <i class="ph-bold ph-bell-simple-ringing text-base mt-0.5 text-brand-600"></i>
+        <div class="flex-1 min-w-0"><p class="font-bold text-slate-900">Get these on your phone too</p><p class="mt-0.5">A notification appears even when you are in another app, while CustodianPro is open or was used recently.</p></div>
+        <button id="notifTurnOn" onclick="setSystemNotifs(true)" class="shrink-0 h-8 px-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-bold">Turn on</button></div>`;
+    }
+
+    async function setSystemNotifs(on) {
+      if (on && Notification.permission !== 'granted') {
+        let p = 'default';
+        try { p = await Notification.requestPermission(); } catch (e) { p = Notification.permission; }
+        if (p !== 'granted') {
+          renderNotifPanel();
+          showToast(p === 'denied' ? 'Notifications are blocked in Chrome settings' : 'Phone notifications stay off', 'ph-bell-slash');
+          return;
+        }
+      }
+      notifPrefs.system = on;
+      localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(notifPrefs));
+      renderNotifPanel();
+      showToast(on ? 'Phone notifications on' : 'Phone notifications off', on ? 'ph-bell-ringing' : 'ph-bell-slash');
+    }
+
+    function renderNotifPanel() {
+      const body = document.getElementById('notifBody');
+      if (!body) return;
+      const items = notifScope() ? loadNotifs().items : [];
+      document.getElementById('notifReadAll').classList.toggle('hidden', !items.some(n => !n.read));
+      const empty = isTeacherDevice() ? 'Approvals and items released to you will show up here.' : 'New supply requests and teacher reports will show up here.';
+      body.innerHTML = `
+        ${notifPermissionCard()}
+        ${items.length ? `<div class="divide-y divide-slate-100 rounded-2xl border border-slate-200 overflow-hidden bg-white">${items.map(n => `
+          <button onclick="openNotif('${n.id}')" data-notif="${n.id}" class="w-full text-left px-3 py-3 flex items-start gap-3 hover:bg-slate-50 ${n.read ? '' : 'bg-brand-50/40'}">
+            <span class="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center ${NOTIF_TONE[n.tone] || NOTIF_TONE.brand}"><i class="ph-bold ${escapeHTML(n.icon || 'ph-bell')} text-lg"></i></span>
+            <span class="flex-1 min-w-0">
+              <span class="block text-sm leading-snug ${n.read ? 'font-semibold text-slate-700' : 'font-extrabold text-slate-900'}">${escapeHTML(n.title)}</span>
+              ${n.body ? `<span class="block text-xs text-slate-500 mt-0.5 line-clamp-2">${escapeHTML(n.body)}</span>` : ''}
+              <span class="block text-[11px] text-slate-400 mt-1">${escapeHTML(notifAgo(n.at))}</span>
+            </span>
+            ${n.read ? '' : '<span class="w-2.5 h-2.5 rounded-full bg-brand-600 mt-1.5 shrink-0" aria-label="Unread"></span>'}
+          </button>`).join('')}</div>`
+          : `<div class="text-center py-10 text-slate-400"><i class="ph-duotone ph-bell text-4xl block mb-2"></i>
+              <p class="text-sm font-semibold text-slate-500">No notifications yet</p><p class="text-xs mt-1 px-6">${empty}</p></div>`}`;
+    }
+
+    function openNotif(id) {
+      const st = notifScope() ? loadNotifs() : null;
+      const n = st && st.items.find(x => x.id === id);
+      if (!n) { openNotifPanel(); return; }
+      closeNotifPanel();
+      if (!n.read) { n.read = true; saveNotifs(); renderNotifBell(); }
+      goToNotifTarget(n);
+    }
+    function goToNotifTarget(n) {
+      if (n.go === 'teacher-items' || n.go === 'teacher-requests') {
+        switchMainView('REQUESTER');
+        setTeacherTab(n.go === 'teacher-items' ? 'items' : 'requests');
+      } else if (n.go === 'requests') {
+        openRequestsView();
+        setReqTab('pending');
+        window.scrollTo({ top: 0 });
+      } else if (n.go === 'inbox') {
+        openRequestsView();
+        window.scrollTo({ top: 0 });
+      } else if (n.go === 'teachers') {
+        openTeachersView(n.person || null);
+      }
+    }
+    function markAllNotifsRead() {
+      if (!notifScope()) return;
+      loadNotifs().items.forEach(n => { n.read = true; });
+      saveNotifs();
+      renderNotifBell();
+      renderNotifPanel();
+    }
+
+    function initNotifications() {
+      renderNotifBell();
+      if ('serviceWorker' in navigator) {
+        // A tapped phone notification focuses this window and says which one it was.
+        navigator.serviceWorker.addEventListener('message', e => {
+          if (!e.data || e.data.type !== 'open-notification') return;
+          if (e.data.nid) openNotif(e.data.nid); else openNotifPanel();
+        });
+      }
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') renderNotifBell(); });
+    }
+
+    // ---- Install as an app (Chrome's "beforeinstallprompt") -------------------------------
+    const INSTALL_DISMISS_KEY = 'custodian_install_dismissed_v1';
+    let installPrompt = null;
+    const isInstalledApp = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+    function initInstall() {
+      window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();               // our own bar instead of Chrome's mini-infobar
+        installPrompt = e;
+        renderInstallUI();
+      });
+      window.addEventListener('appinstalled', () => {
+        installPrompt = null;
+        renderInstallUI();
+        showToast('CustodianPro is on your home screen', 'ph-device-mobile');
+      });
+      renderInstallUI();
+    }
+    function renderInstallUI() {
+      const can = !!installPrompt && !isInstalledApp();
+      const dismissed = Number(localStorage.getItem(INSTALL_DISMISS_KEY) || 0);
+      const bar = document.getElementById('installBar');
+      if (bar) bar.classList.toggle('hidden', !can || Date.now() - dismissed < 14 * 864e5);
+      const item = document.getElementById('moreInstallItem');
+      if (item) item.style.display = can ? '' : 'none';
+    }
+    async function installApp() {
+      const e = installPrompt;
+      if (!e) return;
+      installPrompt = null;
+      try {
+        await e.prompt();
+        const choice = await e.userChoice;
+        if (choice && choice.outcome === 'dismissed') localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now()));
+      } catch (err) { /* prompt can only be shown once */ }
+      renderInstallUI();
+    }
+    function dismissInstall() {
+      localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now()));
+      renderInstallUI();
+    }
+
+    // ---- Launch links: home-screen shortcuts (?go=…) and tapped notifications (?notif=…) ----
+    const BOOT_URL = location.href;
+    function handleLaunchParams() {
+      runLaunchURL(new URL(location.href));
+      // Installed app already open + shortcut tapped: Chrome focuses it ("focus-existing")
+      // and hands over the shortcut's URL here instead of reloading the page.
+      if ('launchQueue' in window && window.launchQueue.setConsumer) {
+        window.launchQueue.setConsumer(params => {
+          if (params && params.targetURL && params.targetURL !== BOOT_URL) runLaunchURL(new URL(params.targetURL));
+        });
+      }
+    }
+    function runLaunchURL(url) {
+      const p = url.searchParams;
+      const go = p.get('go');
+      const nid = p.get('notif');
+      if (!go && nid === null) return;
+      if (url.href === location.href) history.replaceState(null, '', location.pathname + location.hash);
+      const waitFor = (fn, ms) => new Promise(res => {
+        const end = Date.now() + ms;
+        (function poll() { if (fn() || Date.now() > end) res(); else setTimeout(poll, 150); })();
+      });
+      setTimeout(async () => {
+        if (nid !== null) {
+          await waitFor(() => !!notifScope(), 6000);
+          if (nid) openNotif(nid); else openNotifPanel();
+          return;
+        }
+        // Teachers and custodians see different screens; wait until the role is known.
+        if (go === 'items' || go === 'requests') await waitFor(() => !!reqRole, 1500);
+        const teacher = isTeacherDevice();
+        if (go === 'scan-ics' && !teacher) openIcsScanner();
+        else if (go === 'count' && !teacher) { switchMainView('HOME'); homeCountAction(); }
+        else if (go === 'items') {
+          if (teacher) { switchMainView('REQUESTER'); setTeacherTab('items'); } else switchMainView('ITEMS');
+        } else if (go === 'requests') {
+          if (teacher) { switchMainView('REQUESTER'); setTeacherTab('requests'); } else openRequestsView();
+        }
+      }, 200);
+    }
+
     // Boot App on Load
     window.addEventListener('DOMContentLoaded', () => {
       initApp();
       initOfflineSupport();
       updateBackupReminder();
       initSupplyRequests();
+      initNotifications();
+      initInstall();
+      handleLaunchParams();
       // Re-check when the app comes back to the foreground (iPad apps stay open for days).
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') updateBackupReminder();

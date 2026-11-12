@@ -194,11 +194,13 @@ const listFiles = (dir) =>
     return e.isDirectory() ? listFiles(p) : e.name.startsWith('.') ? [] : [p];
   });
 
+const SHOTS_DIR = path.join(ASSETS, 'screenshots');
 const precache = [
   path.join(ROOT, 'index.html'),
   path.join(ROOT, 'manifest.webmanifest'),
   path.join(ROOT, 'firebase-config.js'), // also network-first in sw.js, so edits apply without a rebuild
-  ...listFiles(ASSETS).filter((p) => !p.startsWith(OCR_DIR + path.sep) && !p.startsWith(CLOUD_DIR + path.sep)),
+  // Store screenshots (manifest "screenshots") are only shown by Chrome's install sheet.
+  ...listFiles(ASSETS).filter((p) => ![OCR_DIR, CLOUD_DIR, SHOTS_DIR].some((d) => p.startsWith(d + path.sep))),
 ].filter((p) => fs.existsSync(p));
 
 const hash = createHash('sha256');
