@@ -8,15 +8,20 @@
  * - Firebase SDK (assets/cloud/) is not precached; it is cached the first time it is used.
  * - Text recognition for "Scan ICS" (assets/ocr/, ~7 MB) is not precached; it is kept
  *   in its own cache the first time it is used, so app updates don't download it again.
+ * - Tapping a phone notification (shown by the page while the app is open or was used
+ *   recently; there is no push server) focuses CustodianPro and opens that notification.
+ * - The page asks for this worker's version ("get-version") to tell whether an update
+ *   brings anything new to the page that is open.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
-const CACHE = 'custodianpro-aafe35a5f150';
+const CACHE = 'custodianpro-6c6c1228d102';
 const PRECACHE_URLS = [
     "./",
     "./index.html",
     "./manifest.webmanifest",
     "./firebase-config.js",
     "./assets/app.css",
+    "./assets/brand/banner.webp",
     "./assets/fonts/Phosphor-Bold.woff2",
     "./assets/fonts/Phosphor-Duotone.woff2",
     "./assets/fonts/Phosphor-Fill.woff2",
@@ -25,10 +30,15 @@ const PRECACHE_URLS = [
     "./assets/fonts/jetbrains-mono-latin-ext-wght-normal.woff2",
     "./assets/fonts/jetbrains-mono-latin-wght-normal.woff2",
     "./assets/icons/apple-touch-icon.png",
+    "./assets/icons/badge-96.png",
     "./assets/icons/favicon-32.png",
     "./assets/icons/icon-192.png",
     "./assets/icons/icon-512.png",
     "./assets/icons/maskable-512.png",
+    "./assets/icons/shortcut-count.png",
+    "./assets/icons/shortcut-items.png",
+    "./assets/icons/shortcut-requests.png",
+    "./assets/icons/shortcut-scan.png",
     "./assets/vendor/fflate.LICENSE.txt",
     "./assets/vendor/fflate.js",
     "./assets/vendor/jsQR.LICENSE.txt",
@@ -116,5 +126,30 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(handleConfig(request));
   } else {
     event.respondWith(handleAsset(request));
+  }
+});
+
+// A tapped notification: bring an open CustodianPro window forward and tell it which
+// notification was tapped, or open the app with ?notif=<id> when no window is left.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const nid = (event.notification.data && event.notification.data.nid) || '';
+  event.waitUntil((async () => {
+    const scope = self.registration.scope;
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const client = windows.find((c) => c.url.startsWith(scope));
+    if (client) {
+      try { await client.focus(); } catch (e) { /* focus is best effort */ }
+      client.postMessage({ type: 'open-notification', nid });
+      return;
+    }
+    await self.clients.openWindow(`${scope}?notif=${encodeURIComponent(nid)}`);
+  })());
+});
+
+// The page compares this with its own version (meta app-version) before announcing an update.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'get-version' && event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ version: CACHE.slice('custodianpro-'.length) });
   }
 });

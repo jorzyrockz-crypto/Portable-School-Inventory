@@ -1,19 +1,129 @@
 {
   "name": "CustodianPro – School Inventory",
   "short_name": "CustodianPro",
-  "description": "Offline-ready school general inventory & APP-CSE 2027 counter for property custodians.",
+  "description": "School property and supply inventory for custodians and teachers: tags, physical count, RIS/ICS releases and supply requests. Works offline.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay"
+  ],
   "orientation": "any",
   "background_color": "#f1f5f9",
-  "theme_color": "#4f46e5",
+  "theme_color": "#122e76",
   "lang": "en",
-  "categories": ["productivity", "business", "education"],
+  "categories": [
+    "productivity",
+    "business",
+    "education"
+  ],
   "icons": [
-    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "launch_handler": {
+    "client_mode": [
+      "focus-existing",
+      "auto"
+    ]
+  },
+  "shortcuts": [
+    {
+      "name": "Scan ICS / IAR",
+      "short_name": "Scan ICS",
+      "description": "Read a paper ICS or IAR with the camera",
+      "url": "./?go=scan-ics",
+      "icons": [
+        {
+          "src": "assets/icons/shortcut-scan.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Physical count",
+      "short_name": "Count",
+      "description": "Start or continue a physical count",
+      "url": "./?go=count",
+      "icons": [
+        {
+          "src": "assets/icons/shortcut-count.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "My Items",
+      "short_name": "My Items",
+      "url": "./?go=items",
+      "icons": [
+        {
+          "src": "assets/icons/shortcut-items.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Supply requests",
+      "short_name": "Requests",
+      "url": "./?go=requests",
+      "icons": [
+        {
+          "src": "assets/icons/shortcut-requests.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/screenshots/phone-home.png",
+      "sizes": "1080x2400",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Home: encode, import and count"
+    },
+    {
+      "src": "assets/screenshots/phone-items.png",
+      "sizes": "1080x2400",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "My Items with property tags"
+    },
+    {
+      "src": "assets/screenshots/phone-requests.png",
+      "sizes": "1080x2400",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Supply requests and notifications"
+    },
+    {
+      "src": "assets/screenshots/tablet-items.png",
+      "sizes": "1920x1200",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Inventory on a tablet"
+    }
   ]
 }

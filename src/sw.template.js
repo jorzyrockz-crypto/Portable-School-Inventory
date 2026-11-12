@@ -8,6 +8,10 @@
  * - Firebase SDK (assets/cloud/) is not precached; it is cached the first time it is used.
  * - Text recognition for "Scan ICS" (assets/ocr/, ~7 MB) is not precached; it is kept
  *   in its own cache the first time it is used, so app updates don't download it again.
+ * - Tapping a phone notification (shown by the page while the app is open or was used
+ *   recently; there is no push server) focuses CustodianPro and opens that notification.
+ * - The page asks for this worker's version ("get-version") to tell whether an update
+ *   brings anything new to the page that is open.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
 const CACHE = 'custodianpro-__CACHE_VERSION__';
@@ -93,5 +97,30 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(handleConfig(request));
   } else {
     event.respondWith(handleAsset(request));
+  }
+});
+
+// A tapped notification: bring an open CustodianPro window forward and tell it which
+// notification was tapped, or open the app with ?notif=<id> when no window is left.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const nid = (event.notification.data && event.notification.data.nid) || '';
+  event.waitUntil((async () => {
+    const scope = self.registration.scope;
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const client = windows.find((c) => c.url.startsWith(scope));
+    if (client) {
+      try { await client.focus(); } catch (e) { /* focus is best effort */ }
+      client.postMessage({ type: 'open-notification', nid });
+      return;
+    }
+    await self.clients.openWindow(`${scope}?notif=${encodeURIComponent(nid)}`);
+  })());
+});
+
+// The page compares this with its own version (meta app-version) before announcing an update.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'get-version' && event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ version: CACHE.slice('custodianpro-'.length) });
   }
 });

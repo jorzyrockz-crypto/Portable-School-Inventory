@@ -1,5 +1,7 @@
 # Portable-School-Inventory
 
+![CustodianPro School Inventory – effortless classroom & equipment tracking](assets/brand/banner.png)
+
 **CustodianPro** – a school general inventory & APP-CSE 2027 counter for property custodians,
 optimised for iPad/tablet use. It is a single static page (`index.html`) served by GitHub Pages:
 
@@ -255,6 +257,29 @@ A person's page lists:
 
 The *With …* chip on an item in My Items opens that person's page.
 
+## Notifications
+
+A bell in the header (next to **More**) shows what happened and how many you haven't read yet. Tap it for the list, and tap a notification to open the matching screen. The unread count also appears on the home-screen icon where Android supports it.
+
+| Who | Is told when |
+| --- | --- |
+| Property custodian | a teacher sends a supply request · confirms receipt of released items · reports a problem · wants to return an item |
+| Teacher | a request is approved, declined (with the reason) or ready to pick up · items are released to them (RIS/ICS) · a return is accepted or not · a report is answered |
+
+- **Nothing for your own actions.** A custodian typing in a walk-in request, or a teacher sending a report, gets no notification for it.
+- **No repeats.** Each phone remembers what it has already shown, so reloading the app doesn't repeat anything. Changes made while the app was closed appear the next time it opens.
+- **On the phone.** In the bell sheet, tap **Turn on** under *Get these on your phone too* (the app never asks by itself). Notifications then appear even when you're in another app, **as long as CustodianPro is open or was used recently**. Android may stop a background app after a while; there is no push server, so a phone where the app is fully closed won't get notified.
+
+## App updates
+
+A new version downloads in the background (checked when the app opens, when it comes back to the front, and every hour). Nothing restarts by itself; you choose when:
+
+- **Title bar.** The window title starts with *Update ready ·*, so it shows on the Chrome tab and in the title bar of the installed app on a computer. When that installed app hides Chrome's title bar (the chevron next to the window buttons), CustodianPro draws its own navy title bar with an **Update ready · Restart** button and the unread count.
+- **In the app.** A bar under the header (**Restart** or **Later**), an item in the bell, a phone notification if those are on and the app is in the background, and an *Update* tag on **More → About & what's new**.
+- **Afterwards.** *Updated ·* with **What's new** appears once. **More → About & what's new** shows the version, a **Check for updates** button, the latest changes (`WHATS_NEW` in `index.html`; add an entry for each noticeable release) and **Share app link**.
+
+`npm run build` writes the version into `index.html` (`<meta name="app-version">`, the same value as the `sw.js` cache version). A new service worker that brings the version already running is not announced.
+
 ## Works offline
 
 CustodianPro is an installable Progressive Web App:
@@ -262,7 +287,8 @@ CustodianPro is an installable Progressive Web App:
 - Everything it needs (styles, fonts, icons) is self-hosted in `assets/` – no CDNs.
 - `sw.js` (service worker) caches the whole app on the first visit, so it opens with no internet.
 - On iPad/iPhone: open the site in **Safari → Share → Add to Home Screen**.
-  On Android/Chrome/Edge: use **Install app** from the browser menu.
+  On Android/Chrome/Edge: tap **Install** on the bar under the header (or **More → Install app on this phone**). The browser's menu works as well. Chrome's install sheet shows screenshots of the app (`assets/screenshots/`).
+- Long-press the home-screen icon for shortcuts: **Scan ICS**, **Count**, **My Items** and **Requests** (teachers get their own My items and requests).
 - Inventory data is stored on the device (`localStorage`). Use **Backup Data** regularly –
   clearing the browser's website data erases it. The app shows *Last backup: …* under the
   dashboard tools and a reminder banner when changes haven't been backed up for 7 days
@@ -286,8 +312,10 @@ npm run serve   # http://localhost:8080
 | `tailwind.config.js` | Theme (brand colours, fonts) |
 | `src/sw.template.js` | Service-worker source; `npm run build` writes `sw.js` |
 | `scripts/build-assets.mjs` | Compiles Tailwind, self-hosts fonts, subsets icon fonts, copies the QR libraries to `assets/vendor/`, writes `sw.js` |
-| `scripts/build-icons.mjs` | Regenerates the home-screen icons from `src/app-icon.png` (`npm run icons`): rounded tile, Android maskable and iPhone versions |
-| `manifest.webmanifest` | PWA metadata (name, icons, colours) |
+| `scripts/build-icons.mjs` | Regenerates the home-screen icons from `src/app-icon.png` (`npm run icons`): rounded tile, Android maskable and iPhone versions, plus the notification badge and shortcut icons |
+| `manifest.webmanifest` | PWA metadata: name, icons, navy theme colour, shortcuts, screenshots |
+| `assets/brand/` | Banner: `banner.png` (this README), `banner.webp` (About sheet, precached), `og-image.png` 1200×630 (link previews: `og:image` / X card), `social-preview.png` 1280×640 (upload under GitHub → Settings → Social preview) |
+| `tests/e2e/make-screenshots.mjs` | Re-renders `assets/screenshots/` from the app with sample data (not precached by `sw.js`) |
 
 Generated files (`assets/`, `sw.js`) are committed so GitHub Pages can serve them directly.
 
@@ -305,6 +333,8 @@ node release.mjs                      # teachers, RIS/ICS releases, stock in
 node teacher-items.mjs                # a teacher's My Items, reports and returns
 node teachers-overview.mjs            # released-to-teachers overview, take back, accountability print
 node project-switch.mjs               # moving to another Firebase project keeps inventory, resets cloud links
+node notifications.mjs                # bell, phone notifications, shortcuts, install bar
+node app-updates.mjs                  # update notices (title bar), Restart, What's new (own server)
 # or: npm test (all suites)
 ```
 

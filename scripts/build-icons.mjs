@@ -87,3 +87,22 @@ for (const t of targets) {
     .png({ compressionLevel: 9, palette: t.size >= 192, quality: 95 }).toFile(path.join(OUT, t.file));
   console.log(`✓ assets/icons/${t.file}`);
 }
+
+// ---- 4. Small glyph icons ----------------------------------------------------------------
+// badge-96: the white silhouette Android shows in the status bar for a notification
+// (only the alpha channel is used). shortcut-*: long-press menu of the home-screen icon.
+const PH = path.join(ROOT, 'node_modules', '@phosphor-icons', 'core', 'assets');
+const glyph = (name, weight = 'fill') => fs.readFileSync(path.join(PH, weight, `${name}-${weight}.svg`), 'utf8')
+  .replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+async function writeSvg(file, size, svg) {
+  await sharp(Buffer.from(svg)).resize(size, size).png({ compressionLevel: 9 }).toFile(path.join(OUT, file));
+  console.log(`✓ assets/icons/${file}`);
+}
+await writeSvg('badge-96.png', 96, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="384" height="384">
+  <g fill="#fff">${glyph('folder-simple')}</g></svg>`);
+for (const [file, name] of [['shortcut-scan.png', 'scan'], ['shortcut-count.png', 'list-checks'], ['shortcut-items.png', 'package'], ['shortcut-requests.png', 'tray']]) {
+  await writeSvg(file, 96, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="384" height="384">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#122e76"/><stop offset="1" stop-color="#2e5bbd"/></linearGradient></defs>
+    <rect width="256" height="256" rx="56" fill="url(#g)"/>
+    <g transform="translate(64 64) scale(0.5)" fill="#fff">${glyph(name, 'bold')}</g></svg>`);
+}

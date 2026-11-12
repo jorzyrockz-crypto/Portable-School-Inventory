@@ -194,16 +194,32 @@ const listFiles = (dir) =>
     return e.isDirectory() ? listFiles(p) : e.name.startsWith('.') ? [] : [p];
   });
 
+const SHOTS_DIR = path.join(ASSETS, 'screenshots');
+const BRAND_DIR = path.join(ASSETS, 'brand');
 const precache = [
   path.join(ROOT, 'index.html'),
   path.join(ROOT, 'manifest.webmanifest'),
   path.join(ROOT, 'firebase-config.js'), // also network-first in sw.js, so edits apply without a rebuild
-  ...listFiles(ASSETS).filter((p) => !p.startsWith(OCR_DIR + path.sep) && !p.startsWith(CLOUD_DIR + path.sep)),
+  // Store screenshots (manifest "screenshots") are only shown by Chrome's install sheet, and the
+  // large brand PNGs only by link previews / the README; the app itself uses banner.webp.
+  ...listFiles(ASSETS).filter((p) => ![OCR_DIR, CLOUD_DIR, SHOTS_DIR].some((d) => p.startsWith(d + path.sep)))
+    .filter((p) => !(p.startsWith(BRAND_DIR + path.sep) && p.endsWith('.png'))),
 ].filter((p) => fs.existsSync(p));
 
+// index.html carries its own version (<meta name="app-version">) so the page can tell whether
+// a new service worker brings anything new. The hash ignores that tag's value, so running the
+// build again gives the same version.
+const INDEX = path.join(ROOT, 'index.html');
+const VERSION_TAG = /(<meta name="app-version" content=")[^"]*(")/;
 const hash = createHash('sha256');
-for (const p of precache) hash.update(rel(p)).update(fs.readFileSync(p));
+for (const p of precache) {
+  const data = p === INDEX ? Buffer.from(read(p).replace(VERSION_TAG, '$1$2')) : fs.readFileSync(p);
+  hash.update(rel(p)).update(data);
+}
 const version = hash.digest('hex').slice(0, 12);
+const indexHtml = read(INDEX);
+if (!VERSION_TAG.test(indexHtml)) throw new Error('index.html is missing <meta name="app-version" content="">');
+fs.writeFileSync(INDEX, indexHtml.replace(VERSION_TAG, `$1${version}$2`));
 
 const urls = ['./', ...precache.map((p) => `./${rel(p)}`)];
 const swTemplate = read(path.join(ROOT, 'src', 'sw.template.js'));
