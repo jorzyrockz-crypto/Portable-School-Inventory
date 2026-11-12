@@ -1,7 +1,7 @@
 {
   "name": "CustodianPro – School Inventory",
   "short_name": "CustodianPro",
-  "description": "School property and supply inventory for custodians and teachers: tags, physical count, RIS/ICS releases and supply requests. Works offline.",
+  "description": "School property and supplies inventory for custodians and teachers: QR tags, physical count, ICS/PAR/RIS releases, COA forms and supply requests. Works offline.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

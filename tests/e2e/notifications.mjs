@@ -209,6 +209,7 @@ try {
   const tAfter = await notifs(t);
   check(tAfter.length === tBefore.length && tAfter[0].id === tBefore[0].id, `no repeats after reload (${tAfter.length})`);
   check((await bell(t)).count === String(tAfter.filter(n => !n.read).length), 'unread count kept');
+  check(await ev(t, () => document.title === BASE_TITLE), 'title bar is for app updates only: no unread count in the window title');
   // The teacher sends one more request from the same phone, then closes the app.
   await t.goto(BASE_URL, { waitUntil: 'networkidle0' });
   await until(t, () => cloud.user && notifScope() && loadNotifs().primed.requests, 'teacher reopened', 9000);

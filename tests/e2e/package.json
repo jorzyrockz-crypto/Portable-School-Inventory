@@ -4,8 +4,9 @@
   "type": "module",
   "description": "End-to-end tests (headless Chromium, Firebase replaced by an in-memory stand-in). See README.md.",
   "scripts": {
-    "test": "for t in *.mjs; do [ $t = make-screenshots.mjs ] && continue; node $t || exit 1; done",
-    "screenshots": "node make-screenshots.mjs"
+    "test": "for t in *.mjs; do case $t in make-*) continue;; esac; node $t || exit 1; done",
+    "screenshots": "node make-screenshots.mjs",
+    "banner": "node make-banner.mjs"
   },
   "dependencies": {
     "@sparticuz/chromium": "*",
