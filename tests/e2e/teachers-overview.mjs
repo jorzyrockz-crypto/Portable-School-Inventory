@@ -35,7 +35,7 @@ try {
   check(/Released to teachers/.test(txt) && /Pedro Santos/.test(txt) && /No account/.test(txt), 'More → Released to teachers lists Pedro Santos (no account)');
 
   out('2 sign in, Ana joins, releases');
-  await ev(a, () => openRequestsView());
+  await ev(a, () => { openRequestsView(); gateGo('custodian'); }); // signed out: the sign-in screen carries the form
   await until(a, () => !!document.getElementById('rcEmail'), 'sign-in card');
   await ev(a, () => { rcSchool.value = 'San Jose National High School'; rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
   await a.click('#rcCreate');

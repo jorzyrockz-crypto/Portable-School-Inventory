@@ -14,7 +14,7 @@ const inStock = page => ev(page, () => items.filter(i => i.qty > 0).length);
 const chip = page => ev(page, () => { const el = document.getElementById('invSyncChip'); return el && !el.classList.contains('hidden') ? el.innerText.trim() : ''; });
 
 async function signIn(page, { create = false, school = '' } = {}) {
-  await ev(page, () => openRequestsView());
+  await ev(page, () => { openRequestsView(); gateGo('custodian'); }); // signed out: the sign-in screen carries the form
   await until(page, () => !!document.getElementById('rcEmail'), 'sign-in card');
   await ev(page, (s, e, p) => {
     document.getElementById('rcSchool').value = s;

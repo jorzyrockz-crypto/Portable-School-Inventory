@@ -69,7 +69,7 @@ try {
   await a.goto(BASE_URL, { waitUntil: 'networkidle0' });
   check(!(await bell(a)).shown, 'no bell before signing in to a school');
   await ev(a, () => { loadSampleInventory(); schoolInfo.custodian = 'Rosa Villanueva'; });
-  await ev(a, () => openRequestsView());
+  await ev(a, () => { openRequestsView(); gateGo('custodian'); }); // signed out: the sign-in screen carries the form
   await until(a, () => !!document.getElementById('rcEmail'), 'sign-in card');
   await ev(a, () => { rcSchool.value = 'San Jose National High School'; rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
   await a.click('#rcCreate');

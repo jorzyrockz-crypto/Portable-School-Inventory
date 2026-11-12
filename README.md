@@ -7,6 +7,42 @@ optimised for iPad/tablet use. It is a single static page (`index.html`) served 
 
 https://jorzyrockz-crypto.github.io/Portable-School-Inventory/
 
+## Signing in
+
+Every phone signs in before using the app. The sign-in screen shows the school art (a tall
+picture on phones held upright, a wide one on tablets turned sideways and computers) and asks
+who is using the phone:
+
+- **Property custodian**: Google, or email and password. The first sign-in creates the school
+  (*School* field). This is the same account that receives teachers' requests and keeps
+  **My Items** saved online.
+- **Teacher**: paste the invite link or type the school code from the custodian. Opening the
+  invite link on the phone skips this step and goes straight to *Join*.
+
+After that the app opens straight to Home, also without signal: the phone remembers who signed
+in, and Firebase keeps the session. **More → Account → Sign out** (custodian) or **Leave**
+(teacher) brings the sign-in screen back. When a custodian's session ends (password changed,
+signed out on Firebase), the screen asks them to sign in again, or to start over.
+
+Inventory that was already on a phone before sign-in was required is never lost. The welcome
+card says how many items the phone has. On the custodian's first sign-in they become the school
+inventory, or are merged with it (the merge question explains the choice).
+
+Without a Firebase project (`firebase-config.js` set to `null`) there is nobody to sign in with,
+so the app stays the local-only inventory with no sign-in screen.
+
+## Light and dark
+
+The app follows the phone's light or dark setting. **More → Appearance** (teachers: at the
+bottom of their screen) switches between **System**, **Light** and **Dark**. The choice is
+applied before the first paint, so there is no white flash when opening the app at night.
+Printed forms always use the light look.
+
+Dark colours are generated, not hand-written: `scripts/dark-theme.mjs` reads the Tailwind
+colour classes in `index.html` (`bg-white`, `text-slate-900`, `bg-amber-50`,
+`hover:bg-slate-50` …) and writes an `html.dark` counterpart for each one into
+`assets/app.css`. New classes are picked up on the next `npm run build`.
+
 ## Home screen: encode without distractions
 
 The app opens on **Home**, which only asks one thing: *What are you encoding?*
@@ -36,14 +72,14 @@ Everything else moved out of the way:
 Teachers request supplies from their own phones; the custodian reviews each request, checks it against stock, approves it, and turns approved requests into a **Purchase Request (Appendix 60)**.
 
 **Teacher**
-1. Open the invite link (or scan the QR code) the custodian shared, then type your name, position and grade/section once.
+1. Open the invite link (or scan the QR code) the custodian shared, or choose **Teacher** on the sign-in screen and paste the link or type the school code. Then type your name, position and grade/section once.
 2. Tap **New supply request**, search for items (e.g. “bond paper”, “ballpen”) or type anything not in the catalog, set quantities, add a purpose and a needed-by date, and send.
 3. Follow the status on the same screen: *To review → Approved → Being purchased (PR No.) → Supplied*, or *Declined* with the custodian’s reason. A pending request can still be cancelled.
 
 A teacher’s phone only shows the request screen and only that teacher’s own requests — never the school inventory.
 
 **Custodian**
-1. On Home, tap **Supply requests** (also in ☰ More) and tap **Continue with Google** (or use email and password). The first sign-in creates your school.
+1. On the sign-in screen choose **Property custodian** and tap **Continue with Google** (or use email and password). The first sign-in creates your school. Requests are under **Supply requests** on Home (also in ☰ More).
 2. Tap **Invite** and send the link or QR code to your faculty group chat.
 3. **To review**: open a request to see *asked / on hand / to buy* for every line. Edit names, quantities, units and unit costs, link a line to an inventory item, add a note, then **Approve** or **Decline** (with a reason). You can also enter walk-in requests with **New**.
 4. **To purchase**: tick approved requests and tap **Prepare Purchase Request**. Only the quantity not in stock goes on the PR (asked minus on hand, editable). Identical items from several teachers are added together, and their names go in the Purpose.
@@ -314,7 +350,8 @@ npm run serve   # http://localhost:8080
 | `scripts/build-assets.mjs` | Compiles Tailwind, self-hosts fonts, subsets icon fonts, copies the QR libraries to `assets/vendor/`, writes `sw.js` |
 | `scripts/build-icons.mjs` | Regenerates the home-screen icons from `src/app-icon.png` (`npm run icons`): rounded tile, Android maskable and iPhone versions, plus the notification badge and shortcut icons |
 | `manifest.webmanifest` | PWA metadata: name, icons, navy theme colour, shortcuts, screenshots |
-| `assets/brand/` | Banner: `banner.png` (this README), `banner.webp` (About sheet, precached), `og-image.png` 1200×630 (link previews: `og:image` / X card), `social-preview.png` 1280×640 (upload under GitHub → Settings → Social preview) |
+| `scripts/dark-theme.mjs` | Dark mode: maps every light colour class in `index.html` to a dark one (called by `build-assets.mjs`) |
+| `assets/brand/` | School art for the sign-in screen and the faded strip behind the top of Home: `login-portrait.webp` 572×1024, `login-landscape.webp` 1024×434 (both precached). Banner: `banner.png` (this README), `banner.webp` (About sheet, precached), `og-image.png` 1200×630 (link previews: `og:image` / X card), `social-preview.png` 1280×640 (upload under GitHub → Settings → Social preview) |
 | `tests/e2e/make-screenshots.mjs` | Re-renders `assets/screenshots/` from the app with sample data (not precached by `sw.js`) |
 
 Generated files (`assets/`, `sw.js`) are committed so GitHub Pages can serve them directly.
@@ -335,6 +372,7 @@ node teachers-overview.mjs            # released-to-teachers overview, take back
 node project-switch.mjs               # moving to another Firebase project keeps inventory, resets cloud links
 node notifications.mjs                # bell, phone notifications, shortcuts, install bar
 node app-updates.mjs                  # update notices (title bar), Restart, What's new (own server)
+node login-theme.mjs                  # sign-in screen, teacher code / invite link, sign out, light/dark
 # or: npm test (all suites)
 ```
 
