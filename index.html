@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#122e76">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="2bc724338a6c">
+  <meta name="app-version" content="9a6e29f41773">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="Effortless classroom and equipment tracking for school property custodians and teachers: QR property tags, physical count, RIS/ICS releases, supply requests and Appendix 60 purchase requests. Free, works offline on phones and tablets.">
   <meta name="author" content="CustodianPro">
@@ -153,6 +153,11 @@
       .pr-wide { page: wide; }
       .pr-table tr { break-inside: avoid; }
     }
+    @keyframes dlgIn { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
+    @keyframes dlgNudge { 0%, 100% { transform: none; } 30% { transform: scale(1.02); } 60% { transform: scale(0.99); } }
+    #appDialog:not(.hidden) .dlg-card { animation: dlgIn 0.18s ease-out; }
+    #appDialog .dlg-card.dlg-nudge { animation: dlgNudge 0.25s ease-in-out; }
+    @media (prefers-reduced-motion: reduce) { #appDialog .dlg-card { animation: none !important; } }
     .pr-form.pr-wide { max-width: 277mm; font-size: 9.5pt; }
     .pr-wide .pr-table td, .pr-wide .pr-table th { padding: 2pt 3pt; }
     .pr-dense .pr-table th { font-size: 7.5pt; } .pr-dense .pr-table td { font-size: 8.5pt; } .pr-dense .pr-table td.pr-sn { font-size: 7.5pt; } .pr-dense .pr-table th { font-size: 7pt; padding: 2pt 1.5pt; hyphens: manual; overflow-wrap: normal; }
@@ -1008,6 +1013,29 @@
   <section id="printPrSection" class="print-only"></section>
 
   <!-- TOAST (status messages, e.g. "ready to work offline") -->
+  <!-- In-app dialog: replaces the browser's alert / confirm / prompt boxes ("… says") -->
+  <div id="appDialog" class="hidden fixed inset-0 z-[80] bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4 no-print" onkeydown="dialogKey(event)" onclick="if (event.target === this) dialogNudge()">
+    <div id="appDialogCard" role="alertdialog" aria-modal="true" aria-labelledby="appDialogTitle" aria-describedby="appDialogMsg" class="dlg-card w-full max-w-sm max-h-[85vh] overflow-y-auto bg-white rounded-3xl shadow-2xl p-5 mb-[env(safe-area-inset-bottom)]">
+      <div class="flex items-start gap-3">
+        <div id="appDialogIcon" class="w-11 h-11 shrink-0 rounded-2xl flex items-center justify-center bg-brand-50 text-brand-600"><i class="ph-bold ph-question text-2xl"></i></div>
+        <div class="min-w-0 flex-1 pt-0.5">
+          <h2 id="appDialogTitle" class="text-base font-extrabold text-slate-900 leading-snug"></h2>
+          <p id="appDialogMsg" class="mt-1 text-sm text-slate-600 leading-relaxed whitespace-pre-line break-words"></p>
+        </div>
+      </div>
+      <div id="appDialogField" class="hidden mt-4">
+        <label id="appDialogLabel" for="appDialogInput" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1"></label>
+        <input id="appDialogInput" type="text" autocomplete="off" class="w-full h-11 px-3 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none">
+        <textarea id="appDialogArea" rows="3" class="hidden w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none resize-none"></textarea>
+        <p id="appDialogHint" class="hidden mt-1 text-xs font-semibold text-rose-600"></p>
+      </div>
+      <div class="mt-5 flex gap-2 sm:justify-end">
+        <button id="appDialogCancel" onclick="closeDialog(false)" class="flex-1 sm:flex-none h-11 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 transition">Cancel</button>
+        <button id="appDialogOk" onclick="closeDialog(true)" class="flex-1 sm:flex-none h-11 px-5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold shadow-sm transition">OK</button>
+      </div>
+    </div>
+  </div>
+
   <div id="appToast" role="status" aria-live="polite" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-[70] items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-2xl no-print">
     <i id="appToastIcon" class="ph-bold ph-check-circle text-lg text-emerald-400"></i>
     <span id="appToastText"></span>
@@ -2913,9 +2941,9 @@
     // =========================================================================
     // 6. SAMPLE SCHOOL INVENTORY LOADER (FOR INSTANT DASHBOARD DEMO)
     // =========================================================================
-    function loadSampleInventory() {
+    async function loadSampleInventory() {
       const hasExisting = items.some(i => i.qty > 0);
-      if (hasExisting && !confirm("This will load sample school inventory counts so you can preview the dashboard. Continue?")) {
+      if (hasExisting && !await appConfirm("This will load sample school inventory counts so you can preview the dashboard.", { title: 'Load sample data?', ok: 'Load sample', tone: 'warn' })) {
         return;
       }
 
@@ -3281,10 +3309,10 @@
       renderItems();
     }
 
-    function confirmResetAll() {
+    async function confirmResetAll() {
       const tagCount = allTaggedUnits().length;
       const tagWarning = tagCount ? ` All ${plural(tagCount, 'property number')} will also be removed.` : '';
-      if (confirm(`Are you sure you want to reset all inventory quantities to 0? Your room notes and custom prices will be kept.${tagWarning}`)) {
+      if (await appConfirm(`Every quantity goes back to 0. Your room notes and custom prices are kept.${tagWarning}`, { title: 'Reset all quantities?', ok: 'Reset to 0', tone: 'danger', focusCancel: true })) {
         items.forEach(item => {
           item.qty = 0;
           item.repair = 0;
@@ -3491,7 +3519,7 @@
     function saveCustomItem() {
       const name = document.getElementById('customName').value.trim().toUpperCase();
       if (!name) {
-        alert("Please enter an item description.");
+        appAlert("Please enter an item description.");
         return;
       }
       const unit = document.getElementById('customUnit').value.trim() || 'unit';
@@ -3630,7 +3658,7 @@
     function exportCSV() {
       const activeItems = items.filter(i => i.qty > 0);
       if (activeItems.length === 0) {
-        alert("Please add quantities to at least one item before exporting.");
+        appAlert("Please add quantities to at least one item before exporting.");
         return;
       }
 
@@ -3694,18 +3722,18 @@
       event.target.value = '';
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         let data;
         try {
           data = JSON.parse(e.target.result);
         } catch (err) {
-          alert("This file is not a valid backup (it could not be read as JSON).");
+          appAlert("This file is not a valid backup (it could not be read as JSON).");
           return;
         }
         const isBackup = data && typeof data === 'object' && !Array.isArray(data) &&
           data.userState && typeof data.userState === 'object' && !Array.isArray(data.userState);
         if (!isBackup) {
-          alert("This file is not a CustodianPro backup. Choose a file named like CustodianPro_Backup_YYYY-MM-DD.json.");
+          appAlert("This file is not a CustodianPro backup. Choose a file named like CustodianPro_Backup_YYYY-MM-DD.json.");
           return;
         }
 
@@ -3723,7 +3751,7 @@
           `${incoming.tags ? `, ${plural(incoming.tags, 'property number')}` : ''}\n\n` +
           `This REPLACES what is on this device now (${plural(current.counted, 'counted item')}, ` +
           `${plural(current.units, 'unit')}). You can undo right after restoring.`;
-        if (!confirm(message)) return;
+        if (!await appConfirm(message, { ok: 'Restore', tone: 'warn', icon: 'ph-clock-counter-clockwise' })) return;
 
         const safetyCopy = snapshotData();
         applyData({
@@ -4177,7 +4205,7 @@
       const dup = findUnitByNo(no, id);
       if (dup) {
         input.value = unit.no;
-        alert(`${no} is already used by another unit:\n${dup.item.name}`);
+        appAlert(`${no} is already used by another unit:\n${dup.item.name}`);
         return;
       }
       if (no !== unit.no) unit.printed = null; // the old label no longer matches
@@ -4211,12 +4239,13 @@
       if (scanShown && scanShown.id === id) renderScanResult();
     }
 
-    function removeUnitTag(code, id) {
+    async function removeUnitTag(code, id) {
       const item = items.find(i => i.code === code);
       const unit = findUnit(code, id);
       if (!item || !unit) return;
-      const reason = prompt(`Remove unit ${unit.no}?\n\nUse this when the unit was disposed of, transferred or lost. ` +
-        `On-hand quantity goes from ${item.qty} to ${item.qty - 1}.\n\nReason (optional, saved in Change History):`, '');
+      const reason = await appPrompt(`Use this when the unit was disposed of, transferred or lost. ` +
+        `On-hand quantity goes from ${item.qty} to ${item.qty - 1}.`, '',
+        { title: `Remove unit ${unit.no}?`, label: 'Reason (optional, saved in Change History)', placeholder: 'e.g. Disposed – beyond repair', ok: 'Remove unit', tone: 'danger', icon: 'ph-trash' });
       if (reason === null) return;
       const why = reason.trim();
       const removedText = `Removed unit ${unit.no} (${(UNIT_COND[unit.cond] || UNIT_COND.S).label})` +
@@ -4303,7 +4332,7 @@
     function exportRegisterCSV() {
       const rows = allTaggedUnits().sort((a, b) => a.unit.no.localeCompare(b.unit.no, undefined, { numeric: true }));
       if (!rows.length) {
-        alert('No property numbers yet. Tag the units of an equipment item first.');
+        appAlert('No property numbers yet. Tag the units of an equipment item first.');
         return;
       }
       const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -4361,7 +4390,7 @@
         try {
           await loadScript('assets/vendor/qrcode.js');
         } catch (e) {
-          alert('The QR code generator could not be loaded. Open the app once while online, then try again.');
+          appAlert('The QR code generator could not be loaded. Open the app once while online, then try again.');
           return;
         }
       }
@@ -4401,9 +4430,9 @@
       printLabels(allTaggedUnits().filter(t => !t.unit.printed));
     }
 
-    function printAllLabels() {
+    async function printAllLabels() {
       const rows = allTaggedUnits();
-      if (rows.length > 30 && !confirm(`Print all ${rows.length} labels?`)) return;
+      if (rows.length > 30 && !await appConfirm(`That is about ${Math.ceil(rows.length / 24)} A4 pages of QR labels.`, { title: `Print all ${rows.length} labels?`, ok: 'Print', icon: 'ph-printer' })) return;
       printLabels(rows);
     }
 
@@ -4961,7 +4990,7 @@
     function exportHistoryCSV() {
       const rows = filteredHistory();
       if (!rows.length) {
-        alert('There are no changes to export in this view.');
+        appAlert('There are no changes to export in this view.');
         return;
       }
       const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -5023,9 +5052,9 @@
       return { scope, counted, today };
     }
 
-    function startCount() {
+    async function startCount() {
       const suggested = `Physical count – ${new Date().toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}`;
-      const name = prompt('Name this physical count (shown on the dashboard and in Change History):', suggested);
+      const name = await appPrompt('Shown on the dashboard and in Change History.', suggested, { title: 'Start a physical count', label: 'Name of this count', ok: 'Start count', tone: 'good', icon: 'ph-clipboard-text' });
       if (name === null) return;
       countSession = { name: name.trim() || suggested, startedAt: Date.now(), counted: {} };
       persistCountSession();
@@ -5045,7 +5074,7 @@
       renderDashboard();
     }
 
-    function finishCount() {
+    async function finishCount() {
       if (!countSession) return;
       const { scope, counted } = countProgress();
       const missing = scope.filter(i => !isCounted(i.code));
@@ -5055,7 +5084,8 @@
         (missing.length
           ? `\n\nNot counted yet (${missing.length}):\n• ${missing.slice(0, 6).map(i => i.name).join('\n• ')}${missing.length > 6 ? '\n• …' : ''}`
           : '\n\nEvery item has been counted.');
-      if (!confirm(message)) return;
+      if (!await appConfirm(message, { ok: 'Finish count', tone: missing.length ? 'warn' : 'good', icon: 'ph-flag-checkered' })) return;
+      if (!countSession) return;
       logHistory('system', `Finished ${countSession.name}: ${counted} of ${scope.length} items counted, ${plural(corrections, 'quantity change')}`);
       countSession = null;
       persistCountSession();
@@ -5161,13 +5191,13 @@
         const bytes = new Uint8Array(buffer);
         const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b; // "PK" – .xlsx is a zip file
         if (/\.xls$/i.test(file.name) || (bytes[0] === 0xd0 && bytes[1] === 0xcf)) {
-          alert('Old Excel 97-2003 (.xls) files cannot be read. In Excel, use File › Save As › Excel Workbook (.xlsx) or CSV, then import that file.');
+          appAlert('Old Excel 97-2003 (.xls) files cannot be read. In Excel, use File › Save As › Excel Workbook (.xlsx) or CSV, then import that file.');
           return;
         }
         const rows = isZip ? await parseXLSX(buffer) : parseCSV(decodeText(bytes));
         const nonEmpty = rows.filter(r => r.some(v => String(v ?? '').trim()));
         if (nonEmpty.length < 2) {
-          alert('This file has no rows to import.');
+          appAlert('This file has no rows to import.');
           return;
         }
         const headerRow = guessHeaderRow(rows);
@@ -5175,7 +5205,7 @@
         renderImport();
       } catch (err) {
         console.warn('Import failed:', err);
-        alert('This file could not be read. Use an Excel .xlsx file or a CSV file (in Excel: File › Save As › CSV UTF-8).');
+        appAlert('This file could not be read. Use an Excel .xlsx file or a CSV file (in Excel: File › Save As › CSV UTF-8).');
       }
     }
 
@@ -5885,9 +5915,9 @@
       isOcrDownloaded().then(ok => { if (icsState && icsState.stage === 'start') { icsState.offlineReady = ok; renderIcs(); } });
     }
 
-    function closeIcsScanner(force = false) {
+    async function closeIcsScanner(force = false) {
       if (!force && icsState && icsState.stage === 'review' && icsState.lines.length &&
-          !confirm('Close without saving this ICS?')) return;
+          !await appConfirm('What you checked on this ICS is lost.', { title: 'Close without saving?', ok: 'Close', cancel: 'Keep editing', tone: 'warn', focusCancel: true })) return;
       if (icsState && icsState.photoUrl) URL.revokeObjectURL(icsState.photoUrl);
       icsState = null;
       document.getElementById('icsModal').classList.add('hidden');
@@ -5907,7 +5937,7 @@
       event.target.value = '';
       if (!file || !icsState) return;
       if (!/^image\//.test(file.type) && !/\.(jpe?g|png|webp|heic|heif|bmp)$/i.test(file.name)) {
-        alert('Please choose a photo (JPG or PNG) of the ICS. For a PDF, take a screenshot of the page first.');
+        appAlert('Please choose a photo (JPG or PNG) of the ICS. For a PDF, take a screenshot of the page first.');
         return;
       }
       if (icsState.photoUrl) URL.revokeObjectURL(icsState.photoUrl);
@@ -6278,15 +6308,16 @@
       renderIcsSummary();
     }
 
-    function saveIcs() {
+    async function saveIcs() {
       if (!icsState || icsState.stage !== 'review') return;
       const st = icsState;
       const plan = buildIcsPlan();
       if (!plan.lines.length || plan.problems.length) return renderIcs();
       const h = st.header;
-      if (plan.dupIcs && !confirm(`ICS No. ${h.icsNo} was already encoded. Save it again anyway?`)) return;
+      if (plan.dupIcs && !await appConfirm(`ICS No. ${h.icsNo} was already encoded. Save it again anyway?`, { title: 'Already encoded', ok: 'Save again', tone: 'warn' })) return;
       if (st.opts.makeUnits && !h.receivedBy &&
-          !confirm('No “Received by” name. Save the property records without an accountable person?')) return;
+          !await appConfirm('Save the property records without an accountable person?', { title: 'No “Received by” name', ok: 'Save anyway', tone: 'warn' })) return;
+      if (icsState !== st) return;
 
       const safety = snapshotData();
       // 1. new custom items first, so property numbering sees every item
@@ -6774,6 +6805,150 @@
     // action = { label, onClick } adds a button (e.g. "Undo") and keeps the toast up longer.
     // Bottom of the screen, unless a sheet or a sticky action button (e.g. Prepare Purchase
     // Request) is there – then just under the header, so the toast never hides a button.
+    // =========================================================================
+    // In-app dialogs: appAlert / appConfirm / appPrompt replace the browser's
+    // alert / confirm / prompt ("custodianpro.vercel.app says"). They look like the
+    // rest of the app, follow light/dark, and return a Promise. One at a time; others wait.
+    // =========================================================================
+    const DIALOG_TONES = {
+      info:    { icon: 'ph-info',          box: 'bg-sky-50 text-sky-600',      ok: 'bg-brand-600 hover:bg-brand-700' },
+      ask:     { icon: 'ph-question',      box: 'bg-brand-50 text-brand-600',  ok: 'bg-brand-600 hover:bg-brand-700' },
+      write:   { icon: 'ph-pencil-simple', box: 'bg-brand-50 text-brand-600',  ok: 'bg-brand-600 hover:bg-brand-700' },
+      warn:    { icon: 'ph-warning',       box: 'bg-amber-50 text-amber-600',  ok: 'bg-amber-600 hover:bg-amber-700' },
+      danger:  { icon: 'ph-warning-circle', box: 'bg-rose-50 text-rose-600',   ok: 'bg-rose-600 hover:bg-rose-700' },
+      good:    { icon: 'ph-check-circle',  box: 'bg-emerald-50 text-emerald-600', ok: 'bg-emerald-600 hover:bg-emerald-700' }
+    };
+    const dialogQueue = [];
+    let dialogNow = null;
+
+    function appDialog(kind, message, opts = {}) {
+      const o = { kind, message: String(message == null ? '' : message), ...opts };
+      if (o.value == null) o.value = '';
+      return new Promise(resolve => {
+        // End-to-end tests answer here instead of tapping (tests/e2e/lib/harness.mjs).
+        if (typeof window.__answerDialog === 'function' && !window.__dialogUI) {
+          Promise.resolve(window.__answerDialog(kind, [o.title, o.message].filter(Boolean).join('\n'), String(o.value))).then(a => {
+            resolve(kind === 'confirm' ? a !== false : kind === 'prompt' ? (a === null || a === false ? null : String(a == null ? '' : a)) : undefined);
+          });
+          return;
+        }
+        dialogQueue.push({ o, resolve });
+        if (!dialogNow) nextDialog();
+      });
+    }
+    const appAlert = (message, opts) => appDialog('alert', message, opts);
+    const appConfirm = (message, opts) => appDialog('confirm', message, opts);
+    const appPrompt = (message, value = '', opts) => appDialog('prompt', message, { ...opts, value });
+    // Anything that still calls appAlert() gets the in-app box too.
+    window.alert = message => { appAlert(message); };
+
+    function nextDialog() {
+      const wrap = document.getElementById('appDialog');
+      const job = dialogQueue.shift();
+      if (!job) {
+        const back = dialogNow && dialogNow.focusBack;
+        dialogNow = null;
+        wrap.classList.add('hidden');
+        if (back && back.isConnected && typeof back.focus === 'function') { try { back.focus({ preventScroll: true }); } catch (e) {} }
+        return;
+      }
+      const prev = dialogNow;
+      dialogNow = job;
+      job.focusBack = prev ? prev.focusBack : document.activeElement;
+      const o = job.o;
+      const tone = DIALOG_TONES[o.tone] || DIALOG_TONES[o.kind === 'alert' ? 'info' : o.kind === 'prompt' ? 'write' : 'ask'];
+      // Title: given, or the first paragraph of the message when it reads like a question/heading.
+      let title = o.title || '', body = o.message;
+      if (!title) {
+        const parts = body.split(/\n\n/);
+        if (parts.length > 1 && parts[0].length <= 90) { title = parts.shift(); body = parts.join('\n\n'); }
+        else if (body.length <= 70 && !body.includes('\n')) { title = body; body = ''; }
+      }
+      const titleEl = document.getElementById('appDialogTitle');
+      titleEl.textContent = title;
+      titleEl.classList.toggle('hidden', !title);
+      const msg = document.getElementById('appDialogMsg');
+      msg.textContent = body;
+      msg.classList.toggle('hidden', !body);
+      msg.classList.toggle('mt-1', !!title);
+      document.getElementById('appDialogIcon').className = `w-11 h-11 shrink-0 rounded-2xl flex items-center justify-center ${tone.box}`;
+      document.getElementById('appDialogIcon').innerHTML = `<i class="ph-bold ${o.icon || tone.icon} text-2xl"></i>`;
+      const ok = document.getElementById('appDialogOk');
+      ok.textContent = o.ok || 'OK';
+      ok.className = `flex-1 sm:flex-none h-11 px-5 rounded-xl ${tone.ok} text-white text-sm font-bold shadow-sm transition`;
+      const cancel = document.getElementById('appDialogCancel');
+      cancel.textContent = o.cancel || 'Cancel';
+      cancel.classList.toggle('hidden', o.kind === 'alert');
+      const field = document.getElementById('appDialogField');
+      field.classList.toggle('hidden', o.kind !== 'prompt');
+      const input = document.getElementById('appDialogInput'), area = document.getElementById('appDialogArea');
+      const box = o.multiline ? area : input;
+      input.classList.toggle('hidden', !!o.multiline);
+      area.classList.toggle('hidden', !o.multiline);
+      document.getElementById('appDialogHint').classList.add('hidden');
+      const label = document.getElementById('appDialogLabel');
+      label.textContent = o.label || '';
+      label.classList.toggle('hidden', !o.label);
+      label.htmlFor = box.id;
+      if (o.kind === 'prompt') {
+        box.value = o.value;
+        box.placeholder = o.placeholder || '';
+        box.readOnly = !!o.readOnly;
+        box.maxLength = o.maxLength || 500;
+      }
+      wrap.classList.remove('hidden');
+      const card = document.getElementById('appDialogCard');
+      card.scrollTop = 0;
+      setTimeout(() => {
+        if (dialogNow !== job) return;
+        if (o.kind === 'prompt') { box.focus(); if (o.readOnly || o.selectAll !== false) box.select(); }
+        else (o.focusCancel ? cancel : ok).focus();
+      }, 30);
+    }
+
+    function closeDialog(yes) {
+      const job = dialogNow;
+      if (!job) return;
+      const o = job.o;
+      let answer;
+      if (o.kind === 'confirm') answer = !!yes;
+      else if (o.kind === 'prompt') {
+        const box = document.getElementById(o.multiline ? 'appDialogArea' : 'appDialogInput');
+        answer = yes ? box.value : null;
+        if (yes && o.required && !answer.trim()) {
+          const hint = document.getElementById('appDialogHint');
+          hint.textContent = typeof o.required === 'string' ? o.required : 'Please fill this in.';
+          hint.classList.remove('hidden');
+          box.focus();
+          return;
+        }
+      }
+      job.resolve(answer);
+      nextDialog();
+    }
+
+    function dialogNudge() { // tapping outside doesn't close it (an accidental tap could lose an answer)
+      const card = document.getElementById('appDialogCard');
+      card.classList.remove('dlg-nudge');
+      void card.offsetWidth;
+      card.classList.add('dlg-nudge');
+    }
+
+    function dialogKey(event) {
+      event.stopPropagation();
+      if (event.key === 'Escape') { event.preventDefault(); closeDialog(false); return; }
+      if (event.key === 'Enter' && event.target.id === 'appDialogInput') { event.preventDefault(); closeDialog(true); return; }
+      if (event.key === 'Tab') { // keep focus inside the dialog
+        const els = [...document.querySelectorAll('#appDialogCard input:not(.hidden), #appDialogCard textarea:not(.hidden), #appDialogCard button:not(.hidden)')]
+          .filter(el => el.offsetParent !== null);
+        if (!els.length) return;
+        const i = els.indexOf(document.activeElement);
+        const next = event.shiftKey ? (i <= 0 ? els.length - 1 : i - 1) : (i === els.length - 1 ? 0 : i + 1);
+        event.preventDefault();
+        els[next].focus();
+      }
+    }
+
     function placeToast() {
       const toast = document.getElementById('appToast');
       if (!toast) return;
@@ -7084,6 +7259,7 @@
     let invUnsubs = [];
     let invRemote = {};
     let invReady = false;
+    let invAsking = false, invMergeAnswer = undefined, invLastMeta = {}; // first-sync merge question
     let invApplying = false;
     let invPushTimer = null;
     const invStatus = { state: 'off', error: '' }; // off | syncing | saving | synced | offline | error
@@ -7198,6 +7374,7 @@
     }
 
     function onInvSnapshot(meta) {
+      invLastMeta = meta;
       if (!invRemote.inventory || !invRemote.catalog || !invRemote.settings) return;
       const metas = Object.values(meta);
       const fromCache = metas.some(m => m.fromCache);
@@ -7205,9 +7382,29 @@
         const firstTime = invSync.schoolId !== reqRole.schoolId;
         // Never merge a brand-new phone against an empty offline cache: wait for the server.
         if (firstTime && fromCache) return;
-        invReady = true;
-        if (firstTime) firstInventoryMerge();
-        else reconcileInventory();
+        if (firstTime) {
+          // The merge question waits for an answer; account changes are applied after it.
+          if (invAsking) return;
+          invReady = true;
+          const answer = invMergeAnswer;
+          invMergeAnswer = undefined;
+          const q = firstInventoryMerge(answer); // with no answer yet it may only return the question
+          if (q && q.ask) {
+            invReady = false;
+            invAsking = true;
+            const session = reqRole.schoolId;
+            appConfirm(q.ask, { title: 'Add this phone’s items?', ok: `Add ${q.n === 1 ? 'it' : 'them'}`, cancel: 'Use the account’s list', icon: 'ph-cloud-arrow-up' }).then(keep => {
+              invAsking = false;
+              if (!reqRole || reqRole.schoolId !== session || invReady) return;
+              invMergeAnswer = keep;
+              onInvSnapshot(invLastMeta);
+            });
+            return;
+          }
+        } else {
+          invReady = true;
+          reconcileInventory();
+        }
       } else {
         reconcileInventory();
       }
@@ -7266,12 +7463,21 @@
     }
 
     // First sync of this phone with this school.
-    function firstInventoryMerge() {
+    // keepAnswer: undefined → ask first (returns 'ask' with the question), true/false → the answer.
+    function firstInventoryMerge(keepAnswer) {
       invSync.synced = {};
       resolveCustomCollisions(remoteInvDocs());
       const local = localInvDocs(), remote = remoteInvDocs();
       const remoteItems = Object.keys(remote).filter(k => k !== 's:info' && remote[k].body);
       const localItems = Object.keys(local).filter(k => k !== 's:info');
+      if (keepAnswer === undefined && remoteItems.length) {
+        const extra = localItems.filter(k => !remote[k]).filter(k => !k.startsWith('i:') || (parseInt(local[k].state.qty, 10) || 0) > 0 || (local[k].state.units || []).length);
+        if (extra.length) {
+          return { ask: `Your account already has the school inventory (${plural(remoteItems.filter(k => k.startsWith('i:')).length, 'item')}).\n\n` +
+            `This phone has ${plural(extra.length, 'item')} that ${extra.length === 1 ? 'is' : 'are'} not in it. Add ${extra.length === 1 ? 'it' : 'them'} to the school inventory?\n\n` +
+            `Use the account’s list: this phone’s list is saved as a backup file first.`, n: extra.length };
+        }
+      }
       invSync = { schoolId: reqRole.schoolId, synced: {}, lastAt: invSync.lastAt || 0 };
       const remoteInfo = remote['s:info'] && remote['s:info'].body;
       if (!remoteItems.length) {
@@ -7286,9 +7492,7 @@
       const meaningful = localOnly.filter(k => !k.startsWith('i:') || (parseInt(local[k].state.qty, 10) || 0) > 0 || (local[k].state.units || []).length);
       let keep = false;
       if (meaningful.length) {
-        keep = confirm(`Your account already has the school inventory (${plural(remoteItems.filter(k => k.startsWith('i:')).length, 'item')}).\n\n` +
-          `This phone has ${plural(meaningful.length, 'item')} that ${meaningful.length === 1 ? 'is' : 'are'} not in it. Add ${meaningful.length === 1 ? 'it' : 'them'} to the school inventory?\n\n` +
-          `OK: add them\nCancel: use only the account’s list (a backup file of this phone’s list is downloaded first)`);
+        keep = !!keepAnswer;
         if (!keep) { try { exportBackupJSON(); } catch (e) {} }
       }
       const apply = Object.entries(remote).filter(([, r]) => r.body).map(([k, r]) => [k, r.body]);
@@ -7799,7 +8003,7 @@
         schoolId = found.docs[0].id;
         name = found.docs[0].data().name;
       } else {
-        if (!schoolName) schoolName = (prompt('Name of your school (teachers will see this):', schoolInfo.school || '') || '').trim();
+        if (!schoolName) schoolName = ((await appPrompt('Teachers will see this name.', schoolInfo.school || '', { title: 'Name of your school', placeholder: 'e.g. San Jose National High School', ok: 'Continue', icon: 'ph-buildings', maxLength: 120 })) || '').trim();
         if (!schoolName) return fail('No school is linked to this account yet. Enter the school name and try again.');
         const ref = F.doc(F.collection(cloud.db, 'schools'));
         await F.setDoc(ref, { name: schoolName.slice(0, 120), ownerUid: uid, custodians: [uid], createdAt: F.serverTimestamp() });
@@ -7822,18 +8026,18 @@
 
     async function custodianResetPassword() {
       const email = reqVal('rcEmail');
-      if (!email) { alert('Type your email first, then tap Forgot password.'); return; }
+      if (!email) { appAlert('Type your email first, then tap Forgot password.'); return; }
       try {
         await cloudStart();
         await cloud.sdk.sendPasswordResetEmail(cloud.auth, email);
         showToast(`Password reset email sent to ${email}`, 'ph-envelope');
       } catch (err) {
-        alert(cloudErrorText(err));
+        appAlert(cloudErrorText(err));
       }
     }
 
     async function custodianSignOut() {
-      if (!confirm('Sign out of CustodianPro on this phone? Your inventory stays on this phone and in your school account. Sign in again to keep using it.')) return;
+      if (!await appConfirm('Your inventory stays on this phone and in your school account. Sign in again to keep using it.', { title: 'Sign out of CustodianPro?', ok: 'Sign out', icon: 'ph-sign-out', tone: 'warn' })) return;
       stopRequestSync();
       try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
       cloud.user = null;
@@ -7901,7 +8105,7 @@
       if (!/^[A-Za-z0-9_-]{6,64}$/.test(schoolId)) { showToast('That school code does not look right', 'ph-warning'); return; }
       if (isCustodianDevice() && reqRole.schoolId === schoolId) { showToast('This is your own school’s invite link · share it with your teachers', 'ph-info'); return; }
       if (!edit && isCustodianDevice() &&
-          !confirm(`This device is signed in as the property custodian of ${reqRole.schoolName}. Use it to request supplies as a teacher instead?`)) return;
+          !await appConfirm(`This device is signed in as the property custodian of ${reqRole.schoolName}. Use it to request supplies as a teacher instead?`, { title: 'Join as a teacher?', ok: 'Join as teacher', tone: 'warn' })) return;
       joinState = { schoolId, schoolName: '', edit };
       const me = (isTeacherDevice() && reqRole.me) || {};
       document.getElementById('joinName').value = me.name || '';
@@ -8000,7 +8204,7 @@
     function editMyDetails() { if (isTeacherDevice()) openJoin(reqRole.schoolId, true); }
 
     async function leaveSchool() {
-      if (!confirm(`Stop requesting supplies from ${reqRole.schoolName} on this phone? Your sent requests stay with the custodian.`)) return;
+      if (!await appConfirm(`Your sent requests stay with the custodian of ${reqRole.schoolName}.`, { title: 'Leave this school on this phone?', ok: 'Leave', icon: 'ph-sign-out', tone: 'danger', focusCancel: true })) return;
       stopRequestSync();
       try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
       cloud.user = null;
@@ -8070,8 +8274,8 @@
         </div>`;
     }
 
-    function cancelMyRequest(id) {
-      if (!confirm('Cancel this request?')) return;
+    async function cancelMyRequest(id) {
+      if (!await appConfirm('The custodian sees it as cancelled.', { title: 'Cancel this request?', ok: 'Cancel request', cancel: 'Keep it', tone: 'danger', icon: 'ph-prohibit', focusCancel: true })) return;
       const F = cloud.sdk;
       cloudWrite(F.updateDoc(F.doc(reqCol(), id), { status: 'cancelled', updatedAt: F.serverTimestamp() }), 'Cancelling');
       showToast('Request cancelled', 'ph-prohibit');
@@ -8187,7 +8391,7 @@
       const me = reqDraft.forOther
         ? { name: reqVal('rfName'), position: reqVal('rfPosition'), office: reqVal('rfOffice') }
         : (reqRole.me || {});
-      if (!me.name) { alert('Enter the name of the person requesting.'); document.getElementById('rfName').focus(); return; }
+      if (!me.name) { appAlert('Enter the name of the person requesting.'); document.getElementById('rfName').focus(); return; }
       const F = cloud.sdk;
       const ref = F.doc(reqCol());
       const data = {
@@ -8350,7 +8554,7 @@
         requested: l.requested, approved: l.approved, stock: reviewOnHand(l), prQty: Math.max(0, reviewBuy(l)),
         unitCost: Math.round((l.unitCost || 0) * 100) / 100
       }));
-      if (!lines.some(l => l.approved > 0)) { alert('Approve at least one item, or tap Decline.'); return; }
+      if (!lines.some(l => l.approved > 0)) { appAlert('Approve at least one item, or tap Decline.'); return; }
       const F = cloud.sdk;
       const wasApproved = st.status === 'approved';
       const r = reqList.find(x => x.id === st.id);
@@ -8364,10 +8568,11 @@
       showToast(wasApproved ? 'Changes saved' : `Approved ${r ? r.name.split(' ')[0] + '’s' : 'the'} request · ${buy ? `${plural(buy, 'item')} to purchase` : 'all from stock'}`, 'ph-check-circle');
     }
 
-    function declineRequest() {
+    async function declineRequest() {
       const st = reviewState;
       if (!st) return;
-      const reason = prompt('Reason for declining (the requester will see this):', reqVal('revNote'));
+      const reason = await appPrompt('The requester will see this.', reqVal('revNote'), { title: 'Decline this request?', label: 'Reason', placeholder: 'e.g. Out of stock until next delivery', multiline: true, ok: 'Decline', tone: 'danger', icon: 'ph-x-circle', maxLength: 300 });
+      if (reviewState !== st) return;
       if (reason === null) return;
       const F = cloud.sdk;
       cloudWrite(F.updateDoc(F.doc(reqCol(), st.id), {
@@ -8387,15 +8592,16 @@
 
     // Items bought on a PR arrived: they go into My Items (stock in), and its requests show
     // "Ready" to the teachers until the custodian releases the items to them.
-    function markPrDelivered(prId) {
+    async function markPrDelivered(prId) {
       const pr = prList.find(p => p.id === prId);
       if (!pr || pr.deliveredMs) return;
       const open = reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr');
       const plan = prStockInPlan(pr);
       const fresh = plan.filter(x => !x.item).length;
-      if (!confirm(`Items on PR No. ${pr.prNo} were delivered?\n\n` +
+      if (!await appConfirm(`Items on PR No. ${pr.prNo} were delivered?\n\n` +
         `Adds ${plural(plan.length, 'item')} to the stock in My Items${fresh ? ` (${fresh} new)` : ''}.` +
-        (open.length ? `\n${plural(open.length, 'request')} will show as ready to release (${open.map(r => r.name).join(', ')}).` : ''))) return;
+        (open.length ? `\n${plural(open.length, 'request')} will show as ready to release (${open.map(r => r.name).join(', ')}).` : ''), { ok: 'Mark delivered', tone: 'good', icon: 'ph-package' })) return;
+      if (pr.deliveredMs) return;
       const { added } = stockInPr(pr);
       const F = cloud.sdk;
       const batch = F.writeBatch(cloud.db);
@@ -8500,15 +8706,15 @@
       document.getElementById('prTotal').textContent = `₱${peso2(total)}`;
     }
 
-    function savePr() {
+    async function savePr() {
       if (!prDraft) return;
       const lines = prDraft.lines.filter(l => l.qty > 0 && l.desc.trim())
         .map(l => ({ code: l.code || null, stockNo: l.stockNo.trim(), unit: l.unit.trim(), desc: l.desc.trim(), qty: l.qty, unitCost: Math.round(l.unitCost * 100) / 100 }));
-      if (!lines.length) { alert('The Purchase Request has no items.'); return; }
+      if (!lines.length) { appAlert('The Purchase Request has no items.'); return; }
       const prNo = reqVal('prNo');
-      if (!prNo) { alert('Enter the PR No.'); document.getElementById('prNo').focus(); return; }
-      if (prList.some(p => p.prNo === prNo) && !confirm(`PR No. ${prNo} was already used. Save another PR with the same number?`)) return;
-      if (lines.some(l => !l.unitCost) && !confirm('Some items have no unit cost. Save anyway?')) return;
+      if (!prNo) { appAlert('Enter the PR No.'); document.getElementById('prNo').focus(); return; }
+      if (prList.some(p => p.prNo === prNo) && !await appConfirm(`PR No. ${prNo} was already used. Save another PR with the same number?`, { title: 'PR No. already used', ok: 'Save anyway', tone: 'warn' })) return;
+      if (lines.some(l => !l.unitCost) && !await appConfirm('The total on the Purchase Request will be incomplete.', { title: 'Some items have no unit cost', ok: 'Save anyway', cancel: 'Add costs', tone: 'warn' })) return;
       const F = cloud.sdk;
       const total = Math.round(lines.reduce((n, l) => n + l.qty * l.unitCost, 0) * 100) / 100;
       const data = {
@@ -9017,12 +9223,12 @@
       d.date = document.getElementById('relDate').value || localISODate();
       d.purpose = reqVal('relPurpose').slice(0, 300);
       const t = relTeacher();
-      if (!t || !t.name) { alert('Choose who receives the items.'); return; }
+      if (!t || !t.name) { appAlert('Choose who receives the items.'); return; }
       const lines = d.lines.filter(l => relQty(l) > 0);
       if (!lines.length) return;
       for (const l of lines) {
         const item = items.find(i => i.code === l.code);
-        if (!item || relQty(l) > relMax(item)) { alert(`${item ? item.name : l.code}: only ${item ? relMax(item) : 0} available.`); return; }
+        if (!item || relQty(l) > relMax(item)) { appAlert(`${item ? item.name : l.code}: only ${item ? relMax(item) : 0} available.`); return; }
       }
       const F = cloud.sdk;
       const now = Date.now();
@@ -9395,7 +9601,7 @@
       const rel = myReleases.find(r => r.id === d.relId);
       if (!rel) return;
       const note = reqVal('trNote').slice(0, 300);
-      if (d.kind === 'problem' && d.reason === 'other' && !note) { alert('Tell the custodian what happened.'); document.getElementById('trNote').focus(); return; }
+      if (d.kind === 'problem' && d.reason === 'other' && !note) { appAlert('Tell the custodian what happened.'); document.getElementById('trNote').focus(); return; }
       let extra = { reason: d.reason, note };
       if (d.unitId) {
         const line = rel.lines.find(l => (l.units || []).some(u => u.id === d.unitId));
@@ -9504,10 +9710,10 @@
       showToast(`${reply} · ${x.name.split(' ')[0]} will see it`, 'ph-check-circle');
     }
 
-    function declineTeacherReport(id) {
+    async function declineTeacherReport(id) {
       const x = tReports.find(r => r.id === id);
       if (!x) return;
-      const reason = prompt(`Reason for not accepting the return (${x.name} will see this):`, '');
+      const reason = await appPrompt(`${x.name} will see this.`, '', { title: 'Not accepting the return?', label: 'Reason', placeholder: 'e.g. Please have it repaired first', multiline: true, ok: 'Decline', tone: 'danger', icon: 'ph-x-circle', maxLength: 300 });
       if (reason === null) return;
       const F = cloud.sdk;
       cloudWrite(F.updateDoc(F.doc(tReportCol(), x.id), { status: 'declined', reply: reason.trim().slice(0, 300) || 'Return not accepted', resolvedMs: Date.now() }), 'Updating');
@@ -9729,12 +9935,13 @@
 
     // The custodian takes an item back (e.g. teacher transferred): back in stock, unassigned,
     // and a return record for the teacher's list.
-    function takeBackUnit(code, unitId) {
+    async function takeBackUnit(code, unitId) {
       const item = items.find(i => i.code === code);
       const unit = item && getUnits(code).find(u => u.id === unitId);
       if (!unit) return;
       const holder = unitHolder(unit);
-      if (!confirm(`Take back ${item.name} (${unit.no || 'no property no.'}) from ${holder}?\n\nIt goes back to stock, not assigned to anyone.`)) return;
+      if (!await appConfirm(`It goes back to stock, not assigned to anyone. An RRSP is made for ${holder}.`, { title: `Take back ${item.name} (${unit.no || 'no property no.'}) from ${holder}?`, ok: 'Take back', tone: 'warn', icon: 'ph-arrow-u-down-left' })) return;
+      if (unitHolder(unit) !== holder) return;
       const uid = unit.toUid || null;
       const line = relLine(item, 1, [unit]);
       clearUnitHolder(unit);
@@ -10090,7 +10297,7 @@
       const chosen = from ? from.equipment.filter(x => xfer.unitIds.has(x.unit.id)) : [];
       const loc = xfer.loc.trim().slice(0, 80);
       if (!chosen.length || !target) return;
-      if (target.same && !loc) { alert('Type the new room or location.'); return; }
+      if (target.same && !loc) { appAlert('Type the new room or location.'); return; }
       const F = cloud.sdk;
       const batch = F.writeBatch(cloud.db);
       const date = xfer.date || localISODate();
@@ -10405,7 +10612,7 @@
     async function printInvitePoster() {
       if (!isCustodianDevice() || !reqRole) return;
       try { if (typeof qrcode !== 'function') await loadScript('assets/vendor/qrcode.js'); }
-      catch (e) { alert('The QR code needs the app to be opened online once.'); return; }
+      catch (e) { appAlert('The QR code needs the app to be opened online once.'); return; }
       const link = inviteLink();
       const school = reqRole.schoolName || schoolInfo.school || 'our school';
       const e = v => escapeHTML(v || '');
@@ -11069,7 +11276,8 @@
         'Transfer equipment to another teacher or room: an ITR (or PTR from ₱50,000) prints, the new holder confirms it, and each unit keeps its history.',
         'Reports → Government forms: year-end physical count (RPCPPE / RPCSP) from your scans, unserviceable property (IIRUP / IIRUSP) and every slip to reprint.',
         'A short welcome after the first sign-in: school info, how to add items, and a QR poster to invite teachers.',
-        'Dark mode: the selected option stands out and the school picture turns to night. Installed on Android, the app can check for updates while closed.'
+        'Dark mode: the selected option stands out and the school picture turns to night. Installed on Android, the app can check for updates while closed.',
+        'Questions like “Sign out?” now appear in CustodianPro’s own style instead of the browser’s “… says” box.'
       ] },
       { id: '2026-11-signin-dark', date: 'Nov 2026', title: 'Sign-in screen and dark mode', points: [
         'Every phone now signs in: property custodians with Google or email, teachers with the invite link or school code. The inventory already on your phone is kept.',
@@ -11172,10 +11380,10 @@
       showToast('Update when you’re ready: tap Restart in the title bar or More → About', 'ph-clock');
     }
 
-    function applyUpdate() {
+    async function applyUpdate() {
       const busy = [...document.querySelectorAll('.fixed.inset-0:not(.hidden)')]
-        .filter(el => !['notifPanel', 'aboutPanel', 'moreMenu'].includes(el.id));
-      if (busy.length && !confirm('Restart now to update?\n\nThe form that is open will close. Anything you have not saved in it yet is lost.')) return;
+        .filter(el => !['notifPanel', 'aboutPanel', 'moreMenu', 'appDialog'].includes(el.id));
+      if (busy.length && !await appConfirm('The form that is open will close. Anything you have not saved in it yet is lost.', { title: 'Restart now to update?', ok: 'Restart', cancel: 'Later', icon: 'ph-arrow-clockwise' })) return;
       if (notifScope()) {
         loadNotifs().items.forEach(n => { if (n.go === 'update') n.read = true; });
         saveNotifs();
@@ -11248,7 +11456,7 @@
         try { await navigator.share(data); return; } catch (e) { if (e && e.name === 'AbortError') return; }
       }
       try { await navigator.clipboard.writeText(url); showToast('Link copied · paste it in Messenger or Viber', 'ph-link'); }
-      catch (e) { prompt('Copy this link:', url); }
+      catch (e) { appPrompt('Select the link and copy it.', url, { title: 'Copy this link', ok: 'Done', readOnly: true, icon: 'ph-link', tone: 'info' }); }
     }
 
     function initAppUpdates() {

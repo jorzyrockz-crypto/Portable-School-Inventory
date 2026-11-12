@@ -96,10 +96,13 @@ try {
   await ev(p, () => snoozeUpdate());
   check(!(await visible(p, 'updateBar')) && (await ev(p, () => document.title.startsWith('Update ready'))), 'Later hides the bar; title still says Update ready');
   await ev(p, () => openSchoolModal());
-  p.dismissConfirm = true;
   await ev(p, () => { window.__stay = 1; applyUpdate(); });
-  check(/form that is open will close/.test(p.lastDialog || '') && await ev(p, () => window.__stay === 1), 'asks first when a form is open (Cancel keeps it)');
-  p.dismissConfirm = false;
+  await until(p, () => !document.getElementById('appDialog').classList.contains('hidden'), 'restart question');
+  const ask = await ev(p, () => ({ t: document.getElementById('appDialogTitle').innerText, m: document.getElementById('appDialogMsg').innerText, ok: document.getElementById('appDialogOk').innerText, no: document.getElementById('appDialogCancel').innerText }));
+  check(ask.t === 'Restart now to update?' && /form that is open will close/.test(ask.m) && ask.ok === 'Restart' && ask.no === 'Later', 'in-app question: Restart / Later');
+  await p.click('#appDialogCancel');
+  await sleep(300);
+  check(!p.lastDialog && await ev(p, () => window.__stay === 1 && !document.getElementById('schoolModal').classList.contains('hidden')), 'asks first when a form is open (Later keeps it)');
   await ev(p, () => closeSchoolModal());
   await Promise.all([p.waitForNavigation({ waitUntil: 'networkidle0' }), p.click('#tbUpdate')]);
   await until(p, () => /up to date/.test(document.getElementById('appToast').innerText), 'up to date toast', 5000);
