@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="856da236a5de">
+  <meta name="app-version" content="8c4e777a9a5c">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -480,6 +480,8 @@
       <button onclick="dismissInstall()" class="shrink-0 w-8 h-8 rounded-full text-slate-500 hover:bg-slate-100 flex items-center justify-center" aria-label="Not now"><i class="ph-bold ph-x"></i></button>
     </div>
   </div>
+
+  <datalist id="lifeList"><option value="1 year"><option value="2 years"><option value="3 years"><option value="5 years"><option value="7 years"><option value="10 years"></datalist>
 
   <!-- Custodian: changes on this phone are not reaching the account (24 h, or an error) -->
   <div id="syncBar" class="hidden max-w-4xl mx-auto px-4 pt-3 no-print" role="alert">
@@ -4350,6 +4352,14 @@
             ${field('loc', 'Location', item.note || 'Room')}
             ${field('to', 'Assigned to', 'Accountable person')}
             ${field('ics', u.doc && u.doc !== 'ICS' ? `${u.doc} No.` : 'ICS / PAR No.', 'Optional')}
+            <label class="block min-w-0">
+              <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">Date acquired</span>
+              <input type="date" value="${escapeHTML(u.acq || '')}" max="${localISODate()}" onchange="setUnitField('${code}', '${u.id}', 'acq', this.value)" class="unit-acq w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
+            </label>
+            <label class="block min-w-0">
+              <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">Useful life</span>
+              <input type="text" value="${escapeHTML(u.life || '')}" placeholder="${defaultLifeYears(item)} years" list="lifeList" autocomplete="off" onchange="setUnitField('${code}', '${u.id}', 'life', this.value)" class="unit-life w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
+            </label>
           </div>
           <p class="mt-2 text-[11px] text-slate-500 flex flex-wrap gap-x-3 gap-y-0.5">
             ${u.seen
@@ -4432,8 +4442,23 @@
 
     function setUnitField(code, id, key, value) {
       const unit = findUnit(code, id);
-      if (!unit || !['serial', 'loc', 'to', 'ics'].includes(key)) return;
-      unit[key] = key === 'ics' ? normalizePropNo(value) : String(value || '').trim();
+      if (!unit || !['serial', 'loc', 'to', 'ics', 'acq', 'life'].includes(key)) return;
+      unit[key] = key === 'ics' ? normalizePropNo(value) : key === 'life' ? normLife(value) : String(value || '').trim();
+      if (key === 'acq' || key === 'life') {
+        if (!unit[key]) delete unit[key];
+        const others = getUnits(code).filter(x => x.id !== id && !x[key]);
+        if (unit[key] && others.length) {
+          const what = key === 'acq' ? `date acquired (${formatShortDate(unit.acq + 'T00:00:00')})` : `useful life (${unit.life})`;
+          showToast(`Same ${what} for the other ${plural(others.length, 'unit')}?`, key === 'acq' ? 'ph-calendar-check' : 'ph-hourglass-medium', {
+            label: 'Use for all', onClick: () => {
+              others.forEach(x => { x[key] = unit[key]; });
+              saveState();
+              if (unitsModalCode === code) renderUnitsModal(id);
+              showToast(`Updated ${plural(others.length, 'unit')}`, 'ph-check-circle');
+            }
+          });
+        }
+      }
       if (key === 'to') {
         const m = unit.to ? rosterMatch(unit.to) : null;
         if (m && isCustodianDevice()) unit.to = m.name; // the name as the teacher wrote it
@@ -4558,12 +4583,12 @@
         [q('Date Exported:'), q(new Date().toLocaleDateString('en-PH'))].join(','),
         '',
         ['Property No.', 'Item Code', 'Item & Specifications', 'Category', 'Serial No.', 'Location', 'Assigned To',
-          'Condition', 'Unit Cost', 'Last Verified', 'Label Printed', 'ICS/PAR No.', 'Issue Date', 'Est. Useful Life'].map(q).join(',')
+          'Condition', 'Unit Cost', 'Last Verified', 'Label Printed', 'ICS/PAR No.', 'Issue Date', 'Date Acquired', 'Est. Useful Life'].map(q).join(',')
       ];
       rows.forEach(({ item, unit }) => csv.push([
         unit.no, item.code, item.name, item.category, unit.serial, unit.loc || item.note, unit.to,
         (UNIT_COND[unit.cond] || UNIT_COND.S).label, item.price.toFixed(2), date(unit.seen), date(unit.printed),
-        unitDocLabel(unit), unit.icsDate ? date(unit.icsDate + 'T00:00:00') : '', unit.life || ''
+        unitDocLabel(unit), unit.icsDate ? date(unit.icsDate + 'T00:00:00') : '', unitAcq(unit) ? date(unitAcq(unit) + 'T00:00:00') : '', unit.life || ''
       ].map(q).join(',')));
       const school = (schoolInfo.school || 'School').replace(/\s+/g, '_');
       downloadText('\ufeff' + csv.join('\n'), `Property_Register_${school}_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8;');
@@ -6562,7 +6587,7 @@
       let newUnits = 0;
       const makeUnit = (l, no) => ({
         id: newUnitId(), no, serial: '', loc: '', to: h.receivedBy || '', cond: 'S',
-        seen: null, printed: null, added: now, ics: h.icsNo || '', icsDate: h.date || '', life: l.life || ''
+        seen: null, printed: null, added: now, ics: h.icsNo || '', icsDate: h.date || '', life: l.life || '', ...(h.date ? { acq: h.date } : {})
       });
       plan.lines.forEach(l => {
         const item = items.find(i => i.code === l.code);
@@ -9126,7 +9151,7 @@
     }
     const relLine = (item, qty, units = []) => ({
       code: item.code, desc: item.name, unit: item.unit, qty, unitCost: Math.round((item.price || 0) * 100) / 100,
-      units: units.map(u => ({ id: u.id, no: u.no || '', serial: u.serial || '', cond: u.cond || 'S', doc: unitDocLabel(u), docDate: u.icsDate || '', loc: u.loc || '' }))
+      units: units.map(u => ({ id: u.id, no: u.no || '', serial: u.serial || '', cond: u.cond || 'S', doc: unitDocLabel(u), docDate: u.icsDate || '', loc: u.loc || '', ...(u.acq ? { acq: u.acq } : {}) }))
     });
     const relTotal = lines => Math.round(lines.reduce((n, l) => n + l.qty * (l.unitCost || 0), 0) * 100) / 100;
     function relBase(t, extra) {
@@ -9230,8 +9255,38 @@
       showToast(`Linked ${plural(changed, 'item')} to ${listJoin(linkedNames.map(n => n.split(' ')[0]))}’s account`, 'ph-link');
     }
 
+    // ---- Date acquired and estimated useful life of each unit (Nov 2026) ----
+    // unit.acq   'YYYY-MM-DD' (an ICS scanned on receipt fills it with the slip's date; a later
+    //            ICS / PAR / PTR date is when it was issued, not acquired, so it is not used)
+    // unit.life  text as written on the ICS ("5 years"); blank = the usual life for the category
+    //            (furniture and measuring instruments 10 years, everything else 5), marked "est."
+    const LIFE_BY_CATEGORY = { 'Furniture & Furnishings': 10, 'Measuring Equipment': 10 };
+    const defaultLifeYears = item => LIFE_BY_CATEGORY[item && item.category] || 5;
+    function lifeYears(text) {
+      const m = String(text || '').match(/(\d+(?:\.\d+)?)/);
+      if (!m) return 0;
+      const n = parseFloat(m[1]);
+      return /mo/i.test(text) ? n / 12 : n;
+    }
+    const lifeLabel = n => `${+n.toFixed(2)} ${n === 1 ? 'year' : 'years'}`;
+    function normLife(text) {
+      const t = String(text || '').trim();
+      return /^\d+(\.\d+)?$/.test(t) ? lifeLabel(parseFloat(t)) : t;
+    }
+    const unitAcq = u => (u && u.acq) || '';
+    function unitLife(item, u) {
+      const y = lifeYears(u && u.life);
+      if (y) return { years: y, text: u.life, est: false };
+      const d = defaultLifeYears(item);
+      return { years: d, text: lifeLabel(d), est: true };
+    }
+
     function findUnitAny(id) {
       for (const item of items) { const u = getUnits(item.code).find(x => x.id === id); if (u) return u; }
+      return null;
+    }
+    function findUnitItem(id) {
+      for (const item of items) { if (getUnits(item.code).some(x => x.id === id)) return item; }
       return null;
     }
 
@@ -9601,7 +9656,7 @@
       const d = prDefaults();
       const rows = r.lines.map(l => {
         const serials = (l.units || []).map(u => u.serial).filter(Boolean);
-        const life = (l.units || []).map(u => (findUnitAny(u.id) || {}).life).find(Boolean) || '';
+        const life = (l.units || []).map(u => (findUnitAny(u.id) || {}).life).find(Boolean) || '';   // only what the custodian wrote
         return `<tr><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td>
           <td>${e(l.desc)}${serials.length ? `<br><span style="font-size:8.5pt">S/N: ${e(serials.join(', '))}</span>` : ''}</td>
           <td class="pr-sn">${e((l.units || []).map(u => u.no).join(', '))}</td><td class="c">${e(life)}</td></tr>`;
@@ -10333,7 +10388,7 @@
         const serials = (l.units || []).map(u => u.serial).filter(Boolean);
         return `<tr><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td>
           <td>${e(l.desc)}${serials.length ? `<br><span style="font-size:8.5pt">S/N: ${e(serials.join(', '))}</span>` : ''}</td>
-          <td class="pr-sn">${e((l.units || []).map(u => u.no).join(', '))}</td><td class="c" style="font-size:9pt">${e(fDate(r.date))}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td></tr>`;
+          <td class="pr-sn">${e((l.units || []).map(u => u.no).join(', '))}</td><td class="c" style="font-size:9pt">${e(fDate((l.units || []).map(u => (findUnitAny(u.id) || {}).acq).find(Boolean) || r.date))}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td></tr>`;
       }).join('');
       const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 10 - r.lines.length));
       return `
@@ -10366,9 +10421,10 @@
       const d = prDefaults();
       const ppe = r.kind === 'PTR';
       const units = r.lines.flatMap(l => (l.units || []).map(u => ({ l, u })));
+      const acqOf = u => u.acq || (findUnitAny(u.id) || {}).acq || '';
       const rows = units.map(({ l, u }) => ppe
-        ? `<tr><td class="c" style="font-size:9pt"></td><td class="pr-sn">${e(u.no)}</td><td>${e(l.desc)}${u.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(u.serial)}</span>` : ''}</td><td class="r">${peso2(l.unitCost)}</td><td class="c" style="font-size:9pt">${e((UNIT_COND[u.cond] || UNIT_COND.S).label)}</td></tr>`
-        : `<tr><td class="c" style="font-size:9pt"></td><td class="pr-sn">${e(u.no)}</td><td class="pr-sn">${e(u.doc)}${u.docDate ? `<br>${e(fDate(u.docDate))}` : ''}</td><td>${e(l.desc)}${u.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(u.serial)}</span>` : ''}</td><td class="r">${peso2(l.unitCost)}</td><td class="c" style="font-size:9pt">${e((UNIT_COND[u.cond] || UNIT_COND.S).label)}</td></tr>`).join('');
+        ? `<tr><td class="c" style="font-size:9pt">${e(fDate(acqOf(u)))}</td><td class="pr-sn">${e(u.no)}</td><td>${e(l.desc)}${u.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(u.serial)}</span>` : ''}</td><td class="r">${peso2(l.unitCost)}</td><td class="c" style="font-size:9pt">${e((UNIT_COND[u.cond] || UNIT_COND.S).label)}</td></tr>`
+        : `<tr><td class="c" style="font-size:9pt">${e(fDate(acqOf(u)))}</td><td class="pr-sn">${e(u.no)}</td><td class="pr-sn">${e(u.doc)}${u.docDate ? `<br>${e(fDate(u.docDate))}` : ''}</td><td>${e(l.desc)}${u.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(u.serial)}</span>` : ''}</td><td class="r">${peso2(l.unitCost)}</td><td class="c" style="font-size:9pt">${e((UNIT_COND[u.cond] || UNIT_COND.S).label)}</td></tr>`).join('');
       const cols = ppe ? 5 : 6;
       const blanks = `<tr class="pr-blank">${'<td></td>'.repeat(cols)}</tr>`.repeat(Math.max(0, 8 - units.length));
       const type = XFER_TYPES.map(([k, label]) => `<span style="margin-right:12pt">${fBox(r.transferType === k)}${label}${k === 'others' && r.transferType === 'others' && r.transferOther ? `: <u>${e(r.transferOther)}</u>` : k === 'others' ? ' ______' : ''}</span>`).join('');
@@ -10859,7 +10915,7 @@
       const e = v => escapeHTML(v || '');
       const body = rows.map(r => {
         const total = r.qty * (r.item.price || 0);
-        const lead = `<td class="c" style="font-size:8.5pt">${e(r.unit && r.unit.icsDate ? fDate(r.unit.icsDate) : '')}</td><td>${e(r.item.name)}${r.unit && r.unit.serial ? `<br><span style="font-size:8pt">S/N: ${e(r.unit.serial)}</span>` : ''}</td><td class="pr-sn">${e(r.unit ? r.unit.no : '')}</td><td class="c">${r.qty}</td><td class="r">${peso2(r.item.price)}</td><td class="r">${peso2(total)}</td>`;
+        const lead = `<td class="c" style="font-size:8.5pt">${e(r.unit && unitAcq(r.unit) ? fDate(unitAcq(r.unit)) : '')}</td><td>${e(r.item.name)}${r.unit && r.unit.serial ? `<br><span style="font-size:8pt">S/N: ${e(r.unit.serial)}</span>` : ''}</td><td class="pr-sn">${e(r.unit ? r.unit.no : '')}</td><td class="c">${r.qty}</td><td class="r">${peso2(r.item.price)}</td><td class="r">${peso2(total)}</td>`;
         const remark = `<td style="font-size:8pt">${e(r.unit ? [unitHolder(r.unit) && `With ${unitHolder(r.unit)}`, r.unit.loc].filter(Boolean).join(' · ') : '')}</td>`;
         return `<tr>${lead}${ppe ? '<td></td><td></td><td></td>' : ''}${remark}${'<td></td>'.repeat(8)}</tr>`;
       }).join('');
@@ -10985,18 +11041,42 @@
       }));
       return withBalance(ev, item.qty || 0, from);
     }
+    function cardReceipts(item, from, opening) {
+      const fromISO = from || '9999-12-31';
+      const groups = new Map();
+      getUnits(item.code).forEach(u => {
+        const d = unitAcq(u);
+        if (!d || d >= fromISO) return;
+        const g = groups.get(d) || { d, nos: [] };
+        g.nos.push(u.no);
+        groups.set(d, g);
+      });
+      const list = [...groups.values()].sort((a, b) => a.d.localeCompare(b.d));
+      const known = list.reduce((n, g) => n + g.nos.length, 0);
+      if (!known || known > opening) return { left: opening, rows: [] };   // records disagree: keep the plain balance
+      let bal = opening - known;
+      const rows = list.map(g => {
+        bal += g.nos.length;
+        return { t: isoMs(g.d), ref: 'Received', receipt: g.nos.length, issue: '', office: '', nos: '', remarks: g.nos.filter(Boolean).join(', '), bal };
+      });
+      return { left: opening - known, rows };
+    }
     function propCardHTML(item, from) {
       const e = v => escapeHTML(v ?? '');
       const d = prDefaults();
       const ppe = isPPE(item);
       const price = item.price || 0;
       const nos = getUnits(item.code).map(u => u.no).filter(Boolean);
-      const { opening, rows } = propCardData(item, from);
+      const { opening, rows: changes } = propCardData(item, from);
+      // Units with a date acquired before the period open the card as receipts on that date;
+      // only what is left over (units without a date) is "Balance forward".
+      const acq = cardReceipts(item, from, opening);
+      const rows = [...acq.rows, ...changes];
       const tr = r => ppe
         ? `<tr><td class="c" style="font-size:9pt">${e(fDate(msISO(r.t)))}</td><td style="font-size:9pt">${e(r.ref)}</td><td class="c">${r.receipt}</td><td class="c">${r.issue}</td><td style="font-size:9pt">${e(r.office)}</td><td class="c">${r.bal}</td><td class="r">${peso2(r.bal * price)}</td><td style="font-size:8.5pt">${e([r.nos, r.remarks].filter(Boolean).join(' · '))}</td></tr>`
         : `<tr><td class="c" style="font-size:9pt">${e(fDate(msISO(r.t)))}</td><td style="font-size:9pt">${e(r.ref)}</td><td class="c">${r.receipt}</td><td class="pr-sn">${e(r.nos)}</td><td class="c">${r.issue}</td><td style="font-size:9pt">${e(r.office)}</td><td class="c">${r.bal}</td><td class="r">${peso2(r.bal * price)}</td><td style="font-size:8.5pt">${e(r.remarks)}</td></tr>`;
       const cols = ppe ? 8 : 9;
-      const fwd = `<tr><td class="c" style="font-size:9pt">${e(fDate(from))}</td><td>Balance forward</td>${'<td></td>'.repeat(ppe ? 3 : 4)}<td class="c">${opening}</td><td class="r">${peso2(opening * price)}</td><td></td></tr>`;
+      const fwd = acq.left || !acq.rows.length ? `<tr><td class="c" style="font-size:9pt">${e(fDate(acq.rows.length ? '' : from))}</td><td>Balance forward</td>${'<td></td>'.repeat(ppe ? 3 : 4)}<td class="c">${acq.left}</td><td class="r">${peso2(acq.left * price)}</td><td></td></tr>` : '';
       const blanks = `<tr class="pr-blank">${'<td></td>'.repeat(cols)}</tr>`.repeat(Math.max(0, 14 - rows.length));
       const label = ppe ? 'Property, Plant and Equipment' : 'Semi-expendable Property';
       return `
@@ -11035,7 +11115,12 @@
       if (!rows.length) return;
       const e = v => escapeHTML(v ?? '');
       const cell = (on, x) => (on ? `<td class="c">${x.q}</td><td style="font-size:8pt">${e(x.r.teacherName)}</td>` : '<td></td><td></td>');
-      const body = rows.map(x => `<tr><td class="c" style="font-size:8.5pt">${e(fDate(x.r.date))}</td><td class="pr-sn">${e(relDocName(x.r))}</td><td class="pr-sn">${e(lineNos(x.l))}</td><td>${e(x.l.desc)}</td><td></td>
+      const lifeOf = l => {
+        const u = (l.units || []).map(x => findUnitAny(x.id)).find(Boolean);
+        const item = items.find(i => i.code === l.code);
+        return u && item ? unitLife(item, u).text : u && u.life ? u.life : item ? lifeLabel(defaultLifeYears(item)) : '';
+      };
+      const body = rows.map(x => `<tr><td class="c" style="font-size:8.5pt">${e(fDate(x.r.date))}</td><td class="pr-sn">${e(relDocName(x.r))}</td><td class="pr-sn">${e(lineNos(x.l))}</td><td>${e(x.l.desc)}</td><td class="c" style="font-size:8pt">${e(lifeOf(x.l))}</td>
         ${cell(x.kind === 'issued', x)}${cell(x.kind === 'returned', x)}${cell(x.kind === 'reissued', x)}<td></td><td class="c">${x.bal}</td><td class="r">${peso2(x.bal * (x.l.unitCost || 0))}</td><td style="font-size:8pt">${e(x.remarks)}</td></tr>`).join('');
       const blanks = `<tr class="pr-blank">${'<td></td>'.repeat(15)}</tr>`.repeat(Math.max(0, 6 - rows.length));
       printFormHTML(`

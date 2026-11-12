@@ -398,6 +398,53 @@ try {
   check(pr.line && pr.line.qty === low.order && /Replenishment/.test(pr.purpose) && pr.coaClosed, `Purchase Request drafted from the list (${pr.line && pr.line.qty} ${pr.line && pr.line.unit})`);
   await ev(a, () => closePr());
 
+  out('10c date acquired and useful life of each unit');
+  await ev(a, () => closeCoa());
+  await ev(a, p => openUnitsModal(p), pick.ppe.code);
+  await until(a, () => document.querySelectorAll('#unitsList .unit-acq').length >= 2, 'unit cards with Date acquired');
+  await ev(a, () => { const el = document.querySelector('#unitsList .unit-acq'); el.value = '2023-06-15'; el.dispatchEvent(new Event('change')); });
+  await sleep(150);
+  const toast10c = await ev(a, () => document.getElementById('appToastText').innerText + ' | ' + document.getElementById('appToastAction').innerText);
+  check(/Same date acquired .* for the other \d+ units?\?/.test(toast10c) && /Use for all/.test(toast10c), `offers the same date for the other units: “${toast10c}”`);
+  await a.click('#appToastAction');
+  await sleep(150);
+  const acq10c = await ev(a, p => getUnits(p).map(u => u.acq), pick.ppe.code);
+  check(acq10c.every(d => d === '2023-06-15'), `Use for all → every unit acquired 2023-06-15 (${acq10c.join(', ')})`);
+  await ev(a, () => { const el = document.querySelector('#unitsList .unit-life'); el.value = '10'; el.dispatchEvent(new Event('change')); });
+  await sleep(150);
+  await a.click('#appToastAction');
+  await sleep(150);
+  const life10c = await ev(a, p => getUnits(p).map(u => u.life), pick.ppe.code);
+  check(life10c.every(l => l === '10 years'), `useful life “10” is saved as “10 years” on every unit (${life10c.join(', ')})`);
+  check(await ev(a, () => document.querySelector('#unitsList .unit-life').value === '10 years' && /Date acquired/i.test(document.getElementById('unitsList').innerText)), 'unit card shows both fields');
+  await a.screenshot({ path: `${SHOTS}/unit-acq-life.png` });
+  await ev(a, () => closeUnitsModal());
+  // Property Card: the first row is the receipt on the date acquired, not "Balance forward"
+  await ev(a, () => { openCoa(); coaGo('cards'); coaSetOpt('cardType', 'ppe'); });
+  await until(a, () => !!document.querySelector('[data-print-card]'), 'PC page');
+  await a.click(`[data-print-card="${pick.ppe.code}"]`);
+  await sleep(200);
+  rows = await cardRows(pick.ppe.code, 5);
+  const ppeUnits10c = await ev(a, p => getUnits(p).length, pick.ppe.code);
+  const acqDate = await ev(a, () => fDate('2023-06-15'));
+  check(rows[0][0] === acqDate && rows[0][1] === 'Received' && rows[0][2] === String(ppeUnits10c) && !/Balance forward/.test(await printed(a)), `card opens with “${rows[0].slice(0, 3).join(' | ')}” instead of Balance forward`);
+  await printShot(a, 'property-card-acq.png');
+  // IIRUP: Date Acquired column
+  await ev(a, () => { coaGo('unserv'); coaSetOpt('unservType', 'ppe'); });
+  await until(a, () => !document.getElementById('coaPrint').disabled, 'IIRUP ready');
+  await a.click('#coaPrint');
+  await sleep(200);
+  const iirupRow = await ev(a, no => [...document.querySelectorAll('#printPrSection tr')].find(tr => tr.innerText.includes(no)).cells[0].innerText.trim(), unsNo);
+  check(iirupRow === acqDate, `IIRUP Date Acquired filled (${iirupRow})`);
+  // RegSPI: Estimated Useful Life (category estimate when nothing was written)
+  await ev(a, () => coaGo('regspi'));
+  await until(a, () => !document.getElementById('coaPrint').disabled, 'RegSPI ready');
+  await a.click('#coaPrint');
+  await sleep(200);
+  const regLife = await ev(a, () => [...document.querySelectorAll('#printPrSection tr')].filter(tr => tr.cells.length >= 15 && !tr.classList.contains('pr-blank') && !tr.querySelector('th')).map(tr => tr.cells[4].innerText.trim()));
+  check(regLife.length && regLife.every(x => /^\d+(\.\d+)? years?$/.test(x)), `RegSPI useful life column filled (${[...new Set(regLife)].join(', ')})`);
+  await ev(a, () => closeCoa());
+
   out('11 dark mode: switches stand out, night art');
   await ev(a, () => { closeCoa(); setTheme('dark'); switchMainView('HOME'); });
   await sleep(300);
