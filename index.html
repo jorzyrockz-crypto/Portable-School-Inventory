@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#122e76">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="9a6e29f41773">
+  <meta name="app-version" content="0fea176b6c35">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="Effortless classroom and equipment tracking for school property custodians and teachers: QR property tags, physical count, RIS/ICS releases, supply requests and Appendix 60 purchase requests. Free, works offline on phones and tablets.">
   <meta name="author" content="CustodianPro">
@@ -256,12 +256,20 @@
       html.dark .gate-shade { background: linear-gradient(to right, rgb(11 18 32 / 0.9) 0%, rgb(11 18 32 / 0.5) 30rem, rgb(11 18 32 / 0) 42rem); }
     }
 
+    /* ---- Phones: pop-ups slide up from the bottom, full width ------------------------- */
+    @media screen and (max-width: 639px) {
+      .sheet-sm { align-items: flex-end !important; padding: 0 !important; }
+      .sheet-sm > div { max-width: none !important; width: 100%; border-radius: 1.5rem 1.5rem 0 0 !important; border-bottom-width: 0 !important;
+        max-height: 94vh; padding-bottom: env(safe-area-inset-bottom); }
+      .sheet-sm > div.p-6 { padding: 1.25rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom)); overflow-y: auto; }
+    }
+
     /* ---- Faded school art behind the top of Home / the teacher's screen ---------------- */
     @media screen {
       body.page-art {
         --page: 241 245 249;
         background-image: linear-gradient(to bottom, rgb(var(--page) / 0.3) 0, rgb(var(--page) / 0.72) 9rem, rgb(var(--page)) 16rem), url(assets/brand/login-portrait.webp);
-        background-repeat: no-repeat; background-size: 100% 100%, 100% auto; background-position: 0 0, center calc(4.5rem - 50vw);
+        background-repeat: no-repeat; background-size: 100% max(100%, calc(6rem + 200vw)), 100% auto; background-position: 0 0, center calc(4.5rem - 50vw);
       }
       html.dark body.page-art { --page: 11 18 32; }
       html.dark body.page-art { background-image: linear-gradient(to bottom, rgb(var(--page) / 0.4) 0, rgb(var(--page) / 0.8) 9rem, rgb(var(--page)) 16rem), url(assets/brand/login-portrait-dark.webp); }
@@ -359,19 +367,19 @@
         </div>
 
         <!-- Segmented View Filter -->
-        <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200/70 shrink-0">
-          <button onclick="setPartFilter('ALL')" id="tab-ALL" class="part-tab px-3 py-1.5 rounded-lg text-xs font-bold transition bg-white text-slate-900 shadow-sm seg-on">
+        <div class="grid grid-cols-4 sm:flex bg-slate-100 p-1 rounded-xl border border-slate-200/70 shrink-0 [&>button]:justify-center [&>button]:whitespace-nowrap">
+          <button onclick="setPartFilter('ALL')" id="tab-ALL" class="part-tab px-2 sm:px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition bg-white text-slate-900 shadow-sm seg-on">
             All (<span id="count-ALL">0</span>)
           </button>
-          <button onclick="setPartFilter('PART1')" id="tab-PART1" class="part-tab px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600">
-            Part I (PS-DBM)
+          <button onclick="setPartFilter('PART1')" id="tab-PART1" class="part-tab px-2 sm:px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition text-slate-600">
+            Part I<span class="hidden sm:inline"> (PS-DBM)</span>
           </button>
-          <button onclick="setPartFilter('PART2')" id="tab-PART2" class="part-tab px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600">
-            Part II (Other)
+          <button onclick="setPartFilter('PART2')" id="tab-PART2" class="part-tab px-2 sm:px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition text-slate-600">
+            Part II<span class="hidden sm:inline"> (Other)</span>
           </button>
-          <button onclick="setPartFilter('SELECTED')" id="tab-SELECTED" class="part-tab px-3 py-1.5 rounded-lg text-xs font-bold transition text-brand-600 flex items-center gap-1">
-            <i class="ph-fill ph-check-circle"></i>
-            <span>In Stock (<span id="count-SELECTED">0</span>)</span>
+          <button onclick="setPartFilter('SELECTED')" id="tab-SELECTED" class="part-tab px-2 sm:px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition text-brand-600 flex items-center gap-1">
+            <i class="ph-fill ph-check-circle hidden sm:inline"></i>
+            <span><span class="hidden sm:inline">In </span>Stock (<span id="count-SELECTED">0</span>)</span>
           </button>
         </div>
       </div>
@@ -489,10 +497,10 @@
       <div id="homeWelcome" class="hidden rounded-2xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600 space-y-1.5">
         <p class="font-bold text-slate-800">Start by searching for an item above.</p>
         <p class="text-xs">Type a few letters of the item name or its code, e.g. <em>bond paper</em> or <em>laptop</em>, then enter the quantity you have on hand. Or scan an ICS or import your Excel list.</p>
-        <button onclick="loadSampleInventory()" class="text-xs font-bold text-brand-600 hover:underline">Just exploring? Load sample data</button>
+        <button onclick="loadSampleInventory()" class="min-h-10 px-2 text-xs font-bold text-brand-600 hover:underline">Just exploring? Load sample data</button>
       </div>
 
-      <button id="homeStatus" onclick="switchMainView('REPORTS')" class="w-full flex items-center justify-between gap-2 px-1 text-xs text-slate-500 hover:text-slate-700">
+      <button id="homeStatus" onclick="switchMainView('REPORTS')" class="w-full min-h-10 flex items-center justify-between gap-2 px-1 text-xs text-slate-500 hover:text-slate-700">
         <span id="homeStatusText" class="truncate">No items encoded yet</span>
         <span class="shrink-0 font-bold text-brand-600 flex items-center gap-1">Reports <i class="ph-bold ph-caret-right"></i></span>
       </button>
@@ -514,16 +522,16 @@
           <i class="ph-bold ph-printer text-base"></i><span class="hidden sm:inline">Print</span>
         </button>
         <button onclick="openSummaryModal()" class="h-10 px-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-white shadow-sm">
-          <i class="ph-bold ph-receipt text-base"></i><span>APP-CSE Summary</span>
+          <i class="ph-bold ph-receipt text-base"></i><span><span class="hidden sm:inline">APP-CSE </span>Summary</span>
         </button>
       </div>
     </div>
 
     <!-- Top KPI Cards Grid (2x2 on Portrait Tablet) -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
       
       <!-- KPI 1: Total Valuation -->
-      <div onclick="openSummaryModal()" class="bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-emerald-400 cursor-pointer shadow-sm flex flex-col justify-between transition">
+      <div onclick="openSummaryModal()" class="col-span-2 sm:col-span-1 bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-emerald-400 cursor-pointer shadow-sm flex flex-col justify-between transition">
         <div class="flex items-center justify-between">
           <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Valuation</span>
           <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -531,7 +539,7 @@
           </div>
         </div>
         <div class="my-2">
-          <div id="kpiTotalValue" class="text-xl sm:text-2xl font-extrabold font-mono text-slate-900 truncate">₱0.00</div>
+          <div id="kpiTotalValue" class="text-2xl lg:text-xl font-extrabold font-mono text-slate-900 truncate">₱0.00</div>
         </div>
         <div class="text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
           <span>PS-DBM: <strong id="kpiPart1Val" class="text-slate-700 font-mono">₱0</strong></span>
@@ -558,7 +566,7 @@
       </div>
 
       <!-- KPI 3: Equipment vs Consumables -->
-      <div onclick="filterLedgerAndScroll('EQUIPMENT')" class="bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-blue-400 cursor-pointer shadow-sm flex flex-col justify-between transition">
+      <div onclick="filterLedgerAndScroll('EQUIPMENT')" class="col-span-2 sm:col-span-1 order-last sm:order-none bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-blue-400 cursor-pointer shadow-sm flex flex-col justify-between transition">
         <div class="flex items-center justify-between">
           <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Asset Breakdown</span>
           <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -773,7 +781,7 @@
     </div>
 
     <!-- BOTTOM SECTION: GENERAL INVENTORY MASTER LEDGER -->
-    <div id="masterLedgerSection" class="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+    <div id="masterLedgerSection" class="bg-white -mx-4 sm:mx-0 rounded-none sm:rounded-2xl border-y sm:border border-slate-200/90 shadow-sm overflow-hidden">
       
       <!-- Ledger Header & Filter Pills -->
       <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -787,22 +795,22 @@
 
         <!-- Ledger Filter Tabs -->
         <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar bg-slate-100 p-1 rounded-xl border border-slate-200/70">
-          <button onclick="setLedgerFilter('ALL')" id="ledgerTab-ALL" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition bg-white text-slate-900 shadow-sm seg-on">
+          <button onclick="setLedgerFilter('ALL')" id="ledgerTab-ALL" class="ledger-tab px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition bg-white text-slate-900 shadow-sm seg-on">
             All In-Stock
           </button>
-          <button onclick="setLedgerFilter('EQUIPMENT')" id="ledgerTab-EQUIPMENT" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-slate-600">
+          <button onclick="setLedgerFilter('EQUIPMENT')" id="ledgerTab-EQUIPMENT" class="ledger-tab px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-slate-600">
             Equipment (ICS/PAR)
           </button>
-          <button onclick="setLedgerFilter('CONSUMABLE')" id="ledgerTab-CONSUMABLE" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-slate-600">
+          <button onclick="setLedgerFilter('CONSUMABLE')" id="ledgerTab-CONSUMABLE" class="ledger-tab px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-slate-600">
             Consumables (RIS)
           </button>
-          <button onclick="setLedgerFilter('LOW')" id="ledgerTab-LOW" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-amber-700">
+          <button onclick="setLedgerFilter('LOW')" id="ledgerTab-LOW" class="ledger-tab px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-amber-700">
             Low Stock Alerts
           </button>
-          <button onclick="setLedgerFilter('CONDITION')" id="ledgerTab-CONDITION" class="ledger-tab px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-rose-700">
+          <button onclick="setLedgerFilter('CONDITION')" id="ledgerTab-CONDITION" class="ledger-tab px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-rose-700">
             Repair / Unserviceable
           </button>
-          <button onclick="setLedgerFilter('UNCOUNTED')" id="ledgerTab-UNCOUNTED" class="ledger-tab hidden px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-sky-700">
+          <button onclick="setLedgerFilter('UNCOUNTED')" id="ledgerTab-UNCOUNTED" class="ledger-tab hidden px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition text-sky-700">
             Not Counted
           </button>
         </div>
@@ -817,7 +825,7 @@
             id="ledgerSearchInput"
             oninput="renderDashboardLedger()"
             placeholder="Filter by item, code, or room..." 
-            class="w-full h-9 pl-8 pr-3 bg-white rounded-lg border border-slate-200 text-xs font-medium outline-none focus:border-brand-500"
+            class="w-full h-10 sm:h-9 pl-8 pr-3 bg-white rounded-lg border border-slate-200 text-sm sm:text-xs font-medium outline-none focus:border-brand-500"
           >
         </div>
         <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
@@ -854,7 +862,7 @@
           <i class="ph-bold ph-x"></i>
         </button>
       </div>
-      <button onclick="confirmResetAll()" class="text-xs font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1">
+      <button onclick="confirmResetAll()" class="h-9 -my-2 px-1 text-xs font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1">
         <i class="ph-bold ph-arrow-counter-clockwise"></i> Reset Quantities
       </button>
     </div>
@@ -888,14 +896,14 @@
   <!-- ===================================================================== -->
   <!-- SUPPLY REQUESTS (custodian): review, approve, prepare Purchase Requests -->
   <section id="viewRequests" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
-    <div class="flex items-start justify-between gap-3">
+    <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
       <div class="min-w-0">
-        <button onclick="switchMainView('HOME')" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-1"><i class="ph-bold ph-caret-left"></i> Home</button>
-        <h1 class="text-xl font-extrabold text-slate-900">Supply requests</h1>
+        <button onclick="switchMainView('HOME')" class="min-h-10 -ml-1 px-1 -mt-2 text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-caret-left"></i> Home</button>
+        <h1 class="text-xl font-extrabold text-slate-900 whitespace-nowrap">Supply requests</h1>
         <p id="reqViewSchool" class="text-xs text-slate-500 truncate"></p>
       </div>
       <span id="reqViewStatus" class="shrink-0 mt-6 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold"></span>
-      <div id="reqViewActions" class="hidden shrink-0 flex items-center gap-1.5 pt-5">
+      <div id="reqViewActions" class="hidden shrink-0 flex items-center gap-1.5 w-full sm:w-auto sm:pt-5 [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center [&>button]:h-10 sm:[&>button]:h-9">
         <button onclick="openInvite()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-user-plus text-brand-600"></i> Invite</button>
 <button onclick="openTeachersView()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-teal-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-users-three text-teal-600"></i> Teachers</button>
         <button onclick="openRequestForm()" class="h-9 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-plus"></i> New</button>
@@ -938,8 +946,8 @@
     </div>
     <div id="rqAccount" class="text-[11px] -mb-2"></div>
     <div class="flex items-center justify-between gap-3 text-xs pb-6">
-      <button onclick="editMyDetails()" class="font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-user-circle"></i> Change my name or office</button>
-      <button onclick="leaveSchool()" class="font-bold text-slate-400 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-sign-out"></i> Leave</button>
+      <button onclick="editMyDetails()" class="min-h-10 px-1 font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-user-circle"></i> Change my name or office</button>
+      <button onclick="leaveSchool()" class="min-h-10 px-1 font-bold text-slate-400 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-sign-out"></i> Leave</button>
     </div>
   </section>
 
@@ -1036,7 +1044,7 @@
     </div>
   </div>
 
-  <div id="appToast" role="status" aria-live="polite" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-[70] items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-2xl no-print">
+  <div id="appToast" role="status" aria-live="polite" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-[70] w-max max-w-[calc(100vw-2rem)] items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-2xl no-print">
     <i id="appToastIcon" class="ph-bold ph-check-circle text-lg text-emerald-400"></i>
     <span id="appToastText"></span>
     <button id="appToastAction" class="hidden ml-2 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-amber-300 font-bold"></button>
@@ -1174,8 +1182,8 @@
           <div id="rfResults" class="hidden mt-1.5 rounded-xl border border-slate-200 overflow-hidden divide-y divide-slate-100"></div>
         </div>
         <div id="rfLines" class="space-y-2"></div>
-        <div class="grid grid-cols-3 gap-2">
-          <div class="col-span-2">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div class="sm:col-span-2">
             <label for="rfPurpose" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Purpose</label>
             <input id="rfPurpose" type="text" maxlength="300" placeholder="e.g. for Grade 7 science activity" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
           </div>
@@ -1470,7 +1478,7 @@
   </div>
 
   <!-- MODAL 1: EDIT ITEM INVENTORY DETAILS / LOCATION / REORDER ALERT / PRICE -->
-  <div id="itemModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+  <div id="itemModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sheet-sm no-print">
     <div class="bg-white rounded-2xl max-w-md w-full max-h-[94vh] overflow-y-auto p-6 shadow-2xl border border-slate-200">
       <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
         <div>
@@ -1583,13 +1591,13 @@
         <div>
           <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1.5">Quick Assign Storage / Room Location</label>
           <div class="flex flex-wrap gap-1.5 mb-2">
-            <button type="button" onclick="setQuickNote('Central Stockroom')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Central Stockroom</button>
-            <button type="button" onclick="setQuickNote('Principal / Admin Office')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Admin Office</button>
-            <button type="button" onclick="setQuickNote('Faculty Room')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Faculty Room</button>
-            <button type="button" onclick="setQuickNote('ICT / Computer Lab')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">ICT Lab</button>
-            <button type="button" onclick="setQuickNote('School Clinic')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">School Clinic</button>
-            <button type="button" onclick="setQuickNote('School Library')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Library</button>
-            <button type="button" onclick="setQuickNote('Utility / Janitorial Room')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Utility Room</button>
+            <button type="button" onclick="setQuickNote('Central Stockroom')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Central Stockroom</button>
+            <button type="button" onclick="setQuickNote('Principal / Admin Office')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Admin Office</button>
+            <button type="button" onclick="setQuickNote('Faculty Room')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Faculty Room</button>
+            <button type="button" onclick="setQuickNote('ICT / Computer Lab')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">ICT Lab</button>
+            <button type="button" onclick="setQuickNote('School Clinic')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">School Clinic</button>
+            <button type="button" onclick="setQuickNote('School Library')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Library</button>
+            <button type="button" onclick="setQuickNote('Utility / Janitorial Room')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Utility Room</button>
           </div>
           <textarea id="modalItemNote" rows="2" placeholder="Room location, custodian remarks, or serial number..." class="w-full p-3 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none"></textarea>
         </div>
@@ -1603,7 +1611,7 @@
   </div>
 
   <!-- MODAL 2: APP-CSE 2027 OFFICIAL SUMMARY COMPUTATION -->
-  <div id="summaryModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+  <div id="summaryModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sheet-sm no-print">
     <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200">
       <div class="p-5 border-b border-slate-200 flex items-center justify-between">
         <div>
@@ -1684,7 +1692,7 @@
   </div>
 
   <!-- MODAL 3: SCHOOL / CUSTODIAN HEADER INFO -->
-  <div id="schoolModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+  <div id="schoolModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sheet-sm no-print">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
         <h3 class="font-extrabold text-base text-slate-900">School & Custodian Details</h3>
@@ -1727,7 +1735,7 @@
   </div>
 
   <!-- MODAL 4: ADD CUSTOM ITEM (PART II) -->
-  <div id="customItemModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+  <div id="customItemModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sheet-sm no-print">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
         <div>
@@ -1780,7 +1788,7 @@
   </div>
 
   <!-- MODAL 7: IMPORT FROM EXCEL / CSV -->
-  <div id="importModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+  <div id="importModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sheet-sm no-print">
     <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[94vh] flex flex-col shadow-2xl border border-slate-200">
       <div class="p-5 pb-3 border-b border-slate-100 flex items-start justify-between gap-3">
         <div class="min-w-0">
@@ -1806,7 +1814,7 @@
   <input type="file" id="importFileInput" accept=".csv,.xlsx,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden no-print" onchange="handleImportFile(event)">
 
   <!-- MODAL 8: SCAN ICS (photo of an Inventory Custodian Slip → review → save) -->
-  <div id="icsModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 no-print">
+  <div id="icsModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 sheet-sm no-print">
     <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[96vh] flex flex-col shadow-2xl border border-slate-200">
       <div class="p-5 pb-3 border-b border-slate-100 flex items-start justify-between gap-3">
         <div class="min-w-0">
@@ -1832,7 +1840,7 @@
   <input type="file" id="icsPhotoInput" accept="image/*" class="hidden no-print" onchange="handleIcsPhoto(event)">
 
   <!-- MODAL 6: CHANGE HISTORY (audit log, newest first) -->
-  <div id="historyModal" class="fixed inset-0 z-[55] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+  <div id="historyModal" class="fixed inset-0 z-[55] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sheet-sm no-print">
     <div class="bg-white rounded-2xl max-w-xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200">
       <div class="p-5 pb-3 border-b border-slate-100">
         <div class="flex items-start justify-between gap-3">
@@ -1864,7 +1872,7 @@
   </div>
 
   <!-- MODAL 5: PROPERTY NUMBERS / PER-UNIT RECORDS (equipment) -->
-  <div id="unitsModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+  <div id="unitsModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sheet-sm no-print">
     <div class="bg-white rounded-2xl max-w-xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200">
       <div class="p-5 pb-3 border-b border-slate-100 flex items-start justify-between gap-3">
         <div class="min-w-0">
@@ -2842,7 +2850,7 @@
               <div class="flex items-center flex-wrap gap-3 mt-1 text-xs text-slate-500">
                 <span>Category: <strong class="text-slate-700">${item.category}</strong></span>
                 <span>Unit Cost: <strong class="font-mono text-slate-700">${formatCurrency(item.price)}</strong></span>
-                <button onclick="openItemModal('${item.code}')" class="inline-flex items-center gap-1 text-brand-600 font-semibold hover:underline">
+                <button onclick="openItemModal('${item.code}')" class="inline-flex items-center gap-1 min-h-9 sm:min-h-0 px-2.5 sm:px-0 rounded-lg sm:rounded-none bg-brand-50 sm:bg-transparent text-brand-700 sm:text-brand-600 font-semibold hover:underline">
                   <i class="ph-fill ph-map-pin"></i>
                   <span>${item.note ? item.note : 'Assign Room / Location'}</span>
                 </button>
@@ -2850,7 +2858,7 @@
             </div>
 
             <!-- Right Controls in Ledger -->
-            <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
+            <div class="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-2 sm:gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
               ${countSession ? `
                 <button onclick="toggleCounted('${item.code}')" title="${counted ? 'Counted – tap to undo' : 'Mark as counted'}" class="count-check w-9 h-9 shrink-0 rounded-xl flex items-center justify-center transition active:scale-95 ${counted ? 'bg-sky-600 text-white shadow-sm' : 'bg-white border-2 border-dashed border-slate-300 text-slate-300 hover:border-sky-400 hover:text-sky-500'}">
                   <i class="ph-bold ph-check"></i>
@@ -2860,27 +2868,29 @@
                 <div class="text-sm font-extrabold text-emerald-700">${formatCurrency(lineTotal)}</div>
               </div>
 
-              <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-                <button onclick="adjustQty('${item.code}', -1)" class="w-9 h-8 rounded-lg bg-white hover:bg-rose-50 active:scale-95 text-slate-700 font-bold flex items-center justify-center shadow-sm">
+              <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
+                <button onclick="adjustQty('${item.code}', -1)" class="w-10 h-9 sm:w-9 sm:h-8 rounded-lg bg-white hover:bg-rose-50 active:scale-95 text-slate-700 font-bold flex items-center justify-center shadow-sm">
                   <i class="ph-bold ph-minus text-xs"></i>
                 </button>
                 <span class="w-14 text-center font-mono font-extrabold text-xs text-slate-900">${item.qty} <span class="text-[10px] font-normal text-slate-500">${item.unit}</span></span>
-                <button onclick="adjustQty('${item.code}', 1)" class="w-9 h-8 rounded-lg bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold flex items-center justify-center shadow-sm">
+                <button onclick="adjustQty('${item.code}', 1)" class="w-10 h-9 sm:w-9 sm:h-8 rounded-lg bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold flex items-center justify-center shadow-sm">
                   <i class="ph-bold ph-plus text-xs"></i>
                 </button>
               </div>
 
+              <div class="flex items-center gap-2 w-full sm:w-auto">
               ${item.type === 'EQUIPMENT' || getUnits(item.code).length ? `
-                <button onclick="openUnitsModal('${item.code}')" title="Property numbers & QR labels" class="w-9 h-9 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 flex items-center justify-center">
-                  <i class="ph-bold ph-qr-code"></i>
+                <button onclick="openUnitsModal('${item.code}')" title="Property numbers & QR labels" aria-label="Property numbers and QR labels" class="flex-1 sm:flex-none h-10 sm:w-9 sm:h-9 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center gap-1.5">
+                  <i class="ph-bold ph-qr-code text-base sm:text-sm"></i><span class="sm:hidden">Property nos.</span>
                 </button>` : ''}
               ${isCustodianDevice() ? `
-                <button onclick="openReleaseForItem('${item.code}')" title="Release to a teacher" aria-label="Release to a teacher" class="w-9 h-9 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 flex items-center justify-center">
-                  <i class="ph-bold ph-hand-arrow-up"></i>
+                <button onclick="openReleaseForItem('${item.code}')" title="Release to a teacher" aria-label="Release to a teacher" class="flex-1 sm:flex-none h-10 sm:w-9 sm:h-9 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold flex items-center justify-center gap-1.5">
+                  <i class="ph-bold ph-hand-arrow-up text-base sm:text-sm"></i><span class="sm:hidden">Release</span>
                 </button>` : ''}
-              <button onclick="openItemModal('${item.code}')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center">
-                <i class="ph-bold ph-pencil-simple"></i>
+              <button onclick="openItemModal('${item.code}')" title="Edit item" aria-label="Edit item" class="flex-1 sm:flex-none h-10 sm:w-9 sm:h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center gap-1.5">
+                <i class="ph-bold ph-pencil-simple text-base sm:text-sm"></i><span class="sm:hidden">Edit</span>
               </button>
+              </div>
             </div>
           </div>
         `;
@@ -3015,7 +3025,7 @@
     function renderCategoryPills() {
       const container = document.getElementById('categoryPills');
       let html = `
-        <button onclick="setCategoryFilter('ALL')" class="px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${filterCategory === 'ALL' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+        <button onclick="setCategoryFilter('ALL')" class="px-3.5 py-2.5 sm:py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${filterCategory === 'ALL' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
           All Categories
         </button>
       `;
@@ -3023,7 +3033,7 @@
       CATEGORIES.forEach((cat, idx) => {
         const isActive = filterCategory === idx;
         html += `
-          <button onclick="setCategoryFilter(${idx})" class="px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${isActive ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+          <button onclick="setCategoryFilter(${idx})" class="px-3.5 py-2.5 sm:py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${isActive ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
             ${cat}
           </button>
         `;
@@ -3093,15 +3103,15 @@
         const needsPrice = item.price === 0;
 
         return `
-          <div id="card-${item.code}" class="rounded-2xl bg-white p-3.5 sm:p-4 transition-all border ${isSelected ? 'border-brand-500 ring-2 ring-brand-500/10 bg-brand-50/10' : 'border-slate-200/90'} shadow-sm flex items-center justify-between gap-3">
+          <div id="card-${item.code}" class="rounded-2xl bg-white p-3.5 sm:p-4 transition-all border ${isSelected ? 'border-brand-500 ring-2 ring-brand-500/10 bg-brand-50/10' : 'border-slate-200/90'} shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
             
             <!-- Left Info Column -->
             <div class="flex-1 min-w-0">
               <div class="flex items-center flex-wrap gap-1.5 mb-1">
-                <span class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-slate-100 text-slate-600 border border-slate-200">#${item.itemNo}</span>
+                <span class="hidden sm:inline px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-slate-100 text-slate-600 border border-slate-200">#${item.itemNo}</span>
                 <span class="px-2 py-0.5 text-[11px] font-mono font-semibold rounded bg-slate-100 text-slate-700">${item.code}</span>
                 <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded ${item.part === 'PART1' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}">${item.category}</span>
-                <span class="px-1.5 py-0.5 text-[10px] font-bold uppercase rounded ${item.type === 'EQUIPMENT' ? 'bg-purple-50 text-purple-700' : 'bg-slate-100 text-slate-600'}">${item.type}</span>
+                <span class="${item.type === 'EQUIPMENT' ? '' : 'hidden sm:inline '}px-1.5 py-0.5 text-[10px] font-bold uppercase rounded ${item.type === 'EQUIPMENT' ? 'bg-purple-50 text-purple-700' : 'bg-slate-100 text-slate-600'}">${item.type}</span>
               </div>
 
               <h3 class="font-bold text-sm sm:text-base text-slate-900 leading-snug break-words">${item.name}</h3>
@@ -3109,7 +3119,7 @@
               <div class="flex items-center flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs">
                 <span class="text-slate-500 font-medium">Unit: <strong class="text-slate-700 uppercase">${item.unit}</strong></span>
                 
-                <button onclick="openItemModal('${item.code}')" class="font-mono font-semibold ${needsPrice ? 'text-amber-600 underline decoration-dotted' : 'text-slate-700'} flex items-center gap-1">
+                <button onclick="openItemModal('${item.code}')" class="py-2 -my-2 font-mono font-semibold ${needsPrice ? 'text-amber-600 underline decoration-dotted' : 'text-slate-700'} flex items-center gap-1">
                   <span>${needsPrice ? 'Set Price (₱0.00)' : formatCurrency(item.price)}</span>
                   <i class="ph-bold ph-pencil-simple text-xs text-slate-400"></i>
                 </button>
@@ -3128,21 +3138,21 @@
               </div>
 
               ${item.note ? `
-                <div onclick="openItemModal('${item.code}')" class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200/80 text-amber-900 text-xs font-medium cursor-pointer">
+                <div onclick="openItemModal('${item.code}')" class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-2 sm:py-1 rounded-lg bg-amber-50 border border-amber-200/80 text-amber-900 text-xs font-medium cursor-pointer">
                   <i class="ph-fill ph-map-pin text-amber-600"></i>
                   <span>${item.note}</span>
                 </div>
               ` : ''}
             </div>
 
-            <!-- Right Touch Controls Column (iPad Friendly Stepper) -->
-            <div class="flex items-center gap-1.5 shrink-0">
+            <!-- Right Touch Controls Column (iPad Friendly Stepper); a row under the info on phones -->
+            <div class="flex items-center justify-end gap-1.5 shrink-0 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-slate-100">
               <button 
                 onclick="openItemModal('${item.code}')" 
                 title="Assign Room, Min Stock or Edit Price"
-                class="w-10 h-12 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-500 flex items-center justify-center transition"
+                class="mr-auto sm:mr-0 h-12 px-3 sm:px-0 sm:w-10 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-500 text-xs font-bold flex items-center justify-center gap-1.5 transition"
               >
-                <i class="ph-bold ph-sliders-horizontal text-lg"></i>
+                <i class="ph-bold ph-sliders-horizontal text-lg"></i><span class="sm:hidden">Room · price</span>
               </button>
 
               <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
@@ -6954,9 +6964,23 @@
       if (!toast) return;
       const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel', 'aboutPanel', 'xferModal', 'coaModal', 'tourModal'].some(id => !document.getElementById(id)?.classList.contains('hidden'));
       const stickyAction = [...document.querySelectorAll('[data-toast-avoid]')].some(el => el.offsetParent !== null);
-      const top = sheetOpen || stickyAction || document.documentElement.classList.contains('gated');
-      toast.classList.toggle('bottom-24', !top);
-      toast.classList.toggle('top-20', top);
+      const gated = document.documentElement.classList.contains('gated');
+      const top = !gated && (sheetOpen || stickyAction);
+      toast.classList.toggle('bottom-24', !top && !gated);
+      toast.classList.toggle('bottom-6', gated);
+      toast.classList.toggle('top-3', top && sheetOpen);
+      toast.classList.toggle('top-20', top && !sheetOpen);
+    }
+
+    // A toast already on screen moves out of the way when a sheet opens or closes.
+    function watchToastPlacement() {
+      const toast = document.getElementById('appToast');
+      if (!toast || watchToastPlacement.done) return;
+      watchToastPlacement.done = true;
+      const mo = new MutationObserver(() => { if (!toast.classList.contains('hidden')) placeToast(); });
+      ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel', 'aboutPanel', 'xferModal', 'coaModal', 'tourModal']
+        .forEach(id => { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class'] }); });
+      mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     }
 
     function showToast(message, icon = 'ph-check-circle', action = null) {
@@ -6966,6 +6990,7 @@
         toast.classList.add('hidden');
         toast.classList.remove('flex');
       };
+      watchToastPlacement();
       placeToast();
       document.getElementById('appToastIcon').className = `ph-bold ${icon} text-lg text-emerald-400`;
       document.getElementById('appToastText').textContent = message;
@@ -7010,7 +7035,9 @@
             if (worker.state !== 'activated') return;
             if (!hadWorker) {
               hadWorker = true;
-              showToast('Ready to work offline on this device', 'ph-wifi-slash');
+              const readyToast = () => showToast('Ready to work offline on this device', 'ph-wifi-slash');
+              if (!document.documentElement.classList.contains('gated')) readyToast();
+              else { const wait = setInterval(() => { if (!document.documentElement.classList.contains('gated')) { clearInterval(wait); setTimeout(readyToast, 1500); } }, 1000); }
             } else {
               onWorkerUpdated(worker);
             }
@@ -7746,7 +7773,7 @@
       } else {
         html += closed.length ? closed.map(r => reqCardHTML(r, { supply: r.status === 'closed' })).join('') : reqEmptyHTML('ph-archive', 'Nothing here yet', 'Requests on a PR, supplied, declined or cancelled.');
       }
-      html += `<button onclick="custodianSignOut()" class="text-[11px] font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 px-1 pt-2"><i class="ph-bold ph-sign-out"></i> Sign out</button>`;
+      html += `<button onclick="custodianSignOut()" class="min-h-10 text-xs font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 px-1 mt-1"><i class="ph-bold ph-sign-out"></i> Sign out</button>`;
       body.innerHTML = html;
       placeToast();
     }
@@ -7944,7 +7971,7 @@
             <button id="rcSignIn" onclick="custodianConnect(false)" class="h-11 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-extrabold">Sign in</button>
             <button id="rcCreate" onclick="custodianConnect(true)" class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-800 text-sm font-bold">Create account</button>
           </div>
-          <button onclick="custodianResetPassword()" class="text-[11px] font-bold text-slate-500 hover:text-slate-800">Forgot password?</button>
+          <button onclick="custodianResetPassword()" class="min-h-10 -my-2 px-1 text-xs font-bold text-slate-500 hover:text-slate-800">Forgot password?</button>
         </div>
 `;
     }
@@ -8226,7 +8253,7 @@
         const u = cloud.user;
         acct.innerHTML = u && !u.isAnonymous && u.email
           ? `<span class="flex items-center gap-1.5 text-slate-400">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} ${escapeHTML(u.email)}</span>`
-          : u ? `<button onclick="teacherLinkGoogle()" class="font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} Sign in with Google to keep your requests if you change phones</button>` : '';
+          : u ? `<button onclick="teacherLinkGoogle()" class="min-h-10 text-left font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} Sign in with Google to keep your requests if you change phones</button>` : '';
       }
       document.getElementById('headerSchoolName').textContent = reqRole.schoolName;
       const sync = document.getElementById('rqSync');
@@ -9776,13 +9803,13 @@
         const units = withItems.reduce((n, p) => n + p.equipment.length, 0);
         const value = withItems.reduce((n, p) => n + p.value, 0);
         head.innerHTML = `
-          <button onclick="switchMainView('${isCustodianDevice() ? 'REQUESTS' : 'HOME'}')" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-1"><i class="ph-bold ph-caret-left"></i> ${isCustodianDevice() ? 'Supply requests' : 'Home'}</button>
-          <div class="flex items-start justify-between gap-3">
+          <button onclick="switchMainView('${isCustodianDevice() ? 'REQUESTS' : 'HOME'}')" class="min-h-10 -ml-1 px-1 -mt-2 text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-caret-left"></i> ${isCustodianDevice() ? 'Supply requests' : 'Home'}</button>
+          <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
             <div class="min-w-0">
-              <h1 class="text-xl font-extrabold text-slate-900">Released to teachers</h1>
+              <h1 class="text-xl font-extrabold text-slate-900 whitespace-nowrap">Released to teachers</h1>
               <p class="text-xs text-slate-500">${people.length} ${people.length === 1 ? 'person' : 'people'} · ${plural(units, 'equipment unit')} · ₱${peso2(value)}</p>
             </div>
-            <div class="shrink-0 flex items-center gap-1.5 pt-1">
+            <div class="shrink-0 flex items-center gap-1.5 sm:pt-1 w-full sm:w-auto [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center [&>button]:h-10 sm:[&>button]:h-9">
               <button onclick="printAccountability()" ${withItems.length || people.some(p => p.ris.length) ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print all</button>
               ${isCustodianDevice() && cloud.user ? `<button onclick="openRelease()" class="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release</button>` : ''}
             </div>
@@ -11271,6 +11298,13 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-phone-layout', date: 'Nov 2026', title: 'Easier to use on a phone', points: [
+        'Pop-ups (item details, property numbers, school info, ICS scan…) now slide up from the bottom, within reach of your thumb.',
+        'My Items: each item shows its value and quantity on one line, with clear Property nos. · Release · Edit buttons below.',
+        'Catalog cards put the quantity buttons under the item name, and the All / Part I / Part II / Stock tabs fit on one line.',
+        'Reports shows the full peso amounts. Small links (Forgot password?, Sign out, Back, Leave…) are bigger and easier to tap.',
+        'Short messages no longer cover the logo, the Save button or the Send request button.'
+      ] },
       { id: '2026-11-coa-forms', date: 'Nov 2026', title: 'Government forms, transfers and a welcome tour', points: [
         'Equipment worth ₱50,000 or more is released on a PAR; the rest stays on an ICS. Take-backs print an RRSP.',
         'Transfer equipment to another teacher or room: an ITR (or PTR from ₱50,000) prints, the new holder confirms it, and each unit keeps its history.',
