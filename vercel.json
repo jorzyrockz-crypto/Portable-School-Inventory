@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "echo 'No install needed: built assets are committed (run npm run build locally)'",
+  "buildCommand": "rm -rf public && mkdir public && cp -R index.html sw.js manifest.webmanifest firebase-config.js assets public/",
+  "outputDirectory": "public"
+}
