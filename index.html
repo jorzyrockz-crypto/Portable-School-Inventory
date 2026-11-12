@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="c5d60bf44c2b">
+  <meta name="app-version" content="a920fd37e465">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -2657,6 +2657,7 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userState)); scheduleInventorySync();
       markUnsavedChanges();
       updateDockStats();
+      scheduleLowStockCheck();
       if (activeMainView === 'CATALOG') {
         renderPrintReport();
         renderHome();
@@ -7420,6 +7421,7 @@
       reqUnsubs = [];
       memberList = []; releaseList = []; releasesLoaded = false; teamError = '';
       myReleases = []; tReports = [];
+      myRelLoaded = false; tRepLoaded = false;
       stopInventorySync();
     }
 
@@ -7444,6 +7446,7 @@
         }, onErr));
         subscribeTeam(F);
         startInventorySync();
+        scheduleLowStockCheck(300);   // remember today's stock levels (primes low-stock notifications)
       } else {
         upsertMyMember();
         subscribeTeacherItems(F);
@@ -7735,6 +7738,7 @@
         updateDockStats();
         renderItems();
         renderDashboard();
+        scheduleLowStockCheck();
       } finally {
         invApplying = false;
       }
@@ -9089,21 +9093,26 @@
         teamError = cloudErrorText(err);
         if (releaseDraft) renderRelease();
       };
-      reqUnsubs.push(F.onSnapshot(memberCol(), snap => {
+      // (metadata changes too: the first answer from the server primes "joined" notifications)
+      reqUnsubs.push(F.onSnapshot(memberCol(), { includeMetadataChanges: true }, snap => {
         memberList = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
         teamError = '';
         onTeamChange();
+        notifFromMembers(snap.metadata);
       }, soft('members')));
       reqUnsubs.push(F.onSnapshot(relCol(), { includeMetadataChanges: true }, snap => {
         releaseList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
         releaseList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
         if (!(snap.metadata && snap.metadata.fromCache)) releasesLoaded = true;
         onTeamChange();
+        notifReminders();
       }, soft('releases')));
-      reqUnsubs.push(F.onSnapshot(tReportCol(), snap => {
+      reqUnsubs.push(F.onSnapshot(tReportCol(), { includeMetadataChanges: true }, snap => {
         tReports = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+        if (!(snap.metadata && snap.metadata.fromCache)) tRepLoaded = true;
         renderRequestsEverywhere();
         notifFromReports(snap.metadata);
+        notifReminders();
       }, soft('teacher reports')));
     }
 
@@ -9582,6 +9591,7 @@
     //       resolution, reply, createdMs }
     let myReleases = [];        // teacher phone: releases made out to me
     let tReports = [];          // teacher: my reports · custodian: every teacher's reports
+    let myRelLoaded = false, tRepLoaded = false;   // first answer from the server (reminders wait for it)
     let teacherTab = null;      // 'items' | 'requests'
     let tReportDraft = null;
 
@@ -9621,13 +9631,17 @@
       const soft = what => err => { console.warn(what, err); };
       reqUnsubs.push(F.onSnapshot(F.query(relCol(), F.where('teacherUid', '==', cloud.user.uid)), { includeMetadataChanges: true }, snap => {
         myReleases = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+        if (!(snap.metadata && snap.metadata.fromCache)) myRelLoaded = true;
         renderRequestsEverywhere();
         notifFromMyReleases(snap.metadata);
+        notifReminders();
       }, soft('my releases')));
       reqUnsubs.push(F.onSnapshot(F.query(tReportCol(), F.where('uid', '==', cloud.user.uid)), { includeMetadataChanges: true }, snap => {
         tReports = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
+        if (!(snap.metadata && snap.metadata.fromCache)) tRepLoaded = true;
         renderRequestsEverywhere();
         notifFromReports(snap.metadata);
+        notifReminders();
       }, soft('my reports')));
     }
 
@@ -11040,17 +11054,21 @@
     // already runs, compared with what this phone has already seen (kept in localStorage),
     // so nothing is announced twice and changes made while the app was closed appear on the
     // next open.
-    //   Custodian: new supply request · teacher confirmed receipt · problem report · return
+    //   Custodian: new supply request · teacher confirmed receipt · problem report · return ·
+    //              a teacher joined · an item fell to its low-stock alert or ran out ·
+    //              a release still not confirmed after 3 days
     //   Teacher:   request approved / declined / ready · items released to you ·
-    //              return accepted / not accepted · report answered
+    //              return accepted / not accepted · report answered ·
+    //              reminder to tap Received (2 and 7 days after a release)
     // =========================================================================
     const NOTIF_KEY = 'custodian_notifications_v1';
     const NOTIF_PREFS_KEY = 'custodian_notification_prefs_v1';
     const NOTIF_MAX = 60;
     let notifState = null;      // { scope, items: [], seen: {}, primed: {} }
     let notifPrefs = (() => {
-      try { return Object.assign({ system: true }, JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY) || '{}')); }
-      catch (e) { return { system: true }; }
+      const def = { system: true, lowStock: true, reminders: true };
+      try { return Object.assign(def, JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY) || '{}')); }
+      catch (e) { return def; }
     })();
     let notifBurst = [];
     let notifBurstTimer = null;
@@ -11183,6 +11201,110 @@
       }
     }
 
+    // ---- A teacher joined the school (custodian) ----
+    function notifFromMembers(meta) {
+      if (!isCustodianDevice() || !cloud.user) return;
+      notifCheck('members', memberList.filter(m => m.uid && m.uid !== cloud.user.uid).map(m => ({
+        key: 'mb:' + m.uid, sig: 'joined',
+        make: prev => prev !== undefined ? null : {
+          title: `${m.name || 'A teacher'} joined your school`,
+          body: [m.position, m.office].filter(Boolean).join(' · ') || 'They can now send supply requests and receive items',
+          icon: 'ph-user-plus', tone: 'brand', go: 'teachers', person: m.uid
+        }
+      })), fromCacheOf(meta));
+    }
+
+    // ---- Low stock (custodian): an item falls to its alert level or runs out ----
+    // Each stocked item's state (ok / low / out) is remembered on this phone; only a change
+    // for the worse is announced, a short moment after the last tap so − − − counts once.
+    // Items that were never in stock are not followed (the catalog has hundreds of them).
+    var lowStockTimer = null;   // var: saveState can run before this line during start-up
+    function scheduleLowStockCheck(ms = 1200) {
+      clearTimeout(lowStockTimer);
+      lowStockTimer = setTimeout(notifLowStock, ms);
+    }
+    const stockState = i => (i.qty <= 0 ? 'out' : i.qty <= i.minQty ? 'low' : 'ok');
+    function notifLowStock() {
+      if (!isCustodianDevice() || !notifScope()) return;
+      const st = loadNotifs();
+      const primed = !!st.primed.stock;
+      const hits = [];
+      let changed = false;
+      items.forEach(i => {
+        const key = 'ls:' + i.code;
+        const prev = st.seen[key];
+        if (prev === undefined && i.qty <= 0) return;
+        const now = stockState(i);
+        if (prev === now) return;
+        st.seen[key] = now;
+        changed = true;
+        if (primed && prev && (now === 'out' ? prev !== 'out' : now === 'low' && prev === 'ok')) hits.push({ i, now });
+      });
+      if (!primed) { st.primed.stock = true; changed = true; }
+      if (changed) saveNotifs();
+      if (!hits.length || notifPrefs.lowStock === false) return;
+      if (hits.length === 1) {
+        const { i, now } = hits[0];
+        addNotif({
+          title: `${now === 'out' ? 'Out of stock' : 'Low stock'}: ${i.name}`,
+          body: now === 'out' ? `None left · the alert is set at ${i.minQty} ${i.unit || ''}`.trim() : `${i.qty} ${i.unit || ''} left · the alert is set at ${i.minQty}`.replace(/\s+/g, ' '),
+          icon: 'ph-warning', tone: now === 'out' ? 'rose' : 'amber', go: 'low', code: i.code
+        });
+      } else {
+        const names = hits.map(h => h.i.name);
+        addNotif({
+          title: `${hits.length} items are low or out of stock`,
+          body: names.slice(0, 3).join(', ') + (names.length > 3 ? ` + ${names.length - 3} more` : ''),
+          icon: 'ph-warning', tone: 'amber', go: 'low'
+        });
+      }
+    }
+
+    // ---- Reminders to confirm received items ----
+    // Teacher: a release still without Received, 2 days and again 7 days after it was made.
+    // Custodian: once, 3 days after, so they know whom to follow up. Releases older than
+    // 30 days are left alone (no flood of old history the first time this runs).
+    const REMIND_TEACHER_DAYS = [2, 7];
+    const REMIND_CUSTODIAN_DAYS = 3;
+    const REMIND_MAX_DAYS = 30;
+    const needsReceipt = r => (isIssueKind(r.kind) || r.kind === 'RIS') && !r.sameHolder && !r.sending;
+    const relDocNo = r => `${r.kind} ${r.no || ''}`.trim();
+    function notifReminders(now = Date.now()) {
+      if (!notifScope() || notifPrefs.reminders === false) return;
+      const st = loadNotifs();
+      const age = r => (now - (r.createdMs || now)) / 864e5;
+      const daysAgo = r => plural(Math.floor(age(r)), 'day');
+      let due = [];
+      if (isTeacherDevice()) {
+        if (!myRelLoaded || !tRepLoaded) return;
+        due = myReleases.filter(r => needsReceipt(r) && !tAcked(r.id) && age(r) <= REMIND_MAX_DAYS)
+          .map(r => ({ r, stage: REMIND_TEACHER_DAYS.filter(d => age(r) >= d).length }))
+          .filter(x => x.stage > (st.seen['rm:' + x.r.id] || 0));
+        if (!due.length) return;
+        due.forEach(x => { st.seen['rm:' + x.r.id] = x.stage; });
+        saveNotifs();
+        const r = due[0].r;
+        addNotif(due.length === 1
+          ? { title: `Reminder: did you receive ${relDocNo(r)}?`, body: `${relNotifSummary(r)} · released ${daysAgo(r)} ago · tap Received when you have it`, icon: 'ph-clock-countdown', tone: 'amber', go: 'teacher-items' }
+          : { title: `Reminder: ${due.length} releases to confirm`, body: `${due.map(x => relDocNo(x.r)).join(', ')} · tap Received when you have them`, icon: 'ph-clock-countdown', tone: 'amber', go: 'teacher-items' });
+      } else if (isCustodianDevice()) {
+        if (!releasesLoaded || !tRepLoaded) return;
+        const acked = id => tReports.some(x => x.kind === 'received' && x.releaseId === id);
+        const members = new Set(memberList.map(m => m.uid));
+        due = releaseList.filter(r => needsReceipt(r) && r.teacherUid && members.has(r.teacherUid) && !acked(r.id)
+          && age(r) >= REMIND_CUSTODIAN_DAYS && age(r) <= REMIND_MAX_DAYS && !st.seen['rm:' + r.id]);
+        if (!due.length) return;
+        due.forEach(r => { st.seen['rm:' + r.id] = 1; });
+        saveNotifs();
+        const people = [...new Set(due.map(r => r.teacherUid))];
+        const r = due[0];
+        addNotif(due.length === 1
+          ? { title: `${r.teacherName || 'A teacher'} has not confirmed ${relDocNo(r)}`, body: `Released ${daysAgo(r)} ago · ${relNotifSummary(r)}`, icon: 'ph-clock-countdown', tone: 'amber', go: 'teachers', person: r.teacherUid }
+          : { title: `${due.length} releases not confirmed yet`, body: due.slice(0, 4).map(x => `${x.teacherName || 'A teacher'} (${relDocNo(x)})`).join(', ') + (due.length > 4 ? ` + ${due.length - 4} more` : ''),
+              icon: 'ph-clock-countdown', tone: 'amber', go: 'teachers', person: people.length === 1 ? people[0] : null });
+      }
+    }
+
     function addNotif(n) {
       const st = loadNotifs();
       const item = { id: 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), at: Date.now(), read: false, ...n };
@@ -11306,7 +11428,17 @@
       if (!body) return;
       const items = notifScope() ? loadNotifs().items : [];
       document.getElementById('notifReadAll').classList.toggle('hidden', !items.some(n => !n.read));
-      const empty = isTeacherDevice() ? 'Approvals and items released to you will show up here.' : 'New supply requests and teacher reports will show up here.';
+      const empty = isTeacherDevice() ? 'Approvals and items released to you will show up here.' : 'Supply requests, teacher reports, new teachers and low stock will show up here.';
+      const sw = (key, label, sub) => `
+        <div class="px-3 py-2.5 flex items-center gap-3">
+          <span class="flex-1 min-w-0"><span class="block text-xs font-bold text-slate-800">${label}</span><span class="block text-[11px] text-slate-600 leading-snug">${sub}</span></span>
+          <button role="switch" aria-checked="${notifPrefs[key] !== false}" aria-label="${label}" data-notif-pref="${key}" onclick="setNotifPref('${key}', ${notifPrefs[key] === false})"
+            class="notif-sw shrink-0 w-11 h-6 rounded-full p-0.5 transition ${notifPrefs[key] !== false ? 'bg-brand-600' : 'bg-slate-300'}"><span class="block w-5 h-5 rounded-full bg-white shadow transition ${notifPrefs[key] !== false ? 'translate-x-5' : ''}"></span></button>
+        </div>`;
+      const prefs = isTeacherDevice()
+        ? sw('reminders', 'Reminders to tap Received', '2 and 7 days after items are released to you')
+        : sw('lowStock', 'Low stock', 'When an item falls to its alert level or runs out')
+          + sw('reminders', 'Unconfirmed releases', 'When a teacher has not tapped Received after 3 days');
       body.innerHTML = `
         ${notifPermissionCard()}
         ${items.length ? `<div class="divide-y divide-slate-100 rounded-2xl border border-slate-200 overflow-hidden bg-white">${items.map(n => `
@@ -11320,7 +11452,17 @@
             ${n.read ? '' : '<span class="w-2.5 h-2.5 rounded-full bg-brand-600 mt-1.5 shrink-0" aria-label="Unread"></span>'}
           </button>`).join('')}</div>`
           : `<div class="text-center py-10 text-slate-500"><i class="ph-duotone ph-bell text-4xl block mb-2"></i>
-              <p class="text-sm font-semibold text-slate-500">No notifications yet</p><p class="text-xs mt-1 px-6">${empty}</p></div>`}`;
+              <p class="text-sm font-semibold text-slate-500">No notifications yet</p><p class="text-xs mt-1 px-6">${empty}</p></div>`}
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 px-1">Also tell me about</p>
+          <div id="notifPrefs" class="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">${prefs}</div>
+        </div>`;
+    }
+    function setNotifPref(key, on) {
+      notifPrefs[key] = !!on;
+      localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(notifPrefs));
+      renderNotifPanel();
+      if (on && key === 'reminders') notifReminders();
     }
 
     function openNotif(id) {
@@ -11344,6 +11486,10 @@
         window.scrollTo({ top: 0 });
       } else if (n.go === 'teachers') {
         openTeachersView(n.person || null);
+      } else if (n.go === 'low') {
+        switchMainView('ITEMS');
+        setLedgerFilter('LOW');
+        window.scrollTo({ top: 0 });
       } else if (n.go === 'update') {
         if (appUpdate.ready) applyUpdate(); else openAbout();
       }
@@ -11366,7 +11512,8 @@
           if (e.data.nid) openNotif(e.data.nid); else openNotifPanel();
         });
       }
-      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') renderNotifBell(); });
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { renderNotifBell(); notifReminders(); } });
+      setInterval(() => notifReminders(), 30 * 60 * 1000);   // days pass while the app stays open
     }
 
     // ---- Install as an app (Chrome's "beforeinstallprompt") -------------------------------

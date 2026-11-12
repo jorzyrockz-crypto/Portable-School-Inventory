@@ -422,11 +422,14 @@ A bell in the header (next to **More**) shows what happened and how many you hav
 
 | Who | Is told when |
 | --- | --- |
-| Property custodian | a teacher sends a supply request · confirms receipt of released items · reports a problem · wants to return an item |
-| Teacher | a request is approved, declined (with the reason) or ready to pick up · items are released to them (RIS/ICS) · a return is accepted or not · a report is answered |
+| Property custodian | a teacher sends a supply request · confirms receipt of released items · reports a problem · wants to return an item · **joins the school** · an item falls to its **low-stock alert** or **runs out** · a release is **still not confirmed after 3 days** |
+| Teacher | a request is approved, declined (with the reason) or ready to pick up · items are released to them (RIS/ICS) · a return is accepted or not · a report is answered · **reminder to tap Received** 2 days and again 7 days after a release |
 
 - **Nothing for your own actions.** A custodian typing in a walk-in request, or a teacher sending a report, gets no notification for it.
 - **No repeats.** Each phone remembers what it has already shown, so reloading the app doesn't repeat anything. Changes made while the app was closed appear the next time it opens.
+- **Low stock** follows each item that is in stock. It is announced once when the item reaches its *Min alert qty* (set in the item sheet) and again if it runs out; restocking resets it. Tapping it opens Inventory with the *Low stock* filter. Items stocked for the first time below their alert are not announced.
+- **Reminders** are worked out on the phone when the app opens (and every 30 minutes while open). Releases older than 30 days are left alone.
+- **Also tell me about** at the bottom of the bell sheet turns *Low stock* and the reminders off or on (both on by default).
 - **On the phone.** In the bell sheet, tap **Turn on** under *Get these on your phone too* (the app never asks by itself). Notifications then appear even when you're in another app, **as long as CustodianPro is open or was used recently**. Android may stop a background app after a while; there is no push server, so a phone where the app is fully closed won't get notified.
 
 ## App updates

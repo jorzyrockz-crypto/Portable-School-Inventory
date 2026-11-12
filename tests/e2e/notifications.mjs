@@ -1,7 +1,8 @@
 // Notifications: the bell (unread count + list), toasts, the app-icon badge, phone notifications
 // while the app is in the background, tapping one, nothing for your own actions, no repeats
 // after a reload, catching up on what happened while the app was closed, and the install bar
-// and home-screen shortcuts that ship in the same change.
+// and home-screen shortcuts that ship in the same change. Also: a teacher joined, low stock /
+// out of stock, reminders to tap Received, and the switches for those in the sheet.
 import fs from 'node:fs';
 import { createBackend } from './lib/fake-backend.mjs';
 import { BASE_URL, out, check, sleep, ev, until, openPhone, closeAll, summary } from './lib/harness.mjs';
@@ -87,6 +88,14 @@ try {
   const ana = await joinAsTeacher(t, sid, 'Ana Reyes', 'Teacher III', 'Grade 7 – Science');
   await until(t, () => !!notifScope() && loadNotifs().primed.requests, 'teacher primed', 8000);
   check((await bell(t)).shown && (await notifs(t)).length === 0, 'teacher: bell shown, no old history announced');
+  await waitNotif(a, /Ana Reyes joined your school/, 'joined');
+  const joined = (await notifs(a)).find(n => /joined/.test(n.title));
+  check(joined && joined.body === 'Teacher III · Grade 7 – Science' && joined.go === 'teachers', `custodian: “${joined && joined.title}” · ${joined && joined.body}`);
+  await ev(a, id => openNotif(id), joined.id);
+  await sleep(300);
+  check(await ev(a, uid => activeMainView === 'TEACHERS' && teachersSel === uid, ana), 'tap → Teachers, Ana’s page');
+  // (taken off the list so the counts below stay about requests)
+  await ev(a, () => { loadNotifs().items = loadNotifs().items.filter(n => !/joined/.test(n.title)); saveNotifs(); renderNotifBell(); switchMainView('HOME'); });
 
   out('2 teacher sends a request → custodian is told');
   await teacherRequest(t, 'Bond paper, A4');
@@ -270,6 +279,101 @@ try {
   await ev(a, () => { const e = new Event('beforeinstallprompt'); e.prompt = async () => {}; e.userChoice = Promise.resolve({ outcome: 'dismissed' }); window.dispatchEvent(e); });
   await ev(a, () => dismissInstall());
   check(await ev(a, () => document.getElementById('installBar').classList.contains('hidden')), '“Not now” hides it (for two weeks)');
+
+  out('15 low stock and out of stock (custodian)');
+  await ev(a, () => { switchMainView('HOME'); window.__hidden = false; });
+  await until(a, () => loadNotifs().primed.stock, 'stock primed', 5000);
+  const L = await ev(a, () => { const i = items.find(i => i.type !== 'EQUIPMENT' && i.qty > i.minQty + 2 && i.minQty > 0); return { code: i.code, name: i.name, qty: i.qty, min: i.minQty }; });
+  let n15 = (await notifs(a)).length;
+  await ev(a, c => adjustQty(c, -1), L.code);
+  await sleep(1600);
+  check((await notifs(a)).length === n15, `still above the alert (${L.qty - 1} > ${L.min}): nothing`);
+  // tapping − several times to the alert level and below → one notification
+  await ev(a, (c, n) => { for (let k = 0; k < n; k++) adjustQty(c, -1); }, L.code, L.qty - 1 - L.min + 1);
+  await waitNotif(a, new RegExp('Low stock: ' + L.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'low stock', 5000);
+  list = await notifs(a);
+  const low = list.find(n => /^Low stock:/.test(n.title));
+  check(list.length === n15 + 1 && /left · the alert is set at/.test(low.body), `one notification: “${low.title}” · ${low.body}`);
+  await ev(a, c => adjustQty(c, -1), L.code);
+  await sleep(1600);
+  check((await notifs(a)).length === n15 + 1, 'lower but still not out: no repeat');
+  await ev(a, c => setExactQty(c, 0), L.code);
+  await waitNotif(a, /Out of stock:/, 'out of stock', 5000);
+  check((await notifs(a)).filter(n => /^Out of stock:/.test(n.title)).length === 1, 'running out → “Out of stock”');
+  await ev(a, id => openNotif(id), (await notifs(a)).find(n => /^Low stock:/.test(n.title)).id);
+  await sleep(300);
+  check(await ev(a, () => activeMainView === 'ITEMS' && ledgerFilter === 'LOW'), 'tap → Inventory, Low stock filter');
+  // restocked, then down again → told again; a brand-new item stocked low is not announced
+  await ev(a, (c, q) => setExactQty(c, q), L.code, L.qty);
+  await sleep(1600);
+  n15 = (await notifs(a)).length;
+  const fresh = await ev(a, () => { const i = items.find(i => i.qty === 0 && i.minQty > 1 && i.type !== 'EQUIPMENT'); setExactQty(i.code, 1); return i.code; });
+  await sleep(1600);
+  check((await notifs(a)).length === n15, 'an item first stocked below its alert: no notification');
+  await ev(a, () => { notifPrefs.lowStock = false; });
+  await ev(a, (c, m) => setExactQty(c, m), L.code, L.min);
+  await sleep(1600);
+  check((await notifs(a)).length === n15, 'switched off: no low-stock notification');
+  await ev(a, () => { notifPrefs.lowStock = true; });
+  await ev(a, c => setExactQty(c, 0), fresh);
+  await sleep(1600);
+
+  out('16 reminders to confirm received items');
+  const t2 = await openPhone('teacher-ben', backend);
+  await instrument(t2);
+  const ben = await joinAsTeacher(t2, sid, 'Ben Cruz', 'Teacher I', 'Grade 4');
+  await until(t2, () => !!notifScope() && loadNotifs().primed.releases, 'ben primed', 8000);
+  await waitNotif(a, /Ben Cruz joined your school/, 'ben joined');
+  const S = await ev(a, () => items.find(i => i.type !== 'EQUIPMENT' && i.qty > 5).code);
+  await release(a, ben, [{ code: S, qty: 1 }]);
+  await waitNotif(t2, /New items released to you/, 'ben release');
+  await until(t2, () => myRelLoaded && tRepLoaded && myReleases.length === 1, 'ben loaded', 8000);
+  await until(a, () => releasesLoaded && tRepLoaded && releaseList.some(r => r.teacherName === 'Ben Cruz'), 'custodian loaded', 8000);
+  const day = 864e5;
+  const tn = async (p, ms) => { await ev(p, ms => notifReminders(Date.now() + ms), ms); await sleep(400); return notifs(p); };
+  let bl = await tn(t2, 1.5 * day);
+  check(!bl.some(n => /Reminder/.test(n.title)), 'teacher: nothing before 2 days');
+  bl = await tn(t2, 2.1 * day);
+  const rem = bl.find(n => /^Reminder: did you receive RIS/.test(n.title));
+  check(!!rem && /released 2 days ago · tap Received/.test(rem.body), `teacher after 2 days: “${rem && rem.title}” · ${rem && rem.body}`);
+  bl = await tn(t2, 3 * day);
+  check(bl.filter(n => /Reminder/.test(n.title)).length === 1, 'no repeat the next day');
+  bl = await tn(t2, 7.2 * day);
+  check(bl.filter(n => /Reminder/.test(n.title)).length === 2, 'reminded once more after 7 days');
+  await ev(t2, id => openNotif(id), rem.id);
+  await sleep(300);
+  check(await ev(t2, () => activeMainView === 'REQUESTER' && teacherTab === 'items'), 'tap → My items (Received button)');
+  let al = await tn(a, 2 * day);
+  check(!al.some(n => /not confirmed/.test(n.title)), 'custodian: nothing before 3 days');
+  al = await tn(a, 3.2 * day);
+  const cr = al.find(n => /Ben Cruz has not confirmed RIS/.test(n.title));
+  check(!!cr && /Released 3 days ago/.test(cr.body) && cr.go === 'teachers', `custodian after 3 days: “${cr && cr.title}” · ${cr && cr.body}`);
+  check(!al.some(n => /Ana Reyes has not confirmed/.test(n.title)), 'Ana already tapped Received: no reminder about her');
+  al = await tn(a, 9 * day);
+  check(al.filter(n => /not confirmed/.test(n.title)).length === 1, 'custodian reminded only once');
+  // Received tapped → no more reminders; very old releases are left alone
+  await ev(t2, () => ackRelease(myReleases[0].id));
+  await until(t2, () => tReports.some(x => x.kind === 'received'), 'acked', 8000);
+  await ev(t2, () => { delete loadNotifs().seen['rm:' + myReleases[0].id]; });
+  bl = await tn(t2, 8 * day);
+  check(bl.filter(n => /Reminder/.test(n.title)).length === 2, 'after Received: no more reminders');
+  await ev(a, () => { releaseList.forEach(r => { delete loadNotifs().seen['rm:' + r.id]; }); });
+  al = await tn(a, 40 * day);
+  check(al.filter(n => /not confirmed/.test(n.title)).length === 1, 'releases older than 30 days: no reminder');
+  // the switches in the sheet
+  await ev(a, () => openNotifPanel());
+  const sws = await ev(a, () => [...document.querySelectorAll('[data-notif-pref]')].map(b => b.getAttribute('aria-label') + ':' + b.getAttribute('aria-checked')));
+  check(sws.join() === 'Low stock:true,Unconfirmed releases:true', `custodian sheet: ${sws.join(', ')}`);
+  await a.click('[data-notif-pref="lowStock"]');
+  check(await ev(a, () => notifPrefs.lowStock === false && JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY)).lowStock === false && document.querySelector('[data-notif-pref="lowStock"]').getAttribute('aria-checked') === 'false'), 'Low stock switch turns off (and is saved)');
+  await a.click('[data-notif-pref="lowStock"]');
+  await a.screenshot({ path: '/tmp/e2e_n_prefs.png' });
+  await ev(a, () => closeNotifPanel());
+  await ev(t2, () => openNotifPanel());
+  check((await ev(t2, () => [...document.querySelectorAll('[data-notif-pref]')].map(b => b.getAttribute('aria-label')))).join() === 'Reminders to tap Received', 'teacher sheet: reminders switch only');
+  await ev(t2, () => { closeNotifPanel(); setNotifPref('reminders', false); delete loadNotifs().seen['rm:' + myReleases[0].id]; myReleases[0].id += '-x'; });
+  bl = await tn(t2, 3 * day);
+  check(bl.filter(n => /Reminder/.test(n.title)).length === 2, 'teacher reminders switched off: none');
 
   out('14 manifest and service worker');
   const m = JSON.parse(fs.readFileSync(new URL('../../manifest.webmanifest', import.meta.url)));
