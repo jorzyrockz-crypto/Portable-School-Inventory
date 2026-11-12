@@ -226,3 +226,15 @@ npm run serve   # http://localhost:8080
 | `manifest.webmanifest` | PWA metadata (name, icons, colours) |
 
 Generated files (`assets/`, `sw.js`) are committed so GitHub Pages can serve them directly.
+
+### End-to-end tests
+
+`tests/e2e/` runs the app on simulated phones in headless Chromium, with Firebase replaced by an in-memory stand-in that applies the same access rules as `firestore.rules` (`lib/fake-backend.mjs`):
+
+```bash
+npm run serve &                       # app on http://localhost:8080
+cd tests/e2e && npm install
+node inventory-sync.mjs               # or: npm test (all suites)
+```
+
+Set `CHROME_PATH=/path/to/chrome` to use an installed Chrome instead of `@sparticuz/chromium`. `BASE_URL` changes the address.

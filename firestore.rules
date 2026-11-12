@@ -6,6 +6,9 @@ rules_version = '2';
 //   schools/{schoolId}                        a school; custodians[] may manage it
 //   schools/{schoolId}/requests/{id}          supply requests from teachers
 //   schools/{schoolId}/purchaseRequests/{id}  Purchase Requests (Appendix 60)
+//   schools/{schoolId}/inventory/{code}       My Items (school inventory), custodian only
+//   schools/{schoolId}/catalog/{code}         custom catalog items, custodian only
+//   schools/{schoolId}/settings/info          school & custodian info, custodian only
 //
 // Teachers join from the invite link (anonymously, or with Google to keep their requests
 // across phones): they can send requests and see or cancel only their own. The property
@@ -67,6 +70,22 @@ service cloud.firestore {
       }
 
       match /purchaseRequests/{prId} {
+        allow read, create, update: if isCustodian(schoolId);
+        allow delete: if false;
+      }
+
+      // School inventory (My Items), custom catalog items and school info: the custodian's
+      // devices only. Teachers never read the inventory. Removed items are marked
+      // { deleted: true } instead of being deleted.
+      match /inventory/{code} {
+        allow read, create, update: if isCustodian(schoolId);
+        allow delete: if false;
+      }
+      match /catalog/{code} {
+        allow read, create, update: if isCustodian(schoolId);
+        allow delete: if false;
+      }
+      match /settings/{docId} {
         allow read, create, update: if isCustodian(schoolId);
         allow delete: if false;
       }
