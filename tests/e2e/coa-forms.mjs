@@ -3,6 +3,7 @@
 // and rooms (ITR / PTR) with each unit's history, RRSP for take-backs, the physical count
 // report (RPCPPE / RPCSP) and unserviceable property (IIRUP / IIRUSP), the slips list, the
 // dark-mode switches and art, and the update check while the app is closed (sw.js).
+// Also: Stock Card, Property Card / SPC, RegSPI, RSPI / RSMI, RLSDDP / RLSDDSP and the reorder list.
 import fs from 'fs';
 import vm from 'vm';
 import path from 'path';
@@ -271,6 +272,131 @@ try {
   await a.click('[data-slip-kind="PAR"]');
   const onlyPar = await ev(a, () => document.getElementById('coaSlips').innerText);
   check(onlyPar.includes(`PAR ${ym}-001`) && !onlyPar.includes('ITR'), 'filter by form');
+
+  out('10b more forms: stock / property cards, RegSPI, RSPI / RSMI, RLSDDSP, reorder list');
+  await ev(a, () => closeCoa());
+  // a supply: 3 more received (history), then an RIS of 2 to Ana
+  const C = await ev(a, () => items.find(i => i.type !== 'EQUIPMENT' && i.qty >= 6 && i.price > 0).code);
+  await ev(a, c => adjustQty(c, 3), C);
+  await sleep(300);
+  await ev(a, (uid, c) => openRelease({ teacherUid: uid, purpose: 'Classroom', lines: [{ code: c, qty: 2 }] }), anaUid, C);
+  await until(a, () => !document.getElementById('releaseModal').classList.contains('hidden'), 'RIS sheet');
+  await a.click('#relSaveBtn');
+  await until(a, () => !!releaseDone, 'RIS released');
+  await ev(a, () => closeRelease());
+  await until(a, () => releaseList.some(r => r.kind === 'RIS' && !r.sending), 'RIS saved', 8000);
+  const ris = await ev(a, c => { const e = changeHistory.filter(x => x.q && x.q[c] !== undefined).pop(); return { q: e && e.q[c], k: e && e.k, qty: items.find(i => i.code === c).qty, no: releaseList.find(r => r.kind === 'RIS').no }; }, C);
+  check(ris.q === -2 && ris.k === 'release', `history keeps how much each item changed in a bulk save (RIS: ${ris.q})`);
+  await ev(a, () => openCoa());
+  await until(a, () => !!document.getElementById('coaGoStock'), 'hub');
+  const hub = await ev(a, () => document.getElementById('coaBody').innerText);
+  check(['PC · SPC', 'RegSPI', 'Stock Card', 'RSPI · RSMI', 'RLSDDP · RLSDDSP', 'List · PR'].every(x => hub.toUpperCase().includes(x.toUpperCase())), 'hub lists the new forms in sections');
+  await a.screenshot({ path: `${SHOTS}/forms-hub-more.png` });
+  // a printed card: rows (not blank) → [date, ref, …, balance, …]
+  const cardRows = (code, balIdx) => ev(a, (code, i) => [...document.querySelectorAll(`#printPrSection .pr-form[data-card="${code}"] tr`)]
+    .filter(tr => !tr.classList.contains('pr-blank') && tr.querySelector('td') && /^\d/.test((tr.cells[i] || {}).innerText || '') && !tr.querySelector('th'))
+    .map(tr => [...tr.cells].map(td => td.innerText.trim())), code, balIdx);
+
+  await ev(a, () => coaGo('stock'));
+  await until(a, () => !!document.getElementById('coaItems'), 'stock page');
+  await a.click(`[data-print-card="${C}"]`);
+  await sleep(200);
+  let txt = await printed(a);
+  let rows = await cardRows(C, 5);
+  check(/Appendix 58/.test(txt) && /STOCK CARD/.test(txt) && /Re-order Point/.test(txt), 'Stock Card printed (Appendix 58)');
+  const risRow = rows.find(r => r[1] === `RIS ${ris.no}`);
+  check(!!risRow && risRow[3] === '2' && /Ana Reyes/.test(risRow[4]), `RIS row: issued 2 to Ana (${risRow && risRow.join(' | ')})`);
+  check(rows.some(r => r[1] === 'Added to stock' && r[2] === '3'), 'received 3 (from the history)');
+  check(rows.filter(r => /^RIS/.test(r[1])).length === 1, 'the RIS is not counted twice');
+  check(rows[rows.length - 1][5] === String(ris.qty), `last balance = on hand (${rows[rows.length - 1][5]} / ${ris.qty})`);
+  await printShot(a, 'stock-card-print.png');
+
+  await ev(a, () => { coaGo('cards'); coaSetOpt('cardType', 'ppe'); });
+  await until(a, () => /PC/.test(document.getElementById('coaPrint').innerText), 'PC page');
+  await a.click(`[data-print-card="${pick.ppe.code}"]`);
+  await sleep(200);
+  txt = await printed(a);
+  rows = await cardRows(pick.ppe.code, 5);
+  const ppeQty = await ev(a, c => items.find(i => i.code === c).qty, pick.ppe.code);
+  check(/Appendix 69/.test(txt) && /PROPERTY CARD/.test(txt) && txt.includes(issued.ppe.no), 'Property Card printed with the property numbers');
+  check(rows.some(r => r[1] === `PAR ${ym}-001` && /Ana Reyes/.test(r[4])) && rows.some(r => r[1] === `PTR ${ym}-001` && /Ben Torres/.test(r[4])), 'PAR to Ana and PTR to Ben');
+  check(rows[rows.length - 1][5] === String(ppeQty) && rows[rows.length - 1][6] === (ppeQty * 65000).toLocaleString('en-PH', { minimumFractionDigits: 2 }), `balance ${ppeQty}, amount ₱${(ppeQty * 65000).toLocaleString()}`);
+  await printShot(a, 'property-card-print.png');
+  await ev(a, () => coaSetOpt('cardType', 'sep'));
+  await a.click(`[data-print-card="${pick.se.code}"]`);
+  await sleep(200);
+  txt = await printed(a);
+  rows = await cardRows(pick.se.code, 6);
+  check(/Annex A\.1/.test(txt) && /SEMI-EXPENDABLE PROPERTY CARD/.test(txt), 'SPC printed (Annex A.1)');
+  check(rows.some(r => r[1] === `ICS ${ym}-001`) && rows.some(r => r[1] === `ITR ${ym}-001` || r[1] === `ITR ${ym}-002`) && rows.some(r => r[1] === `RRSP ${ym}-001` && /Taken back/.test(r[8])), 'ICS, ITR and RRSP on the SPC');
+  await a.click('#coaPrint');
+  await sleep(200);
+  const allCards = await ev(a, () => ({ n: document.querySelectorAll('#printPrSection .pr-pages > .pr-form').length, want: cardItems(false).length }));
+  check(allCards.n === allCards.want && allCards.n >= 1, `Print all: one page per item (${allCards.n})`);
+
+  await ev(a, () => coaGo('regspi'));
+  await until(a, () => !!document.getElementById('coaRegStats'), 'RegSPI page');
+  const reg = await ev(a, () => document.getElementById('coaRegStats').innerText.replace(/\s+/g, ' '));
+  check(/^[1-9]\d* Issued [1-9]\d* Returned [1-9]\d* Re-issued/i.test(reg), `RegSPI counts: ${reg}`);
+  await a.click('#coaPrint');
+  await sleep(200);
+  txt = await printed(a);
+  check(/Annex A\.4/.test(txt) && /REGISTRY OF SEMI-EXPENDABLE PROPERTY ISSUED/.test(txt) && txt.includes(`ICS ${ym}-001`) && txt.includes(`RRSP ${ym}-001`) && (await ev(a, () => !!document.querySelector('#printPrSection .pr-wide'))), 'RegSPI printed (landscape) with ICS and RRSP');
+  await printShot(a, 'regspi-print.png');
+
+  await ev(a, () => coaGo('issued'));
+  await until(a, () => !!document.getElementById('coaIssuedStats'), 'issued page');
+  await a.click('#coaPrint');
+  await sleep(200);
+  txt = await printed(a);
+  check(/Annex A\.7/.test(txt) && /REPORT OF SEMI-EXPENDABLE PROPERTY ISSUED/.test(txt) && txt.includes(issued.se.no) && !txt.includes(issued.ppe.no), 'RSPI: the ICS unit, not the PAR one');
+  await ev(a, () => coaSetOpt('issuedType', 'sup'));
+  await a.click('#coaPrint');
+  await sleep(200);
+  txt = await printed(a);
+  check(/Appendix 64/.test(txt) && /REPORT OF SUPPLIES AND MATERIALS ISSUED/.test(txt) && txt.includes(ris.no) && /Recapitulation/.test(txt) && /UACS Object Code/.test(txt), 'RSMI: the RIS with the recapitulation');
+  await printShot(a, 'rsmi-print.png');
+
+  // Ben reports the PPE unit he holds as lost → preselected on the RLSDDP
+  await ev(a, () => closeCoa());
+  const lostUnit = await ev(a, (p, uid) => getUnits(p).find(u => u.toUid === uid), pick.ppe.code, benUid);
+  await until(t2, () => myReleases.some(r => r.kind === 'PTR'), 'Ben has the PTR', 8000);
+  await ev(t2, id => { const r = myReleases.find(x => x.kind === 'PTR'); openTeacherReport('problem', r.id, id); tReportDraft.reason = 'lost'; document.getElementById('trNote').value = 'Missing after the fire drill'; sendTeacherReport(); }, lostUnit.id);
+  await until(a, id => tReports.some(x => x.reason === 'lost' && x.units.some(u => u.id === id)), 'lost report', 8000, lostUnit.id);
+  await ev(a, () => { openCoa(); coaGo('lost'); coaSetOpt('lostType', 'ppe'); });
+  await until(a, () => !!document.getElementById('coaLostUnits'), 'lost page');
+  const lost = await ev(a, id => ({ ticked: !!document.querySelector(`[data-lost-unit="${id}"]`).checked, chip: /Reported lost/.test(document.getElementById('coaLostUnits').innerText),
+    officer: document.querySelector('[data-coa="lostOfficer"]').value, desig: document.querySelector('[data-coa="lostDesig"]').value }), lostUnit.id);
+  check(lost.ticked && lost.chip && lost.officer === 'Ben Torres' && lost.desig === 'Teacher I', `unit reported lost is ticked; officer ${lost.officer}, ${lost.desig}`);
+  await a.click('[data-nature="lost"]');
+  await ev(a, () => { document.querySelector('[data-coa="lostCirc"]').value = 'Last seen in Room 12 on 3 November.'; document.querySelector('[data-coa="lostPolice"]').value = 'no'; });
+  await sleep(100);
+  await a.screenshot({ path: `${SHOTS}/lost-sheet.png` });
+  await a.click('#coaPrint');
+  await sleep(200);
+  txt = await printed(a);
+  check(/Appendix 75/.test(txt) && /REPORT OF LOST, STOLEN, DAMAGED OR DESTROYED PROPERTY/.test(txt) && txt.includes(lostUnit.no) && /Last seen in Room 12/.test(txt) && /BEN TORRES/.test(txt) && txt.includes(`PTR ${ym}-001`), 'RLSDDP printed: unit, circumstances, officer, PTR no.');
+  check(await ev(a, () => document.querySelectorAll('#printPrSection svg').length) >= 2, 'ticked boxes (Lost, police: No)');
+  await printShot(a, 'rlsddp-print.png');
+  await ev(a, () => coaSetOpt('lostType', 'sep'));
+  check(/RLSDDSP/.test(await ev(a, () => document.getElementById('coaPrint').innerText)), 'RLSDDSP for semi-expendable property');
+
+  // Reorder list → Purchase Request
+  const low = await ev(a, c => { const i = items.find(x => x.type !== 'EQUIPMENT' && x.qty > 0 && x.minQty >= 3 && x.code !== c); setExactQty(i.code, i.minQty - 1); return { code: i.code, name: i.name, order: 2 * i.minQty - (i.minQty - 1) }; }, C);
+  await ev(a, () => coaGo('reorder'));
+  await until(a, () => !!document.getElementById('coaReorder'), 'reorder page');
+  const ro = await ev(a, () => document.getElementById('coaReorder').innerText);
+  check(ro.includes(low.name) && ro.includes(`Order ${low.order}`), `reorder list: ${low.name} · order ${low.order}`);
+  check(await ev(a, () => reorderRows().every(x => x.item.type !== 'EQUIPMENT' && x.item.qty <= x.item.minQty) && reorderRows().length < 60), 'only supplies at or below the re-order point (not the whole catalog)');
+  await a.click('#coaPrint');
+  await sleep(200);
+  txt = await printed(a);
+  check(/SUPPLIES FOR REORDER/.test(txt) && txt.includes(low.name) && /ESTIMATED TOTAL/.test(txt), 'reorder list printed');
+  await a.click('#coaReorderPr');
+  await until(a, () => !document.getElementById('prModal').classList.contains('hidden'), 'PR sheet', 4000);
+  const pr = await ev(a, c => ({ line: prDraft.lines.find(l => l.code === c), purpose: document.getElementById('prPurpose').value, coaClosed: document.getElementById('coaModal').classList.contains('hidden') }), low.code);
+  check(pr.line && pr.line.qty === low.order && /Replenishment/.test(pr.purpose) && pr.coaClosed, `Purchase Request drafted from the list (${pr.line && pr.line.qty} ${pr.line && pr.line.unit})`);
+  await ev(a, () => closePr());
 
   out('11 dark mode: switches stand out, night art');
   await ev(a, () => { closeCoa(); setTheme('dark'); switchMainView('HOME'); });

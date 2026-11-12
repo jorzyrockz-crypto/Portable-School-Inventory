@@ -44,9 +44,9 @@ small rule or setting; **P3** = later or needs a server.
 
 | # | When | Message (example) | Channel | Data already there | Priority |
 | --- | --- | --- | --- | --- | --- |
-| C1 | An item falls to its **Min alert qty** after a release, RIS or count | *Low stock · Bond paper, A4 · 4 ream left (min 10)* · **Add to a request** | Bell (once per item until restocked) | `items[].qty`, `minQty`; Reports already counts low stock | P1 |
-| C2 | A **teacher joins** with the invite link or school code | *Ana Reyes joined · Teacher III · Grade 7* | Bell | `memberCol()` listener (`teacherRoster()`) | P1 |
-| C3 | A **release is still unconfirmed** after 3 days | *3 releases not confirmed yet · oldest ICS 2026-11-0004 to Juan* | Bell (daily digest, at most 1 a day) | `releaseList`, `tReports` (`received`) | P1 |
+| C1 | An item falls to its **Min alert qty** after a release, RIS or count | *Low stock · Bond paper, A4 · 4 ream left (min 10)* · **Add to a request** | Bell (once per item until restocked) | `items[].qty`, `minQty`; Reports already counts low stock | **Built** |
+| C2 | A **teacher joins** with the invite link or school code | *Ana Reyes joined · Teacher III · Grade 7* | Bell | `memberCol()` listener (`teacherRoster()`) | **Built** |
+| C3 | A **release is still unconfirmed** after 3 days | *3 releases not confirmed yet · oldest ICS 2026-11-0004 to Juan* | Bell (daily digest, at most 1 a day) | `releaseList`, `tReports` (`received`) | **Built** |
 | C4 | A **request waits** more than 2 school days | *2 requests waiting for your review* | Bell digest + app badge | `reqList` status + date | P2 |
 | C5 | **Year-end physical count** season (from 1 Dec) and the **RPCPPE/RPCSP** deadline (31 Jan) | *Physical count: 82 of 138 units verified · report due 31 Jan* | Bell, weekly in December/January | Count progress (`verified` per unit), Government forms | P2 |
 | C6 | Units marked **Needs repair** for more than 30 days | *2 units need repair for over a month · consider IIRUP* | Bell, monthly | Unit `condition` + history dates | P2 |
@@ -58,7 +58,7 @@ small rule or setting; **P3** = later or needs a server.
 
 | # | When | Message (example) | Channel | Data already there | Priority |
 | --- | --- | --- | --- | --- | --- |
-| T1 | Items released to you are **not marked Received** after 2 days | *Please confirm you received ICS 2026-11-0004 (2 projectors)* | Bell reminder (once) + phone notification if on | `myReleases`, own `received` reports | P1 |
+| T1 | Items released to you are **not marked Received** after 2 days | *Please confirm you received ICS 2026-11-0004 (2 projectors)* | Bell reminder (once) + phone notification if on | `myReleases`, own `received` reports | **Built** |
 | T2 | The custodian **starts the year-end count** | *Year-end count: check the 4 items you hold and report problems* | Bell | Count season (C5) + `myReleases` | P2 |
 | T3 | A request is **partly supplied** (fewer than asked) | *Supplied 3 of 5 boxes of chalk* | Bell | Request lines and supplied quantities | P2 |
 | T4 | The custodian **asks you to return** an item (needs a new "Ask to return" action) | *Please return Laptop 10ES-2026-0007 by Friday* | Bell + phone notification | New report kind `ask-return` | P3 |
@@ -94,7 +94,7 @@ Cost for one school is within the free FCM allowance; the Cloud Functions need t
 
 ## 6. Suggested order
 
-1. **P1:** C1 low stock, C2 teacher joined, C3/T1 confirm-receipt reminders, C7 sync problem. These only add `notifCheck` sources next to the existing ones, plus a daily digest helper.
+1. **P1:** C1 low stock, C2 teacher joined, C3/T1 confirm-receipt reminders (**built, Nov 2026**: T1 reminds at 2 and 7 days, C3 once at 3 days; releases older than 30 days are skipped; switches *Low stock* and *Reminders* in the bell sheet), C7 sync problem. These only add `notifCheck` sources next to the existing ones, plus a daily digest helper.
 2. **P2:** C4–C6, T2, T3 and the settings in §4.
 3. **P3:** C8, C9, T4 and FCM push (§5), if the school moves to the Blaze plan.
 
