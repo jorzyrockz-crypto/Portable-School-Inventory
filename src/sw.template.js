@@ -12,6 +12,9 @@
  *   recently; there is no push server) focuses CustodianPro and opens that notification.
  * - The page asks for this worker's version ("get-version") to tell whether an update
  *   brings anything new to the page that is open.
+ * - While the app is closed (Periodic Background Sync: Android Chrome, installed app, no
+ *   server), Chrome wakes this worker now and then; if the site has a newer version it is
+ *   downloaded right away and a phone notification says it is ready.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
 const CACHE = 'custodianpro-__CACHE_VERSION__';
@@ -104,19 +107,54 @@ self.addEventListener('fetch', (event) => {
 // notification was tapped, or open the app with ?notif=<id> when no window is left.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const nid = (event.notification.data && event.notification.data.nid) || '';
+  const data = event.notification.data || {};
+  const nid = data.nid || '';
+  const go = data.go || ''; // e.g. 'about' for "update ready" shown by this worker
   event.waitUntil((async () => {
     const scope = self.registration.scope;
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const client = windows.find((c) => c.url.startsWith(scope));
     if (client) {
       try { await client.focus(); } catch (e) { /* focus is best effort */ }
-      client.postMessage({ type: 'open-notification', nid });
+      client.postMessage(go ? { type: 'launch', go } : { type: 'open-notification', nid });
       return;
     }
-    await self.clients.openWindow(`${scope}?notif=${encodeURIComponent(nid)}`);
+    await self.clients.openWindow(go ? `${scope}?go=${encodeURIComponent(go)}` : `${scope}?notif=${encodeURIComponent(nid)}`);
   })());
 });
+
+// ---- Update check while the app is closed -------------------------------------------------
+// The page registers 'app-update-check' (Periodic Background Sync) when Chrome allows it.
+// index.html carries the version it belongs to (<meta name="app-version">), the same value as
+// CACHE below, so one small fetch tells whether the site has something newer.
+const META_CACHE = 'cpmeta-v1'; // not "custodianpro-…": activate() would delete it
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag === 'app-update-check') event.waitUntil(backgroundUpdateCheck());
+});
+async function backgroundUpdateCheck() {
+  const windows = await self.clients.matchAll({ type: 'window' });
+  if (windows.some((c) => c.visibilityState === 'visible')) return; // the open page tells the user itself
+  let html = '';
+  try {
+    const res = await fetch('./index.html', { cache: 'no-store' });
+    if (!res.ok) return;
+    html = await res.text();
+  } catch (e) { return; }
+  const m = html.match(/<meta name="app-version" content="([^"]*)"/);
+  const latest = m && m[1];
+  if (!latest || latest === CACHE.slice('custodianpro-'.length)) return;
+  const meta = await caches.open(META_CACHE);
+  const told = await meta.match('./notified-version');
+  if (told && (await told.text()) === latest) return; // said so already
+  try { await self.registration.update(); } catch (e) { /* the next open updates anyway */ }
+  await meta.put('./notified-version', new Response(latest));
+  if (self.Notification && Notification.permission === 'granted') {
+    await self.registration.showNotification('CustodianPro update ready', {
+      body: 'A new version was downloaded. Open the app to see what’s new.',
+      tag: 'app-update', icon: './assets/icons/icon-192.png', badge: './assets/icons/badge-96.png', data: { go: 'about' }
+    });
+  }
+}
 
 // The page compares this with its own version (meta app-version) before announcing an update.
 self.addEventListener('message', (event) => {
