@@ -154,7 +154,12 @@ try {
   await d.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
   await d.goto(BASE_URL, { waitUntil: 'networkidle0' });
   check(await isDark(d), 'dark phone/computer → dark from the start');
-  check(await ev(d, () => getComputedStyle(document.querySelector('.gate-art')).backgroundImage.includes('login-landscape.webp')), 'landscape art on a wide screen');
+  check(await ev(d, () => getComputedStyle(document.querySelector('.gate-art')).backgroundImage.includes('login-landscape-dark.webp')), 'landscape art on a wide screen (night version in dark mode)');
+  await d.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+  await sleep(300);
+  check(await ev(d, () => getComputedStyle(document.querySelector('.gate-art')).backgroundImage.includes('login-landscape.webp')), 'day version in light mode');
+  await d.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+  await sleep(300);
   await d.screenshot({ path: `${SHOTS}/login-landscape-dark.png` });
   await d.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
   await until(d, () => !document.documentElement.classList.contains('dark'), 'light');

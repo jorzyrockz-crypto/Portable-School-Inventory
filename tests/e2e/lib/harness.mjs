@@ -27,7 +27,7 @@ const browsers = [];
 export const errors = [];
 
 // A phone: its own browser (separate storage), Firebase stand-in wired to `backend`.
-export async function openPhone(name, backend, { width = 390, height = 844, dialogs = [] } = {}) {
+export async function openPhone(name, backend, { width = 390, height = 844, dialogs = [], tour = false } = {}) {
   const executablePath = process.env.CHROME_PATH || await chromium.executablePath();
   const browser = await puppeteer.launch({ executablePath, args: process.env.CHROME_PATH ? ['--no-sandbox'] : chromium.args, headless: true });
   browsers.push(browser);
@@ -59,6 +59,9 @@ export async function openPhone(name, backend, { width = 390, height = 844, dial
     HTMLAnchorElement.prototype.click = function () { if (this.download) window.__downloads.push(this.download); };
     URL.createObjectURL = b => orig.call(URL, b);
   });
+  // The welcome tour (first custodian sign-in) would cover the screen in every suite; only
+  // suites that test it pass { tour: true }.
+  if (!tour) await page.evaluateOnNewDocument(() => { try { if (!localStorage.getItem('cp_welcome_tour_v1')) localStorage.setItem('cp_welcome_tour_v1', 'test'); } catch (e) {} });
   page.dialogs = dialogs;
   return page;
 }
