@@ -6521,6 +6521,20 @@
     var REQ_ROLE_KEY = 'custodian_requests_role_v1'; // { role: 'custodian'|'teacher', schoolId, schoolName, email?, me? }
     var PR_DEFAULTS_KEY = 'custodian_pr_defaults_v1';
     var reqRole = null;
+    // Cloud links (school, role, what was uploaded) belong to one Firebase project. When
+    // firebase-config.js points at another project, forget them so the next sign-in starts
+    // fresh there. Inventory, history and settings on this phone are kept.
+    var CLOUD_PROJECT_KEY = 'custodian_cloud_project_v1';
+    var cloudProjectChanged = (function checkCloudProject() {
+      const now = cloudConfigured() ? window.FIREBASE_CONFIG.projectId : null;
+      if (!now) return false;
+      const legacy = (localStorage.getItem(REQ_ROLE_KEY) || localStorage.getItem('custodian_inventory_sync_v1')) ? 'russapps-custodian-pro' : null;
+      const had = localStorage.getItem(CLOUD_PROJECT_KEY) || legacy;
+      localStorage.setItem(CLOUD_PROJECT_KEY, now);
+      if (!had || had === now) return false;
+      [REQ_ROLE_KEY, 'custodian_inventory_sync_v1', 'custodian_google_pending_v1'].forEach(k => localStorage.removeItem(k));
+      return true;
+    })();
     try { reqRole = JSON.parse(localStorage.getItem(REQ_ROLE_KEY) || 'null'); } catch (e) { reqRole = null; }
     var cloud = { state: 'idle', sdk: null, auth: null, db: null, user: null, error: '', ready: null };
     let reqList = [];           // custodian: every request of the school · teacher: own requests
@@ -7054,6 +7068,7 @@
       window.addEventListener('hashchange', checkJoinLink);
       if (isTeacherDevice()) switchMainView('REQUESTER');
       renderRequestsEverywhere();
+      if (cloudProjectChanged) setTimeout(() => showToast('The app moved to a new cloud account. Sign in again to link your school', 'ph-cloud-arrow-up'), 600);
       checkJoinLink();
       const pendingGoogle = (() => { try { return JSON.parse(localStorage.getItem(GOOGLE_PENDING_KEY) || 'null'); } catch (e) { return null; } })();
       if ((!reqRole && !pendingGoogle) || !cloudConfigured()) return;

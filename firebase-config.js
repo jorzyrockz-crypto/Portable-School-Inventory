@@ -7,13 +7,13 @@
 //
 // These values are not secret – every web app that uses Firebase ships them to the browser.
 // Access is controlled by firestore.rules, which you publish in the Firebase console.
-// Project: russapps-custodian-pro
+// Project: russapps-custodianpro
 window.FIREBASE_CONFIG = {
-  apiKey: "AIzaSyChkK98BWFd8KmrrWqgQ5h9xEkPBsnlJwA",
-  authDomain: "russapps-custodian-pro.firebaseapp.com",
-  projectId: "russapps-custodian-pro",
-  storageBucket: "russapps-custodian-pro.firebasestorage.app",
-  messagingSenderId: "203141431759",
-  appId: "1:203141431759:web:db2a25ad52d091d6a052ba",
-  measurementId: "G-CXB58K4113"
+  apiKey: "AIzaSyAa1JM1jEeja08deEwInAbpvrjkVjBgCTA",
+  authDomain: "russapps-custodianpro.firebaseapp.com",
+  projectId: "russapps-custodianpro",
+  storageBucket: "russapps-custodianpro.firebasestorage.app",
+  messagingSenderId: "908399867253",
+  appId: "1:908399867253:web:782b92a630109f9b4b8f3c",
+  measurementId: "G-M3Y6HHV5PT"
 };
