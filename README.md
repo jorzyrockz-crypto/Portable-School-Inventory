@@ -59,6 +59,16 @@ colour classes in `index.html` (`bg-white`, `text-slate-900`, `bg-amber-50`,
 `hover:bg-slate-50` …) and writes an `html.dark` counterpart for each one into
 `assets/app.css`. New classes are picked up on the next `npm run build`.
 
+## On a phone
+
+CustodianPro is laid out for a 360–430 px phone first and widens on tablets and computers:
+
+- Pop-ups become **bottom sheets** below 640 px (the `.sheet-sm` class on the overlay): full width, rounded top, buttons above the home indicator.
+- Lists stack on a phone: **My Items** rows show value and quantity on one line and labelled *Property nos. · Release · Edit* buttons below; **Catalog** cards put the stepper under the item name.
+- Every tap target is at least 32 px (most 40 px); headers wrap their buttons onto a second row instead of squeezing the title.
+- Toasts sit above the bottom tabs, move to the top while a sheet is open (also when the sheet opens after the toast), and go to the bottom on the sign-in screen so the logo stays visible.
+- `tests/e2e/phone-layout.mjs` checks this at 390 × 844: no sideways scrolling, no small buttons, sheets anchored to the bottom, full peso amounts on Reports.
+
 ## Home screen: encode without distractions
 
 The app opens on **Home**, which only asks one thing: *What are you encoding?*
@@ -415,6 +425,7 @@ node notifications.mjs                # bell, phone notifications, shortcuts, in
 node app-updates.mjs                  # update notices (title bar), Restart, What's new (own server)
 node login-theme.mjs                  # sign-in screen, teacher code / invite link, sign out, light/dark
 node coa-forms.mjs                    # welcome tour, poster, PAR, ITR/PTR transfers, RRSP, RPCPPE/IIRUP, background update check
+node phone-layout.mjs                 # 390 px phone: no sideways scroll, 32 px+ buttons, bottom sheets, toast placement
 # or: npm test (all suites)
 ```
 
