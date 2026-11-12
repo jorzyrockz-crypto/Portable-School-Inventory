@@ -314,7 +314,7 @@ npm run serve   # http://localhost:8080
 | `scripts/build-assets.mjs` | Compiles Tailwind, self-hosts fonts, subsets icon fonts, copies the QR libraries to `assets/vendor/`, writes `sw.js` |
 | `scripts/build-icons.mjs` | Regenerates the home-screen icons from `src/app-icon.png` (`npm run icons`): rounded tile, Android maskable and iPhone versions, plus the notification badge and shortcut icons |
 | `manifest.webmanifest` | PWA metadata: name, icons, navy theme colour, shortcuts, screenshots |
-| `assets/brand/` | Banner: `banner.png` (this README), `banner.webp` (About sheet, precached), `social-preview.png` 1280×640 (link previews via `og:image`; also upload it under GitHub → Settings → Social preview) |
+| `assets/brand/` | Banner: `banner.png` (this README), `banner.webp` (About sheet, precached), `og-image.png` 1200×630 (link previews: `og:image` / X card), `social-preview.png` 1280×640 (upload under GitHub → Settings → Social preview) |
 | `tests/e2e/make-screenshots.mjs` | Re-renders `assets/screenshots/` from the app with sample data (not precached by `sw.js`) |
 
 Generated files (`assets/`, `sw.js`) are committed so GitHub Pages can serve them directly.

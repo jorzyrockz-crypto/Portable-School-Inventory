@@ -14,7 +14,7 @@
  *   brings anything new to the page that is open.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
-const CACHE = 'custodianpro-b40c02675a41';
+const CACHE = 'custodianpro-6c6c1228d102';
 const PRECACHE_URLS = [
     "./",
     "./index.html",

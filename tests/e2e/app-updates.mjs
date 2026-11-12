@@ -145,8 +145,17 @@ try {
   check(await ev(p, () => document.querySelector('#aboutPanel img').naturalWidth) === 1024, 'banner works offline (precached webp)');
   await p.setOfflineMode(false);
   const meta = await ev(p, () => Object.fromEntries([...document.querySelectorAll('meta[property^="og:"], meta[name^="twitter:"]')].map(m => [m.getAttribute('property') || m.name, m.content])));
-  check(meta['og:image'] === 'https://custodianpro.vercel.app/assets/brand/social-preview.png' && meta['twitter:card'] === 'summary_large_image' && meta['og:image:width'] === '1280', 'link-preview tags (og:image 1280×640, large card)');
-  check(fs.existsSync(path.join(ROOT, 'assets/brand/social-preview.png')) && !/brand\/[a-z-]+\.png/.test(SW), 'preview image deployed, not precached');
+  const OG = 'https://custodianpro.vercel.app/assets/brand/og-image.png';
+  check(meta['og:image'] === OG && meta['og:image:secure_url'] === OG && meta['twitter:image'] === OG && meta['og:image:type'] === 'image/png', 'og:image / X card: the banner (og-image.png)');
+  check(meta['og:image:width'] === '1200' && meta['og:image:height'] === '630' && meta['twitter:card'] === 'summary_large_image', '1200×630, large preview card');
+  check(meta['og:title'] === 'CustodianPro – School Inventory' && meta['twitter:title'] === meta['og:title'] && /property custodians/.test(meta['og:description']) && meta['og:url'] === 'https://custodianpro.vercel.app/' && meta['og:locale'] === 'en_PH', 'title, description, address, locale');
+  const seo = await ev(p, () => ({ title: BASE_TITLE, canonical: document.querySelector('link[rel=canonical]').href, desc: document.querySelector('meta[name=description]').content,
+    ld: JSON.parse(document.querySelector('script[type="application/ld+json"]').textContent) }));
+  check(seo.title === 'CustodianPro – School Inventory & APP-CSE 2027' && seo.canonical === 'https://custodianpro.vercel.app/' && seo.desc.length > 80 && seo.desc.length <= 300, `page title “${seo.title}”, canonical, description`);
+  check(seo.ld['@type'] === 'WebApplication' && seo.ld.image === OG && seo.ld.offers.price === '0', 'structured data (WebApplication) parses');
+  const og = await (await import('node:module')).createRequire(import.meta.url)('../../node_modules/sharp')(path.join(ROOT, 'assets/brand/og-image.png')).metadata();
+  check(og.width === 1200 && og.height === 630 && fs.statSync(path.join(ROOT, 'assets/brand/og-image.png')).size < 1024 * 1024, `og-image.png ${og.width}×${og.height}, under 1 MB`);
+  check(!/brand\/[a-z-]+\.png/.test(SW), 'preview images deployed, not precached');
   const cdp = await p.target().createCDPSession();
   const m = await cdp.send('Page.getAppManifest');
   const inst = await cdp.send('Page.getInstallabilityErrors');
