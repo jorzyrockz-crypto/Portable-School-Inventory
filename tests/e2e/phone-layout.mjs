@@ -120,6 +120,16 @@ try {
   out('6 Catalog');
   await ev(a, () => switchMainView('CATALOG'));
   await screen(a, 'Catalog');
+  const same = await ev(a, () => {
+    const card = id => { const el = document.getElementById(id); const st = getComputedStyle(el); return { top: Math.round(el.getBoundingClientRect().top), bg: st.backgroundColor, radius: st.borderRadius, inHeader: !!el.closest('header') }; };
+    const c = card('catalogSection'); switchMainView('ITEMS'); const i = card('masterLedgerSection'); switchMainView('CATALOG');
+    const rows = [...document.querySelectorAll('#itemsContainer .cat-row')];
+    return { c, i, title: document.querySelector('#catalogSection h3').innerText.trim(), searchInCard: !!document.getElementById('searchInput').closest('#catalogSection'),
+      plainRows: rows.slice(0, 5).every(r => { const st = getComputedStyle(r); return st.boxShadow === 'none' && /rgba\(0, 0, 0, 0\)|transparent/.test(st.backgroundColor); }) };
+  });
+  check(same.title === 'Catalog' && same.searchInCard && !same.c.inHeader, 'Catalog: title, search and chips are in a card below the top bar');
+  check(same.c.top === same.i.top && same.c.bg === same.i.bg && same.c.radius === same.i.radius, `Catalog card sits and looks like the Inventory card (top ${same.c.top} / ${same.i.top})`);
+  check(same.plainRows, 'Catalog rows are plain white like Inventory (no tint or coloured bar)');
   const cat = await ev(a, () => [...document.querySelectorAll('#itemsContainer .cat-row')].slice(0, 12).map(r => ({
     h: r.getBoundingClientRect().height, right: r.getBoundingClientRect().right,
     steps: [...r.querySelectorAll('.cat-step button')].map(b => (b.getAttribute('aria-label') || '') + ':' + Math.round(b.getBoundingClientRect().height))
