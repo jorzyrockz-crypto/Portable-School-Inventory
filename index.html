@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="0eb83f340571">
+  <meta name="app-version" content="61dde252aac2">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -158,6 +158,51 @@
       html { font-size: clamp(16px, calc(100vw / 42), 20px); }
       .text-\[9px\] { font-size: 0.5625rem; } .text-\[10px\] { font-size: 0.625rem; } .text-\[11px\] { font-size: 0.6875rem; }
       .text-\[13px\] { font-size: 0.8125rem; } .text-\[22px\] { font-size: 1.375rem; } .min-w-\[220px\] { min-width: 13.75rem; }
+    }
+    /* Tablets (touch screen, 640px+ wide; not phones in landscape): the sm: classes switch to the
+       compact mouse sizes, which are too small for a finger. Every button, tab and select is at
+       least 2.5rem tall (40-50 px with the scaling above), small round icon buttons become 2.5rem
+       circles, and the notification switches keep their look with a larger invisible hit area.
+       Phones (narrower) and computers (mouse) are unchanged. */
+    @media screen and (pointer: coarse) and (min-width: 640px) and (min-height: 600px) {
+      button:not(.notif-sw), [role="tab"], select, summary { min-height: 2.5rem; }
+      button.w-7.h-7, button.w-8.h-8, button.w-9.h-9 { width: 2.5rem; height: 2.5rem; }
+      button.min-w-0, a[href].tap { min-height: 2.5rem; }
+      a[href]:not([class*="block"]):not([class*="flex"]) { display: inline-block; padding-block: 0.5rem; }
+      .notif-sw { position: relative; }
+      .notif-sw::before { content: ""; position: absolute; inset: -0.5rem -0.375rem; }
+    }
+    /* Computers (mouse, 1024px+ wide; UI review finding 15): the four tabs become a left sidebar
+       (with Supply requests, Teachers and Forms under them), the top bar spans the window, and
+       Inventory and Catalog get wider lists with extra columns. Phones and tablets keep the
+       bottom tab bar. html.no-tabs is set on a teacher's phone (no tabs there). */
+    .lap-only, .lap-col { display: none; }
+    @media screen and (min-width: 1024px) and (not (pointer: coarse)) {
+      html:not(.no-tabs) body { padding-left: 14.5rem; padding-bottom: 2.5rem; }
+      html:not(.no-tabs) body > header { margin-left: -14.5rem; }
+      html body > header > div.max-w-4xl { max-width: none; padding-left: 1.5rem; padding-right: 1.5rem; }
+      #tabBar { top: var(--hdr-h, 3.75rem); bottom: 0; right: auto; width: 14.5rem; padding: 1rem 0.75rem; overflow-y: auto;
+        border-top: 0; border-right: 1px solid #e2e8f0; box-shadow: none; background: rgba(255, 255, 255, 0.92); }
+      #tabBar > div { display: flex; flex-direction: column; gap: 0.125rem; max-width: none; margin: 0; }
+      #tabBar .tab-btn { height: 2.75rem; flex-direction: row; justify-content: flex-start; gap: 0.75rem; padding: 0 0.875rem;
+        border-radius: 0.75rem; font-size: 0.875rem; text-align: left; }
+      #tabBar .tab-btn i { font-size: 1.25rem; }
+      #tabBar .tab-btn:hover { background: #f1f5f9; }
+      #tabBar .tab-btn[aria-current="page"] { background: #eef2ff; }
+      #tabBar .tab-ind { top: 0.625rem; bottom: 0.625rem; left: 0; right: auto; width: 3px; height: auto; }
+      #tabBar .side-label { display: block; padding: 1rem 0.875rem 0.375rem; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.05em;
+        text-transform: uppercase; color: #64748b; }
+      #tabBar .lap-only.tab-btn { display: flex; }
+      #viewItems, #viewCatalog { max-width: 76rem; }
+      .lap-col { display: block; }
+      .lap-w { width: 7.5rem; }
+      .lap-hide { display: none !important; }
+      html:not(.no-tabs) #appToast { margin-left: 7.25rem; }   /* centred over the content, not the sidebar */
+      .cat-step-w { width: 7.25rem; }
+      .lap-only.flex { display: flex; }
+      html.dark #tabBar { background: rgba(15, 23, 42, 0.92); border-color: #1e293b; }
+      html.dark #tabBar .tab-btn:hover { background: #1e293b; }
+      html.dark #tabBar .tab-btn[aria-current="page"] { background: rgba(99, 102, 241, 0.18); }
     }
     /* QR property labels (printed 3 across on A4 / Letter) */
     .label-sheet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3mm; }
@@ -465,6 +510,24 @@
       </div>
       <button id="installBtn" onclick="installApp()" class="shrink-0 h-10 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold">Install</button>
       <button onclick="dismissInstall()" class="shrink-0 w-8 h-8 rounded-full text-slate-500 hover:bg-slate-100 flex items-center justify-center" aria-label="Not now"><i class="ph-bold ph-x"></i></button>
+    </div>
+  </div>
+
+  <datalist id="lifeList"><option value="1 year"><option value="2 years"><option value="3 years"><option value="5 years"><option value="7 years"><option value="10 years"></datalist>
+
+  <!-- Custodian: changes on this phone are not reaching the account (24 h, or an error) -->
+  <div id="syncBar" class="hidden max-w-4xl mx-auto px-4 pt-3 no-print" role="alert">
+    <div class="rounded-2xl bg-rose-50 border border-rose-200 shadow-sm p-3 flex flex-wrap items-center gap-3">
+      <span class="w-10 h-10 shrink-0 rounded-xl bg-white text-rose-600 flex items-center justify-center"><i class="ph-bold ph-cloud-warning text-xl"></i></span>
+      <div class="flex-1 min-w-[12rem]">
+        <p id="syncBarTitle" class="text-sm font-extrabold text-slate-900 leading-tight">Changes are not saved to your account</p>
+        <p id="syncBarText" class="text-xs text-slate-700 mt-0.5 leading-snug"></p>
+      </div>
+      <div class="flex items-center gap-2 ml-auto">
+        <button onclick="exportBackupJSON()" class="shrink-0 h-10 px-3 rounded-xl bg-white border border-rose-200 text-rose-800 text-sm font-bold">Back up</button>
+        <button id="syncRetryBtn" onclick="retryInventorySync()" class="shrink-0 h-10 px-3 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-sm font-bold">Try again</button>
+        <button onclick="snoozeSyncBar()" class="shrink-0 w-8 h-8 rounded-full text-slate-500 hover:bg-white flex items-center justify-center" aria-label="Hide for now"><i class="ph-bold ph-x"></i></button>
+      </div>
     </div>
   </div>
 
@@ -889,6 +952,9 @@
         </div>
       </div>
 
+      <div class="lap-only flex items-center gap-3 px-5 py-2 bg-slate-50 border-y border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500" aria-hidden="true">
+        <span class="w-11 shrink-0"></span><span class="flex-1">Item · room</span><span class="w-44 shrink-0">Category</span><span class="w-24 shrink-0 text-right">Tagged</span><span class="w-28 shrink-0 text-right">Unit cost</span><span class="lap-w shrink-0 text-right">On hand · value</span><span class="w-3 shrink-0"></span>
+      </div>
       <div id="dashboardLedgerContainer" class="divide-y divide-slate-100">
         <!-- Populated by renderDashboardLedger() -->
       </div>
@@ -950,6 +1016,9 @@
       </div>
 
       <!-- One row per catalog item: name, price per unit · code, a few labels, and a small − qty + -->
+      <div class="lap-only flex items-center gap-2 pl-4 pr-3 py-2 bg-slate-50 border-y border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500" aria-hidden="true">
+        <span class="w-11 shrink-0"></span><span class="flex-1 pl-1">Item · unit price</span><span class="w-44 shrink-0">Category</span><span class="w-16 shrink-0">APP</span><span class="w-28 shrink-0 text-right">Value on hand</span><span class="cat-step-w shrink-0 text-center">Quantity</span>
+      </div>
       <div id="itemsContainer" class="divide-y divide-slate-100">
         <!-- Populated dynamically via JS -->
       </div>
@@ -1156,6 +1225,22 @@
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
         <i class="ph-bold ph-chart-pie-slice text-[22px]"></i>
         <span class="flex items-center gap-1">Reports</span>
+      </button>
+      <span class="side-label lap-only">School</span>
+      <button onclick="openRequestsView()" data-view="REQUESTS" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-tray text-[22px]"></i>
+        <span class="flex items-center gap-1">Supply requests <span id="sideReqCount" class="hidden px-1.5 rounded-full bg-amber-100 text-amber-800 font-mono text-[11px]"></span></span>
+      </button>
+      <button onclick="openTeachersView()" data-view="TEACHERS" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-chalkboard-teacher text-[22px]"></i>
+        <span class="flex items-center gap-1">Teachers</span>
+      </button>
+      <button onclick="openCoa()" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-files text-[22px]"></i>
+        <span class="flex items-center gap-1">Forms</span>
       </button>
     </div>
   </nav>
@@ -2678,12 +2763,13 @@
       if (isTeacherDevice()) viewName = 'REQUESTER'; // a teacher's phone: supply requests only
       else if (viewName === 'REQUESTER') viewName = 'HOME';
       document.getElementById('tabBar').classList.toggle('hidden', viewName === 'REQUESTER');
+      document.documentElement.classList.toggle('no-tabs', viewName === 'REQUESTER');
       document.getElementById('moreMenuBtn').classList.toggle('hidden', viewName === 'REQUESTER');
       activeMainView = viewName;
       Object.entries(MAIN_VIEWS).forEach(([key, id]) =>
         document.getElementById(id).classList.toggle('hidden', key !== viewName));
       document.querySelectorAll('#tabBar .tab-btn').forEach(btn => {
-        const on = btn.dataset.view === viewName;
+        const on = !!btn.dataset.view && btn.dataset.view === viewName;
         btn.classList.toggle('text-brand-600', on);
         btn.classList.toggle('text-slate-500', !on);
         btn.setAttribute('aria-current', on ? 'page' : 'false');
@@ -3017,7 +3103,10 @@
                 <p class="text-xs text-slate-600 truncate mt-0.5">${item.note ? escapeHTML(item.note) : '<span class="text-slate-500 italic">No room yet</span>'} · <span class="font-mono">${code}</span></p>
                 ${flags.length ? `<div class="flex flex-wrap items-center gap-1 mt-1.5 min-w-0">${flags.slice(0, 2).map(flagHTML).join('')}${flags.length > 2 ? `<span class="inv-flag ${FLAG_TONES.slate} shrink-0">+${flags.length - 2}</span>` : ''}</div>` : ''}
               </div>
-              <div class="shrink-0 text-right">
+              <span class="lap-col w-44 shrink-0 text-xs text-slate-600 truncate" title="${escapeHTML(item.category)}">${escapeHTML(item.category)}</span>
+              <span class="lap-col w-24 shrink-0 text-xs text-slate-600 text-right">${unitsCol(item)}</span>
+              <span class="lap-col w-28 shrink-0 font-mono text-xs text-slate-700 text-right">${formatCurrency(item.price)}</span>
+              <div class="shrink-0 text-right lap-w">
                 <p class="font-mono font-extrabold text-base text-slate-900 leading-tight">${item.qty}<span class="ml-1 font-sans text-xs font-semibold text-slate-500">${escapeHTML(item.unit)}</span></p>
                 <p class="font-mono text-xs font-bold text-emerald-700 mt-0.5 whitespace-nowrap">${formatCurrency(item.qty * item.price)}</p>
               </div>
@@ -3026,6 +3115,14 @@
         }).join('');
       }
       if (sheetCode) renderItemSheet();
+    }
+
+    // Laptop column: tagged units and how many are with teachers ("4 tagged · 2 out")
+    function unitsCol(item) {
+      const units = getUnits(item.code);
+      if (!units.length) return '<span class="text-slate-500">—</span>';
+      const out = units.filter(u => unitHolder(u)).length;
+      return `${units.length} tagged${out ? `<br><span class="text-teal-700 font-semibold">${out} with teachers</span>` : ''}`;
     }
 
     // ---- Item sheet: everything about one item, opened from the Inventory list ----------------
@@ -3341,10 +3438,13 @@
             <span class="hidden sm:flex w-11 h-11 shrink-0 rounded-xl ${t.tone} items-center justify-center" title="${t.label}"><i class="ph-duotone ${t.icon} text-2xl"></i></span>
             <span class="flex-1 min-w-0 block">
               <span class="inv-name">${name}</span>
-              <span class="block text-xs text-slate-600 truncate mt-0.5"><span class="font-mono font-semibold ${needsPrice ? 'text-amber-700 underline decoration-dotted' : 'text-slate-800'}">${needsPrice ? 'Set price' : formatCurrency(item.price)}</span> / ${escapeHTML(item.unit.toLowerCase())} · <span class="font-mono">${code}</span><span class="hidden sm:inline"> · ${escapeHTML(item.category)}</span></span>
+              <span class="block text-xs text-slate-600 truncate mt-0.5"><span class="font-mono font-semibold ${needsPrice ? 'text-amber-700 underline decoration-dotted' : 'text-slate-800'}">${needsPrice ? 'Set price' : formatCurrency(item.price)}</span> / ${escapeHTML(item.unit.toLowerCase())} · <span class="font-mono">${code}</span><span class="hidden sm:inline lap-hide"> · ${escapeHTML(item.category)}</span></span>
               <span id="flags-${code}" class="${flags ? 'flex' : 'hidden'} flex-wrap items-center gap-1 mt-1.5 min-w-0">${flags}</span>
             </span>
           </button>
+          <span class="lap-col w-44 shrink-0 text-xs text-slate-600 truncate" title="${escapeHTML(item.category)}">${escapeHTML(item.category)}</span>
+          <span class="lap-col w-16 shrink-0 text-[11px] font-bold text-slate-500">${item.part === 'PART1' ? 'Part I' : 'Part II'}</span>
+          <span class="lap-col w-28 shrink-0 font-mono text-xs text-right ${on ? 'text-emerald-700 font-bold' : 'text-slate-500'}">${on ? formatCurrency(item.qty * item.price) : '—'}</span>
           <div class="cat-step" role="group" aria-label="Quantity of ${name}">
             <button type="button" onclick="adjustQty(this.closest('.cat-row').dataset.code, -1)" aria-label="One less" title="One less" class="cat-minus"><i class="ph-bold ph-minus"></i></button>
             <input type="number" inputmode="numeric" id="qty-${code}" value="${item.qty}" min="0" aria-label="Quantity"
@@ -4321,6 +4421,14 @@
             ${field('loc', 'Location', item.note || 'Room')}
             ${field('to', 'Assigned to', 'Accountable person')}
             ${field('ics', u.doc && u.doc !== 'ICS' ? `${u.doc} No.` : 'ICS / PAR No.', 'Optional')}
+            <label class="block min-w-0">
+              <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">Date acquired</span>
+              <input type="date" value="${escapeHTML(u.acq || '')}" max="${localISODate()}" onchange="setUnitField('${code}', '${u.id}', 'acq', this.value)" class="unit-acq w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
+            </label>
+            <label class="block min-w-0">
+              <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">Useful life</span>
+              <input type="text" value="${escapeHTML(u.life || '')}" placeholder="${defaultLifeYears(item)} years" list="lifeList" autocomplete="off" onchange="setUnitField('${code}', '${u.id}', 'life', this.value)" class="unit-life w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
+            </label>
           </div>
           <p class="mt-2 text-[11px] text-slate-500 flex flex-wrap gap-x-3 gap-y-0.5">
             ${u.seen
@@ -4328,6 +4436,7 @@
               : `<span class="inline-flex items-center gap-1"><i class="ph-bold ph-seal-question"></i> Not verified yet</span>`}
             <span class="inline-flex items-center gap-1"><i class="ph-bold ph-printer"></i> ${u.printed ? `Label printed ${formatShortDate(u.printed)}` : 'Label not printed'}</span>
             ${u.toUid ? `<span class="text-teal-700 font-semibold inline-flex items-center gap-1"><i class="ph-bold ph-link"></i> On ${escapeHTML((u.to || 'the teacher').split(' ')[0])}’s list</span>` : ''}
+            ${(() => { const dep = ppeDepreciation(item, u); return dep ? `<span class="unit-book inline-flex items-center gap-1"><i class="ph-bold ph-trend-down"></i> Carrying amount ₱${peso2(dep.carrying)} (depreciation ₱${peso2(dep.acc)}${dep.est ? ', est. life' : ''})</span>` : ''; })()}
             ${u.icsDate || u.life ? `<span class="inline-flex items-center gap-1"><i class="ph-bold ph-file-text"></i> ${u.icsDate ? `${unitDocKind(u)} dated ${formatShortDate(u.icsDate + 'T00:00:00')}` : ''}${u.icsDate && u.life ? ' · ' : ''}${u.life ? `useful life ${escapeHTML(u.life)}` : ''}</span>` : ''}
           </p>
           ${unitTrailHTML(item, u)}
@@ -4403,8 +4512,23 @@
 
     function setUnitField(code, id, key, value) {
       const unit = findUnit(code, id);
-      if (!unit || !['serial', 'loc', 'to', 'ics'].includes(key)) return;
-      unit[key] = key === 'ics' ? normalizePropNo(value) : String(value || '').trim();
+      if (!unit || !['serial', 'loc', 'to', 'ics', 'acq', 'life'].includes(key)) return;
+      unit[key] = key === 'ics' ? normalizePropNo(value) : key === 'life' ? normLife(value) : String(value || '').trim();
+      if (key === 'acq' || key === 'life') {
+        if (!unit[key]) delete unit[key];
+        const others = getUnits(code).filter(x => x.id !== id && !x[key]);
+        if (unit[key] && others.length) {
+          const what = key === 'acq' ? `date acquired (${formatShortDate(unit.acq + 'T00:00:00')})` : `useful life (${unit.life})`;
+          showToast(`Same ${what} for the other ${plural(others.length, 'unit')}?`, key === 'acq' ? 'ph-calendar-check' : 'ph-hourglass-medium', {
+            label: 'Use for all', onClick: () => {
+              others.forEach(x => { x[key] = unit[key]; });
+              saveState();
+              if (unitsModalCode === code) renderUnitsModal(id);
+              showToast(`Updated ${plural(others.length, 'unit')}`, 'ph-check-circle');
+            }
+          });
+        }
+      }
       if (key === 'to') {
         const m = unit.to ? rosterMatch(unit.to) : null;
         if (m && isCustodianDevice()) unit.to = m.name; // the name as the teacher wrote it
@@ -4418,6 +4542,7 @@
       const unit = findUnit(code, id);
       const item = items.find(i => i.code === code);
       if (!unit || !item || !UNIT_COND[cond]) return;
+      if (unit.cond !== cond) unit.condAt = Date.now();
       unit.cond = cond;
       syncUnitCondition(item);
       saveState();
@@ -4529,12 +4654,12 @@
         [q('Date Exported:'), q(new Date().toLocaleDateString('en-PH'))].join(','),
         '',
         ['Property No.', 'Item Code', 'Item & Specifications', 'Category', 'Serial No.', 'Location', 'Assigned To',
-          'Condition', 'Unit Cost', 'Last Verified', 'Label Printed', 'ICS/PAR No.', 'Issue Date', 'Est. Useful Life'].map(q).join(',')
+          'Condition', 'Unit Cost', 'Last Verified', 'Label Printed', 'ICS/PAR No.', 'Issue Date', 'Date Acquired', 'Est. Useful Life'].map(q).join(',')
       ];
       rows.forEach(({ item, unit }) => csv.push([
         unit.no, item.code, item.name, item.category, unit.serial, unit.loc || item.note, unit.to,
         (UNIT_COND[unit.cond] || UNIT_COND.S).label, item.price.toFixed(2), date(unit.seen), date(unit.printed),
-        unitDocLabel(unit), unit.icsDate ? date(unit.icsDate + 'T00:00:00') : '', unit.life || ''
+        unitDocLabel(unit), unit.icsDate ? date(unit.icsDate + 'T00:00:00') : '', unitAcq(unit) ? date(unitAcq(unit) + 'T00:00:00') : '', unit.life || ''
       ].map(q).join(',')));
       const school = (schoolInfo.school || 'School').replace(/\s+/g, '_');
       downloadText('\ufeff' + csv.join('\n'), `Property_Register_${school}_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8;');
@@ -6533,7 +6658,7 @@
       let newUnits = 0;
       const makeUnit = (l, no) => ({
         id: newUnitId(), no, serial: '', loc: '', to: h.receivedBy || '', cond: 'S',
-        seen: null, printed: null, added: now, ics: h.icsNo || '', icsDate: h.date || '', life: l.life || ''
+        seen: null, printed: null, added: now, ics: h.icsNo || '', icsDate: h.date || '', life: l.life || '', ...(h.date ? { acq: h.date } : {})
       });
       plan.lines.forEach(l => {
         const item = items.find(i => i.code === l.code);
@@ -7445,6 +7570,7 @@
         cloud.error = '';
         renderRequestsEverywhere();
         notifFromRequests(snap.metadata);
+        if (!(snap.metadata && snap.metadata.fromCache)) notifReminders();
       }, onErr));
       if (isCustodianDevice()) {
         reqUnsubs.push(F.onSnapshot(prCol(), snap => {
@@ -7479,6 +7605,7 @@
     let invApplying = false;
     let invPushTimer = null;
     const invStatus = { state: 'off', error: '' }; // off | syncing | saving | synced | offline | error
+    let invErrorSince = 0;   // when the current sync error started
 
     function loadInvSync() {
       try { invSync = Object.assign({ schoolId: null, synced: {}, lastAt: 0 }, JSON.parse(localStorage.getItem(INV_SYNC_KEY) || '{}')); }
@@ -7530,9 +7657,12 @@
     }
 
     function setInvStatus(state, error = '') {
+      if (state === 'error' && invStatus.state !== 'error') invErrorSince = Date.now();
+      if (state !== 'error') invErrorSince = 0;
       invStatus.state = state;
       invStatus.error = error;
       renderInvStatus();
+      if (typeof checkSyncProblem === 'function') checkSyncProblem();
     }
 
     function renderInvStatus() {
@@ -7625,6 +7755,7 @@
         reconcileInventory();
       }
       if (!fromCache) invSync.lastAt = Date.now();
+      if (!fromCache && !metas.some(m => m.pending)) invSync.pendingSince = 0;   // everything reached the account
       saveInvSync();
       setInvStatus(metas.some(m => m.pending) ? 'saving' : fromCache ? (navigator.onLine ? 'syncing' : 'offline') : 'synced');
       linkTypedNamesToTeachers();
@@ -7755,6 +7886,7 @@
     // Called after every local save; sends what changed since the last sync.
     function scheduleInventorySync() {
       if (invApplying || !invReady) return;
+      if (!invSync.pendingSince) { invSync.pendingSince = Date.now(); saveInvSync(); }
       clearTimeout(invPushTimer);
       invPushTimer = setTimeout(() => pushInventory(), 600);
     }
@@ -7776,6 +7908,7 @@
       }
       if (!writes.length) { saveInvSync(); return; }
       const by = cloud.user.uid, now = Date.now();
+      if (!invSync.pendingSince) invSync.pendingSince = now;   // oldest change not yet in the account
       for (let i = 0; i < writes.length; i += 400) {
         const chunk = writes.slice(i, i + 400);
         const batch = F.writeBatch(cloud.db);
@@ -7879,6 +8012,8 @@
       const pending = reqList.filter(r => r.status === 'pending').length;
       const toBuy = reqList.filter(r => r.status === 'approved' && reqBuyLines(r).length).length;
       const fromTeachers = isCustodianDevice() ? openTeacherReports().length : 0;
+      const side = document.getElementById('sideReqCount');
+      if (side) { side.textContent = pending + fromTeachers; side.classList.toggle('hidden', !(pending + fromTeachers)); }
       let text;
       if (!cloudConfigured()) text = 'Teachers request supplies from their phones · set up';
       else if (!isCustodianDevice()) text = 'Connect to receive teachers’ requests';
@@ -9090,7 +9225,7 @@
     }
     const relLine = (item, qty, units = []) => ({
       code: item.code, desc: item.name, unit: item.unit, qty, unitCost: Math.round((item.price || 0) * 100) / 100,
-      units: units.map(u => ({ id: u.id, no: u.no || '', serial: u.serial || '', cond: u.cond || 'S', doc: unitDocLabel(u), docDate: u.icsDate || '', loc: u.loc || '' }))
+      units: units.map(u => ({ id: u.id, no: u.no || '', serial: u.serial || '', cond: u.cond || 'S', doc: unitDocLabel(u), docDate: u.icsDate || '', loc: u.loc || '', ...(u.acq ? { acq: u.acq } : {}) }))
     });
     const relTotal = lines => Math.round(lines.reduce((n, l) => n + l.qty * (l.unitCost || 0), 0) * 100) / 100;
     function relBase(t, extra) {
@@ -9194,8 +9329,55 @@
       showToast(`Linked ${plural(changed, 'item')} to ${listJoin(linkedNames.map(n => n.split(' ')[0]))}’s account`, 'ph-link');
     }
 
+    // ---- Date acquired and estimated useful life of each unit (Nov 2026) ----
+    // unit.acq   'YYYY-MM-DD' (an ICS scanned on receipt fills it with the slip's date; a later
+    //            ICS / PAR / PTR date is when it was issued, not acquired, so it is not used)
+    // unit.life  text as written on the ICS ("5 years"); blank = the usual life for the category
+    //            (furniture and measuring instruments 10 years, everything else 5), marked "est."
+    const LIFE_BY_CATEGORY = { 'Furniture & Furnishings': 10, 'Measuring Equipment': 10 };
+    const defaultLifeYears = item => LIFE_BY_CATEGORY[item && item.category] || 5;
+    function lifeYears(text) {
+      const m = String(text || '').match(/(\d+(?:\.\d+)?)/);
+      if (!m) return 0;
+      const n = parseFloat(m[1]);
+      return /mo/i.test(text) ? n / 12 : n;
+    }
+    const lifeLabel = n => `${+n.toFixed(2)} ${n === 1 ? 'year' : 'years'}`;
+    function normLife(text) {
+      const t = String(text || '').trim();
+      return /^\d+(\.\d+)?$/.test(t) ? lifeLabel(parseFloat(t)) : t;
+    }
+    const unitAcq = u => (u && u.acq) || '';
+    function unitLife(item, u) {
+      const y = lifeYears(u && u.life);
+      if (y) return { years: y, text: u.life, est: false };
+      const d = defaultLifeYears(item);
+      return { years: d, text: lifeLabel(d), est: true };
+    }
+
+    // Straight-line depreciation of PPE (₱50,000 and up), as in the Government Accounting
+    // Manual: residual value 5 % of cost, (cost − residual) ÷ useful life, by month, starting
+    // the month after the date acquired. Needs a date acquired; useful life falls back to the
+    // category estimate (est: true). Semi-expendable property is expensed, not depreciated.
+    const RESIDUAL_RATE = 0.05;
+    function ppeDepreciation(item, u, asAtISO = localISODate()) {
+      const acq = unitAcq(u);
+      if (!item || !isPPE(item) || !acq) return null;
+      const cost = Number(item.price) || 0;
+      const life = unitLife(item, u);
+      const [ay, am] = acq.split('-').map(Number), [ty, tm] = asAtISO.split('-').map(Number);
+      const months = Math.max(0, (ty * 12 + tm) - (ay * 12 + am));
+      const base = cost * (1 - RESIDUAL_RATE);
+      const acc = Math.round(Math.min(base, base / (life.years * 12) * months) * 100) / 100;
+      return { cost, acc, carrying: Math.round((cost - acc) * 100) / 100, months, life, est: life.est };
+    }
+
     function findUnitAny(id) {
       for (const item of items) { const u = getUnits(item.code).find(x => x.id === id); if (u) return u; }
+      return null;
+    }
+    function findUnitItem(id) {
+      for (const item of items) { if (getUnits(item.code).some(x => x.id === id)) return item; }
       return null;
     }
 
@@ -9565,7 +9747,7 @@
       const d = prDefaults();
       const rows = r.lines.map(l => {
         const serials = (l.units || []).map(u => u.serial).filter(Boolean);
-        const life = (l.units || []).map(u => (findUnitAny(u.id) || {}).life).find(Boolean) || '';
+        const life = (l.units || []).map(u => (findUnitAny(u.id) || {}).life).find(Boolean) || '';   // only what the custodian wrote
         return `<tr><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td>
           <td>${e(l.desc)}${serials.length ? `<br><span style="font-size:8.5pt">S/N: ${e(serials.join(', '))}</span>` : ''}</td>
           <td class="pr-sn">${e((l.units || []).map(u => u.no).join(', '))}</td><td class="c">${e(life)}</td></tr>`;
@@ -9930,6 +10112,7 @@
           const found = findUnitWithItem(uid);
           if (!found) return;
           found.unit.cond = action === 'repair' ? 'R' : 'U';
+          found.unit.condAt = Date.now();
           syncUnitCondition(found.item);
           touched.push(found);
         });
@@ -10297,7 +10480,7 @@
         const serials = (l.units || []).map(u => u.serial).filter(Boolean);
         return `<tr><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td>
           <td>${e(l.desc)}${serials.length ? `<br><span style="font-size:8.5pt">S/N: ${e(serials.join(', '))}</span>` : ''}</td>
-          <td class="pr-sn">${e((l.units || []).map(u => u.no).join(', '))}</td><td class="c" style="font-size:9pt">${e(fDate(r.date))}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td></tr>`;
+          <td class="pr-sn">${e((l.units || []).map(u => u.no).join(', '))}</td><td class="c" style="font-size:9pt">${e(fDate((l.units || []).map(u => (findUnitAny(u.id) || {}).acq).find(Boolean) || r.date))}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td></tr>`;
       }).join('');
       const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 10 - r.lines.length));
       return `
@@ -10330,9 +10513,10 @@
       const d = prDefaults();
       const ppe = r.kind === 'PTR';
       const units = r.lines.flatMap(l => (l.units || []).map(u => ({ l, u })));
+      const acqOf = u => u.acq || (findUnitAny(u.id) || {}).acq || '';
       const rows = units.map(({ l, u }) => ppe
-        ? `<tr><td class="c" style="font-size:9pt"></td><td class="pr-sn">${e(u.no)}</td><td>${e(l.desc)}${u.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(u.serial)}</span>` : ''}</td><td class="r">${peso2(l.unitCost)}</td><td class="c" style="font-size:9pt">${e((UNIT_COND[u.cond] || UNIT_COND.S).label)}</td></tr>`
-        : `<tr><td class="c" style="font-size:9pt"></td><td class="pr-sn">${e(u.no)}</td><td class="pr-sn">${e(u.doc)}${u.docDate ? `<br>${e(fDate(u.docDate))}` : ''}</td><td>${e(l.desc)}${u.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(u.serial)}</span>` : ''}</td><td class="r">${peso2(l.unitCost)}</td><td class="c" style="font-size:9pt">${e((UNIT_COND[u.cond] || UNIT_COND.S).label)}</td></tr>`).join('');
+        ? `<tr><td class="c" style="font-size:9pt">${e(fDate(acqOf(u)))}</td><td class="pr-sn">${e(u.no)}</td><td>${e(l.desc)}${u.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(u.serial)}</span>` : ''}</td><td class="r">${peso2(l.unitCost)}</td><td class="c" style="font-size:9pt">${e((UNIT_COND[u.cond] || UNIT_COND.S).label)}</td></tr>`
+        : `<tr><td class="c" style="font-size:9pt">${e(fDate(acqOf(u)))}</td><td class="pr-sn">${e(u.no)}</td><td class="pr-sn">${e(u.doc)}${u.docDate ? `<br>${e(fDate(u.docDate))}` : ''}</td><td>${e(l.desc)}${u.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(u.serial)}</span>` : ''}</td><td class="r">${peso2(l.unitCost)}</td><td class="c" style="font-size:9pt">${e((UNIT_COND[u.cond] || UNIT_COND.S).label)}</td></tr>`).join('');
       const cols = ppe ? 5 : 6;
       const blanks = `<tr class="pr-blank">${'<td></td>'.repeat(cols)}</tr>`.repeat(Math.max(0, 8 - units.length));
       const type = XFER_TYPES.map(([k, label]) => `<span style="margin-right:12pt">${fBox(r.transferType === k)}${label}${k === 'others' && r.transferType === 'others' && r.transferOther ? `: <u>${e(r.transferOther)}</u>` : k === 'others' ? ' ______' : ''}</span>`).join('');
@@ -10708,7 +10892,12 @@
             ${rows.length ? rows.map(r => `<div class="px-3 py-2 flex items-center gap-3"><span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900 truncate">${escapeHTML(r.item.name)}</span><span class="block text-[11px] text-slate-500 font-mono">${escapeHTML(r.unit ? r.unit.no : `${r.qty} untagged`)}</span></span><span class="shrink-0 text-[11px] font-mono text-slate-600">₱${peso2(r.qty * (r.item.price || 0))}</span></div>`).join('')
               : `<p class="px-3 py-4 text-center text-xs text-slate-500">Nothing is marked Unserviceable ${ppe ? 'among items of ₱50,000 or more' : 'below ₱50,000'}. Mark units under Property Numbers, or when a teacher reports a problem.</p>`}
           </div>
-          ${rows.length ? `<p class="text-xs text-slate-600"><b>${plural(rows.reduce((n, r) => n + r.qty, 0), 'unit')}</b> · total cost <b class="font-mono">₱${peso2(total)}</b></p>` : ''}
+          ${rows.length ? `<p id="coaUnservSum" class="text-xs text-slate-600"><b>${plural(rows.reduce((n, r) => n + r.qty, 0), 'unit')}</b> · total cost <b class="font-mono">₱${peso2(total)}</b>${ppe ? (() => {
+            const deps = rows.map(r => r.unit && ppeDepreciation(r.item, r.unit, coaVal('asAt') || localISODate()));
+            const known = deps.filter(Boolean);
+            return known.length ? ` · carrying amount <b class="font-mono">₱${peso2(known.reduce((n, d) => n + d.carrying, 0))}</b>${known.length < rows.length ? ` <span class="text-slate-500">(${known.length} of ${rows.length} with a date acquired)</span>` : ''}`
+              : ` · <span class="text-slate-500">add the date acquired under Property Numbers to fill in depreciation</span>`;
+          })() : ''}</p>` : ''}
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             ${coaField('asAt', 'As at', { type: 'date' })}
             ${coaField('fund', 'Fund cluster', { ph: 'e.g. 01' })}
@@ -10821,11 +11010,16 @@
       const rows = unservRows(ppe);
       if (!rows.length) return;
       const e = v => escapeHTML(v || '');
+      const asAt = coaVal('asAt') || localISODate();
+      let accTotal = 0, carryTotal = 0, estLife = false, depMissing = false;
       const body = rows.map(r => {
         const total = r.qty * (r.item.price || 0);
-        const lead = `<td class="c" style="font-size:8.5pt">${e(r.unit && r.unit.icsDate ? fDate(r.unit.icsDate) : '')}</td><td>${e(r.item.name)}${r.unit && r.unit.serial ? `<br><span style="font-size:8pt">S/N: ${e(r.unit.serial)}</span>` : ''}</td><td class="pr-sn">${e(r.unit ? r.unit.no : '')}</td><td class="c">${r.qty}</td><td class="r">${peso2(r.item.price)}</td><td class="r">${peso2(total)}</td>`;
+        const lead = `<td class="c" style="font-size:7.5pt;white-space:nowrap;padding-inline:1pt">${e(r.unit && unitAcq(r.unit) ? fDate(unitAcq(r.unit)) : '')}</td><td>${e(r.item.name)}${r.unit && r.unit.serial ? `<br><span style="font-size:8pt">S/N: ${e(r.unit.serial)}</span>` : ''}</td><td class="pr-sn">${e(r.unit ? r.unit.no : '')}</td><td class="c">${r.qty}</td><td class="r">${peso2(r.item.price)}</td><td class="r">${peso2(total)}</td>`;
         const remark = `<td style="font-size:8pt">${e(r.unit ? [unitHolder(r.unit) && `With ${unitHolder(r.unit)}`, r.unit.loc].filter(Boolean).join(' · ') : '')}</td>`;
-        return `<tr>${lead}${ppe ? '<td></td><td></td><td></td>' : ''}${remark}${'<td></td>'.repeat(8)}</tr>`;
+        const dep = ppe && r.unit ? ppeDepreciation(r.item, r.unit, asAt) : null;
+        if (dep) { accTotal += dep.acc; carryTotal += dep.carrying; if (dep.est) estLife = true; } else if (ppe) depMissing = true;
+        const depCells = dep ? `<td class="r">${peso2(dep.acc)}${dep.est ? '*' : ''}</td><td></td><td class="r">${peso2(dep.carrying)}</td>` : '<td></td><td></td><td></td>';
+        return `<tr>${lead}${ppe ? depCells : ''}${remark}${'<td></td>'.repeat(8)}</tr>`;
       }).join('');
       const cols = ppe ? 18 : 15;
       const blanks = `<tr class="pr-blank">${'<td></td>'.repeat(cols)}</tr>`.repeat(Math.max(0, 5 - rows.length));
@@ -10845,8 +11039,11 @@
               ${ppe ? '<th>Accumu&shy;lated Depre&shy;ciation</th><th>Accumu&shy;lated Impair&shy;ment Losses</th><th>Carrying Amount</th>' : ''}<th>Remarks</th>
               <th>Sale</th><th>Transfer</th><th>Destruc&shy;tion</th><th>Others (Specify)</th><th>Total</th><th>OR No.</th><th>Amount</th></tr>
             ${body}${blanks}
-            <tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(totalCost)}</b></td><td colspan="${cols - 6}"></td></tr>
+            ${ppe
+              ? `<tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(totalCost)}</b></td><td class="r"><b>${peso2(accTotal)}</b></td><td></td><td class="r"><b>${peso2(carryTotal)}</b></td><td colspan="${cols - 9}"></td></tr>`
+              : `<tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(totalCost)}</b></td><td colspan="${cols - 6}"></td></tr>`}
           </table>
+          ${ppe && (estLife || depMissing) ? `<p style="font-size:7.5pt;margin:2pt 0 0">${estLife ? '* Useful life not recorded; the usual life for the category was used (5 years; furniture 10). ' : ''}${depMissing ? 'Depreciation is blank where the date acquired is not recorded.' : ''} Straight line, residual value 5 % of cost, from the month after acquisition.</p>` : ''}
           <table class="pr-table" style="margin-top:8pt">
             <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
             <tr><td style="font-size:8.5pt">I HEREBY request inspection and disposition, pursuant to Section 79 of PD 1445, of the property enumerated above.</td>
@@ -10949,18 +11146,42 @@
       }));
       return withBalance(ev, item.qty || 0, from);
     }
+    function cardReceipts(item, from, opening) {
+      const fromISO = from || '9999-12-31';
+      const groups = new Map();
+      getUnits(item.code).forEach(u => {
+        const d = unitAcq(u);
+        if (!d || d >= fromISO) return;
+        const g = groups.get(d) || { d, nos: [] };
+        g.nos.push(u.no);
+        groups.set(d, g);
+      });
+      const list = [...groups.values()].sort((a, b) => a.d.localeCompare(b.d));
+      const known = list.reduce((n, g) => n + g.nos.length, 0);
+      if (!known || known > opening) return { left: opening, rows: [] };   // records disagree: keep the plain balance
+      let bal = opening - known;
+      const rows = list.map(g => {
+        bal += g.nos.length;
+        return { t: isoMs(g.d), ref: 'Received', receipt: g.nos.length, issue: '', office: '', nos: '', remarks: g.nos.filter(Boolean).join(', '), bal };
+      });
+      return { left: opening - known, rows };
+    }
     function propCardHTML(item, from) {
       const e = v => escapeHTML(v ?? '');
       const d = prDefaults();
       const ppe = isPPE(item);
       const price = item.price || 0;
       const nos = getUnits(item.code).map(u => u.no).filter(Boolean);
-      const { opening, rows } = propCardData(item, from);
+      const { opening, rows: changes } = propCardData(item, from);
+      // Units with a date acquired before the period open the card as receipts on that date;
+      // only what is left over (units without a date) is "Balance forward".
+      const acq = cardReceipts(item, from, opening);
+      const rows = [...acq.rows, ...changes];
       const tr = r => ppe
         ? `<tr><td class="c" style="font-size:9pt">${e(fDate(msISO(r.t)))}</td><td style="font-size:9pt">${e(r.ref)}</td><td class="c">${r.receipt}</td><td class="c">${r.issue}</td><td style="font-size:9pt">${e(r.office)}</td><td class="c">${r.bal}</td><td class="r">${peso2(r.bal * price)}</td><td style="font-size:8.5pt">${e([r.nos, r.remarks].filter(Boolean).join(' · '))}</td></tr>`
         : `<tr><td class="c" style="font-size:9pt">${e(fDate(msISO(r.t)))}</td><td style="font-size:9pt">${e(r.ref)}</td><td class="c">${r.receipt}</td><td class="pr-sn">${e(r.nos)}</td><td class="c">${r.issue}</td><td style="font-size:9pt">${e(r.office)}</td><td class="c">${r.bal}</td><td class="r">${peso2(r.bal * price)}</td><td style="font-size:8.5pt">${e(r.remarks)}</td></tr>`;
       const cols = ppe ? 8 : 9;
-      const fwd = `<tr><td class="c" style="font-size:9pt">${e(fDate(from))}</td><td>Balance forward</td>${'<td></td>'.repeat(ppe ? 3 : 4)}<td class="c">${opening}</td><td class="r">${peso2(opening * price)}</td><td></td></tr>`;
+      const fwd = acq.left || !acq.rows.length ? `<tr><td class="c" style="font-size:9pt">${e(fDate(acq.rows.length ? '' : from))}</td><td>Balance forward</td>${'<td></td>'.repeat(ppe ? 3 : 4)}<td class="c">${acq.left}</td><td class="r">${peso2(acq.left * price)}</td><td></td></tr>` : '';
       const blanks = `<tr class="pr-blank">${'<td></td>'.repeat(cols)}</tr>`.repeat(Math.max(0, 14 - rows.length));
       const label = ppe ? 'Property, Plant and Equipment' : 'Semi-expendable Property';
       return `
@@ -10999,7 +11220,12 @@
       if (!rows.length) return;
       const e = v => escapeHTML(v ?? '');
       const cell = (on, x) => (on ? `<td class="c">${x.q}</td><td style="font-size:8pt">${e(x.r.teacherName)}</td>` : '<td></td><td></td>');
-      const body = rows.map(x => `<tr><td class="c" style="font-size:8.5pt">${e(fDate(x.r.date))}</td><td class="pr-sn">${e(relDocName(x.r))}</td><td class="pr-sn">${e(lineNos(x.l))}</td><td>${e(x.l.desc)}</td><td></td>
+      const lifeOf = l => {
+        const u = (l.units || []).map(x => findUnitAny(x.id)).find(Boolean);
+        const item = items.find(i => i.code === l.code);
+        return u && item ? unitLife(item, u).text : u && u.life ? u.life : item ? lifeLabel(defaultLifeYears(item)) : '';
+      };
+      const body = rows.map(x => `<tr><td class="c" style="font-size:8.5pt">${e(fDate(x.r.date))}</td><td class="pr-sn">${e(relDocName(x.r))}</td><td class="pr-sn">${e(lineNos(x.l))}</td><td>${e(x.l.desc)}</td><td class="c" style="font-size:8pt">${e(lifeOf(x.l))}</td>
         ${cell(x.kind === 'issued', x)}${cell(x.kind === 'returned', x)}${cell(x.kind === 'reissued', x)}<td></td><td class="c">${x.bal}</td><td class="r">${peso2(x.bal * (x.l.unitCost || 0))}</td><td style="font-size:8pt">${e(x.remarks)}</td></tr>`).join('');
       const blanks = `<tr class="pr-blank">${'<td></td>'.repeat(15)}</tr>`.repeat(Math.max(0, 6 - rows.length));
       printFormHTML(`
@@ -11576,7 +11802,7 @@
     const NOTIF_MAX = 60;
     let notifState = null;      // { scope, items: [], seen: {}, primed: {} }
     let notifPrefs = (() => {
-      const def = { system: true, lowStock: true, reminders: true };
+      const def = { system: true, lowStock: true, reminders: true, waiting: true, count: true, quiet: true, quietFrom: '19:00', quietTo: '06:00' };
       try { return Object.assign(def, JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY) || '{}')); }
       catch (e) { return def; }
     })();
@@ -11770,6 +11996,53 @@
       }
     }
 
+    // ---- Sync problem (custodian): changes not in the account for 24 h, or the account refuses them ----
+    // A bar under the header (Back up · Try again · hide for 12 h) and one bell item per problem.
+    const SYNC_STALE_MS = 24 * 3600 * 1000;
+    const SYNC_SNOOZE_KEY = 'custodian_sync_snooze_v1';
+    function syncProblem(now = Date.now()) {
+      if (!isCustodianDevice() || !cloudConfigured() || !cloud.user || invStatus.state === 'off') return null;
+      if (invStatus.state === 'error') return { kind: 'error', since: invErrorSince || now, error: invStatus.error || '' };
+      if (invSync.pendingSince && now - invSync.pendingSince >= SYNC_STALE_MS) return { kind: 'stale', since: invSync.pendingSince };
+      return null;
+    }
+    function syncProblemText(p) {
+      return p.kind === 'error'
+        ? { title: 'Your account is not saving changes', body: `${p.error ? p.error.replace(/\.?$/, '. ') : ''}Changes stay on this phone until it works again. Save a backup file to be safe.` }
+        : { title: 'Changes are not saved to your account', body: `Changes made on this phone since ${formatTimeAgo(p.since)} have not reached your account. Connect to the internet and keep CustodianPro open for a minute, or save a backup file.` };
+    }
+    function checkSyncProblem(now = Date.now()) {
+      const p = syncProblem(now);
+      const bar = document.getElementById('syncBar');
+      if (bar) {
+        const snoozed = Number(localStorage.getItem(SYNC_SNOOZE_KEY) || 0) > now;
+        bar.classList.toggle('hidden', !p || snoozed);
+        if (p) {
+          const t = syncProblemText(p);
+          document.getElementById('syncBarTitle').textContent = t.title;
+          document.getElementById('syncBarText').textContent = t.body;
+        }
+      }
+      if (!p || !notifScope()) return;
+      const st = loadNotifs();
+      const episode = `${p.kind}:${p.since}`;
+      if (st.seen.sync === episode) return;
+      st.seen.sync = episode;
+      saveNotifs();
+      const t = syncProblemText(p);
+      addNotif({ title: t.title, body: t.body, icon: 'ph-cloud-warning', tone: 'rose', go: 'sync' });
+    }
+    function snoozeSyncBar() {
+      localStorage.setItem(SYNC_SNOOZE_KEY, String(Date.now() + 12 * 3600 * 1000));
+      checkSyncProblem();
+    }
+    function retryInventorySync() {
+      if (!navigator.onLine) { showToast('No internet connection · try again when you are online', 'ph-wifi-slash'); return; }
+      localStorage.removeItem(SYNC_SNOOZE_KEY);
+      startInventorySync();
+      showToast('Trying again…', 'ph-arrows-clockwise');
+    }
+
     // ---- Reminders to confirm received items ----
     // Teacher: a release still without Received, 2 days and again 7 days after it was made.
     // Custodian: once, 3 days after, so they know whom to follow up. Releases older than
@@ -11780,7 +12053,112 @@
     const needsReceipt = r => (isIssueKind(r.kind) || r.kind === 'RIS') && !r.sameHolder && !r.sending;
     const relDocNo = r => `${r.kind} ${r.no || ''}`.trim();
     function notifReminders(now = Date.now()) {
-      if (!notifScope() || notifPrefs.reminders === false) return;
+      if (!notifScope()) return;
+      if (notifPrefs.reminders !== false) notifReceiptReminders(now);
+      if (notifPrefs.waiting !== false && isCustodianDevice()) { notifWaitingRequests(now); notifLongRepairs(now); }
+      if (notifPrefs.count !== false) notifCountSeason(now);
+    }
+
+    // ---- Supply requests waiting for review more than 2 days (custodian) ----
+    const REQ_WAIT_DAYS = 2;
+    function notifWaitingRequests(now) {
+      if (!cloud.user) return;
+      const st = loadNotifs();
+      const due = reqList.filter(r => !r.sending && (r.status || 'pending') === 'pending' && reqTime(r)
+        && (now - reqTime(r)) / 864e5 >= REQ_WAIT_DAYS && !st.seen['rw:' + r.id]);
+      if (!due.length) return;
+      due.forEach(r => { st.seen['rw:' + r.id] = 1; });
+      saveNotifs();
+      const days = r => plural(Math.floor((now - reqTime(r)) / 864e5), 'day');
+      const r = due[0];
+      addNotif(due.length === 1
+        ? { title: `${r.name || 'A teacher'}’s request is waiting ${days(r)}`, body: `${reqNotifSummary(r)} · approve, decline or ask for changes`, icon: 'ph-hourglass-medium', tone: 'amber', go: 'requests' }
+        : { title: `${due.length} supply requests waiting more than ${REQ_WAIT_DAYS} days`, body: due.slice(0, 4).map(x => `${x.name || 'A teacher'} (${days(x)})`).join(', ') + (due.length > 4 ? ` + ${due.length - 4} more` : ''), icon: 'ph-hourglass-medium', tone: 'amber', go: 'requests' });
+    }
+
+    // ---- Units in Needs repair for more than a month (custodian) ----
+    // unit.condAt is set when a unit is marked; units marked before that existed count from the
+    // first time this phone saw them in Needs repair (kept on the phone).
+    const REPAIR_DAYS = 30;
+    const REPAIR_SEEN_KEY = 'custodian_repair_since_v1';
+    function repairSinceMap(now) {
+      let map = {};
+      try { map = JSON.parse(localStorage.getItem(REPAIR_SEEN_KEY) || '{}') || {}; } catch (e) { map = {}; }
+      const next = {};
+      items.forEach(item => {
+        const units = getUnits(item.code);
+        if (units.length) units.filter(u => u.cond === 'R').forEach(u => { next[u.id] = u.condAt || map[u.id] || now; });
+        else if ((item.repair || 0) > 0) next['i:' + item.code] = map['i:' + item.code] || now;
+      });
+      localStorage.setItem(REPAIR_SEEN_KEY, JSON.stringify(next));
+      return next;
+    }
+    function notifLongRepairs(now) {
+      const since = repairSinceMap(now);
+      const st = loadNotifs();
+      const due = [];
+      items.forEach(item => {
+        const units = getUnits(item.code);
+        const list = units.length ? units.filter(u => u.cond === 'R').map(u => ({ key: u.id, label: `${item.name} ${u.no}` }))
+          : (item.repair || 0) > 0 ? [{ key: 'i:' + item.code, label: `${item.name} (${item.repair})` }] : [];
+        list.forEach(x => {
+          const t = since[x.key];
+          if (t && (now - t) / 864e5 >= REPAIR_DAYS && st.seen['rp:' + x.key] !== t) due.push({ ...x, t });
+        });
+      });
+      if (!due.length) return;
+      due.forEach(x => { st.seen['rp:' + x.key] = x.t; });
+      saveNotifs();
+      addNotif({
+        title: due.length === 1 ? `In Needs repair for over a month: ${due[0].label}` : `${due.length} units in Needs repair for over a month`,
+        body: `${due.length > 1 ? due.slice(0, 3).map(x => x.label).join(', ') + (due.length > 3 ? ` + ${due.length - 3} more · ` : ' · ') : ''}If it cannot be fixed, mark it Unserviceable and print the IIRUP from Forms.`,
+        icon: 'ph-wrench', tone: 'rose', go: 'repair'
+      });
+    }
+
+    // ---- Year-end physical count (1 December – 31 January) ----
+    // The count is as at 31 December and the report (RPCPPE / RPCSP) is due 31 January. Once a
+    // week the custodian sees how many tagged units were checked since 1 December; teachers are
+    // asked to check the items they hold.
+    function countSeason(now) {
+      const d = new Date(now);
+      const y = d.getMonth() === 11 ? d.getFullYear() : d.getMonth() === 0 ? d.getFullYear() - 1 : 0;
+      if (!y) return null;
+      const start = new Date(y, 11, 1).getTime();
+      return { year: y, start, week: Math.floor((now - start) / (7 * 864e5)), due: new Date(y + 1, 0, 31).getTime() };
+    }
+    function notifCountSeason(now) {
+      const season = countSeason(now);
+      if (!season) return;
+      const st = loadNotifs();
+      const key = 'yc:' + season.year;
+      const last = st.seen[key];
+      if (last !== undefined && last >= season.week) return;
+      const daysLeft = Math.ceil((season.due - now) / 864e5);
+      const dueText = daysLeft <= 14 ? `report due 31 Jan (${plural(Math.max(0, daysLeft), 'day')} left)` : 'report due 31 Jan';
+      if (isCustodianDevice()) {
+        const units = allTaggedUnits();
+        const counted = units.filter(x => x.unit.seen && x.unit.seen >= season.start).length;
+        if (last === 'done') return;
+        st.seen[key] = units.length && counted >= units.length ? 'done' : season.week;
+        saveNotifs();
+        addNotif(units.length
+          ? counted >= units.length
+            ? { title: `Year-end count done: all ${units.length} units checked`, body: 'Print the RPCPPE and RPCSP from Forms · due 31 Jan', icon: 'ph-seal-check', tone: 'emerald', go: 'count' }
+            : { title: `Year-end count: ${counted} of ${units.length} units counted`, body: `${dueText} · scan the QR labels or use Count on Home`, icon: 'ph-clipboard-text', tone: 'brand', go: 'count' }
+          : { title: 'Year-end physical count', body: `Count the property as at 31 December · ${dueText}`, icon: 'ph-clipboard-text', tone: 'brand', go: 'count' });
+      } else if (isTeacherDevice()) {
+        if (!myRelLoaded) return;
+        const held = teacherHoldings(myReleases).equipment.length;
+        if (!held) return;
+        st.seen[key] = season.week;
+        saveNotifs();
+        addNotif({ title: `Year-end count: check the ${plural(held, 'item')} you hold`, body: 'Make sure each one is still with you and working · report a problem if not', icon: 'ph-clipboard-text', tone: 'teal', go: 'teacher-items' });
+      }
+    }
+
+    // ---- Reminders to tap Received ----
+    function notifReceiptReminders(now) {
       const st = loadNotifs();
       const age = r => (now - (r.createdMs || now)) / 864e5;
       const daysAgo = r => plural(Math.floor(age(r)), 'day');
@@ -11843,8 +12221,57 @@
     }
 
     const systemNotifSupported = () => 'Notification' in window && 'serviceWorker' in navigator;
+    // ---- Quiet hours: no phone notifications at night (7 pm – 6 am unless changed) ----
+    // What arrives meanwhile still goes to the bell; if the app is in the background when the
+    // quiet hours end, one phone notification sums it up ("4 notifications overnight").
+    const QUIET_KEY = 'custodian_quiet_held_v1';
+    const hmMin = hm => { const [h, m] = String(hm || '0:0').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+    function inQuietHours(now = Date.now()) {
+      if (notifPrefs.quiet === false) return false;
+      const d = new Date(now), m = d.getHours() * 60 + d.getMinutes();
+      const from = hmMin(notifPrefs.quietFrom || '19:00'), to = hmMin(notifPrefs.quietTo || '06:00');
+      if (from === to) return false;
+      return from < to ? m >= from && m < to : m >= from || m < to;
+    }
+    function quietHeld() { try { return JSON.parse(localStorage.getItem(QUIET_KEY) || 'null') || { n: 0, titles: [] }; } catch (e) { return { n: 0, titles: [] }; } }
+    function releaseQuietHeld(now = Date.now()) {
+      const held = quietHeld();
+      if (!held.n || inQuietHours(now)) return;
+      localStorage.removeItem(QUIET_KEY);
+      if (document.visibilityState === 'visible') return;   // the bell already shows them
+      showSystemNotif({ id: '', title: held.n === 1 ? held.titles[0] : `${held.n} notifications overnight`, body: held.n === 1 ? '' : held.titles.slice(0, 3).join(' · '), at: now });
+    }
+    const fmtHM = hm => { const m = hmMin(hm), h = Math.floor(m / 60) % 24; return `${h % 12 || 12}:${String(m % 60).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; };
+    function setQuietTime(which, value) {
+      if (!/^\d{2}:\d{2}$/.test(value)) return;
+      notifPrefs[which === 'from' ? 'quietFrom' : 'quietTo'] = value;
+      localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(notifPrefs));
+      renderNotifPanel();
+    }
+    function quietHoursHTML() {
+      const on = notifPrefs.quiet !== false;
+      const time = (id, which, v) => `<input id="${id}" type="time" value="${escapeHTML(v)}" onchange="setQuietTime('${which}', this.value)" aria-label="Quiet hours ${which}" class="h-9 px-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-brand-500 outline-none">`;
+      return `
+        <div id="quietHours" class="rounded-xl bg-white border border-slate-200 px-3 py-2.5 text-xs">
+          <div class="flex items-center gap-3">
+            <i class="ph-bold ph-moon-stars text-base text-indigo-600"></i>
+            <span class="flex-1 min-w-0"><span class="block font-bold text-slate-800">Quiet hours</span><span class="block text-[11px] text-slate-600 leading-snug">${on ? `No phone notifications ${fmtHM(notifPrefs.quietFrom)} – ${fmtHM(notifPrefs.quietTo)} · they wait in the bell` : 'Phone notifications at any time of day'}</span></span>
+            <button role="switch" aria-checked="${on}" aria-label="Quiet hours" data-notif-quiet onclick="setNotifPref('quiet', ${!on})"
+              class="notif-sw shrink-0 w-11 h-6 rounded-full p-0.5 transition ${on ? 'bg-brand-600' : 'bg-slate-300'}"><span class="block w-5 h-5 rounded-full bg-white shadow transition ${on ? 'translate-x-5' : ''}"></span></button>
+          </div>
+          ${on ? `<div class="mt-2 pl-7 flex flex-wrap items-center gap-2 text-slate-600"><span>From</span>${time('quietFrom', 'from', notifPrefs.quietFrom)}<span>to</span>${time('quietTo', 'to', notifPrefs.quietTo)}</div>` : ''}
+        </div>`;
+    }
+
     async function showSystemNotif(n) {
       if (!systemNotifSupported() || Notification.permission !== 'granted' || !notifPrefs.system) return;
+      if (inQuietHours(n.at || Date.now())) {
+        const held = quietHeld();
+        held.n += 1;
+        held.titles = [n.title, ...held.titles].slice(0, 5);
+        localStorage.setItem(QUIET_KEY, JSON.stringify(held));
+        return;
+      }
       const opts = {
         body: n.body || '', icon: 'assets/icons/icon-192.png', badge: 'assets/icons/badge-96.png',
         tag: n.id || 'custodianpro-summary', data: { nid: n.id || '' }, timestamp: n.at || Date.now()
@@ -11904,7 +12331,8 @@
         return `<div class="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-xs text-emerald-800 flex items-start gap-2">
           <i class="ph-bold ph-bell-ringing text-base mt-0.5"></i>
           <div class="flex-1 min-w-0"><p class="font-bold">Phone notifications are on</p><p class="text-emerald-700 mt-0.5">They appear while CustodianPro is open or was used recently.</p></div>
-          <button onclick="setSystemNotifs(false)" class="shrink-0 h-8 px-2.5 rounded-lg bg-white border border-emerald-200 font-bold text-emerald-800">Turn off</button></div>`;
+          <button onclick="setSystemNotifs(false)" class="shrink-0 h-8 px-2.5 rounded-lg bg-white border border-emerald-200 font-bold text-emerald-800">Turn off</button></div>
+          ${quietHoursHTML()}`;
       }
       if (p === 'denied') {
         return `<div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs text-slate-600 flex items-start gap-2">
@@ -11947,8 +12375,11 @@
         </div>`;
       const prefs = isTeacherDevice()
         ? sw('reminders', 'Reminders to tap Received', '2 and 7 days after items are released to you')
+          + sw('count', 'Year-end count', 'Once a week in December and January: check the items you hold')
         : sw('lowStock', 'Low stock', 'When an item falls to its alert level or runs out')
-          + sw('reminders', 'Unconfirmed releases', 'When a teacher has not tapped Received after 3 days');
+          + sw('reminders', 'Unconfirmed releases', 'When a teacher has not tapped Received after 3 days')
+          + sw('waiting', 'Waiting too long', 'Requests not reviewed after 2 days · units in Needs repair for a month')
+          + sw('count', 'Year-end count', 'Once a week from 1 December: units counted, report due 31 January');
       body.innerHTML = `
         ${notifPermissionCard()}
         ${items.length ? `<div class="divide-y divide-slate-100 rounded-2xl border border-slate-200 overflow-hidden bg-white">${items.map(n => `
@@ -11972,7 +12403,7 @@
       notifPrefs[key] = !!on;
       localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(notifPrefs));
       renderNotifPanel();
-      if (on && key === 'reminders') notifReminders();
+      if (on && ['reminders', 'waiting', 'count'].includes(key)) notifReminders();
     }
 
     function openNotif(id) {
@@ -11996,6 +12427,18 @@
         window.scrollTo({ top: 0 });
       } else if (n.go === 'teachers') {
         openTeachersView(n.person || null);
+      } else if (n.go === 'sync') {
+        localStorage.removeItem(SYNC_SNOOZE_KEY);
+        switchMainView('HOME');
+        checkSyncProblem();
+        window.scrollTo({ top: 0 });
+      } else if (n.go === 'repair') {
+        switchMainView('ITEMS');
+        setLedgerFilter('CONDITION');
+        window.scrollTo({ top: 0 });
+      } else if (n.go === 'count') {
+        openCoa();
+        coaGo('count');
       } else if (n.go === 'low') {
         switchMainView('ITEMS');
         setLedgerFilter('LOW');
@@ -12022,8 +12465,8 @@
           if (e.data.nid) openNotif(e.data.nid); else openNotifPanel();
         });
       }
-      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { renderNotifBell(); notifReminders(); } });
-      setInterval(() => notifReminders(), 30 * 60 * 1000);   // days pass while the app stays open
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { renderNotifBell(); notifReminders(); checkSyncProblem(); releaseQuietHeld(); } });
+      setInterval(() => { notifReminders(); checkSyncProblem(); releaseQuietHeld(); }, 30 * 60 * 1000);   // days pass while the app stays open
     }
 
     // ---- Install as an app (Chrome's "beforeinstallprompt") -------------------------------
@@ -12137,6 +12580,12 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-depreciation', date: 'Nov 2026', title: 'Depreciation, count season and a computer layout', points: [
+        'Each tagged unit can keep its date acquired and useful life. They fill the Property Card, RegSPI and IIRUP, and items of P50,000 and up show straight-line depreciation and carrying amount.',
+        'From 1 December the bell keeps track of the year-end count. It also warns about requests waiting over 2 days, units in Needs repair for over a month, and changes that have not reached your account.',
+        'Quiet hours: phone notifications wait from 7 PM to 6 AM (change the times under the bell).',
+        'On a computer the tabs move to a sidebar, and Inventory and Catalog show more columns. Tablet buttons are bigger.'
+      ] },
       { id: '2026-11-forms-alerts', date: 'Nov 2026', title: 'More forms, smarter alerts', points: [
         'Reports → Government forms: Property Card and SPC, Stock Card, RegSPI, RSPI and RSMI for the month, RLSDDP / RLSDDSP for lost or damaged property, and a supplies reorder list that turns into a Purchase Request.',
         'The bell now tells you when a teacher joins, when a supply falls to its alert level or runs out, and reminds teachers to tap Received (the custodian hears after 3 days).',
@@ -12447,7 +12896,7 @@
     // Firebase keeps the session). Without a cloud project (firebase-config.js = null) the app
     // has nobody to sign in with, so it stays the local-only inventory.
     var gateStep = 'welcome'; // 'welcome' | 'custodian' | 'teacher' | 'busy'
-    var GATE_BEHIND = 'body > header, body > section, #tabBar, #installBar, #updateBar';
+    var GATE_BEHIND = 'body > header, body > section, #tabBar, #installBar, #syncBar, #updateBar';
 
     function loginGateNeeded() {
       if (!cloudConfigured()) return false;

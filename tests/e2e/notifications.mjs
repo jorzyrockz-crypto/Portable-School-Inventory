@@ -31,6 +31,8 @@ async function instrument(page, { granted = false } = {}) {
     navigator.clearAppBadge = () => { window.__badge.push(0); return Promise.resolve(); };
     window.__shown = [];
     window.__hidden = false;
+    // The suite runs at any hour: quiet hours (7 pm – 6 am) start off here; section 19 tests them.
+    try { if (!localStorage.getItem('custodian_notification_prefs_v1')) localStorage.setItem('custodian_notification_prefs_v1', JSON.stringify({ quiet: false })); } catch (e) {}
     Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (window.__hidden ? 'hidden' : 'visible') });
     if (navigator.serviceWorker) {
       navigator.serviceWorker.getRegistration = async () => ({ showNotification: async (title, o) => { window.__shown.push({ title, ...o }); } });
@@ -363,17 +365,150 @@ try {
   // the switches in the sheet
   await ev(a, () => openNotifPanel());
   const sws = await ev(a, () => [...document.querySelectorAll('[data-notif-pref]')].map(b => b.getAttribute('aria-label') + ':' + b.getAttribute('aria-checked')));
-  check(sws.join() === 'Low stock:true,Unconfirmed releases:true', `custodian sheet: ${sws.join(', ')}`);
+  check(sws.join() === 'Low stock:true,Unconfirmed releases:true,Waiting too long:true,Year-end count:true', `custodian sheet: ${sws.join(', ')}`);
   await a.click('[data-notif-pref="lowStock"]');
   check(await ev(a, () => notifPrefs.lowStock === false && JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY)).lowStock === false && document.querySelector('[data-notif-pref="lowStock"]').getAttribute('aria-checked') === 'false'), 'Low stock switch turns off (and is saved)');
   await a.click('[data-notif-pref="lowStock"]');
   await a.screenshot({ path: '/tmp/e2e_n_prefs.png' });
   await ev(a, () => closeNotifPanel());
   await ev(t2, () => openNotifPanel());
-  check((await ev(t2, () => [...document.querySelectorAll('[data-notif-pref]')].map(b => b.getAttribute('aria-label')))).join() === 'Reminders to tap Received', 'teacher sheet: reminders switch only');
+  check((await ev(t2, () => [...document.querySelectorAll('[data-notif-pref]')].map(b => b.getAttribute('aria-label')))).join() === 'Reminders to tap Received,Year-end count', 'teacher sheet: Received reminders and year-end count');
   await ev(t2, () => { closeNotifPanel(); setNotifPref('reminders', false); delete loadNotifs().seen['rm:' + myReleases[0].id]; myReleases[0].id += '-x'; });
   bl = await tn(t2, 3 * day);
   check(bl.filter(n => /Reminder/.test(n.title)).length === 2, 'teacher reminders switched off: none');
+
+  out('18 requests waiting, Needs repair for a month, year-end count');
+  const countOf = async (p, re) => (await notifs(p)).filter(n => re.test(n.title)).length;
+  await ev(a, () => { const st = loadNotifs(); Object.keys(st.seen).filter(k => /^(rw|rp|yc):/.test(k)).forEach(k => delete st.seen[k]); st.items = st.items.filter(n => !['repair', 'count'].includes(n.go) && !/waiting/.test(n.title)); saveNotifs(); localStorage.removeItem(REPAIR_SEEN_KEY); });
+  const pend = await ev(a, () => reqList.filter(r => (r.status || 'pending') === 'pending' && !r.sending).length);
+  check(pend >= 1, `a request is still waiting for review (${pend})`);
+  await tn(a, 1.5 * day);
+  check(await countOf(a, /waiting/) === 0, 'request waiting 1½ days: nothing yet');
+  al = await tn(a, 2.2 * day);
+  const wr = al.find(n => /request is waiting 2 days|requests waiting more than 2 days/.test(n.title));
+  check(!!wr && wr.go === 'requests', `after 2 days: “${wr && wr.title}” · ${wr && wr.body}`);
+  await tn(a, 4 * day);
+  check(await countOf(a, /waiting/) === 1, 'once per request (no repeat)');
+  // Needs repair
+  const rUnit = await ev(a, c => { const u = getUnits(c)[0]; setUnitCond(c, u.id, 'R'); return { no: u.no, at: u.condAt }; }, P);
+  check(rUnit.at > 0, 'marking Needs repair remembers when (condAt)');
+  await tn(a, 20 * day);
+  check(await countOf(a, /Needs repair for over a month/) === 0, '20 days in Needs repair: nothing yet');
+  al = await tn(a, 31 * day);
+  const rp = al.find(n => /Needs repair for over a month/.test(n.title));
+  check(!!rp && rp.go === 'repair' && /IIRUP/.test(rp.body) && (rp.title + rp.body).includes(rUnit.no), `after a month: “${rp && rp.title}” · ${rp && rp.body}`);
+  await tn(a, 35 * day);
+  check((await notifs(a)).filter(n => (n.title + n.body).includes(rUnit.no) && /Needs repair/.test(n.title)).length === 1, 'no repeat for the same unit');
+  await ev(a, id => openNotif(id), rp.id);
+  await sleep(300);
+  check(await ev(a, () => activeMainView === 'ITEMS' && document.getElementById('ledgerTab-CONDITION').getAttribute('aria-pressed') === 'true'), 'tap → Inventory · Needs repair');
+  await ev(a, c => { const u = getUnits(c)[0]; setUnitCond(c, u.id, 'S'); }, P);
+  // year-end count (1 December – 31 January), at fixed dates
+  const at = (y, m, d) => new Date(y, m, d, 12).getTime();
+  const cn = async (p, ms) => { await ev(p, ms => notifCountSeason(ms), ms); await sleep(300); return notifs(p); };
+  const clearCount = p => ev(p, () => { const st = loadNotifs(); delete st.seen['yc:2026']; st.items = st.items.filter(n => !/^Year-end/.test(n.title)); saveNotifs(); });
+  await clearCount(a);   // the shifted clocks above already reached December
+  await cn(a, at(2026, 10, 30));
+  check(await countOf(a, /Year-end/) === 0, '30 November: no count note');
+  al = await cn(a, at(2026, 11, 2));
+  const total = await ev(a, () => allTaggedUnits().length);
+  const yc = al.find(n => /^Year-end count: 0 of \d+ units counted$/.test(n.title));
+  check(!!yc && yc.title.includes(`of ${total} units`) && /report due 31 Jan/.test(yc.body) && yc.go === 'count', `2 December: “${yc && yc.title}” · ${yc && yc.body}`);
+  await cn(a, at(2026, 11, 5));
+  check(await countOf(a, /Year-end/) === 1, 'same week: no repeat');
+  await ev(a, (c, ms) => { getUnits(c)[0].seen = ms; }, P, at(2026, 11, 7));
+  al = await cn(a, at(2026, 11, 9));
+  check(al.some(n => n.title === `Year-end count: 1 of ${total} units counted`), 'next week: 1 counted');
+  al = await cn(a, at(2027, 0, 25));
+  check(al.some(n => /1 of \d+ units counted/.test(n.title) && /6 days left/.test(n.body)), 'late January: days left');
+  await ev(a, id => openNotif(id), yc.id);
+  await sleep(300);
+  check(await ev(a, () => !document.getElementById('coaModal').classList.contains('hidden') && coaPage === 'count'), 'tap → Forms · physical count report');
+  await ev(a, () => closeCoa());
+  await ev(a, ms => allTaggedUnits().forEach(x => { x.unit.seen = ms; }), at(2027, 0, 26));
+  al = await cn(a, at(2027, 1, 2));
+  check(!al.some(n => /^Year-end/.test(n.title) && n.id !== yc.id && /Feb/.test(n.body)), 'February: season over');
+  await ev(a, () => { delete loadNotifs().seen['yc:2026']; });
+  al = await cn(a, at(2027, 0, 27));
+  check(al.some(n => n.title === `Year-end count done: all ${total} units checked`), 'all counted: “done” note once');
+  await cn(a, at(2027, 0, 30));
+  check(await countOf(a, /Year-end count done/) === 1, 'no more notes after done');
+  // teachers holding equipment are asked to check it; supplies alone do not count
+  await clearCount(t); await clearCount(t2);
+  check(await ev(t2, () => teacherHoldings(myReleases).equipment.length) === 0, 'Ben holds supplies only');
+  await cn(t2, at(2026, 11, 2));
+  check(!(await notifs(t2)).some(n => /^Year-end/.test(n.title)), 'teacher holding only supplies: no prompt');
+  await release(a, ben, [{ code: P, qty: 1 }]);
+  await until(t2, () => teacherHoldings(myReleases).equipment.length === 1, 'Ben holds a projector', 8000);
+  await cn(t2, at(2026, 11, 2));
+  const tc = (await notifs(t2)).find(n => /^Year-end count: check the/.test(n.title));
+  check(!!tc && tc.title === 'Year-end count: check the 1 item you hold' && tc.go === 'teacher-items', `teacher holding equipment: “${tc && tc.title}” · ${tc && tc.body}`);
+  await cn(t2, at(2026, 11, 4));
+  check((await notifs(t2)).filter(n => /^Year-end/.test(n.title)).length === 1, 'teacher: once a week');
+  await ev(a, () => closeNotifPanel());
+
+  out('19 quiet hours for phone notifications');
+  check(await ev(t, () => { localStorage.removeItem(NOTIF_PREFS_KEY); return true; }), 'fresh preferences');
+  const defs = await ev(t, () => { const d = { system: true, lowStock: true, reminders: true, waiting: true, count: true, quiet: true, quietFrom: '19:00', quietTo: '06:00' }; return d; });
+  await ev(t, d => { Object.assign(notifPrefs, d); localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(notifPrefs)); }, defs);
+  const hm = (h, m = 0) => { const d = new Date(); d.setHours(h, m, 0, 0); return d.getTime(); };
+  const q = await ev(t, (a, b, c, d, e) => [inQuietHours(a), inQuietHours(b), inQuietHours(c), inQuietHours(d), inQuietHours(e)], hm(18, 59), hm(19), hm(23, 30), hm(5, 59), hm(6));
+  check(q.join() === 'false,true,true,true,false', `default 7 pm – 6 am (6:59 pm ${q[0]}, 7 pm ${q[1]}, 11:30 pm ${q[2]}, 5:59 am ${q[3]}, 6 am ${q[4]})`);
+  await ev(t, () => { notifPrefs.system = true; openNotifPanel(); });
+  const qh = await ev(t, () => ({ text: document.getElementById('quietHours').innerText, on: document.querySelector('[data-notif-quiet]').getAttribute('aria-checked'), from: quietFrom.value, to: quietTo.value }));
+  check(/Quiet hours/.test(qh.text) && /7:00 PM – 6:00 AM/.test(qh.text) && qh.on === 'true' && qh.from === '19:00' && qh.to === '06:00', `sheet: “${qh.text.replace(/\s+/g, ' ')}”`);
+  await t.screenshot({ path: '/tmp/e2e_n_quiet.png' });
+  await ev(t, () => { quietFrom.value = '21:30'; quietFrom.dispatchEvent(new Event('change')); });
+  check(await ev(t, () => JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY)).quietFrom === '21:30' && /9:30 PM – 6:00 AM/.test(document.getElementById('quietHours').innerText)), 'start time changed to 9:30 pm (saved)');
+  // during quiet hours: held back (still in the bell), summed up when they end
+  await ev(t, () => { notifPrefs.quietFrom = '00:00'; notifPrefs.quietTo = '23:59'; window.__shown = []; window.__hidden = true; localStorage.removeItem(QUIET_KEY); });
+  await ev(t, () => { addNotif({ title: 'Test one', body: 'x', icon: 'ph-bell' }); });
+  await sleep(500);
+  await ev(t, () => { addNotif({ title: 'Test two', body: 'y', icon: 'ph-bell' }); });
+  await sleep(500);
+  const held = await ev(t, () => ({ shown: window.__shown.length, held: quietHeld().n, bell: loadNotifs().items.filter(n => /^Test (one|two)$/.test(n.title)).length }));
+  check(held.shown === 0 && held.held === 2 && held.bell === 2, `quiet hours: no phone notification, 2 kept for later, both in the bell (${JSON.stringify(held)})`);
+  await ev(t, () => { notifPrefs.quietFrom = '19:00'; notifPrefs.quietTo = '06:00'; releaseQuietHeld(new Date().setHours(7, 0, 0, 0)); });
+  await sleep(300);
+  const sum = await ev(t, () => ({ shown: window.__shown.map(x => x.title), left: quietHeld().n }));
+  check(sum.shown.length === 1 && sum.shown[0] === '2 notifications overnight' && sum.left === 0, `after quiet hours (app in background): “${sum.shown[0]}”`);
+  await ev(t, () => { window.__shown = []; window.__hidden = false; setNotifPref('quiet', false); });
+  check(await ev(t, () => !inQuietHours(new Date().setHours(23, 0, 0, 0)) && /any time of day/.test(document.getElementById('quietHours').innerText) && !document.getElementById('quietFrom')), 'switch off: phone notifications at any hour');
+  await ev(t, () => closeNotifPanel());
+
+  out('17 changes not reaching the account (custodian)');
+  await ev(a, () => { closeNotifPanel(); switchMainView('HOME'); localStorage.removeItem(SYNC_SNOOZE_KEY); });
+  await ev(a, () => adjustQty(items.find(i => i.qty > 3).code, 1));
+  check(await ev(a, () => invSync.pendingSince > 0), 'a change waiting for the account is remembered (pendingSince)');
+  await until(a, () => invStatus.state === 'synced' && !invSync.pendingSince, 'saved', 8000);
+  check(await ev(a, () => !invSync.pendingSince && document.getElementById('syncBar').classList.contains('hidden')), 'saved to the account: cleared, no bar');
+  let n17 = (await notifs(a)).length;
+  await ev(a, () => { invSync.pendingSince = Date.now() - 23 * 3600e3; checkSyncProblem(); });
+  check(await ev(a, () => document.getElementById('syncBar').classList.contains('hidden')) && (await notifs(a)).length === n17, 'unsaved for 23 h: nothing yet');
+  await ev(a, () => { invSync.pendingSince = Date.now() - 26 * 3600e3; checkSyncProblem(); });
+  await waitNotif(a, /Changes are not saved to your account/, 'stale', 3000);
+  const bar17 = await ev(a, () => ({ shown: !document.getElementById('syncBar').classList.contains('hidden'), text: document.getElementById('syncBar').innerText }));
+  check(bar17.shown && /have not reached your account/.test(bar17.text) && /Back up/.test(bar17.text) && /Try again/.test(bar17.text), 'bar: not saved · Back up · Try again');
+  await ev(a, () => checkSyncProblem());
+  check((await notifs(a)).filter(n => /not saved to your account/.test(n.title)).length === 1, 'one bell item per problem (no repeats)');
+  await a.screenshot({ path: '/tmp/e2e_n_syncbar.png' });
+  await ev(a, () => snoozeSyncBar());
+  check(await ev(a, () => document.getElementById('syncBar').classList.contains('hidden')), '× hides the bar (12 h)');
+  await ev(a, id => openNotif(id), (await notifs(a)).find(n => /not saved to your account/.test(n.title)).id);
+  await sleep(200);
+  const tap17 = await ev(a, () => ({ v: activeMainView, hidden: document.getElementById('syncBar').classList.contains('hidden'), p: invSync.pendingSince, st: invStatus.state }));
+  check(tap17.v === 'HOME' && !tap17.hidden, 'tap the bell item → Home with the bar ' + JSON.stringify(tap17));
+  // the account refuses changes (e.g. security rules not published)
+  await ev(a, () => setInvStatus('error', 'Missing or insufficient permissions.'));
+  await waitNotif(a, /Your account is not saving changes/, 'error', 3000);
+  check(/insufficient permissions/.test(await ev(a, () => document.getElementById('syncBarText').innerText)), 'error shown at once, with the reason');
+  await ev(a, () => setInvStatus('error', 'Missing or insufficient permissions.'));
+  check((await notifs(a)).filter(n => /not saving changes/.test(n.title)).length === 1, 'same error: no second notification');
+  await a.click('#syncRetryBtn');
+  await until(a, () => invStatus.state === 'synced', 'synced again', 8000);
+  await ev(a, () => { invSync.pendingSince = 0; checkSyncProblem(); });
+  check(await ev(a, () => document.getElementById('syncBar').classList.contains('hidden')), 'Try again → synced, bar gone');
+  check(!(await ev(t, () => !document.getElementById('syncBar').classList.contains('hidden'))), 'never on a teacher’s phone');
 
   out('14 manifest and service worker');
   const m = JSON.parse(fs.readFileSync(new URL('../../manifest.webmanifest', import.meta.url)));

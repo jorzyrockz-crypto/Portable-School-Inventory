@@ -1,7 +1,7 @@
 # UI review: findings (November 2026)
 
 Build reviewed: `main` at 6221905 (phone layout, PR #14) plus this branch's title-bar change.
-**Status (Nov 2026):** findings 1–4, 6–14 and 16 are fixed (see the update notes below the table). Finding 5 is partly addressed (tablet scaling). Finding 15 (a desktop layout) is still open.
+**Status (Nov 2026):** all 16 findings are fixed (see the update notes below the table and under each finding).
 
 ## How it was checked
 
@@ -94,6 +94,7 @@ Four buttons share one row on a 390 px phone.
 The `sm:` (≥640 px) classes return to desktop sizes, but an iPad is a touch device.
 - **Fix:** keep the larger phone sizes up to `lg` (1024 px), or base them on `(pointer: coarse)` with a small CSS rule (`@media (pointer: coarse) { .ledger-tab, … { min-height: 40px } }`).
 - **Partly addressed (Nov 2026):** touch tablets 700 px and wider now scale the whole UI with the screen width (root font size up to 20 px, `tests/e2e/tablet-layout.mjs`), so on an 800 px tablet a 28 px tab is about 33 px. The `sm:` sizes themselves are unchanged.
+- **Fixed (Nov 2026):** on touch screens 640 × 600 px and larger (`pointer: coarse`), filter chips, tabs, room links, catalog chips and the small text links get a 2.5rem minimum height (about 40 px). Phones and computers are unchanged. Checked in `tests/e2e/tablet-layout.mjs` section 2b.
 
 ### 6. About version card (Medium)
 - **Fix:** below 400 px, put **Check for updates** under the text (`flex-wrap`, button `w-full`).
@@ -118,6 +119,7 @@ About 20 elements per list screen are 10 px.
 - **13. Toast button wraps:** add `whitespace-nowrap shrink-0` to the toast action.
 - **14. About wording:** reuse the new sharing text: *Property and supplies for school custodians and teachers: QR tags, physical count, ICS/PAR/RIS, COA forms and supply requests.*
 - **15. Computers:** at ≥1024 px, use a left sidebar instead of the bottom tabs, and a two-column Home (encode on the left, recent items and requests on the right).
+  - **Fixed (Nov 2026):** with a mouse at 1024 px and wider, the tabs become a left sidebar (plus Supply requests, Teachers and Forms) and the top bar spans the window. Inventory and Catalog widen to 76rem with column headings and extra columns (category, tagged units, unit cost; category, APP part, value). Home keeps its focused single column. Touch tablets keep the bottom tabs. Checked in `tests/e2e/tablet-layout.mjs` section 4.
 - **16. Grey on grey:** use `text-slate-600` on `bg-slate-100`.
 
 ## What looks good
