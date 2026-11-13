@@ -467,7 +467,7 @@ In Inventory, an item's sheet lists who has its units (*Ana Reyes · 1 unit · I
 
 **Print my list.** Teachers print their own *Summary of Accountability* from **My Items**.
 
-On a computer or a tablet held sideways, the list stays on the left and the person picked opens on the right, with their equipment as a table.
+On a computer or a tablet held sideways, the list stays on the left and the person picked opens on the right, with their equipment as a table. While nobody is picked, the right side shows **To review**; a *To review* row at the top of the list brings it back, and a person's own open reports show on their page. On a phone, To review sits under the page title.
 
 > Publish the updated [`firestore.rules`](firestore.rules) again: they add member approval (`status` on `members`), invite links that can be replaced (`invites`, `inviteOnly`), **School stock** (`stock`, `stockHolds`) and requests of kind `took`. Until then, approvals, the stock list and “I took this” are refused.
 
