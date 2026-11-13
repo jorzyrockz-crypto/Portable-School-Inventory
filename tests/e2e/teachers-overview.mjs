@@ -328,6 +328,15 @@ try {
   check(rv.total > 0, `something to review (${rv.total})`);
   check(rv.inDetail && rv.firstRight && rv.sameTop, 'To review: at the top of the right pane, level with the page title (not above both panes)');
   check(rv.row, 'the list has a “To review” row, marked current');
+  await sleep(100);
+  const arrows = await ev(a, () => { const t = document.getElementById('rvTrack'), ar = document.querySelector('.rv-arrows');
+    return { n: t.querySelectorAll('.rv-card').length, over: t.scrollWidth > t.clientWidth + 4, shown: !!ar && getComputedStyle(ar).display !== 'none' && getComputedStyle(ar).visibility !== 'hidden' }; });
+  if (arrows.n > 1 && arrows.over) {
+    check(arrows.shown && await ev(a, () => document.getElementById('rvPrev').disabled), `computer: ${arrows.n} cards, ‹ › arrows, ‹ off at the start`);
+    await a.click('#rvNext');
+    await sleep(700);
+    check(await ev(a, () => document.getElementById('rvTrack').scrollLeft > 0 && !document.getElementById('rvPrev').disabled), '› scrolls the row');
+  } else check(!arrows.shown, `computer: ${arrows.n} card(s) all fit → no arrows`);
   await ev(a, uid => openTeachersView(uid), ana);
   await sleep(200);
   const picked = await ev(a, () => ({ hidden: document.getElementById('tvReview').classList.contains('hidden'), rowOn: document.querySelector('#tvReviewRow button').hasAttribute('aria-current'), inline: !!document.querySelector('#tvBody [data-treport]'), note: /under To review above/.test(document.getElementById('tvBody').innerText) }));
