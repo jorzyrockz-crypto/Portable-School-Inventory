@@ -432,14 +432,34 @@ A person's page lists:
 
 In Inventory, an item's sheet lists who has its units (*Ana Reyes · 1 unit · ICS 2026-11-001*); tapping a name opens that person's page.
 
+**Finding people.** Filter chips narrow the list: *Has items*, *To confirm*, *Open reports*, *Not counted yet*, *No account* (typed names) and *Hasn't joined* (holds items but never opened the invite link). **Sort** by name, value, units or the oldest unconfirmed slip. A row shows *1 for repair · 1 unserviceable* when units need attention; tapping it opens the IIRUP.
+
+**Not confirmed yet.** A person's page says *ICS 2026-11-003 not confirmed for 12 days*. **Remind** puts a notification in the teacher's bell (*Reminder from the property custodian*).
+
+**Property clearance** (transfer, retirement, resignation, leave). **Clearance** on a person's page:
+- lists what they still hold, with **Transfer all to…** and **Take back all** (one RRSP for everything);
+- once nothing is left, prints a **Certificate of No Property Accountability** with what they returned or transferred, signed by the custodian and noted by the school head.
+
+**Same person as…** On a typed name (*A. Reyes*), pick who it really is (*Ana Reyes*, same last name listed first). Units, slips and history move over. With an account, the units also show in the teacher's **My Items** (as a linked ICS when they were never on a slip).
+
+**Year-end count by teachers.** In December and January, a teacher's **My Items** asks *Are the 3 items on your list with you?* They tap **All present**, or **Missing or broken…** to mark each one (any time of year: **Count my items**). Units they have count as checked for the RPCPPE / RPCSP. The custodian sees *Counted 2026: 8 of 10* per person, and anything missing or broken under **From teachers** (*Mark broken for repair*); missing units are suggested on the RLSDDP. Outside the count season the year shown is the calendar year.
+
+**Supply usage** (header button, and on each person's page) totals RIS by item per quarter of the calendar year or per school year (June–May), for planning the APP-CSE. **CSV** exports it per teacher.
+
+**Print my list.** Teachers print their own *Summary of Accountability* from **My Items**.
+
+On a computer or a tablet held sideways, the list stays on the left and the person picked opens on the right, with their equipment as a table.
+
+> Publish the updated [`firestore.rules`](firestore.rules) again: teachers' reports now include the kind `count`. Until then, a teacher's count is refused.
+
 ## Notifications
 
 A bell in the header (next to **More**) shows what happened and how many you haven't read yet. Tap it for the list, and tap a notification to open the matching screen. The unread count also appears on the home-screen icon where Android supports it.
 
 | Who | Is told when |
 | --- | --- |
-| Property custodian | a teacher sends a supply request · confirms receipt of released items · reports a problem · wants to return an item · **joins the school** · an item falls to its **low-stock alert** or **runs out** · a release is **still not confirmed after 3 days** · a request has **waited over 2 days** · units have been in **Needs repair over a month** (suggests the IIRUP) · **year-end count** progress |
-| Teacher | a request is approved, declined (with the reason) or ready to pick up · items are released to them (RIS/ICS) · a return is accepted or not · a report is answered · **reminder to tap Received** 2 days and again 7 days after a release · **year-end count**: check the items you hold |
+| Property custodian | a teacher sends a supply request · confirms receipt of released items · reports a problem · wants to return an item · **counts their items** (all present, or what is missing or broken) · **joins the school** · an item falls to its **low-stock alert** or **runs out** · a release is **still not confirmed after 3 days** · a request has **waited over 2 days** · units have been in **Needs repair over a month** (suggests the IIRUP) · **year-end count** progress |
+| Teacher | a request is approved, declined (with the reason) or ready to pick up · items are released to them (RIS/ICS) · a return is accepted or not · a report is answered · **reminder to tap Received** 2 days and again 7 days after a release · the custodian taps **Remind** · **year-end count**: check the items you hold |
 | Everyone | **changes not saved to the account** for a day, or sign-in expired (also a bar under the header, with *Fix*) |
 
 - **Nothing for your own actions.** A custodian typing in a walk-in request, or a teacher sending a report, gets no notification for it.
@@ -518,7 +538,7 @@ cd tests/e2e && npm install
 node inventory-sync.mjs               # Inventory saved to the account
 node release.mjs                      # teachers, RIS/ICS releases, stock in
 node teacher-items.mjs                # a teacher's My Items, reports and returns
-node teachers-overview.mjs            # released-to-teachers overview, take back, accountability print
+node teachers-overview.mjs            # Teachers page: filters, Remind, count, clearance, merge, supply usage, two panes
 node project-switch.mjs               # moving to another Firebase project keeps inventory, resets cloud links
 node notifications.mjs                # bell, phone notifications, shortcuts, install bar
 node app-updates.mjs                  # update notices (title bar), Restart, What's new (own server)
