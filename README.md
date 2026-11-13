@@ -179,7 +179,26 @@ Teachers request supplies from their own phones; the custodian reviews each requ
 2. Tap **New supply request**, search for items (e.g. “bond paper”, “ballpen”) or type anything not in the catalog, set quantities, add a purpose and a needed-by date, and send.
 3. Follow the status on the same screen: *To review → Approved → Being purchased (PR No.) → Supplied*, or *Declined* with the custodian’s reason. A pending request can still be cancelled.
 
-A teacher’s phone only shows the request screen and only that teacher’s own requests — never the school inventory.
+A teacher’s phone only shows that teacher’s own requests, slips and items. It never shows the school inventory, prices, equipment or who holds what. The one exception is **School stock**, a list of how much of each supply is left (see below).
+
+### Joining: approval, removing and new invite links
+
+- **Waiting for approval.** A teacher who opens the invite link joins as *pending*. They see *Waiting for approval* and can't send requests or see the stock yet. The custodian gets a notification (*Ana Reyes wants to join your school*), and the Teachers page shows them under **To review**. **Approve** lets them in, and the teacher is told *You’re in!*. **Not from our school** refuses them.
+- **Edit details.** On a teacher's page, **Edit details** corrects the name, position and office. Their phone takes the corrected details.
+- **Remove from school.** The teacher can no longer send requests, see the stock or send reports (the rules refuse it). Their slips, items and history stay. Removed people are listed at the bottom of the Teachers list, where **Add back** brings them back.
+- **New invite link** (in the Invite sheet) replaces the link. Anyone opening an old link is told it was replaced by a newer one. Teachers who already joined are not affected.
+- **DepEd School ID.** If the school name starts with the 6-digit School ID (*114656 - San Jose NHS*), the join sheet and the poster show *School ID 114656*. It is a label so teachers can tell they picked the right school. It is not a password, since School IDs are public.
+
+Teachers who joined before approvals existed stay active; only new joins need **Approve**.
+
+### School stock and “I took this” (teachers)
+
+Teachers kept asking *“Sir, meron pa ba nito?”*. The teacher's phone now has a third tab, **Stock**:
+
+- Every **supply** with the exact number left (*85 ream left*), searchable, with **Low** and **Out** filters. Equipment, prices and holders are never shown. The custodian's devices publish only the code, name, category, unit and quantity (`schools/{id}/stock/{code}`).
+- **Request** on a line opens a new supply request with that item.
+- **I took this** (*“Mam, kumuha ako ng ganito sa office”*): pick the quantity and add a note. The number left drops right away on every teacher's phone, marked *2 taken · waiting for the custodian to confirm*. The custodian sees *Took it* on Supply requests and gets a notification. **Confirm · RIS** opens the release with the lines filled in, and saving the RIS settles the stock. **Decline** puts the quantity back, and so does the teacher cancelling (*I didn’t take it after all*).
+- Supplies only. Equipment still needs an ICS / PAR from the custodian. Under COA rules the custodian issues the RIS, which is why “I took this” waits for the custodian's Confirm.
 
 **Custodian**
 1. On the sign-in screen choose **Property custodian** and tap **Continue with Google** (or use email and password). The first sign-in creates your school. Requests are under **Supply requests** on Home (also in ☰ More).
@@ -402,7 +421,7 @@ On a teacher's phone the screen has two tabs: **My Items** and **Requests**.
 - **Supplies received · RIS:** every slip, newest first. *Report a problem* covers fewer than released, damaged, or wrong item.
 - Reports sent without signal are queued (*Sending…*) and go out when the phone reconnects.
 
-The custodian sees open reports at the top of **Supply requests** under **From teachers**, and as *N from teachers* on Home:
+The custodian sees open reports at the top of the **Teachers** page under **To review**, labelled *Equipment report*, *Year-end count* or *Return* (and on that teacher's page). Home shows *Teachers · N to review*, and the Teachers tab, More → Released to teachers and the bell each show a count. **Supply requests** now counts only supply requests:
 
 - **Mark for repair / Mark unserviceable** sets the unit's condition in Inventory.
 - **Received back** clears the assignment. The unit is back in stock, and a return record is kept.
@@ -442,7 +461,7 @@ In Inventory, an item's sheet lists who has its units (*Ana Reyes · 1 unit · I
 
 **Same person as…** On a typed name (*A. Reyes*), pick who it really is (*Ana Reyes*, same last name listed first). Units, slips and history move over. With an account, the units also show in the teacher's **My Items** (as a linked ICS when they were never on a slip).
 
-**Year-end count by teachers.** In December and January, a teacher's **My Items** asks *Are the 3 items on your list with you?* They tap **All present**, or **Missing or broken…** to mark each one (any time of year: **Count my items**). Units they have count as checked for the RPCPPE / RPCSP. The custodian sees *Counted 2026: 8 of 10* per person, and anything missing or broken under **From teachers** (*Mark broken for repair*); missing units are suggested on the RLSDDP. Outside the count season the year shown is the calendar year.
+**Year-end count by teachers.** In December and January, a teacher's **My Items** asks *Are the 3 items on your list with you?* They tap **All present**, or **Missing or broken…** to mark each one (any time of year: **Count my items**). Units they have count as checked for the RPCPPE / RPCSP. The custodian sees *Counted 2026: 8 of 10* per person, and anything missing or broken under **To review** on the Teachers page (*Mark broken for repair*); missing units are suggested on the RLSDDP. Outside the count season the year shown is the calendar year.
 
 **Supply usage** (header button, and on each person's page) totals RIS by item per quarter of the calendar year or per school year (June–May), for planning the APP-CSE. **CSV** exports it per teacher.
 
@@ -450,9 +469,9 @@ In Inventory, an item's sheet lists who has its units (*Ana Reyes · 1 unit · I
 
 On a computer or a tablet held sideways, the list stays on the left and the person picked opens on the right, with their equipment as a table.
 
-> Publish the updated [`firestore.rules`](firestore.rules) again: teachers' reports now include the kind `count`. Until then, a teacher's count is refused.
+> Publish the updated [`firestore.rules`](firestore.rules) again: they add member approval (`status` on `members`), invite links that can be replaced (`invites`, `inviteOnly`), **School stock** (`stock`, `stockHolds`) and requests of kind `took`. Until then, approvals, the stock list and “I took this” are refused.
 
-**Sample data.** More → *Load sample data* adds sample counts plus six sample people (Ana Reyes, Ben Cruz, Carla Mendoza, Liza Ramos and the typed names Pedro Santos and “A. Reyes”) with ICS and RIS slips, a teacher count with one broken unit, an open problem report and a returned laptop. That way every filter, Remind, Clearance, the merge and Supply usage have something to show. The sample people, slips and reports live only on that device, in `custodian_sample_v1`. Writes about them are kept local and never reach Firestore, and they raise no notifications. *Clear sample data* removes them and restores the inventory snapshot taken before loading.
+**Sample data.** More → *Load sample data* adds sample counts plus six sample people (Ana Reyes, Ben Cruz, Carla Mendoza, Liza Ramos and the typed names Pedro Santos and “A. Reyes”), and Marco Villanueva waiting for approval, with ICS and RIS slips, a teacher count with one broken unit, an open problem report and a returned laptop. That way every filter, Remind, Clearance, the merge and Supply usage have something to show. The sample people, slips and reports live only on that device, in `custodian_sample_v1`. Writes about them are kept local and never reach Firestore, and they raise no notifications. *Clear sample data* removes them and restores the inventory snapshot taken before loading.
 
 ## Notifications
 
@@ -532,7 +551,7 @@ Generated files (`assets/`, `sw.js`) are committed so GitHub Pages can serve the
 
 ### End-to-end tests
 
-`tests/e2e/` runs the app on simulated phones in headless Chromium, with Firebase replaced by an in-memory stand-in that applies the same access rules as `firestore.rules` (`lib/fake-backend.mjs`):
+`tests/e2e/` runs the app on simulated phones in headless Chromium, with Firebase replaced by an in-memory stand-in that applies the same access rules as `firestore.rules` (`lib/fake-backend.mjs`). By default it approves teachers as soon as they join; `createBackend({ autoApprove: false })` leaves them waiting:
 
 ```bash
 npm run serve &                       # app on http://localhost:8080
@@ -548,6 +567,7 @@ node app-updates.mjs                  # update notices (title bar), Restart, Wha
 node login-theme.mjs                  # sign-in screen, teacher code / invite link, sign out, light/dark
 node coa-forms.mjs                    # welcome tour, poster, PAR, ITR/PTR transfers, RRSP, RPCPPE/IIRUP, background update check
 node phone-layout.mjs                 # 390 px phone: no sideways scroll, 32 px+ buttons, bottom sheets, toast placement
+node members-stock.mjs                # approval, edit / remove / add back, new invite link, School stock, "I took this"
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

@@ -21,7 +21,7 @@ async function joinAsTeacher(page, schoolId, name, position, office) {
   await until(page, () => !document.getElementById('joinModal').classList.contains('hidden') && !document.getElementById('joinBtn').disabled, 'join sheet');
   await ev(page, (n, p, o) => { joinName.value = n; joinPosition.value = p; joinOffice.value = o; }, name, position, office);
   await page.click('#joinBtn');
-  await until(page, () => reqRole && reqRole.role === 'teacher' && cloud.user, 'joined');
+  await until(page, () => reqRole && reqRole.role === 'teacher' && cloud.user && myMemberLoaded && myMemberStatus() === 'active', 'joined and approved', 8000);
   return ev(page, () => cloud.user.uid);
 }
 async function teacherRequest(page, lines, purpose) {

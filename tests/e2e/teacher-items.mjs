@@ -1,5 +1,5 @@
 // A teacher's My Items: what was released to them (ICS equipment, RIS supplies), "Received",
-// "Report a problem" and "Return", and the custodian's "From teachers" inbox resolving them.
+// "Report a problem" and "Return", and the custodian's "To review" box (Teachers page) resolving them.
 import { createBackend } from './lib/fake-backend.mjs';
 import { BASE_URL, out, check, sleep, ev, until, openPhone, setOffline, closeAll, summary } from './lib/harness.mjs';
 
@@ -17,7 +17,7 @@ async function joinAsTeacher(page, schoolId, name, position, office) {
   await until(page, () => !document.getElementById('joinModal').classList.contains('hidden') && !document.getElementById('joinBtn').disabled, 'join sheet');
   await ev(page, (n, p, o) => { joinName.value = n; joinPosition.value = p; joinOffice.value = o; }, name, position, office);
   await page.click('#joinBtn');
-  await until(page, () => reqRole && reqRole.role === 'teacher' && cloud.user, 'joined');
+  await until(page, () => reqRole && reqRole.role === 'teacher' && cloud.user && myMemberLoaded && myMemberStatus() === 'active', 'joined and approved', 8000);
   return ev(page, () => cloud.user.uid);
 }
 async function release(a, uid, lines) {
@@ -91,13 +91,17 @@ try {
   await until(t, no => document.getElementById('rqItemsPane').innerText.includes('Reported: Needs repair'), 'reported chip', 8000, anaUnits[0].no);
   check(true, 'Ana’s card: “Reported: Needs repair”');
   await until(a, () => openTeacherReports().length === 1, 'inbox', 8000);
-  await ev(a, () => { switchMainView('REQUESTS'); });
+  check(await ev(a, () => !/teachers/i.test(document.getElementById('homeReqSub').textContent) && document.getElementById('sideReqCount').classList.contains('hidden')), 'not counted as a supply request');
+  check(await ev(a, () => /1 equipment report/.test(document.getElementById('homeTeachSub').textContent) && !document.getElementById('homeTeachCard').classList.contains('hidden')), 'Home: “Teachers · 1 to review · 1 equipment report”');
+  await ev(a, () => openTeachersView(null));
   await sleep(200);
-  let inbox = await ev(a, () => document.getElementById('reqViewBody').innerText);
-  check(/From teachers · 1/.test(inbox) && /Ana Reyes reports needs repair/.test(inbox) && inbox.includes(anaUnits[0].no) && /No display since Monday/.test(inbox), 'custodian inbox shows the report with the note');
-  check(await ev(a, () => /1 from teachers/.test(document.getElementById('homeReqSub').textContent)), 'Home card: 1 from teachers');
+  let inbox = await ev(a, () => document.getElementById('tvReview').innerText);
+  check(/To review · 1/.test(inbox) && /Ana Reyes reports needs repair/.test(inbox) && inbox.includes(anaUnits[0].no) && /No display since Monday/.test(inbox), 'Teachers page · To review shows the report with the note');
+  check(!/Ana Reyes reports/.test(await ev(a, () => { openRequestsView(); return document.getElementById('reqViewBody').innerText; })), 'not on the Supply requests page');
+  await ev(a, () => openTeachersView(null));
+  await sleep(200);
   await a.screenshot({ path: '/tmp/e2e_t_inbox.png' });
-  await a.click('[data-treport] button');
+  await a.click('#tvReview [data-treport] [data-tr-act]');
   await sleep(300);
   const cond = await ev(a, (c, id) => ({ cond: getUnits(c).find(u => u.id === id).cond, repair: items.find(i => i.code === c).repair }), P, anaUnits[0].id);
   check(cond.cond === 'R' && cond.repair >= 1, 'unit marked for repair in My Items');
@@ -109,7 +113,7 @@ try {
   await until(t, () => /Return requested/.test(document.getElementById('rqItemsPane').innerText), 'return chip', 8000);
   check(await ev(t, id => document.querySelector(`button[onclick="openTeacherReport('return', '${myReleases.find(x => x.kind === 'ICS').id}', '${id}')"]`).disabled, anaUnits[1].id), 'Return button disabled while waiting');
   await until(a, () => openTeacherReports().some(x => x.kind === 'return'), 'return in inbox', 8000);
-  inbox = await ev(a, () => document.getElementById('reqViewBody').innerText);
+  inbox = await ev(a, () => document.getElementById('tvReview').innerText);
   check(/Ana Reyes is returning/.test(inbox) && /Moving to the new building/.test(inbox), 'inbox: Ana Reyes is returning');
   await ev(a, () => acceptTeacherReturn(openTeacherReports().find(x => x.kind === 'return').id));
   const back = await ev(a, (c, id) => getUnits(c).find(u => u.id === id), P, anaUnits[1].id);
@@ -136,7 +140,7 @@ try {
   await ev(a, () => resolveTeacherReport(openTeacherReports().find(x => x.reason === 'short').id, 'noted'));
   await until(t, () => /Custodian: Noted/.test(document.getElementById('rqItemsPane').innerText), 'noted', 8000);
   check(true, 'Ana sees “Custodian: Noted” on the RIS');
-  check(await ev(a, () => openTeacherReports().length) === 0 && !(await ev(a, () => /From teachers/.test(document.getElementById('reqViewBody').innerText))), 'inbox empty again');
+  check(await ev(a, () => openTeacherReports().length) === 0 && !(await ev(a, () => !!document.getElementById('tvReviewBox'))), 'To review empty again');
 
   out('9 offline report is sent later');
   await setOffline(j, true);
@@ -148,7 +152,7 @@ try {
   await waitNode(() => reports().some(r => r.uid === juan && r.reason === 'lost'), 'sent', 10000);
   check(reports().some(r => r.uid === juan && r.reason === 'lost'), 'sent when back online');
   await until(a, () => openTeacherReports().some(x => x.reason === 'lost'), 'lost in inbox', 8000);
-  check(await ev(a, () => /Juan Dela Cruz reports lost or missing/.test(document.getElementById('reqViewBody').innerText)), 'inbox: Juan reports lost or missing');
+  check(await ev(a, () => /Juan Dela Cruz reports lost or missing/.test(document.getElementById('tvReview').innerText)), 'To review: Juan reports lost or missing');
 
   out('10 Requests tab and permissions');
   await ev(t, () => setTeacherTab('requests'));

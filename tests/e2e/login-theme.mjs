@@ -209,6 +209,7 @@ try {
   check(await ev(t, () => activeMainView) === 'REQUESTER', 'teacher screen');
   check(await ev(t, () => document.querySelectorAll('#rqTheme [data-theme-opt]').length) === 3, 'teachers get the appearance switch too');
   check(await ev(t, () => document.body.classList.contains('page-art') && document.querySelector('#rqArt [data-art-opt="REQUESTER"]').getAttribute('aria-checked') === 'true'), 'teachers: background picture on, with a switch to turn it off');
+  await ev(t, () => { const el = document.getElementById('appToast'); el.classList.add('hidden'); el.classList.remove('flex'); }); // the welcome toast fades on its own
   await t.click('#rqArt [data-art-opt="REQUESTER"]');
   check(await ev(t, () => !document.body.classList.contains('page-art')), 'teachers: the switch turns the picture off');
   await t.click('#rqArt [data-art-opt="REQUESTER"]');

@@ -1,6 +1,9 @@
 // Shared in-memory Firestore + Auth for the test phones. Enforces the same access rules as
 // firestore.rules; every refusal is recorded in `denied` (an app flow should cause none).
-export function createBackend() {
+// autoApprove (default): a teacher who joins is approved at once, as if the custodian tapped
+// Approve, so suites about other things need no approval step. Pass { autoApprove: false } to
+// test approvals.
+export function createBackend({ autoApprove = true } = {}) {
   const store = new Map();
   const users = new Map();
   const googleUsers = new Map();
@@ -19,6 +22,17 @@ export function createBackend() {
   const isCust = (ctx, sid) => !!(ctx.uid && school(sid) && (school(sid).custodians || []).includes(ctx.uid));
   const str = (v, max) => typeof v === 'string' && v.length <= max;
   const CUSTODIAN_ONLY = ['purchaseRequests', 'inventory', 'catalog', 'settings'];
+  const member = (ctx, sid) => store.get(`schools/${sid}/members/${ctx.uid}`);
+  const isMember = (ctx, sid) => { const m = member(ctx, sid); return !!(ctx.uid && m && (m.status || 'active') === 'active'); };
+  const inviteOk = (sid, data) => {
+    if (!(school(sid) && school(sid).inviteOnly)) return true;
+    const inv = typeof data.invite === 'string' && data.invite && store.get(`schools/${sid}/invites/${data.invite}`);
+    return !!(inv && inv.active === true);
+  };
+  const changedKeys = (before, after) => [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k]));
+  const cardOk = (data, uid) => data.uid === uid && typeof data.name === 'string' && data.name.length > 0 && data.name.length <= 80 &&
+    str(data.position, 80) && str(data.office, 80) && str(data.email ?? '', 120);
 
   function checkWrite(kind, path, data, before, ctx) {
     const p = parts(path);
@@ -34,8 +48,10 @@ export function createBackend() {
     const sid = p[1], sub = p[2];
     if (p.length === 4 && sub === 'requests') {
       if (kind === 'create') {
-        const keys = ['uid', 'name', 'position', 'office', 'purpose', 'neededBy', 'lines', 'status', 'createdAt', 'clientAt', 'via'];
+        const keys = ['uid', 'name', 'position', 'office', 'purpose', 'neededBy', 'lines', 'status', 'createdAt', 'clientAt', 'via', 'kind'];
+        if (!(isCust(ctx, sid) || isMember(ctx, sid))) deny('request create: not an approved member', { path });
         const ok = school(sid) && Object.keys(data).every(k => keys.includes(k)) && data.uid === ctx.uid && data.status === 'pending' &&
+          ['request', 'took'].includes(data.kind ?? 'request') &&
           typeof data.name === 'string' && data.name.length > 0 && data.name.length <= 80 && str(data.position, 80) && str(data.office, 80) &&
           str(data.purpose, 300) && Array.isArray(data.lines) && data.lines.length > 0 && data.lines.length <= 50;
         if (!ok) deny('request create', { path, data });
@@ -48,14 +64,44 @@ export function createBackend() {
       deny('request update', { path, data });
     }
     if (p.length === 4 && sub === 'members') {
-      const keys = ['uid', 'name', 'position', 'office', 'email', 'joinedMs', 'updatedAt'];
-      const ok = ctx.uid === p[3] && school(sid) && Object.keys(data).every(k => keys.includes(k)) && data.uid === p[3] &&
-        typeof data.name === 'string' && data.name.length > 0 && data.name.length <= 80 && str(data.position, 80) && str(data.office, 80) && str(data.email, 120);
-      if (!ok) deny('member write', { path, data });
+      if (kind === 'create') {
+        const keys = ['uid', 'name', 'position', 'office', 'email', 'joinedMs', 'updatedAt', 'status', 'invite'];
+        const ok = ctx.uid === p[3] && school(sid) && Object.keys(data).every(k => keys.includes(k)) && data.status === 'pending' &&
+          inviteOk(sid, data) && cardOk(data, p[3]);
+        if (!ok) deny('member create', { path, data });
+        return;
+      }
+      const ch = changedKeys(before, data);
+      const own = ctx.uid === p[3] && ch.every(k => ['name', 'position', 'office', 'email', 'joinedMs', 'updatedAt'].includes(k)) && cardOk(data, p[3]);
+      const cust = isCust(ctx, sid) && ch.every(k => ['name', 'position', 'office', 'status', 'approvedMs', 'removedMs', 'editedMs', 'by', 'updatedAt'].includes(k)) &&
+        ['pending', 'active', 'removed'].includes(data.status ?? 'active') && cardOk(data, p[3]);
+      if (!own && !cust) deny('member update', { path, data, ch });
       return;
+    }
+    if (p.length === 4 && sub === 'invites') {
+      if (!isCust(ctx, sid)) deny('invite write', { path });
+      return;
+    }
+    if (p.length === 4 && sub === 'stock') {
+      if (!isCust(ctx, sid)) deny('stock write', { path });
+      return;
+    }
+    if (p.length === 4 && sub === 'stockHolds') {
+      if (kind === 'create') {
+        const keys = ['uid', 'name', 'reqId', 'lines', 'status', 'createdMs'];
+        const ok = isMember(ctx, sid) && Object.keys(data).every(k => keys.includes(k)) && data.uid === ctx.uid && data.reqId === p[3] &&
+          data.status === 'open' && Array.isArray(data.lines) && data.lines.length > 0 && data.lines.length <= 50;
+        if (!ok) deny('stock hold create', { path, data });
+        return;
+      }
+      if (isCust(ctx, sid) && data.uid === before.uid) return;
+      const ch = changedKeys(before, data);
+      if (before.uid === ctx.uid && before.status === 'open' && data.status === 'cancelled' && ch.every(k => k === 'status')) return;
+      deny('stock hold update', { path, data });
     }
     if (p.length === 4 && sub === 'teacherReports') {
       if (kind === 'create') {
+        if (!isMember(ctx, sid)) deny('teacher report create: not an approved member', { path });
         const keys = ['uid', 'name', 'kind', 'releaseId', 'releaseNo', 'code', 'desc', 'units', 'reason', 'note', 'status', 'createdMs', 'createdAt'];
         const ok = school(sid) && Object.keys(data).every(k => keys.includes(k)) && data.uid === ctx.uid && ['received', 'problem', 'return', 'count'].includes(data.kind) &&
           data.status === 'open' && str(data.name, 80) && str(data.desc, 160) && str(data.note, 300) && Array.isArray(data.units) && data.units.length <= 50;
@@ -96,6 +142,14 @@ export function createBackend() {
       if (isCust(ctx, sid) || (single && p[3] === ctx.uid)) return;
       deny('read members', { path });
     }
+    if (sub === 'invites') {
+      if (single) return;
+      deny('list invites', { path });
+    }
+    if (sub === 'stock' || sub === 'stockHolds') {
+      if (isCust(ctx, sid) || isMember(ctx, sid)) return;
+      deny(`read ${sub}`, { path, uid: ctx.uid });
+    }
     if (sub === 'teacherReports') {
       if (isCust(ctx, sid)) return;
       if (single) { const d = store.get(path); if (d && d.uid === ctx.uid) return; deny('get teacher report', { path }); }
@@ -111,11 +165,18 @@ export function createBackend() {
     deny('read: no rule', { path });
   }
 
+  // kind: 'set' (replace), 'merge' (set with { merge: true }) or 'update'. Rules see the
+  // document as it would be after the write (request.resource.data), like Firestore.
   function write(kind, path, data, ctx) {
     const before = store.get(path);
     if (kind === 'update' && !before) throw new Error('not-found');
-    checkWrite(before ? 'update' : 'create', path, data, before || {}, ctx);
-    store.set(path, kind === 'set' ? resolveTS(data) : { ...before, ...resolveTS(data) });
+    let after = kind === 'set' || !before ? resolveTS(data) : { ...before, ...resolveTS(data) };
+    const p = parts(path);
+    // members/requests/reports/holds rules look at the whole document; others at what was sent
+    const whole = p.length === 4 && ['members', 'stockHolds'].includes(p[2]);
+    checkWrite(before ? 'update' : 'create', path, whole ? after : data, before || {}, ctx);
+    if (autoApprove && !before && p.length === 4 && p[2] === 'members' && after.status === 'pending') after = { ...after, status: 'active', approvedMs: Date.now() };
+    store.set(path, after);
     writes.push(path);
   }
 
