@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="277fd635cff3">
+  <meta name="app-version" content="0606a0615ed7">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -14701,6 +14701,20 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-reports-reset', date: 'Nov 2026', title: 'Reports followed through, and a clean start', points: [
+        'Needs repair: when it comes back, tap Repaired · back in use on the unit. The teacher sees it on their item and gets a notification.',
+        'Beyond repair: Mark unserviceable now offers Take it back now. An RRSP is made, and the unit leaves the teacher’s list and waits in stock for the IIRUP / IIRUSP.',
+        'Lost: Start lost report opens the RLSDDP / RLSDDSP with the unit ticked. It stays under the teacher’s name, marked Lost, until you tap Found or Relieve (with the RLSDDSP no.). The Teachers page has a new Lost filter for the year-end count.',
+        'Teachers with many items: the same items make one row (Monobloc chair × 20) that opens to each property number, a search box appears from 8 items, and older RIS slips fold under Earlier, by quarter.',
+        'More → Reset app: clear only this device, or this device and the school in the cloud, for a clean start after testing. Type RESET to confirm; a Back up button is right there.',
+        'Teachers can join by typing your 6-digit DepEd School ID (start the school name with it, e.g. 114656 - San Jose NHS). New teachers still wait for your Approve.'
+      ] },
+      { id: '2026-11-to-review-cards', date: 'Nov 2026', title: 'To review as cards, and explore without an account', points: [
+        'To review on the Teachers page is now a row of cards (joins, counts, reports, returns), each with its own colour and icon. Swipe on a phone; on a computer it sits beside the list, with arrows to scroll.',
+        'Reports about supplies are labelled Supply report. A teacher’s own page keeps their reports in a short list.',
+        'Explore without an account: a button on the sign-in screen opens the app with sample data, no account and nothing sent anywhere. Sign in puts the phone back as it was.',
+        'A typed name with nothing left (a test or a typo) can be removed from the Teachers list. Its slips are marked Cancelled, and supplies go back to stock.'
+      ] },
       { id: '2026-11-stock-members', date: 'Nov 2026', title: 'Teachers see what’s left, and you decide who joins', points: [
         'No more “Sir, meron pa ba nito?”: teachers get a Stock tab with the exact number of each supply left (no equipment, no prices), with a Request button on every line.',
         '“I took this”: a teacher who took supplies from the office records it, and the number drops for everyone at once. You see “Took it” and tap Confirm · RIS, or Decline to put it back. Supplies only; equipment still needs an ICS or PAR.',
