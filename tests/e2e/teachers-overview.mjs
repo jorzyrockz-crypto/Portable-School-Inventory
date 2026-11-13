@@ -337,6 +337,18 @@ try {
     await sleep(700);
     check(await ev(a, () => document.getElementById('rvTrack').scrollLeft > 0 && !document.getElementById('rvPrev').disabled), '› scrolls the row');
   } else check(!arrows.shown, `computer: ${arrows.n} card(s) all fit → no arrows`);
+  check(await ev(a, () => [...document.querySelectorAll('#rvTrack .rv-card')].every(c => { const t = c.querySelector('[data-rv-tile] i'); return t && /ph-duotone/.test(t.className); })), 'each card has its category icon tile');
+  const list = await ev(a, () => { const l = document.getElementById('tvListPane'); return { bar: l.offsetWidth - l.clientWidth, sw: getComputedStyle(l).scrollbarWidth, scrolls: l.scrollHeight > l.clientHeight + 4, fade: l.classList.contains('tv-more-below') }; });
+  check(list.bar === 0 && list.sw === 'none', 'the list has no visible scrollbar');
+  check(!list.scrolls || list.fade, `list ${list.scrolls ? 'scrolls: faded at the bottom' : 'fits: no fade'}`);
+  // a large monitor: the page widens and the cards share the row instead of leaving a gap
+  await a.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+  await sleep(400);
+  const big = await ev(a, () => { const t = document.getElementById('rvTrack'), cs = [...t.querySelectorAll('.rv-card')]; const used = cs.reduce((n, c) => n + c.getBoundingClientRect().width, 0) + (cs.length - 1) * 12;
+    return { n: cs.length, fill: used / t.clientWidth, view: document.getElementById('viewTeachers').getBoundingClientRect().width, over: t.scrollWidth > t.clientWidth + 4 }; });
+  check(big.view > 1300 && big.fill > 0.97 && !big.over, `1920 px: page ${Math.round(big.view)} px wide, ${big.n} cards fill the row (${Math.round(big.fill * 100)}%)`);
+  await a.setViewport({ width: 1366, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+  await sleep(300);
   await ev(a, uid => openTeachersView(uid), ana);
   await sleep(200);
   const picked = await ev(a, () => ({ hidden: document.getElementById('tvReview').classList.contains('hidden'), rowOn: document.querySelector('#tvReviewRow button').hasAttribute('aria-current'), inline: !!document.querySelector('#tvBody [data-treport]'), note: /under To review above/.test(document.getElementById('tvBody').innerText) }));

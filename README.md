@@ -28,6 +28,15 @@ Inventory that was already on a phone before sign-in was required is never lost.
 card says how many items the phone has. On the custodian's first sign-in they become the school
 inventory, or are merged with it (the merge question explains the choice).
 
+**Explore without an account.** The button under the welcome card opens the property custodian's
+screens filled with the sample data (items, teachers, To review), with no account and no cloud, so
+nothing can reach a school. It is handy for a quick look, or for previews on sites where Google
+sign-in is not allowed. An amber *Exploring* bar under the header (and More → Account) has **Sign in**.
+Everything on the phone is set aside when exploring starts and put back when they leave, so nothing
+done while exploring stays behind or is uploaded later. Only the theme and background-picture choices
+are kept. Supply requests shows a short note instead of the sign-in form, and opening an invite link
+leaves explore mode first.
+
 Without a Firebase project (`firebase-config.js` set to `null`) there is nobody to sign in with,
 so the app stays the local-only inventory with no sign-in screen.
 
@@ -461,13 +470,15 @@ In Inventory, an item's sheet lists who has its units (*Ana Reyes · 1 unit · I
 
 **Same person as…** On a typed name (*A. Reyes*), pick who it really is (*Ana Reyes*, same last name listed first). Units, slips and history move over. With an account, the units also show in the teacher's **My Items** (as a linked ICS when they were never on a slip).
 
+**Remove from the list** (bin icon on the page). This is for a typed name with no account and no units left, such as a test release or a typo. Slips can't be deleted because they are accountability records, so the name's slips are marked **Cancelled**, with who did it and when kept on the server. They are hidden from the list, prints, totals and supply usage, and their numbers are never reused. Supplies on its RIS go back to stock. A name that still holds units needs a transfer or return first. The list says *Typed on a slip* for names that come only from slips.
+
 **Year-end count by teachers.** In December and January, a teacher's **My Items** asks *Are the 3 items on your list with you?* They tap **All present**, or **Missing or broken…** to mark each one (any time of year: **Count my items**). Units they have count as checked for the RPCPPE / RPCSP. The custodian sees *Counted 2026: 8 of 10* per person, and anything missing or broken under **To review** on the Teachers page (*Mark broken for repair*); missing units are suggested on the RLSDDP. Outside the count season the year shown is the calendar year.
 
 **Supply usage** (header button, and on each person's page) totals RIS by item per quarter of the calendar year or per school year (June–May), for planning the APP-CSE. **CSV** exports it per teacher.
 
 **Print my list.** Teachers print their own *Summary of Accountability* from **My Items**.
 
-On a computer or a tablet held sideways, the list stays on the left and the person picked opens on the right, with their equipment as a table. While nobody is picked, the right side shows **To review**: one card per item (*Wants to join*, *Year-end count*, *Equipment report*, *Return*, each with its colour) in a single row that scrolls sideways, with **‹ ›** arrows when they don't all fit. On a phone the row swipes, the next card peeks in, and *2 of 3* and dots show where you are; long notes are cut to two lines (tap to read). A person's own page keeps their reports stacked; a *To review* row at the top of the list brings it back, and a person's own open reports show on their page. On a phone, To review sits under the page title.
+On a computer or a tablet held sideways, the list stays on the left and the person picked opens on the right, with their equipment as a table. While nobody is picked, the right side shows **To review**: one card per item (*Wants to join*, *Year-end count*, *Equipment report*, *Return*, each with its colour) in a single row that scrolls sideways, with **‹ ›** arrows when they don't all fit. Each card has a category icon (a person for joins, a clipboard for counts, the reason the teacher picked for reports: wrench, x, question mark…). The cards size to the space: as many whole cards as fit plus a peek of the next, or, with fewer items, they share the row; on large monitors (1680 px and up) the page widens. The list's own scrollbar is hidden; a soft fade at its edge shows there is more. On a phone the row swipes, the next card peeks in, and *2 of 3* and dots show where you are; long notes are cut to two lines (tap to read). A person's own page keeps their reports stacked; a *To review* row at the top of the list brings it back, and a person's own open reports show on their page. On a phone, To review sits under the page title.
 
 > Publish the updated [`firestore.rules`](firestore.rules) again: they add member approval (`status` on `members`), invite links that can be replaced (`invites`, `inviteOnly`), **School stock** (`stock`, `stockHolds`) and requests of kind `took`. Until then, approvals, the stock list and “I took this” are refused.
 
