@@ -124,6 +124,35 @@ try {
   await t.click('#tabBar [data-view="CATALOG"]');
   await sleep(300);
   check(await ev(t, () => activeMainView === 'CATALOG'), 'sidebar tab switches the view');
+  await t.click('#sideForms');
+  await sleep(400);
+  const F = await ev(t, () => {
+    const m = document.getElementById('coaModal'), card = m.firstElementChild.getBoundingClientRect(), bar = document.getElementById('tabBar').getBoundingClientRect();
+    const hdr = document.querySelector('body > header').getBoundingClientRect();
+    const cards = [...document.querySelectorAll('#coaBody > button')].map(b => Math.round(b.getBoundingClientRect().top));
+    return { open: !m.classList.contains('hidden'), page: m.classList.contains('coa-page'), left: Math.round(card.left), barRight: Math.round(bar.right), top: Math.round(card.top), hdr: Math.round(hdr.bottom),
+      w: Math.round(card.width), backdrop: getComputedStyle(m).backgroundColor, closeShown: !!document.querySelector('#coaModal .coa-close').offsetParent,
+      sameRow: cards.length > 1 && cards[0] === cards[1], current: document.getElementById('sideForms').getAttribute('aria-current'),
+      others: [...document.querySelectorAll('#tabBar .tab-btn[aria-current="page"]')].length };
+  });
+  check(F.open && F.page && F.left > F.barRight && F.top > F.hdr && F.w > 800, `Forms opens as a page beside the sidebar (${F.w} px wide at ${F.left}, ${F.top})`);
+  check(F.backdrop === 'rgb(241, 245, 249)' && !F.closeShown && F.sameRow, 'no dark backdrop or ✕; form cards in two columns');
+  check(F.current === 'page' && F.others === 1, 'Forms is highlighted in the sidebar');
+  await t.screenshot({ path: `${SHOTS}/computer-forms.png` });
+  await ev(t, () => coaGo('count'));
+  await sleep(300);
+  await t.screenshot({ path: `${SHOTS}/computer-forms-count.png` });
+  await t.click('#tabBar [data-view="REPORTS"]');
+  await sleep(300);
+  check(await ev(t, () => document.getElementById('coaModal').classList.contains('hidden') && activeMainView === 'REPORTS'
+    && document.querySelector('#tabBar [data-view="REPORTS"]').getAttribute('aria-current') === 'page' && document.getElementById('sideForms').getAttribute('aria-current') === 'false'), 'another sidebar tab leaves the Forms page');
+  await t.click('#coaPanel');
+  await sleep(300);
+  check(await ev(t, () => document.getElementById('coaModal').classList.contains('coa-page')), 'Reports → Government forms also opens the page');
+  await t.setViewport({ width: 800, height: 1100, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+  await sleep(300);
+  check(await ev(t, () => { const m = document.getElementById('coaModal'); return !m.classList.contains('coa-page') && !m.classList.contains('hidden') && getComputedStyle(m).backgroundColor !== 'rgb(241, 245, 249)'; }), 'narrower window: the same forms become the pop-up again');
+  await ev(t, () => closeCoa());
   await t.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await sleep(300);
   L = await layout();
