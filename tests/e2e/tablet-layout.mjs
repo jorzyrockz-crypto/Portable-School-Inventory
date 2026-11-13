@@ -129,19 +129,28 @@ try {
   const F = await ev(t, () => {
     const m = document.getElementById('coaModal'), card = m.firstElementChild.getBoundingClientRect(), bar = document.getElementById('tabBar').getBoundingClientRect();
     const hdr = document.querySelector('body > header').getBoundingClientRect();
-    const cards = [...document.querySelectorAll('#coaBody > button')].map(b => Math.round(b.getBoundingClientRect().top));
+    const groups = [...document.querySelectorAll('#coaBody .coa-group')].map(g => g.getBoundingClientRect());
     return { open: !m.classList.contains('hidden'), page: m.classList.contains('coa-page'), left: Math.round(card.left), barRight: Math.round(bar.right), top: Math.round(card.top), hdr: Math.round(hdr.bottom),
       w: Math.round(card.width), backdrop: getComputedStyle(m).backgroundColor, closeShown: !!document.querySelector('#coaModal .coa-close').offsetParent,
-      sameRow: cards.length > 1 && cards[0] === cards[1], current: document.getElementById('sideForms').getAttribute('aria-current'),
+      sameRow: groups.length === 4 && Math.round(groups[0].top) === Math.round(groups[1].top) && groups[1].left > groups[0].right,
+      fits: m.scrollHeight <= m.clientHeight && document.getElementById('coaBody').scrollHeight <= document.getElementById('coaBody').clientHeight, current: document.getElementById('sideForms').getAttribute('aria-current'),
       others: [...document.querySelectorAll('#tabBar .tab-btn[aria-current="page"]')].length };
   });
   check(F.open && F.page && F.left > F.barRight && F.top > F.hdr && F.w > 800, `Forms opens as a page beside the sidebar (${F.w} px wide at ${F.left}, ${F.top})`);
-  check(F.backdrop === 'rgb(241, 245, 249)' && !F.closeShown && F.sameRow, 'no dark backdrop or ✕; form cards in two columns');
+  check(F.backdrop === 'rgb(241, 245, 249)' && !F.closeShown && F.sameRow, 'no dark backdrop or ✕; the groups of forms side by side');
+  check(F.fits, 'all the forms fit on the page without scrolling (1280 × 800)');
   check(F.current === 'page' && F.others === 1, 'Forms is highlighted in the sidebar');
   await t.screenshot({ path: `${SHOTS}/computer-forms.png` });
   await ev(t, () => coaGo('count'));
   await sleep(300);
   await t.screenshot({ path: `${SHOTS}/computer-forms-count.png` });
+  await t.setViewport({ width: 1366, height: 600, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+  await sleep(300);
+  const S = await ev(t, () => { const m = document.getElementById('coaModal'), b = document.getElementById('coaBody'); m.scrollTop = 0;
+    return { page: m.scrollHeight > m.clientHeight, inner: b.scrollHeight > b.clientHeight + 1, foot: Math.round(document.getElementById('coaFoot').getBoundingClientRect().bottom), h: innerHeight }; });
+  check(S.page && !S.inner && Math.abs(S.foot - S.h) <= 1, `a long form scrolls the page, not a box inside it; Back / Print stay at the bottom (${S.foot} of ${S.h})`);
+  await t.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+  await sleep(200);
   await t.click('#tabBar [data-view="REPORTS"]');
   await sleep(300);
   check(await ev(t, () => document.getElementById('coaModal').classList.contains('hidden') && activeMainView === 'REPORTS'
