@@ -84,6 +84,10 @@ try {
   await a.click('#tourNext');
   await until(a, () => document.getElementById('tourModal').classList.contains('hidden') && items.some(i => i.qty > 0), 'tour finished, sample loaded');
   check(await ev(a, () => localStorage.getItem('cp_welcome_tour_v1')) === 'done', 'tour remembered as done');
+  check(await ev(a, () => !!sampleStore() && accountabilityPeople().some(p => p.name === 'Ben Cruz')), 'the tour’s sample includes sample teachers');
+  // this suite builds its own teachers: clear the sample, keep just the counts
+  await ev(a, async () => { await clearSampleData(); await loadSampleInventory({ quiet: true }); });
+  check(await ev(a, () => !sampleStore() && accountabilityPeople().length === 0 && items.some(i => i.qty > 0)), 'Clear sample data, then counts only');
   check(await ev(a, () => Object.keys(localStorage).filter(k => k.startsWith('custodian_')).length > 0), 'inventory saved as usual');
   await a.reload({ waitUntil: 'networkidle0' });
   await sleep(1200);

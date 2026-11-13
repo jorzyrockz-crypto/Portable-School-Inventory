@@ -121,6 +121,7 @@ About 20 elements per list screen are 10 px.
 - **15. Computers:** at ≥1024 px, use a left sidebar instead of the bottom tabs, and a two-column Home (encode on the left, recent items and requests on the right).
   - **Fixed (Nov 2026):** with a mouse at 1024 px and wider, the tabs become a left sidebar (plus Supply requests, Teachers and Forms) and the top bar spans the window. Inventory and Catalog widen to 76rem with column headings and extra columns (category, tagged units, unit cost; category, APP part, value). Home keeps its focused single column. Checked in `tests/e2e/tablet-layout.mjs` section 4.
   - Touch tablets held sideways (1000 × 600 px and larger) get the same sidebar with finger-sized rows; upright tablets and phones keep the bottom tabs (section 3 of the same test).
+  - The Teachers page there shows the list and the person side by side, with equipment as a table, and hides the back links (`tests/e2e/teachers-overview.mjs` section 18).
 - **16. Grey on grey:** use `text-slate-600` on `bg-slate-100`.
 
 ## What looks good

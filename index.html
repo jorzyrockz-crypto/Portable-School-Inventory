@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="35769d1a54ae">
+  <meta name="app-version" content="a68ebf75ccad">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -180,6 +180,8 @@
        Keep SIDEBAR_MQ in the script in step with this query. */
     .lap-only, .lap-col { display: none; }
     :root { --side-w: 14.5rem; }
+    /* Teachers page on a phone: the list, or the person picked (side by side on computers, below) */
+    #tvPanes.tv-sel > #tvListPane, #tvPanes:not(.tv-sel) > #tvDetailPane { display: none; }
     @media screen and (min-width: 1024px) and (not (pointer: coarse)), screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1000px) and (min-height: 600px) {
       html:not(.no-tabs) body { padding-left: var(--side-w); padding-bottom: 2.5rem; }
       html:not(.no-tabs) body > header { margin-left: calc(-1 * var(--side-w)); }
@@ -203,6 +205,18 @@
       html:not(.no-tabs) #appToast { margin-left: calc(var(--side-w) / 2); }   /* centred over the content, not the sidebar */
       .cat-step-w { width: 7.25rem; }
       .lap-only.flex { display: flex; }
+      /* Teachers: people on the left, the one picked on the right (like an inbox) */
+      html:not(.no-tabs) #viewTeachers { max-width: 76rem; }
+      html:not(.no-tabs) #tvPanes { display: grid; grid-template-columns: minmax(19rem, 24rem) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+      html:not(.no-tabs) #tvPanes > #tvListPane, html:not(.no-tabs) #tvPanes > #tvDetailPane { display: block; }
+      html:not(.no-tabs) #tvPanes > #tvListPane { position: sticky; top: calc(var(--hdr-h, 3.75rem) + 1rem); max-height: calc(100vh - var(--hdr-h, 3.75rem) - 4.5rem);
+        overflow-y: auto; padding: 0.25rem 0.25rem 1rem; margin: -0.25rem; }
+      html:not(.no-tabs) #tvPanes > #tvListPane > * + * { margin-top: 1rem; }
+      html:not(.no-tabs) #tvPanes > #tvDetailPane > * + * { margin-top: 1rem; }
+      html:not(.no-tabs) #viewTeachers .tv-back { display: none; }
+      html:not(.no-tabs) #tvListHead .tv-acts { width: 100%; }
+      html:not(.no-tabs) #tvListHead .tv-acts > button { flex: 1 1 0; }
+      html:not(.no-tabs) #tvChips { flex-wrap: wrap; margin-inline: 0; padding-inline: 0; overflow: visible; }
       /* Government forms open as a page beside the sidebar instead of a pop-up. The page itself
          scrolls (no box scrolling inside the card), and a form's Back / Print bar sticks to the bottom. */
       html:not(.no-tabs) #coaModal.coa-page { left: var(--side-w); top: var(--hdr-h, 3.75rem); z-index: 30; padding: 1rem 1.5rem 0;
@@ -666,7 +680,7 @@
       <div id="homeWelcome" class="hidden rounded-2xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600 space-y-1.5">
         <p class="font-bold text-slate-800">Start by searching for an item above.</p>
         <p class="text-xs">Type a few letters of the item name or its code, e.g. <em>bond paper</em> or <em>laptop</em>, then enter the quantity you have on hand. Or scan an ICS or import your Excel list.</p>
-        <button onclick="loadSampleInventory()" class="min-h-10 px-2 text-xs font-bold text-brand-600 hover:underline">Just exploring? Load sample data</button>
+        <button onclick="loadSampleData()" class="min-h-10 px-2 text-xs font-bold text-brand-600 hover:underline">Just exploring? Load sample data</button>
       </div>
 
       <button id="homeStatus" onclick="switchMainView('REPORTS')" class="w-full min-h-10 flex items-center justify-between gap-2 px-1 text-xs text-slate-600 hover:text-slate-800">
@@ -1109,9 +1123,18 @@
   </section>
 
   <!-- RELEASED TO TEACHERS (custodian): who holds what, accountability print -->
-  <section id="viewTeachers" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
-    <div id="tvHead"></div>
-    <div id="tvBody" class="space-y-4"></div>
+  <!-- Phones: the list, or one person. Computers and tablets held sideways: both side by side. -->
+  <section id="viewTeachers" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 no-print">
+    <div id="tvPanes">
+      <div id="tvListPane" class="space-y-4">
+        <div id="tvListHead"></div>
+        <div id="tvList" class="space-y-2.5"></div>
+      </div>
+      <div id="tvDetailPane" class="space-y-4">
+        <div id="tvHead"></div>
+        <div id="tvBody" class="space-y-4"></div>
+      </div>
+    </div>
   </section>
 
   <!-- REQUEST SUPPLIES (teacher phones): only their own requests -->
@@ -1328,7 +1351,8 @@
           <button onclick="closeMoreMenu(); exportBackupJSON()" class="more-item"><i class="ph-bold ph-floppy-disk text-emerald-600"></i> Back up now</button>
           <button onclick="closeMoreMenu(); document.getElementById('restoreFileInput').click()" class="more-item"><i class="ph-bold ph-upload-simple text-amber-600"></i> Restore a backup</button>
           <button onclick="closeMoreMenu(); openHistory()" class="more-item"><i class="ph-bold ph-list-magnifying-glass text-brand-600"></i> Change history</button>
-          <button onclick="closeMoreMenu(); loadSampleInventory()" class="more-item"><i class="ph-bold ph-magic-wand text-slate-500"></i> Load sample data</button>
+          <button id="moreSampleLoad" onclick="closeMoreMenu(); loadSampleData()" class="more-item"><i class="ph-bold ph-magic-wand text-slate-500"></i> Load sample data</button>
+          <button id="moreSampleClear" onclick="closeMoreMenu(); clearSampleData()" class="more-item hidden"><i class="ph-bold ph-broom text-rose-600"></i> Clear sample data</button>
           <button id="moreTourItem" onclick="openTour()" class="more-item"><i class="ph-bold ph-signpost text-teal-600"></i> Welcome tour</button>
           <button id="moreAboutItem" onclick="closeMoreMenu(); openAbout()" class="more-item"><i class="ph-bold ph-info text-brand-600"></i> About &amp; what’s new <span id="moreUpdateDot" class="hidden ml-auto text-[11px] font-extrabold uppercase tracking-wider text-white bg-amber-700 rounded-full px-2 py-0.5">Update</span></button>
           <p id="backupStatusLine" class="px-2 pt-2 text-[11px] text-slate-500 flex items-center gap-1.5">
@@ -1579,6 +1603,36 @@
       <textarea id="trNote" rows="3" maxlength="300" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none"></textarea>
       <p id="trHint" class="text-[11px] text-slate-500 -mt-2"></p>
       <button id="trSend" onclick="sendTeacherReport()" class="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm flex items-center justify-center gap-2"><i class="ph-bold ph-paper-plane-tilt"></i> Send to the property custodian</button>
+    </div>
+  </div>
+
+  <!-- YEAR-END COUNT (teacher phones): which items are here, broken or missing -->
+  <div id="tCountModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeTeacherCount()">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h3 id="tcTitle" class="font-extrabold text-base text-slate-900">Count my items</h3>
+          <p class="text-xs text-slate-500">Look for each item. Tap Broken or Missing if it is not working or not with you.</p>
+        </div>
+        <button onclick="closeTeacherCount()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="tcList" class="space-y-2"></div>
+      <textarea id="tcNote" rows="2" maxlength="300" placeholder="Anything the custodian should know? (optional)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none"></textarea>
+      <button id="tcSend" onclick="sendTeacherCount()" class="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm flex items-center justify-center gap-2"><i class="ph-bold ph-paper-plane-tilt"></i> Send count</button>
+    </div>
+  </div>
+
+  <!-- PICK ONE (e.g. "Same person as…" on the Teachers page) -->
+  <div id="pickModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closePick(null)">
+    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-3 safe-pad max-h-[90vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h3 id="pickTitle" class="font-extrabold text-base text-slate-900"></h3>
+          <p id="pickMsg" class="text-xs text-slate-500"></p>
+        </div>
+        <button onclick="closePick(null)" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="pickList" class="space-y-1.5"></div>
     </div>
   </div>
 
@@ -3341,36 +3395,39 @@
     // =========================================================================
     // 6. SAMPLE SCHOOL INVENTORY LOADER (FOR INSTANT DASHBOARD DEMO)
     // =========================================================================
-    async function loadSampleInventory() {
-      const hasExisting = items.some(i => i.qty > 0);
-      if (hasExisting && !await appConfirm("This will load sample school inventory counts so you can preview the dashboard.", { title: 'Load sample data?', ok: 'Load sample', tone: 'warn' })) {
-        return;
-      }
+    const SAMPLE_INVENTORY = {
+      "12191601-AL-E04": { qty: 45, note: "School Clinic" },
+      "12191601-AL-E03": { qty: 12, note: "Central Stockroom" },
+      "14111507-PP-M01": { qty: 120, note: "Central Stockroom" },
+      "14111507-PP-M02": { qty: 85, note: "Central Stockroom" },
+      "45111609-MM-P01": { qty: 4, note: "ICT / Computer Lab" },
+      "45121517-DO-C02": { qty: 2, note: "Audio-Visual Room" },
+      "43211507-DSK001": { qty: 15, repair: 2, unserv: 1, note: "ICT / Computer Lab" },
+      "43211503-LAP001": { qty: 6, repair: 1, note: "Faculty Room" },
+      "43212105-PR-L01": { qty: 4, unserv: 1, note: "Principal / Admin Office" },
+      "56101504-CM-B01": { qty: 60, note: "Social Hall / Covered Court" },
+      "40101604-EF-W01": { qty: 24, note: "Grade 7-10 Classrooms" },
+      "40101604-EF-S01": { qty: 3, note: "Faculty Room" },
+      "46191601-FE-M01": { qty: 8, note: "Main Building Corridors" },
+      "47131604-BR-S01": { qty: 20, note: "Utility / Janitorial Room" },
+      "47121804-MP-B01": { qty: 3, note: "Utility / Janitorial Room" },
+      "47121701-TB-P04": { qty: 30, note: "Utility / Janitorial Room" },
+      "44121708-MW-B01": { qty: 50, note: "Faculty Room" },
+      "44103105-EP-B17": { qty: 18, note: "Principal / Admin Office" },
+      "44103105-EP-C17": { qty: 4, note: "Principal / Admin Office" },
+      "39101628-LT-L01": { qty: 4, note: "Central Stockroom" },
+      "80141505-TS-012": { qty: 5, customPrice: 18500, note: "Grade 10 Classrooms" },
+      "80141505-TS-018": { qty: 4, customPrice: 8200, note: "Principal / Admin Office" }
+    };
 
-      const sampleData = {
-        "12191601-AL-E04": { qty: 45, note: "School Clinic" },
-        "12191601-AL-E03": { qty: 12, note: "Central Stockroom" },
-        "14111507-PP-M01": { qty: 120, note: "Central Stockroom" },
-        "14111507-PP-M02": { qty: 85, note: "Central Stockroom" },
-        "45111609-MM-P01": { qty: 4, note: "ICT / Computer Lab" },
-        "45121517-DO-C02": { qty: 2, note: "Audio-Visual Room" },
-        "43211507-DSK001": { qty: 15, repair: 2, unserv: 1, note: "ICT / Computer Lab" },
-        "43211503-LAP001": { qty: 6, repair: 1, note: "Faculty Room" },
-        "43212105-PR-L01": { qty: 4, unserv: 1, note: "Principal / Admin Office" },
-        "56101504-CM-B01": { qty: 60, note: "Social Hall / Covered Court" },
-        "40101604-EF-W01": { qty: 24, note: "Grade 7-10 Classrooms" },
-        "40101604-EF-S01": { qty: 3, note: "Faculty Room" },
-        "46191601-FE-M01": { qty: 8, note: "Main Building Corridors" },
-        "47131604-BR-S01": { qty: 20, note: "Utility / Janitorial Room" },
-        "47121804-MP-B01": { qty: 3, note: "Utility / Janitorial Room" },
-        "47121701-TB-P04": { qty: 30, note: "Utility / Janitorial Room" },
-        "44121708-MW-B01": { qty: 50, note: "Faculty Room" },
-        "44103105-EP-B17": { qty: 18, note: "Principal / Admin Office" },
-        "44103105-EP-C17": { qty: 4, note: "Principal / Admin Office" },
-        "39101628-LT-L01": { qty: 4, note: "Central Stockroom" },
-        "80141505-TS-012": { qty: 5, customPrice: 18500, note: "Grade 10 Classrooms" },
-        "80141505-TS-018": { qty: 4, customPrice: 8200, note: "Principal / Admin Office" }
-      };
+    // Counts only (loadSampleInventory); the buttons call loadSampleData, which also adds sample
+    // teachers with slips and reports (Teachers page) and can be cleared again.
+    async function loadSampleInventory(opts = {}) {
+      const hasExisting = items.some(i => i.qty > 0);
+      if (!opts.quiet && hasExisting && !await appConfirm("This will load sample school inventory counts so you can preview the dashboard.", { title: 'Load sample data?', ok: 'Load sample', tone: 'warn' })) {
+        return false;
+      }
+      const sampleData = SAMPLE_INVENTORY;
 
       Object.entries(sampleData).forEach(([code, data]) => {
         const item = items.find(i => i.code === code);
@@ -3407,6 +3464,7 @@
       saveStateWith({ summary: { kind: 'system', text: `Loaded sample inventory (${Object.keys(sampleData).length} items)` } });
       renderItems();
       renderDashboard();
+      return true;
     }
 
     // =========================================================================
@@ -7161,6 +7219,7 @@
     function openMoreMenu() {
       updateBackupReminder();
       renderMoreAccount();
+      renderMoreSample();
       document.getElementById('moreMenu').classList.remove('hidden');
     }
 
@@ -7321,7 +7380,7 @@
     function placeToast() {
       const toast = document.getElementById('appToast');
       if (!toast) return;
-      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel', 'aboutPanel', 'xferModal', 'coaModal', 'tourModal', 'itemSheet'].some(id => !document.getElementById(id)?.classList.contains('hidden') && !(id === 'coaModal' && coaIsPage()));
+      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'tCountModal', 'pickModal', 'notifPanel', 'aboutPanel', 'xferModal', 'coaModal', 'tourModal', 'itemSheet'].some(id => !document.getElementById(id)?.classList.contains('hidden') && !(id === 'coaModal' && coaIsPage()));
       const stickyAction = [...document.querySelectorAll('[data-toast-avoid]')].some(el => el.offsetParent !== null);
       const gated = document.documentElement.classList.contains('gated');
       const top = !gated && (sheetOpen || stickyAction);
@@ -7337,7 +7396,7 @@
       if (!toast || watchToastPlacement.done) return;
       watchToastPlacement.done = true;
       const mo = new MutationObserver(() => { if (!toast.classList.contains('hidden')) placeToast(); });
-      ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'notifPanel', 'aboutPanel', 'xferModal', 'coaModal', 'tourModal', 'itemSheet']
+      ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'tCountModal', 'pickModal', 'notifPanel', 'aboutPanel', 'xferModal', 'coaModal', 'tourModal', 'itemSheet']
         .forEach(id => { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class'] }); });
       mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     }
@@ -7514,7 +7573,7 @@
         if (!cloudConfigured()) throw new Error('not-configured');
         cloud.state = 'loading';
         if (typeof FirebaseSDK === 'undefined') await loadScript('assets/cloud/firebase.js');
-        const F = cloud.sdk = FirebaseSDK;
+        const F = cloud.sdk = sampleGuardSDK(FirebaseSDK); // sample teachers never reach the account
         const app = F.initializeApp(window.FIREBASE_CONFIG);
         cloud.auth = F.getAuth(app);
         try {
@@ -7810,6 +7869,7 @@
       saveInvSync();
       setInvStatus(metas.some(m => m.pending) ? 'saving' : fromCache ? (navigator.onLine ? 'syncing' : 'offline') : 'synced');
       linkTypedNamesToTeachers();
+      applyCountReports();
     }
 
     // Custom items are numbered per phone (CUSTOM-P2-114, -115 …), so two phones can create
@@ -9233,8 +9293,8 @@
     const unitDocLabel = u => (u && u.ics ? `${unitDocKind(u)} ${u.ics}` : '');
     const clearUnitHolder = u => { u.to = ''; delete u.toUid; u.ics = ''; delete u.icsDate; delete u.released; delete u.doc; };
 
-    let memberList = [];
-    let releaseList = [];
+    let memberList = sampleList('members');
+    let releaseList = sampleList('releases');
     let releasesLoaded = false;
     let teamError = '';
     let releaseDraft = null;
@@ -9295,21 +9355,22 @@
       };
       // (metadata changes too: the first answer from the server primes "joined" notifications)
       reqUnsubs.push(F.onSnapshot(memberCol(), { includeMetadataChanges: true }, snap => {
-        memberList = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
+        memberList = sampleList('members', snap.docs.map(d => ({ ...d.data(), uid: d.id })));
         teamError = '';
         onTeamChange();
         notifFromMembers(snap.metadata);
       }, soft('members')));
       reqUnsubs.push(F.onSnapshot(relCol(), { includeMetadataChanges: true }, snap => {
-        releaseList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
+        releaseList = sampleList('releases', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) })));
         releaseList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
         if (!(snap.metadata && snap.metadata.fromCache)) releasesLoaded = true;
         onTeamChange();
         notifReminders();
       }, soft('releases')));
       reqUnsubs.push(F.onSnapshot(tReportCol(), { includeMetadataChanges: true }, snap => {
-        tReports = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+        tReports = sampleList('reports', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id })));
         if (!(snap.metadata && snap.metadata.fromCache)) tRepLoaded = true;
+        applyCountReports();
         renderRequestsEverywhere();
         notifFromReports(snap.metadata);
         notifReminders();
@@ -9837,7 +9898,7 @@
     //       units: [{ id, no }], reason, note, status: 'open' | 'done' | 'declined',
     //       resolution, reply, createdMs }
     let myReleases = [];        // teacher phone: releases made out to me
-    let tReports = [];          // teacher: my reports · custodian: every teacher's reports
+    let tReports = sampleList('reports'); // teacher: my reports · custodian: every teacher's reports (+ sample ones)
     let myRelLoaded = false, tRepLoaded = false;   // first answer from the server (reminders wait for it)
     let teacherTab = null;      // 'items' | 'requests'
     let tReportDraft = null;
@@ -9870,7 +9931,7 @@
     }
     const tAcked = relId => tReports.some(x => x.kind === 'received' && x.releaseId === relId) || (typeof ackSent !== 'undefined' && ackSent.has(relId));
     function tLatestFor(unitId) {
-      return tReports.filter(x => x.kind !== 'received' && (x.units || []).some(u => u.id === unitId))
+      return tReports.filter(x => x.kind !== 'received' && x.kind !== 'count' && (x.units || []).some(u => u.id === unitId))
         .sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0))[0] || null;
     }
 
@@ -9939,6 +10000,13 @@
             <p class="text-[11px] text-emerald-800">Check the items first. Tap <b>Received</b> to let the custodian know you have them.</p>
           </div>`;
       }
+      const since = countSince();
+      if (h.equipment.length) html += teacherCountCardHTML(h);
+      if (h.equipment.length || h.supplies.length) html += `
+        <div class="flex flex-wrap gap-2">
+          <button id="tPrintMine" onclick="printMyList()" class="h-10 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print my list</button>
+          ${h.equipment.length && !since.season && !myLastCount() ? `<button id="tCountMine" onclick="openTeacherCount()" class="h-10 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-clipboard-text"></i> Count my items</button>` : ''}
+        </div>`;
       html += `
         <div>
           <div class="flex items-end justify-between gap-2 mb-2 px-1">
@@ -10009,6 +10077,114 @@
           ${last ? `<p class="rounded-lg ${last.status === 'open' ? 'bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-600'} text-[11px] px-2.5 py-1.5">${last.status === 'open' ? `<b>Reported:</b> ${escapeHTML(tReasonLabel(last.reason))}${last.note ? ` · ${escapeHTML(last.note)}` : ''}` : `<b>Custodian:</b> ${escapeHTML(last.reply || 'Noted')}`}</p>` : ''}
           <button onclick="openTeacherReport('problem', '${r.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-warning"></i> Report a problem</button>
         </div>`;
+    }
+
+    // ---- Teachers help with the year-end count, and print their own list ---------------------
+    // A count is sent as reports of kind 'count' (one per 50 units): each unit 'ok', 'missing'
+    // or 'broken'. The custodian's app marks the units that are there as counted.
+    let tCountDraft = null;   // { states: { unitId: 'ok' | 'missing' | 'broken' } }
+    function myLastCount() {
+      const since = countSince().ms;
+      const mine = tReports.filter(x => x.kind === 'count' && (x.createdMs || 0) >= since);
+      if (!mine.length) return null;
+      const at = Math.max(...mine.map(x => x.createdMs || 0));
+      const docs = mine.filter(x => (x.createdMs || 0) === at);
+      const units = docs.flatMap(x => x.units || []);
+      return { at, sending: docs.some(x => x.sending), ok: units.filter(u => u.s === 'ok').length,
+        missing: units.filter(u => u.s === 'missing').length, broken: units.filter(u => u.s === 'broken').length };
+    }
+    const countText = c => [`${c.ok} present`, c.broken && `${c.broken} broken`, c.missing && `${c.missing} missing`].filter(Boolean).join(' · ');
+
+    function teacherCountCardHTML(h) {
+      const since = countSince();
+      const last = myLastCount();
+      if (last) return `
+        <div id="tcCard" data-tc-state="done" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-center gap-3">
+          <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center"><i class="ph-bold ph-seal-check text-lg"></i></span>
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-extrabold text-slate-900">${last.sending ? 'Sending your count…' : `Counted ${escapeHTML(formatShortDate(last.at))}`}${since.season ? ` · year-end count ${since.year}` : ''}</p>
+            <p class="text-[11px] text-slate-500">${countText(last)}</p>
+          </div>
+          <button onclick="openTeacherCount()" class="shrink-0 h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Count again</button>
+        </div>`;
+      if (!since.season) return '';
+      return `
+        <div id="tcCard" data-tc-state="ask" class="rounded-2xl bg-brand-50 border border-brand-100 p-3 space-y-2">
+          <p class="text-xs font-extrabold text-brand-900 flex items-center gap-1.5"><i class="ph-bold ph-clipboard-text"></i> Year-end count ${since.year}</p>
+          <p class="text-[11px] text-slate-700">The property custodian is counting all school property. Are the ${plural(h.equipment.length, 'item')} on your list with you?</p>
+          <div class="flex gap-2">
+            <button id="tcAllBtn" onclick="sendTeacherCount(true)" class="flex-1 h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-check-circle"></i> All present</button>
+            <button id="tcFlagBtn" onclick="openTeacherCount()" class="flex-1 h-11 rounded-xl bg-white border border-slate-200 text-xs font-extrabold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-warning"></i> Missing or broken…</button>
+          </div>
+        </div>`;
+    }
+
+    function openTeacherCount() {
+      const h = teacherHoldings(myReleases);
+      if (!h.equipment.length) return;
+      const since = countSince();
+      tCountDraft = { states: {} };
+      document.getElementById('tcTitle').textContent = since.season ? `Year-end count ${since.year}` : 'Count my items';
+      document.getElementById('tcNote').value = '';
+      renderTeacherCount();
+      document.getElementById('tCountModal').classList.remove('hidden');
+      placeToast();
+    }
+    function setTeacherCount(id, s) { if (!tCountDraft) return; tCountDraft.states[id] = s; renderTeacherCount(); }
+    function renderTeacherCount() {
+      const h = teacherHoldings(myReleases);
+      const st = tCountDraft.states;
+      const on = { ok: 'bg-emerald-50 border-emerald-300 text-emerald-800', missing: 'bg-rose-50 border-rose-300 text-rose-800', broken: 'bg-amber-50 border-amber-300 text-amber-800' };
+      const opt = (id, s, label, icon) => {
+        const sel = (st[id] || 'ok') === s;
+        return `<button type="button" data-tc="${id}" data-s="${s}" aria-pressed="${sel}" onclick="setTeacherCount('${id}', '${s}')" class="flex-1 h-9 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1 ${sel ? on[s] : 'bg-white border-slate-200 text-slate-500'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
+      };
+      document.getElementById('tcList').innerHTML = h.equipment.map(({ unit, line }) => `
+        <div class="rounded-xl border border-slate-200 p-2.5 space-y-2">
+          <p class="text-xs font-bold text-slate-900 leading-snug">${escapeHTML(line.desc)} <span class="font-mono text-slate-500">${escapeHTML(unit.no || '')}</span></p>
+          <div class="flex gap-1.5">${opt(unit.id, 'ok', 'Here', 'ph-check')}${opt(unit.id, 'broken', 'Broken', 'ph-wrench')}${opt(unit.id, 'missing', 'Missing', 'ph-question')}</div>
+        </div>`).join('');
+      const bad = Object.values(st).filter(s => s !== 'ok').length;
+      document.getElementById('tcSend').innerHTML = `<i class="ph-bold ph-paper-plane-tilt"></i> ${bad ? `Send count · ${bad} flagged` : 'Send · all here'}`;
+    }
+    function closeTeacherCount() { tCountDraft = null; document.getElementById('tCountModal').classList.add('hidden'); placeToast(); }
+
+    async function sendTeacherCount(allPresent = false) {
+      if (!cloud.user) return;
+      const h = teacherHoldings(myReleases);
+      if (!h.equipment.length) return;
+      if (allPresent && !await appConfirm(`All ${plural(h.equipment.length, 'item')} on your list are with you and working.`, { title: 'All present?', ok: 'Yes, all present', tone: 'good', icon: 'ph-check-circle' })) return;
+      const states = (!allPresent && tCountDraft && tCountDraft.states) || {};
+      const note = allPresent ? '' : reqVal('tcNote').slice(0, 300);
+      const year = countSince().year;
+      const units = h.equipment.map(({ unit, line }) => ({ id: unit.id, no: unit.no || '', code: line.code || '', desc: String(line.desc || '').slice(0, 80), s: states[unit.id] || 'ok' }));
+      const c = { ok: units.filter(u => u.s === 'ok').length, missing: units.filter(u => u.s === 'missing').length, broken: units.filter(u => u.s === 'broken').length };
+      const F = cloud.sdk;
+      const me = reqRole.me || {};
+      const now = Date.now();
+      for (let i = 0; i < units.length; i += 50) {
+        cloudWrite(F.setDoc(F.doc(tReportCol()), {
+          uid: cloud.user.uid, name: (me.name || 'Teacher').slice(0, 80), kind: 'count', releaseId: '', releaseNo: `Count ${year}`, code: '',
+          desc: `${plural(units.length, 'item')} · ${countText(c)}`.slice(0, 160), units: units.slice(i, i + 50), reason: String(year), note,
+          status: 'open', createdMs: now, createdAt: F.serverTimestamp()
+        }), 'Sending');
+      }
+      if (!allPresent) closeTeacherCount();
+      showToast(navigator.onLine ? (c.missing || c.broken ? 'Count sent · the custodian sees what is missing or broken' : 'Thanks! Your items are counted')
+        : 'Saved · it will be sent when you are back online', 'ph-seal-check');
+    }
+
+    // The teacher's own summary of accountability (same form the custodian prints).
+    function printMyList() {
+      const h = teacherHoldings(myReleases);
+      const me = reqRole.me || {};
+      const equipment = h.equipment.map(({ unit, line, rel }) => {
+        const before = rel.source === 'existing'; // linked: the slip it was first issued on
+        return { item: { name: line.desc || '', price: line.unitCost || 0 },
+          unit: { ...unit, docLabel: before ? (unit.doc || '') : `${rel.kind} ${rel.no || ''}`.trim(), icsDate: before ? (unit.docDate || '') : (rel.date || '') } };
+      }).sort((a, b) => a.item.name.localeCompare(b.item.name));
+      printPrHTML(accountabilityPrintHTML({ name: me.name || 'Teacher', position: me.position || '', office: me.office || '', equipment, ris: h.supplies,
+        value: equipment.reduce((n, x) => n + x.item.price, 0) }, { entity: reqRole.schoolName || '' }));
     }
 
     function tReportBase(kind, rel, extra) {
@@ -10084,7 +10260,7 @@
     }
 
     // ---- Custodian: "From teachers" (problems and returns) ---------------------------------
-    const openTeacherReports = () => tReports.filter(x => x.status === 'open' && x.kind !== 'received')
+    const openTeacherReports = () => tReports.filter(tReportOpen)
       .sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
 
     function teacherInboxHTML() {
@@ -10096,6 +10272,7 @@
           ${open.map(x => {
             const units = (x.units || []).map(u => u.no).filter(Boolean).join(', ');
             const ret = x.kind === 'return';
+            if (x.kind === 'count') return teacherCountInboxHTML(x);
             const action = ret ? ['acceptTeacherReturn', 'Received back', 'ph-arrow-u-down-left', 'bg-emerald-700 hover:bg-emerald-800']
               : x.reason === 'repair' && x.units.length ? ['resolveTeacherReport', 'Mark for repair', 'ph-wrench', 'bg-amber-700 hover:bg-amber-800', 'repair']
               : x.reason === 'unserv' && x.units.length ? ['resolveTeacherReport', 'Mark unserviceable', 'ph-x-circle', 'bg-rose-600 hover:bg-rose-700', 'unserv']
@@ -10113,6 +10290,27 @@
                 </div>
               </div>`;
           }).join('')}
+        </div>`;
+    }
+
+    // A teacher's count with something missing or broken.
+    function teacherCountInboxHTML(x) {
+      const flags = countFlags(x);
+      const broken = flags.filter(u => u.s === 'broken');
+      const missing = flags.filter(u => u.s === 'missing');
+      const list = us => us.map(u => `${escapeHTML(u.desc || '')} <span class="font-mono font-bold">${escapeHTML(u.no || '')}</span>`).join(', ');
+      return `
+        <div class="px-4 py-3 border-t border-slate-100 space-y-1.5" data-treport="${x.id}">
+          <p class="text-sm text-slate-900"><b>${escapeHTML(x.name)}</b> counted their items: <b class="text-rose-700">${[missing.length && `${missing.length} missing`, broken.length && `${broken.length} broken`].filter(Boolean).join(' · ')}</b></p>
+          ${missing.length ? `<p class="text-xs text-slate-600"><b class="text-rose-700">Missing:</b> ${list(missing)}</p>` : ''}
+          ${broken.length ? `<p class="text-xs text-slate-600"><b class="text-amber-700">Broken:</b> ${list(broken)}</p>` : ''}
+          <p class="text-[11px] text-slate-500">${escapeHTML(x.releaseNo || '')} · the rest are marked counted</p>
+          ${x.note ? `<p class="text-xs text-slate-700 bg-slate-50 rounded-lg px-2.5 py-1.5">“${escapeHTML(x.note)}”</p>` : ''}
+          <div class="flex items-center gap-2 pt-1">
+            ${broken.length ? `<button onclick="resolveTeacherReport('${x.id}', 'repair')" class="h-9 px-3 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-wrench"></i> Mark broken for repair</button>` : ''}
+            <button onclick="resolveTeacherReport('${x.id}', 'noted')" class="h-9 px-3 rounded-lg ${broken.length ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold' : 'bg-slate-700 hover:bg-slate-800 text-white font-extrabold'} text-xs flex items-center gap-1.5">${broken.length ? '' : '<i class="ph-bold ph-check"></i> '}Noted</button>
+            <span class="ml-auto text-[11px] text-slate-500">${escapeHTML(formatTimeAgo(x.createdMs))}</span>
+          </div>
         </div>`;
     }
 
@@ -10159,7 +10357,7 @@
       const F = cloud.sdk;
       if (action === 'repair' || action === 'unserv') {
         const touched = [];
-        (x.units || []).forEach(({ id: uid }) => {
+        (x.units || []).filter(u => x.kind !== 'count' || u.s === 'broken').forEach(({ id: uid }) => {
           const found = findUnitWithItem(uid);
           if (!found) return;
           found.unit.cond = action === 'repair' ? 'R' : 'U';
@@ -10193,15 +10391,33 @@
     // and names typed or scanned under "Assigned to" (no account needed). Equipment comes from
     // Inventory (the units' "Assigned to"), so it is right even for items assigned before the
     // app was used; supplies and history come from the release records.
-    let teachersSel = null;     // person key shown in detail, or null for the list
+    let teachersSel = null;     // person key shown on the right (or alone on a phone), '@usage' for supply usage, or null
     let teachersQuery = '';
+    let teachersFilter = 'all';
+    let teachersSort = 'name';
+    let teachersClear = null;   // person key with the property clearance panel open
+    let usageMode = 'q';        // 'q' quarters of the calendar year (APP-CSE) · 'sy' school year (June–May)
+    let usageYear = new Date().getFullYear();
 
     const personId = (uid, name) => (uid ? uid : 'n:' + (personKey(name) || String(name || '').trim().toLowerCase()));
+    const qk = k => escapeHTML(String(k).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));   // a key inside onclick="f('…')"
+
+    // The count that matters now: since 1 December during the year-end count (December–January),
+    // otherwise since 1 January (as "counted this year" on the Forms page).
+    function countSince(now = Date.now()) {
+      const s = countSeason(now);
+      if (s) return { year: s.year, ms: s.start, season: true };
+      const y = new Date(now).getFullYear();
+      return { year: y, ms: new Date(y, 0, 1).getTime(), season: false };
+    }
+    // Open = still needs the custodian. A teacher's count with everything present needs nothing.
+    function countFlags(x) { return (x.units || []).filter(u => u.s && u.s !== 'ok'); }
+    function tReportOpen(x) { return x.status === 'open' && x.kind !== 'received' && !(x.kind === 'count' && !countFlags(x).length); }
 
     function accountabilityPeople() {
       const map = new Map();
       const add = (key, p) => { if (!map.has(key)) map.set(key, { key, uid: null, name: '', position: '', office: '', joined: false, ...p }); return map.get(key); };
-      (isCustodianDevice() ? teacherRoster() : []).forEach(t => add(t.uid, { uid: t.uid, name: t.name, position: t.position || '', office: t.office || '', joined: !!t.joined }));
+      (isCustodianDevice() || sampleStore() ? teacherRoster() : []).forEach(t => add(t.uid, { uid: t.uid, name: t.name, position: t.position || '', office: t.office || '', joined: !!t.joined }));
       releaseList.forEach(r => { if (r.teacherName) add(personId(r.teacherUid, r.teacherName), { uid: r.teacherUid || null, name: r.teacherName, position: r.position || '', office: r.office || '' }); });
       const unitsOf = new Map();
       items.forEach(item => getUnits(item.code).forEach(unit => {
@@ -10211,64 +10427,123 @@
         if (!unitsOf.has(key)) unitsOf.set(key, []);
         unitsOf.get(key).push({ item, unit });
       }));
+      const since = countSince().ms;
       return [...map.values()].map(p => {
         const records = releaseList.filter(r => personId(r.teacherUid, r.teacherName) === p.key).sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
         const equipment = (unitsOf.get(p.key) || []).sort((a, b) => a.item.name.localeCompare(b.item.name) || String(a.unit.no).localeCompare(String(b.unit.no)));
         const ris = records.filter(r => r.kind === 'RIS');
         const toConfirm = p.uid ? records.filter(r => (isIssueKind(r.kind) || r.kind === 'RIS') && !r.sameHolder && !tReports.some(x => x.kind === 'received' && x.releaseId === r.id)) : [];
-        const open = p.uid ? tReports.filter(x => x.uid === p.uid && x.status === 'open' && x.kind !== 'received') : [];
+        const open = p.uid ? tReports.filter(x => x.uid === p.uid && tReportOpen(x)) : [];
         const value = equipment.reduce((n, x) => n + (x.item.price || 0), 0);
         const last = records[0] ? (records[0].createdMs || 0) : 0;
-        return { ...p, records, equipment, ris, toConfirm, open, value, last };
+        const oldest = toConfirm.reduce((m, r) => Math.min(m, r.createdMs || Date.now()), Infinity);
+        const counted = equipment.filter(x => (x.unit.seen || 0) >= since).length;
+        const repair = equipment.filter(x => x.unit.cond === 'R').length;
+        const unserv = equipment.filter(x => x.unit.cond === 'U').length;
+        return { ...p, records, equipment, ris, toConfirm, open, value, last, oldest: oldest === Infinity ? 0 : oldest, counted, repair, unserv };
       }).sort((a, b) => (b.equipment.length + b.records.length > 0) - (a.equipment.length + a.records.length > 0) || a.name.localeCompare(b.name));
+    }
+
+    const TV_FILTERS = [
+      ['all', 'All', () => true],
+      ['items', 'Has items', p => p.equipment.length > 0],
+      ['confirm', 'To confirm', p => p.toConfirm.length > 0],
+      ['reports', 'Open reports', p => p.open.length > 0],
+      ['uncounted', 'Not counted yet', p => p.equipment.length > 0 && p.counted < p.equipment.length],
+      ['noacct', 'No account', p => !p.uid],
+      ['notjoined', 'Hasn’t joined', p => (p.uid ? !p.joined : p.equipment.length > 0)]
+    ];
+    const TV_SORTS = [['name', 'Name'], ['value', 'Value'], ['units', 'Units'], ['oldest', 'Oldest unconfirmed slip']];
+    function sortPeople(list) {
+      const by = {
+        value: (a, b) => b.value - a.value,
+        units: (a, b) => b.equipment.length - a.equipment.length,
+        oldest: (a, b) => (a.oldest || 9e15) - (b.oldest || 9e15)
+      }[teachersSort];
+      return by ? [...list].sort((a, b) => by(a, b) || a.name.localeCompare(b.name)) : list;
+    }
+    const personCondText = p => [p.repair && `${p.repair} for repair`, p.unserv && `${p.unserv} unserviceable`].filter(Boolean).join(' · ');
+    const daysSince = ms => Math.max(0, Math.floor((Date.now() - ms) / 864e5));
+
+    // Someone whose last item was just taken back (and with no slips yet) stays on screen.
+    let tvLastPerson = null;
+    function findPerson(key, people = accountabilityPeople()) {
+      const p = people.find(x => x.key === key);
+      if (p || !tvLastPerson || tvLastPerson.key !== key) return p || null;
+      const { uid, name, position, office, joined } = tvLastPerson;
+      return { key, uid, name, position, office, joined, records: [], equipment: [], ris: [], toConfirm: [], open: [], value: 0, last: 0, oldest: 0, counted: 0, repair: 0, unserv: 0 };
     }
 
     function openTeachersView(key = null) {
       teachersSel = key;
+      if (key !== teachersClear) teachersClear = null;
       switchMainView('TEACHERS');
     }
     function setTeachersQuery(v) { teachersQuery = v; renderTeachersList(); }
+    function setTeachersFilter(f) { teachersFilter = teachersFilter === f ? 'all' : f; renderTeachersView(); }
+    function setTeachersSort(s) { teachersSort = s; renderTeachersView(); }
 
     function renderTeachersView() {
-      const head = document.getElementById('tvHead');
-      const body = document.getElementById('tvBody');
-      if (!head) return;
+      const listHead = document.getElementById('tvListHead');
+      if (!listHead) return;
       const people = accountabilityPeople();
-      const person = teachersSel && people.find(p => p.key === teachersSel);
-      if (teachersSel && !person) teachersSel = null;
-      if (!person) {
-        // Typing in the search box: refresh the list only, so the keyboard stays open.
-        if (document.activeElement && document.activeElement.id === 'tvSearch') { renderTeachersList(people); return; }
-        const withItems = people.filter(p => p.equipment.length);
-        const units = withItems.reduce((n, p) => n + p.equipment.length, 0);
-        const value = withItems.reduce((n, p) => n + p.value, 0);
-        head.innerHTML = `
-          <button onclick="switchMainView('${isCustodianDevice() ? 'REQUESTS' : 'HOME'}')" class="min-h-10 -ml-1 px-1 -mt-2 text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-caret-left"></i> ${isCustodianDevice() ? 'Supply requests' : 'Home'}</button>
-          <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-            <div class="min-w-0">
-              <h1 class="text-xl font-extrabold text-slate-900 whitespace-nowrap">Released to teachers</h1>
-              <p class="text-xs text-slate-500">${people.length} ${people.length === 1 ? 'person' : 'people'} · ${plural(units, 'equipment unit')} · ₱${peso2(value)}</p>
-            </div>
-            <div class="shrink-0 flex items-center gap-1.5 sm:pt-1 w-full sm:w-auto [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center [&>button]:h-10 sm:[&>button]:h-9">
-              <button onclick="printAccountability()" ${withItems.length || people.some(p => p.ris.length) ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print all</button>
-              ${isCustodianDevice() && cloud.user ? `<button onclick="openRelease()" class="h-9 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release</button>` : ''}
-            </div>
+      const usage = teachersSel === '@usage';
+      const person = teachersSel && !usage ? findPerson(teachersSel, people) : null;
+      if (teachersSel && !usage && !person) teachersSel = null;
+      if (person) tvLastPerson = person;
+      document.getElementById('tvPanes').classList.toggle('tv-sel', !!teachersSel);
+      // Typing in the search box: leave the box alone, so the keyboard stays open.
+      if (!(document.activeElement && document.activeElement.id === 'tvSearch')) renderTeachersListHead(people);
+      renderTeachersList(people);
+      if (person) renderTeacherDetail(person, people);
+      else if (usage) renderSupplyUsage(people);
+      else renderTeachersNone(people);
+    }
+
+    function renderTeachersListHead(people) {
+      const head = document.getElementById('tvListHead');
+      const withItems = people.filter(p => p.equipment.length);
+      const units = withItems.reduce((n, p) => n + p.equipment.length, 0);
+      const value = withItems.reduce((n, p) => n + p.value, 0);
+      const hasRis = people.some(p => p.ris.length);
+      const chip = ([key, label, test]) => {
+        const n = key === 'all' ? people.length : people.filter(test).length;
+        const on = teachersFilter === key;
+        return `<button type="button" data-tvf="${key}" onclick="setTeachersFilter('${key}')" aria-pressed="${on}" class="shrink-0 h-8 px-2.5 rounded-full border text-xs font-bold flex items-center gap-1 ${on ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}">${label}<span class="font-mono ${on ? 'text-white/80' : 'text-slate-500'}">${n}</span></button>`;
+      };
+      head.innerHTML = `
+        <button onclick="switchMainView('${isCustodianDevice() ? 'REQUESTS' : 'HOME'}')" class="tv-back min-h-10 -ml-1 px-1 -mt-2 text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-caret-left"></i> ${isCustodianDevice() ? 'Supply requests' : 'Home'}</button>
+        <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+          <div class="min-w-0">
+            <h1 class="text-xl font-extrabold text-slate-900 whitespace-nowrap">Released to teachers</h1>
+            <p class="text-xs text-slate-500">${people.length} ${people.length === 1 ? 'person' : 'people'} · ${plural(units, 'equipment unit')} · ₱${peso2(value)}</p>
           </div>
-          <div class="relative mt-3">
-            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
-            <input id="tvSearch" type="search" value="${escapeHTML(teachersQuery)}" oninput="setTeachersQuery(this.value)" placeholder="Find a teacher, item or property no." class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-brand-500 outline-none">
-          </div>`;
-        renderTeachersList(people);
-        return;
-      }
-      renderTeacherDetail(person);
+          <div class="tv-acts shrink-0 flex items-center gap-1.5 sm:pt-1 w-full sm:w-auto [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center [&>button]:h-10 sm:[&>button]:h-9">
+            <button onclick="printAccountability()" ${withItems.length || hasRis ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print all</button>
+            <button id="tvUsageBtn" onclick="openTeachersView('@usage')" ${hasRis ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-chart-bar"></i> Supply usage</button>
+            ${isCustodianDevice() && cloud.user ? `<button onclick="openRelease()" class="h-9 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release</button>` : ''}
+          </div>
+        </div>
+        <div class="relative mt-3">
+          <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+          <input id="tvSearch" type="search" value="${escapeHTML(teachersQuery)}" oninput="setTeachersQuery(this.value)" placeholder="Find a teacher, item or property no." class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-brand-500 outline-none">
+        </div>
+        ${people.length ? `
+        <div id="tvChips" role="group" aria-label="Show" class="mt-2 -mx-4 px-4 flex gap-1.5 overflow-x-auto no-scrollbar">${TV_FILTERS.map(chip).join('')}</div>
+        <div class="mt-2 flex items-center justify-end gap-2">
+          <label for="tvSort" class="text-[11px] font-bold uppercase text-slate-500">Sort</label>
+          <select id="tvSort" onchange="setTeachersSort(this.value)" class="h-8 pl-2 pr-7 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 outline-none focus:border-brand-500">
+            ${TV_SORTS.map(([k, l]) => `<option value="${k}" ${teachersSort === k ? 'selected' : ''}>${l}</option>`).join('')}
+          </select>
+        </div>` : ''}`;
     }
 
     function renderTeachersList(people = accountabilityPeople()) {
-      const body = document.getElementById('tvBody');
+      const body = document.getElementById('tvList');
       const q = teachersQuery.trim().toLowerCase();
-      const list = !q ? people : people.filter(p => [p.name, p.position, p.office].some(v => String(v || '').toLowerCase().includes(q)) ||
-        p.equipment.some(({ item, unit }) => item.name.toLowerCase().includes(q) || String(unit.no || '').toLowerCase().includes(q) || String(unit.serial || '').toLowerCase().includes(q)));
+      const test = (TV_FILTERS.find(f => f[0] === teachersFilter) || TV_FILTERS[0])[2];
+      const list = sortPeople(people.filter(test).filter(p => !q || [p.name, p.position, p.office].some(v => String(v || '').toLowerCase().includes(q)) ||
+        p.equipment.some(({ item, unit }) => item.name.toLowerCase().includes(q) || String(unit.no || '').toLowerCase().includes(q) || String(unit.serial || '').toLowerCase().includes(q))));
       if (!people.length) {
         body.innerHTML = `
           <div class="rounded-2xl bg-white border border-slate-200 p-6 text-center">
@@ -10278,27 +10553,58 @@
           </div>`;
         return;
       }
+      const since = countSince();
+      const showCount = p => p.equipment.length && (since.season || p.counted);
+      const filterName = (TV_FILTERS.find(f => f[0] === teachersFilter) || TV_FILTERS[0])[1];
       body.innerHTML = list.length ? list.map(p => {
+        const age = p.oldest ? daysSince(p.oldest) : 0;
         const chips = [
-          p.toConfirm.length && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold"><i class="ph-bold ph-hourglass-medium"></i> ${p.toConfirm.length} to confirm</span>`,
+          p.toConfirm.length && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold"><i class="ph-bold ph-hourglass-medium"></i> ${p.toConfirm.length} to confirm${age >= 3 ? ` · ${plural(age, 'day')}` : ''}</span>`,
           p.open.length && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold"><i class="ph-bold ph-warning"></i> ${p.open.length} open</span>`,
+          showCount(p) && `<span data-tvcount class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[11px] font-bold ${p.counted >= p.equipment.length ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-600 border-slate-200'}"><i class="ph-bold ph-seal-check"></i> Counted ${since.year}: ${p.counted} of ${p.equipment.length}</span>`,
           !p.uid && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-bold">No account</span>`
         ].filter(Boolean).join('');
+        const cond = personCondText(p);
+        const on = p.key === teachersSel;
         return `
-          <button onclick="openTeachersView('${escapeHTML(p.key)}')" class="w-full text-left rounded-2xl bg-white border border-slate-200 hover:border-slate-300 shadow-sm p-3 flex items-center gap-3">
-            <span class="w-10 h-10 shrink-0 rounded-full ${p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-sm font-extrabold">${escapeHTML(personInitials(p.name))}</span>
-            <span class="min-w-0 flex-1">
-              <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(p.name)}</span>
-              <span class="block text-[11px] text-slate-500 truncate">${escapeHTML([p.position, p.office].filter(Boolean).join(' · ') || (p.uid ? 'Teacher' : 'Typed under Assigned to'))}</span>
-              ${chips ? `<span class="mt-1 flex flex-wrap gap-1">${chips}</span>` : ''}
-            </span>
-            <span class="shrink-0 text-right">
-              <span class="block text-sm font-extrabold font-mono text-slate-900">${p.equipment.length}</span>
-              <span class="block text-[11px] font-bold uppercase text-slate-500">${p.equipment.length === 1 ? 'unit' : 'units'}</span>
-              ${p.value ? `<span class="block text-[11px] font-mono text-slate-500">₱${peso2(p.value)}</span>` : ''}
-            </span>
-          </button>`;
-      }).join('') : `<p class="text-center text-xs text-slate-500 py-6">No one matches “${escapeHTML(teachersQuery)}”.</p>`;
+          <div data-tvrow="${escapeHTML(p.key)}" class="rounded-2xl bg-white border ${on ? 'border-brand-500 ring-2 ring-brand-500/20' : 'border-slate-200'} shadow-sm overflow-hidden">
+            <button onclick="openTeachersView('${qk(p.key)}')" ${on ? 'aria-current="true"' : ''} class="w-full text-left hover:bg-slate-50 p-3 flex items-center gap-3">
+              <span class="w-10 h-10 shrink-0 rounded-full ${p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-sm font-extrabold">${escapeHTML(personInitials(p.name))}</span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(p.name)}</span>
+                <span class="block text-[11px] text-slate-500 truncate">${escapeHTML([p.position, p.office].filter(Boolean).join(' · ') || (p.uid ? 'Teacher' : 'Typed under Assigned to'))}</span>
+                ${chips ? `<span class="mt-1 flex flex-wrap gap-1">${chips}</span>` : ''}
+              </span>
+              <span class="shrink-0 text-right">
+                <span class="block text-sm font-extrabold font-mono text-slate-900">${p.equipment.length}</span>
+                <span class="block text-[11px] font-bold uppercase text-slate-500">${p.equipment.length === 1 ? 'unit' : 'units'}</span>
+                ${p.value ? `<span class="block text-[11px] font-mono text-slate-500">₱${peso2(p.value)}</span>` : ''}
+              </span>
+            </button>
+            ${cond ? `<button data-tvcond onclick="openCoa('unserv')" class="w-full min-h-9 px-3 py-1.5 border-t border-slate-100 text-left text-[11px] font-bold text-amber-700 hover:bg-amber-50 flex items-center gap-1.5"><i class="ph-bold ph-wrench"></i> ${cond}<span class="ml-auto font-semibold text-slate-500 flex items-center gap-0.5">IIRUP <i class="ph-bold ph-caret-right"></i></span></button>` : ''}
+          </div>`;
+      }).join('') : `<p class="text-center text-xs text-slate-500 py-6">${q ? `No one matches “${escapeHTML(teachersQuery)}”${teachersFilter !== 'all' ? ` under ${escapeHTML(filterName)}` : ''}.` : `No one under ${escapeHTML(filterName)}.`}${teachersFilter !== 'all' ? ` <button onclick="setTeachersFilter('all')" class="font-bold text-brand-600 underline">Show all</button>` : ''}</p>`;
+    }
+
+    // Computers and tablets held sideways: nothing picked yet on the right.
+    function renderTeachersNone(people) {
+      document.getElementById('tvHead').innerHTML = '';
+      const withItems = people.filter(p => p.equipment.length);
+      const since = countSince();
+      const units = withItems.reduce((n, p) => n + p.equipment.length, 0);
+      const counted = withItems.reduce((n, p) => n + p.counted, 0);
+      const toConfirm = people.filter(p => p.toConfirm.length).length;
+      document.getElementById('tvBody').innerHTML = `
+        <div class="rounded-2xl bg-white border border-slate-200 p-8 text-center">
+          <i class="ph-bold ph-cursor-click text-3xl text-slate-300"></i>
+          <p class="mt-1 text-sm font-bold text-slate-700">Pick someone on the left</p>
+          <p class="text-xs text-slate-500">Their equipment, supplies and history show here.</p>
+          ${units ? `<div class="mt-4 grid grid-cols-3 gap-2 text-center max-w-md mx-auto">
+            <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${withItems.length}</p><p class="text-[11px] font-bold uppercase text-slate-500">With items</p></div>
+            <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${counted}/${units}</p><p class="text-[11px] font-bold uppercase text-slate-500">Counted ${since.year}</p></div>
+            <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${toConfirm}</p><p class="text-[11px] font-bold uppercase text-slate-500">To confirm</p></div>
+          </div>` : ''}
+        </div>`;
     }
 
     function personInitials(name) {
@@ -10306,12 +10612,16 @@
       return ((w[0] || '?')[0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase();
     }
 
-    function renderTeacherDetail(p) {
+    function renderTeacherDetail(p, people = accountabilityPeople()) {
       const head = document.getElementById('tvHead');
       const body = document.getElementById('tvBody');
       const connected = isCustodianDevice() && cloud.user;
+      const wide = sidebarLayout();
+      const since = countSince();
+      const k = qk(p.key);
+      const others = people.filter(x => x.key !== p.key);
       head.innerHTML = `
-        <button onclick="openTeachersView(null)" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-1"><i class="ph-bold ph-caret-left"></i> All teachers</button>
+        <button onclick="openTeachersView(null)" class="tv-back text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-1"><i class="ph-bold ph-caret-left"></i> All teachers</button>
         <div class="flex items-start gap-3">
           <span class="w-12 h-12 shrink-0 rounded-full ${p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-base font-extrabold">${escapeHTML(personInitials(p.name))}</span>
           <div class="min-w-0 flex-1">
@@ -10324,10 +10634,13 @@
           <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">₱${Math.round(p.value).toLocaleString('en-PH')}</p><p class="text-[11px] font-bold uppercase text-slate-500">Value</p></div>
           <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${p.ris.length}</p><p class="text-[11px] font-bold uppercase text-slate-500">RIS slips</p></div>
         </div>
+        ${p.equipment.length ? `<p id="tvCounted" class="mt-2 text-xs font-bold ${p.counted >= p.equipment.length ? 'text-emerald-700' : 'text-slate-600'} flex items-center gap-1.5"><i class="ph-bold ph-seal-check"></i> Counted ${since.year}: ${p.counted} of ${p.equipment.length}${p.counted < p.equipment.length && p.uid ? '<span class="font-semibold text-slate-500">· they can count on their phone under My Items</span>' : ''}</p>` : ''}
         <div class="mt-3 flex flex-wrap gap-2">
-          <button onclick="printAccountability('${escapeHTML(p.key)}')" class="h-10 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print accountability</button>
+          <button onclick="printAccountability('${k}')" class="h-10 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print accountability</button>
+          <button id="tvClearBtn" onclick="toggleClearance('${k}')" aria-expanded="${teachersClear === p.key}" class="h-10 px-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-seal-check"></i> Clearance</button>
           ${connected ? `<button onclick="openRelease({ teacherUid: ${p.uid ? `'${p.uid}'` : 'null'} })" class="h-10 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release more</button>` : ''}
-          ${connected && p.equipment.length ? `<button id="tvTransfer" onclick="openTransfer({ fromKey: '${escapeHTML(p.key).replace(/'/g, '&#39;')}' })" class="h-10 px-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>` : ''}
+          ${connected && p.equipment.length ? `<button id="tvTransfer" onclick="openTransfer({ fromKey: '${k}' })" class="h-10 px-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>` : ''}
+          ${!p.uid && others.length ? `<button id="tvMergeBtn" onclick="openSamePerson('${k}')" class="h-10 px-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-git-merge"></i> Same person as…</button>` : ''}
         </div>`;
 
       const condChip = u => {
@@ -10335,26 +10648,62 @@
         return u.cond && u.cond !== 'S' ? `<span class="inline-flex px-1.5 py-0.5 rounded-md border text-[11px] font-bold ${c.on}">${c.label}</span>` : '';
       };
       const confirmedUnit = u => p.uid && releaseList.some(r => r.teacherUid === p.uid && isIssueKind(r.kind) && r.lines.some(l => (l.units || []).some(x => x.id === u.id)) && tReports.some(x => x.kind === 'received' && x.releaseId === r.id));
+      const okChip = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-bold"><i class="ph-bold ph-check-circle"></i> Confirmed</span>';
+      const countedChip = u => ((u.seen || 0) >= since.ms ? `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-brand-50 text-brand-700 border-brand-100 text-[11px] font-bold" title="Counted ${since.year}"><i class="ph-bold ph-seal-check"></i> Counted</span>` : '');
+      const unitActions = (item, unit) => `
+        ${connected ? `<button onclick="openTransfer({ fromKey: '${k}', unitIds: ['${unit.id}'] })" class="text-[11px] font-bold text-slate-500 hover:text-brand-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>` : ''}
+        <button onclick="takeBackUnit('${item.code}', '${unit.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrow-u-down-left"></i> Take back</button>`;
+      const docLine = unit => [unit.ics && unitDocLabel(unit), unit.icsDate && formatShortDate(unit.icsDate + 'T00:00:00')].filter(Boolean).join(' · ');
+
       let html = '';
+      if (teachersClear === p.key) html += clearanceHTML(p, connected);
       if (p.open.length) html += `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-warning"></i> ${plural(p.open.length, 'open report')} · see <button onclick="openRequestsView()" class="underline font-bold">From teachers</button></p>`;
-      html += `
-        <div>
-          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Accountable equipment</h2>
-          <div class="rounded-2xl bg-white border border-slate-200 shadow-sm divide-y divide-slate-100">
-            ${p.equipment.length ? p.equipment.map(({ item, unit }) => `
+      const unconfirmedIssue = p.toConfirm.slice().sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
+      if (unconfirmedIssue.length) {
+        const first = unconfirmedIssue[0];
+        const days = daysSince(first.createdMs || Date.now());
+        const reminded = Math.max(0, ...unconfirmedIssue.map(r => r.remindMs || 0));
+        html += `
+          <div id="tvRemind" class="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 flex items-center gap-3">
+            <i class="ph-bold ph-hourglass-medium text-amber-700"></i>
+            <p class="min-w-0 flex-1 text-xs font-semibold text-amber-800">${escapeHTML(relDocName(first))} not confirmed ${days ? `for ${plural(days, 'day')}` : 'yet · released today'}${unconfirmedIssue.length > 1 ? ` · ${unconfirmedIssue.length} slips waiting` : ''}
+              ${reminded ? `<span class="block text-[11px] font-medium text-amber-700">Reminded ${escapeHTML(formatTimeAgo(reminded))}</span>` : ''}</p>
+            ${connected ? `<button id="tvRemindBtn" onclick="remindTeacher('${k}')" class="shrink-0 h-9 px-3 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-bell-ringing"></i> Remind</button>` : ''}
+          </div>`;
+      }
+      const equipHTML = !p.equipment.length ? '<p class="p-4 text-xs text-slate-500 text-center">No equipment under this name.</p>'
+        : wide ? `
+          <table class="tv-eq w-full text-left text-sm">
+            <thead><tr class="text-[11px] font-bold uppercase text-slate-500 border-b border-slate-200">
+              <th class="px-3 py-2">Item</th><th class="px-3 py-2">Property no.</th><th class="px-3 py-2">ICS / PAR</th><th class="px-3 py-2">Status</th><th class="px-3 py-2 text-right">Unit cost</th><th class="px-3 py-2"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+              ${p.equipment.map(({ item, unit }) => `
+                <tr data-tunit="${unit.id}" class="align-top">
+                  <td class="px-3 py-2.5"><p class="font-bold text-slate-900 leading-snug">${escapeHTML(item.name)}</p>${unit.serial || unit.loc ? `<p class="text-[11px] text-slate-500">${escapeHTML([unit.serial && `S/N ${unit.serial}`, unit.loc].filter(Boolean).join(' · '))}</p>` : ''}</td>
+                  <td class="px-3 py-2.5 font-mono text-xs font-bold text-slate-700 whitespace-nowrap">${escapeHTML(unit.no || '—')}</td>
+                  <td class="px-3 py-2.5 text-xs text-slate-600">${escapeHTML(docLine(unit) || '—')}</td>
+                  <td class="px-3 py-2.5"><span class="flex flex-wrap gap-1">${condChip(unit)}${confirmedUnit(unit) ? okChip : ''}${countedChip(unit)}</span></td>
+                  <td class="px-3 py-2.5 text-right font-mono text-xs font-bold text-slate-700 whitespace-nowrap">₱${peso2(item.price)}</td>
+                  <td class="px-3 py-2.5 whitespace-nowrap"><div class="flex flex-col items-end gap-1">${unitActions(item, unit)}</div></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>`
+        : `<div class="divide-y divide-slate-100">${p.equipment.map(({ item, unit }) => `
               <div class="p-3 flex items-start gap-3" data-tunit="${unit.id}">
                 <div class="min-w-0 flex-1">
                   <p class="text-sm font-bold text-slate-900 leading-snug">${escapeHTML(item.name)}</p>
                   <p class="text-[11px] text-slate-500"><span class="font-mono font-bold text-slate-700">${escapeHTML(unit.no || '—')}</span>${unit.serial ? ` · S/N ${escapeHTML(unit.serial)}` : ''}${unit.ics ? ` · ${escapeHTML(unitDocLabel(unit))}` : ''}${unit.icsDate ? ` · ${escapeHTML(formatShortDate(unit.icsDate + 'T00:00:00'))}` : ''}${unit.loc ? ` · ${escapeHTML(unit.loc)}` : ''}</p>
-                  <p class="mt-1 flex flex-wrap gap-1">${condChip(unit)}${confirmedUnit(unit) ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-bold"><i class="ph-bold ph-check-circle"></i> Confirmed</span>' : ''}</p>
+                  <p class="mt-1 flex flex-wrap gap-1">${condChip(unit)}${confirmedUnit(unit) ? okChip : ''}${countedChip(unit)}</p>
                 </div>
                 <div class="shrink-0 text-right space-y-1">
                   <p class="text-xs font-mono font-bold text-slate-700">₱${peso2(item.price)}</p>
-                  ${connected ? `<button onclick="openTransfer({ fromKey: '${escapeHTML(p.key).replace(/'/g, '&#39;')}', unitIds: ['${unit.id}'] })" class="text-[11px] font-bold text-slate-500 hover:text-brand-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>` : ''}
-                  <button onclick="takeBackUnit('${item.code}', '${unit.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrow-u-down-left"></i> Take back</button>
+                  ${unitActions(item, unit)}
                 </div>
-              </div>`).join('') : '<p class="p-4 text-xs text-slate-500 text-center">No equipment under this name.</p>'}
-          </div>
+              </div>`).join('')}</div>`;
+      html += `
+        <div>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Accountable equipment</h2>
+          <div class="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">${equipHTML}</div>
         </div>
         <div>
           <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Supplies received · RIS</h2>
@@ -10373,6 +10722,14 @@
             }).join('') : '<p class="p-4 text-xs text-slate-500 text-center">No supplies released yet.</p>'}
           </div>
         </div>`;
+      if (p.ris.length) html += `
+        <div id="tvUsage">
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Supply usage · for APP-CSE planning</h2>
+          <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-3">
+            ${usageControlsHTML(`exportUsageCSV('${k}')`)}
+            ${usageTableHTML(supplyUsage(p.ris))}
+          </div>
+        </div>`;
       if (p.records.length) {
         const label = r => r.kind === 'RETURN' ? (r.source === 'returned' ? 'Returned' : r.source === 'taken-back' ? 'Taken back' : r.source === 'transferred' ? 'Transferred out' : 'Reassigned')
           : r.source === 'transfer' ? (r.sameHolder ? 'Moved' : `Transferred in${r.fromName ? ` from ${r.fromName}` : ''}`)
@@ -10388,6 +10745,7 @@
                     <span class="block text-xs font-bold text-slate-900">${escapeHTML(label(r))}${relDocName(r) ? ` · ${escapeHTML(relDocName(r))}` : ''}</span>
                     <span class="block text-[11px] text-slate-600 line-clamp-2">${r.lines.map(l => `${l.qty} ${escapeHTML(l.desc)}${(l.units || []).length ? ` (${escapeHTML(l.units.map(u => u.no).join(', '))})` : ''}`).join(' · ')}</span>
                     ${r.purpose ? `<span class="block text-[11px] text-slate-500 truncate">${escapeHTML(r.purpose)}</span>` : ''}
+                    ${r.mergedFrom ? `<span class="block text-[11px] text-slate-500 truncate">Was under “${escapeHTML(r.mergedFrom)}”</span>` : ''}
                   </span>
                   <span class="shrink-0 text-right">
                     <span class="block text-[11px] text-slate-500">${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span>
@@ -10426,30 +10784,577 @@
       showToast(`${unit.no || item.name} is back in stock`, 'ph-arrow-u-down-left');
     }
 
-    // Summary of accountability: one page per person (all, or the one selected).
-    function printAccountability(key = null) {
-      const people = accountabilityPeople().filter(p => (key ? p.key === key : p.equipment.length || p.ris.length));
-      if (!people.length) return;
-      document.getElementById('printPrSection').innerHTML = people.map(accountabilityPrintHTML).join('');
+    // ---- Property clearance (transfer, retirement, leave): nothing held → certificate ---------
+    function toggleClearance(key) {
+      teachersClear = teachersClear === key ? null : key;
+      renderTeachersView();
+      if (teachersClear) document.getElementById('tvClearance')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    function clearanceHTML(p, connected) {
+      const k = qk(p.key);
+      const close = `<button onclick="toggleClearance('${k}')" class="w-8 h-8 shrink-0 rounded-full bg-white/70 text-slate-500 flex items-center justify-center" aria-label="Close clearance"><i class="ph-bold ph-x"></i></button>`;
+      if (!p.equipment.length) return `
+        <div id="tvClearance" data-clear="ok" class="rounded-2xl bg-emerald-50 border border-emerald-200 p-3 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <p class="text-sm font-extrabold text-emerald-900 flex items-center gap-1.5"><i class="ph-bold ph-seal-check"></i> Cleared · no property accountability</p>${close}
+          </div>
+          <p class="text-xs text-emerald-900">Nothing is issued to ${escapeHTML(p.name)} on ICS or PAR. Print the certificate for their clearance (transfer, retirement, resignation or leave).</p>
+          <button id="tvCertBtn" onclick="printNoAccountability('${k}')" class="h-10 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print certificate</button>
+        </div>`;
+      const pendingReturns = p.open.filter(x => x.kind === 'return').length;
+      return `
+        <div id="tvClearance" data-clear="todo" class="rounded-2xl bg-amber-50 border border-amber-200 p-3 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <p class="text-sm font-extrabold text-amber-900 flex items-center gap-1.5"><i class="ph-bold ph-seal-warning"></i> Not cleared yet · ${plural(p.equipment.length, 'item')} to return or transfer</p>${close}
+          </div>
+          <ul class="text-xs text-amber-900 space-y-0.5">${p.equipment.map(({ item, unit }) => `<li class="flex justify-between gap-3"><span class="min-w-0 truncate">${escapeHTML(item.name)}</span><span class="shrink-0 font-mono font-bold">${escapeHTML(unit.no || '—')}</span></li>`).join('')}</ul>
+          ${pendingReturns ? `<p class="text-[11px] font-semibold text-amber-800">${plural(pendingReturns, 'return request')} waiting under <button onclick="openRequestsView()" class="underline font-bold">From teachers</button>.</p>` : ''}
+          <div class="flex flex-wrap gap-2 pt-1">
+            ${connected ? `<button id="tvXferAll" onclick="openTransfer({ fromKey: '${k}', unitIds: ${escapeHTML(JSON.stringify(p.equipment.map(x => x.unit.id)))} })" class="h-10 px-4 rounded-xl bg-white border border-amber-300 hover:border-amber-400 text-amber-900 text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-arrows-left-right"></i> Transfer all to…</button>` : ''}
+            <button id="tvTakeAll" onclick="takeBackAll('${k}')" class="h-10 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-arrow-u-down-left"></i> Take back all</button>
+          </div>
+          <p class="text-[11px] text-amber-800">When nothing is left, the certificate of no property accountability can be printed here.</p>
+        </div>`;
+    }
+
+    // Everything back at once (clearance): one RRSP listing all units.
+    async function takeBackAll(key) {
+      const p = accountabilityPeople().find(x => x.key === key);
+      if (!p || !p.equipment.length) return;
+      const n = p.equipment.length;
+      if (!await appConfirm(`They go back to stock, not assigned to anyone. One RRSP lists them all for ${p.name}.`, { title: `Take back all ${plural(n, 'item')} from ${p.name}?`, ok: `Take back ${n}`, tone: 'warn', icon: 'ph-arrow-u-down-left' })) return;
+      const now = accountabilityPeople().find(x => x.key === key); // anything may have changed while asking
+      if (!now || !now.equipment.length) return;
+      const byItem = new Map();
+      now.equipment.forEach(({ item, unit }) => { if (!byItem.has(item.code)) byItem.set(item.code, { item, units: [] }); byItem.get(item.code).units.push(unit); });
+      const lines = [...byItem.values()].map(({ item, units }) => relLine(item, units.length, units)); // as they were, before clearing
+      byItem.forEach(({ units }) => units.forEach(u => { clearUnitHolder(u); u.returned = Date.now(); }));
+      saveStateWith({ summary: { kind: 'release', text: `Took back ${plural(now.equipment.length, 'unit')} from ${now.name} (property clearance)`, track: true } });
+      if (isCustodianDevice() && cloud.user) {
+        const F = cloud.sdk;
+        const t = rosterByUid(now.uid) || { uid: now.uid || null, name: now.name, position: now.position, office: now.office };
+        cloudWrite(F.setDoc(F.doc(relCol()), cleanJSON(relBase(t, {
+          kind: 'RETURN', source: 'taken-back', no: nextReleaseNo('RETURN', localISODate()), date: localISODate(), purpose: 'Taken back for property clearance',
+          lines, total: 0, createdAt: F.serverTimestamp()
+        }))), 'Saving the return');
+      }
+      renderTeachersView();
+      showToast(`${plural(now.equipment.length, 'item')} back in stock · ${now.name.split(' ')[0]} can be cleared`, 'ph-arrow-u-down-left');
+    }
+
+    function printPrHTML(html) {
+      document.getElementById('printPrSection').innerHTML = html;
       document.body.classList.remove('printing-labels');
       document.body.classList.add('printing-pr');
       const done = () => { document.body.classList.remove('printing-pr'); window.removeEventListener('afterprint', done); };
       window.addEventListener('afterprint', done);
       setTimeout(() => window.print(), 50);
     }
-
-    function accountabilityPrintHTML(p) {
+    function printNoAccountability(key) {
+      const p = findPerson(key);
+      if (!p) return;
+      if (p.equipment.length) { showToast(`${p.name.split(' ')[0]} still has ${plural(p.equipment.length, 'item')}`, 'ph-info'); return; }
+      printPrHTML(noAccountabilityPrintHTML(p));
+    }
+    function noAccountabilityPrintHTML(p) {
       const e = v => escapeHTML(v || '');
       const d = prDefaults();
+      const entity = d.entity || schoolInfo.school || '';
+      const today = new Date().toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
+      const who = [p.position, p.office].filter(Boolean).join(', ');
+      const back = p.records.filter(r => r.kind === 'RETURN' && (r.lines || []).some(l => (l.units || []).length)).slice().reverse();
+      const rows = back.map(r => `<tr><td class="c" style="font-size:9pt">${e(fDate(r.date))}</td><td class="c" style="font-size:9pt">${e(relDocName(r))}</td><td style="font-size:9.5pt">${e(r.lines.map(l => `${l.desc} (${(l.units || []).map(u => u.no).filter(Boolean).join(', ') || l.qty})`).join('; '))}</td><td class="c" style="font-size:9pt">${e(r.source === 'returned' ? 'Returned' : r.source === 'taken-back' ? 'Taken back' : 'Transferred')}</td></tr>`).join('');
+      return `
+        <div class="pr-form acct-page">
+          <h1 style="margin-bottom:2pt">CERTIFICATE OF NO PROPERTY ACCOUNTABILITY</h1>
+          <p style="text-align:center;margin:0 0 12pt">Property clearance</p>
+          <div class="pr-top"><span>Entity Name: <b>${e(entity)}</b></span><span>Fund Cluster: <b>${e(d.fund)}</b></span></div>
+          <p style="margin:16pt 0 10pt;text-align:justify;line-height:1.7;text-indent:28pt">This is to certify that <b>${e(p.name).toUpperCase()}</b>${who ? `, ${e(who)},` : ''} has <b>no outstanding property accountability</b> (equipment issued on Inventory Custodian Slip or Property Acknowledgment Receipt) with ${e(entity) || 'this office'} as of <b>${e(today)}</b>, based on the property records kept by the undersigned.</p>
+          ${rows ? `<p style="margin:0 0 4pt">Property previously issued has been returned or transferred as follows:</p>
+          <table class="pr-table">
+            <colgroup><col style="width:14%"><col style="width:22%"><col style="width:48%"><col style="width:16%"></colgroup>
+            <tr><th>Date</th><th>Document</th><th>Items (Inventory Item No.)</th><th>Action</th></tr>
+            ${rows}
+          </table>` : ''}
+          <p style="margin:12pt 0 0;text-align:justify;line-height:1.7;text-indent:28pt">This certification is issued upon the request of the above-named for clearance purposes.</p>
+          <table class="pr-table" style="margin-top:22pt">
+            <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+            <tr><td><i>Certified correct:</i></td><td><i>Noted:</i></td></tr>
+            <tr><td class="pr-sig"></td><td class="pr-sig"></td></tr>
+            <tr><td class="c"><b>${e(schoolInfo.custodian).toUpperCase()}</b><br><span style="font-size:8.5pt">${e(schoolInfo.position || 'Property Custodian')}</span></td><td class="c"><b>${e(headName()).toUpperCase()}</b><br><span style="font-size:8.5pt">${e(headDesig())}</span></td></tr>
+            <tr><td class="c"><br><span style="font-size:8.5pt">Date</span></td><td class="c"><br><span style="font-size:8.5pt">Date</span></td></tr>
+          </table>
+        </div>`;
+    }
+
+    // ---- "Same person as…": a typed name ("A. Reyes") merged into an account ("Ana Reyes") ----
+    let pickResolve = null;
+    function appPick({ title, message = '', options }) {
+      return new Promise(resolve => {
+        if (pickResolve) pickResolve(null);
+        pickResolve = resolve;
+        document.getElementById('pickTitle').textContent = title;
+        document.getElementById('pickMsg').textContent = message;
+        document.getElementById('pickList').innerHTML = options.map((o, i) => `
+          <button type="button" data-pick="${escapeHTML(o.value)}" onclick="closePick(${i})" class="w-full min-h-12 px-3 py-2 rounded-xl border border-slate-200 hover:border-brand-400 hover:bg-brand-50 text-left flex items-center gap-3">
+            <span class="w-9 h-9 shrink-0 rounded-full ${o.tone || 'bg-slate-100 text-slate-500'} flex items-center justify-center text-xs font-extrabold">${escapeHTML(o.badge || '')}</span>
+            <span class="min-w-0 flex-1"><span class="block text-sm font-bold text-slate-900 truncate">${escapeHTML(o.label)}</span>${o.sub ? `<span class="block text-[11px] text-slate-500 truncate">${escapeHTML(o.sub)}</span>` : ''}</span>
+            <i class="ph-bold ph-caret-right text-slate-400"></i>
+          </button>`).join('');
+        appPick.options = options;
+        document.getElementById('pickModal').classList.remove('hidden');
+        placeToast();
+      });
+    }
+    function closePick(i) {
+      const r = pickResolve;
+      pickResolve = null;
+      document.getElementById('pickModal').classList.add('hidden');
+      placeToast();
+      if (r) r(i === null || i === undefined ? null : (appPick.options[i] || {}).value || null);
+    }
+
+    async function openSamePerson(key) {
+      const people = accountabilityPeople();
+      const p = people.find(x => x.key === key);
+      if (!p || p.uid) return;
+      const last = s => (personKey(s).split(' ').pop() || '');
+      const options = people.filter(x => x.key !== key)
+        .sort((a, b) => (last(b.name) === last(p.name)) - (last(a.name) === last(p.name)) || !!b.uid - !!a.uid || a.name.localeCompare(b.name))
+        .map(x => ({ value: x.key, label: x.name, badge: personInitials(x.name), tone: x.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500',
+          sub: [x.uid ? ([x.position, x.office].filter(Boolean).join(' · ') || 'Has the app') : 'No account · typed name', x.equipment.length && plural(x.equipment.length, 'unit')].filter(Boolean).join(' · ') }));
+      const to = await appPick({ title: `Same person as “${p.name}”?`, message: 'Pick who this really is. Units, slips and history move over; with an account, the items show in their My Items.', options });
+      if (to) await mergePerson(key, to);
+    }
+
+    async function mergePerson(fromKey, toKey) {
+      const people = accountabilityPeople();
+      const p = people.find(x => x.key === fromKey);
+      const t = people.find(x => x.key === toKey);
+      if (!p || !t || p.uid || p.key === t.key) return;
+      const nU = p.equipment.length, nS = p.records.length;
+      const what = [nU && plural(nU, 'unit'), nS && plural(nS, 'slip')].filter(Boolean).join(' and ') || 'The name';
+      if (!await appConfirm(`${what} under “${p.name}” move to ${t.name}.${t.uid ? ` ${t.name.split(' ')[0]} sees the items under My Items.` : ''}`,
+        { title: `Merge “${p.name}” into ${t.name}?`, ok: 'Merge', tone: 'write', icon: 'ph-git-merge' })) return;
+      const connected = isCustodianDevice() && cloud.user;
+      const target = { uid: t.uid || null, name: t.name, position: t.position || '', office: t.office || '' };
+      // 1. Units in Inventory (their "Assigned to")
+      p.equipment.forEach(({ unit }) => { unit.to = t.name; if (t.uid) unit.toUid = t.uid; else delete unit.toUid; });
+      if (connected) {
+        const F = cloud.sdk;
+        const batch = F.writeBatch(cloud.db);
+        // 2. Slips and history under the typed name
+        const patch = { teacherUid: target.uid, teacherName: target.name, position: target.position, office: target.office, mergedFrom: p.name };
+        const ids = new Set(p.records.map(r => r.id));
+        p.records.forEach(r => batch.update(F.doc(relCol(), r.id), patch));
+        releaseList = releaseList.map(r => (ids.has(r.id) ? { ...r, ...patch } : r));
+        // 3. Units on no slip (typed under "Assigned to"): a linked ICS, so they show in My Items
+        if (t.uid) {
+          const onSlip = new Set(teacherHoldings(p.records).equipment.map(x => x.unit.id));
+          const byItem = new Map();
+          p.equipment.filter(x => !onSlip.has(x.unit.id)).forEach(({ item, unit }) => { if (!byItem.has(item.code)) byItem.set(item.code, { item, units: [] }); byItem.get(item.code).units.push(unit); });
+          const lines = [...byItem.values()].map(({ item, units }) => relLine(item, units.length, units));
+          if (lines.length) {
+            const uids = lines.flatMap(l => l.units.map(u => u.id)).sort();
+            const nos = [...new Set(lines.flatMap(l => l.units.map(u => (findUnitAny(u.id) || {}).ics)).filter(Boolean))];
+            batch.set(F.doc(relCol(), `link-${t.uid}-${hashText(uids.join(','))}`), cleanJSON(relBase(target, {
+              kind: 'ICS', source: 'existing', no: nos.join(', ').slice(0, 120), date: localISODate(), purpose: `Items assigned under “${p.name}”`, mergedFrom: p.name,
+              lines, total: relTotal(lines), createdAt: F.serverTimestamp()
+            })));
+          }
+        }
+        cloudWrite(batch.commit(), 'Merging');
+      }
+      saveStateWith({ summary: { kind: 'release', text: `Merged “${p.name}” into ${t.name}${nU ? ` (${plural(nU, 'unit')})` : ''}`, track: true } });
+      teachersSel = t.key;
+      teachersClear = null;
+      refreshTeacherNameList();
+      renderTeachersView();
+      showToast(`“${p.name}” is now ${t.name}`, 'ph-git-merge');
+    }
+
+    // ---- "ICS not confirmed for N days" → a bell notification on the teacher's phone ----------
+    function remindTeacher(key) {
+      const p = accountabilityPeople().find(x => x.key === key);
+      if (!p || !p.uid || !p.toConfirm.length || !cloud.user) return;
+      const F = cloud.sdk;
+      const now = Date.now();
+      const batch = F.writeBatch(cloud.db);
+      p.toConfirm.forEach(r => batch.update(F.doc(relCol(), r.id), { remindMs: now }));
+      cloudWrite(batch.commit(), 'Sending the reminder');
+      const ids = new Set(p.toConfirm.map(r => r.id));
+      releaseList = releaseList.map(r => (ids.has(r.id) ? { ...r, remindMs: now } : r));
+      renderTeachersView();
+      showToast(`Reminder sent · ${p.name.split(' ')[0]} sees it in their notifications`, 'ph-bell-ringing');
+    }
+
+    // ---- Supply usage per teacher (RIS), by quarter or school year · APP-CSE planning ---------
+    const USAGE_COLS = { q: ['Q1', 'Q2', 'Q3', 'Q4'], sy: ['Jun–Aug', 'Sep–Nov', 'Dec–Feb', 'Mar–May'] };
+    const syOf = (d = new Date()) => (d.getMonth() >= 5 ? d.getFullYear() : d.getFullYear() - 1);
+    function usagePeriod(iso) {
+      const d = new Date(iso + 'T00:00:00');
+      const m = d.getMonth();
+      return usageMode === 'q' ? { year: d.getFullYear(), col: Math.floor(m / 3) } : { year: syOf(d), col: Math.floor(((m + 7) % 12) / 3) };
+    }
+    const usageLabel = () => (usageMode === 'q' ? String(usageYear) : `SY ${usageYear}–${String(usageYear + 1).slice(-2)}`);
+    function supplyUsage(ris) {
+      const map = new Map();
+      ris.forEach(r => {
+        if (!r.date) return;
+        const per = usagePeriod(r.date);
+        if (per.year !== usageYear) return;
+        (r.lines || []).forEach(l => {
+          const key = `${l.code || l.desc}|${l.unit || ''}`;
+          if (!map.has(key)) map.set(key, { code: l.code || '', desc: l.desc || '', unit: l.unit || '', cost: l.unitCost || 0, q: [0, 0, 0, 0], qty: 0, amount: 0 });
+          const x = map.get(key);
+          const n = Number(l.qty) || 0;
+          x.q[per.col] += n; x.qty += n; x.amount += n * (l.unitCost || 0);
+        });
+      });
+      return [...map.values()].sort((a, b) => a.desc.localeCompare(b.desc));
+    }
+    function setUsageMode(m) { if (usageMode === m) return; usageMode = m; usageYear = m === 'q' ? new Date().getFullYear() : syOf(); renderTeachersView(); }
+    function shiftUsageYear(d) { usageYear += d; renderTeachersView(); }
+    function usageControlsHTML(exportCall) {
+      const cur = usageMode === 'q' ? new Date().getFullYear() : syOf();
+      const seg = (m, label) => `<button type="button" data-usage-mode="${m}" onclick="setUsageMode('${m}')" aria-pressed="${usageMode === m}" class="h-8 px-2.5 rounded-lg text-xs font-bold ${usageMode === m ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5' : 'text-slate-500'}">${label}</button>`;
+      return `
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex p-0.5 rounded-xl bg-slate-100">${seg('q', 'Quarters')}${seg('sy', 'School year')}</div>
+          <div class="flex items-center gap-1">
+            <button type="button" onclick="shiftUsageYear(-1)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Earlier year"><i class="ph-bold ph-caret-left"></i></button>
+            <span id="usageYear" class="min-w-[5.5rem] text-center text-xs font-extrabold text-slate-900">${escapeHTML(usageLabel())}</span>
+            <button type="button" onclick="shiftUsageYear(1)" ${usageYear >= cur ? 'disabled' : ''} class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-600 flex items-center justify-center" aria-label="Later year"><i class="ph-bold ph-caret-right"></i></button>
+          </div>
+          <button type="button" data-usage-csv onclick="${exportCall}" class="ml-auto h-8 px-3 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-download-simple"></i> CSV</button>
+        </div>`;
+    }
+    function usageTableHTML(rows) {
+      if (!rows.length) return `<p class="text-xs text-slate-500 text-center py-2">No supplies issued in ${escapeHTML(usageLabel())}.</p>`;
+      const cols = USAGE_COLS[usageMode];
+      const total = rows.reduce((n, r) => n + r.amount, 0);
+      return `
+        <div class="overflow-x-auto -mx-1">
+          <table class="usage-table w-full text-xs">
+            <thead><tr class="text-[11px] font-bold uppercase text-slate-500 border-b border-slate-200">
+              <th class="px-1 py-1.5 text-left">Item</th>${cols.map(c => `<th class="px-1 py-1.5 text-right whitespace-nowrap">${c}</th>`).join('')}<th class="px-1 py-1.5 text-right">Total</th><th class="px-1 py-1.5 text-right hidden sm:table-cell">Amount</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+              ${rows.map(r => `<tr><td class="px-1 py-1.5 text-slate-800">${escapeHTML(r.desc)}${r.unit ? ` <span class="text-slate-500">· ${escapeHTML(r.unit)}</span>` : ''}</td>${r.q.map(n => `<td class="px-1 py-1.5 text-right font-mono ${n ? 'text-slate-800' : 'text-slate-400'}">${n || '–'}</td>`).join('')}<td class="px-1 py-1.5 text-right font-mono font-bold text-slate-900">${r.qty}</td><td class="px-1 py-1.5 text-right font-mono text-slate-600 hidden sm:table-cell">₱${peso2(r.amount)}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+        <p class="text-[11px] text-slate-500 text-right">Total issued ${escapeHTML(usageLabel())}: <b class="font-mono text-slate-700">₱${peso2(total)}</b></p>`;
+    }
+    function renderSupplyUsage(people) {
+      const withRis = people.filter(p => p.ris.length);
+      const all = supplyUsage(withRis.flatMap(p => p.ris));
+      document.getElementById('tvHead').innerHTML = `
+        <button onclick="openTeachersView(null)" class="tv-back text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-1"><i class="ph-bold ph-caret-left"></i> All teachers</button>
+        <h1 class="text-xl font-extrabold text-slate-900 leading-tight">Supply usage per teacher</h1>
+        <p class="text-xs text-slate-500">Supplies issued on RIS, per quarter or school year · use it to plan the APP-CSE</p>`;
+      const per = withRis.map(p => ({ p, rows: supplyUsage(p.ris) })).filter(x => x.rows.length)
+        .sort((a, b) => b.rows.reduce((n, r) => n + r.amount, 0) - a.rows.reduce((n, r) => n + r.amount, 0));
+      document.getElementById('tvBody').innerHTML = `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-3">
+          ${usageControlsHTML('exportUsageCSV()')}
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">All teachers</p>
+          ${usageTableHTML(all)}
+        </div>
+        ${per.map(({ p, rows }) => `
+          <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2" data-usage-person="${escapeHTML(p.key)}">
+            <button onclick="openTeachersView('${qk(p.key)}')" class="w-full text-left flex items-center gap-2">
+              <span class="w-8 h-8 shrink-0 rounded-full ${p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-xs font-extrabold">${escapeHTML(personInitials(p.name))}</span>
+              <span class="min-w-0 flex-1 text-sm font-extrabold text-slate-900 truncate">${escapeHTML(p.name)}</span>
+              <i class="ph-bold ph-caret-right text-slate-400"></i>
+            </button>
+            ${usageTableHTML(rows)}
+          </div>`).join('')}`;
+    }
+    function exportUsageCSV(key = null) {
+      const people = accountabilityPeople().filter(p => p.ris.length && (!key || p.key === key));
+      const cols = USAGE_COLS[usageMode];
+      const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const csv = [['Teacher', 'Position', 'Office', 'Stock No.', 'Item', 'Unit', ...cols, 'Total qty', 'Unit cost', 'Amount']];
+      people.forEach(p => supplyUsage(p.ris).forEach(r => csv.push([p.name, p.position, p.office, /^CUSTOM-/.test(r.code) ? '' : r.code, r.desc, r.unit, ...r.q, r.qty, r.cost.toFixed(2), r.amount.toFixed(2)])));
+      if (csv.length === 1) { showToast(`No supplies issued in ${usageLabel()}`, 'ph-info'); return; }
+      const who = key && people[0] ? people[0].name.replace(/[^\w]+/g, '_') : 'all_teachers';
+      downloadText('\ufeff' + csv.map(r => r.map(q).join(',')).join('\n'), `Supply_usage_${who}_${usageLabel().replace(/[^\w]+/g, '_')}.csv`, 'text/csv;charset=utf-8;');
+    }
+
+    // ---- Teachers' own year-end count, applied on the custodian's device --------------------
+    // Units the teacher says are with them (working or not) count as checked for the RPCPPE /
+    // RPCSP; anything missing or broken stays under "From teachers" for the custodian.
+    const countApplied = new Set();
+    function applyCountReports() {
+      if (!inventorySyncActive() || !tRepLoaded) return;
+      const todo = tReports.filter(x => x.kind === 'count' && x.status === 'open' && !x.applied && !x.sending && !countApplied.has(x.id));
+      if (!todo.length) return;
+      const F = cloud.sdk;
+      const batch = F.writeBatch(cloud.db);
+      let changed = 0;
+      const who = new Set();
+      todo.forEach(x => {
+        countApplied.add(x.id);
+        (x.units || []).forEach(u => {
+          if (u.s === 'missing') return;
+          const found = findUnitWithItem(u.id);
+          if (!found || found.unit.toUid !== x.uid) return; // no longer theirs
+          const at = Math.min(x.createdMs || Date.now(), Date.now());
+          if ((found.unit.seen || 0) < at) { found.unit.seen = at; changed++; who.add(x.name || 'A teacher'); }
+        });
+        const done = !countFlags(x).length;
+        batch.update(F.doc(tReportCol(), x.id), done
+          ? { applied: true, status: 'done', resolution: 'counted', reply: 'Counted', resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '' }
+          : { applied: true });
+      });
+      if (changed) saveStateWith({ summary: { kind: 'count', track: true, text: `${listJoin([...who])} counted ${plural(changed, 'unit')} on their phone (year-end count)` } });
+      cloudWrite(batch.commit(), 'Saving the count');
+      tReports = tReports.map(x => (countApplied.has(x.id) && todo.includes(x) ? { ...x, applied: true, ...(countFlags(x).length ? {} : { status: 'done' }) } : x));
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+    }
+
+    // ---- Sample teachers (Load sample data) ------------------------------------------------
+    // Sample people, slips and reports live only on this device (localStorage), mixed into the
+    // lists the cloud provides. Anything the app writes about them (Remind, take back, merge,
+    // a report answered…) is caught before it reaches the account (sampleGuardSDK), so the
+    // school's real records never contain them. Clear sample data puts the touched items back
+    // as they were before the sample was loaded.
+    var sampleCache;
+    function sampleStore() {
+      if (sampleCache === undefined) {
+        try { sampleCache = JSON.parse(localStorage.getItem('custodian_sample_v1')) || null; } catch (e) { sampleCache = null; }
+      }
+      return sampleCache;
+    }
+    function saveSampleStore(st) {
+      sampleCache = st || null;
+      if (st) localStorage.setItem('custodian_sample_v1', JSON.stringify(st)); else localStorage.removeItem('custodian_sample_v1');
+    }
+    // Real list + the sample entries (copies, so changes go through the store).
+    function sampleList(kind, list = []) {
+      const st = sampleStore();
+      const real = list.filter(x => !x.sample);
+      return st && Array.isArray(st[kind]) ? real.concat(st[kind].map(x => ({ ...x, sample: true }))) : real;
+    }
+    function sampleWho(uid, name) {
+      const st = sampleStore();
+      if (!st) return false;
+      return uid ? String(uid).startsWith('sample-') : (st.names || []).includes(personKey(name));
+    }
+    function refreshSample() {
+      memberList = sampleList('members', memberList);
+      releaseList = sampleList('releases', releaseList).sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
+      tReports = sampleList('reports', tReports);
+      if (typeof onTeamChange === 'function') onTeamChange();
+      if (typeof renderRequestsEverywhere === 'function') renderRequestsEverywhere();
+    }
+    // Writes about sample people stay on the device.
+    function sampleCatch(ref, data, op) {
+      const st = sampleStore();
+      if (!st || !ref) return false;
+      const path = String(ref.path || '');
+      const kind = /\/releases\//.test(path) ? 'releases' : /\/teacherReports\//.test(path) ? 'reports' : null;
+      if (!kind) return false;
+      const plain = obj => { const o = { ...(obj || {}) }; delete o.createdAt; delete o.updatedAt; return JSON.parse(JSON.stringify(o)); };
+      const found = (st[kind] || []).find(x => x.id === ref.id);
+      if (op === 'update') {
+        if (!found) return false;
+        Object.assign(found, plain(data));
+      } else if (found) {
+        Object.assign(found, plain(data));
+      } else {
+        const units = (data && data.lines || []).flatMap(l => (l.units || []).map(u => u.id));
+        // a slip for a real account always goes online, even with sample units on it
+        const about = kind === 'releases' && (data.teacherUid ? sampleWho(data.teacherUid) : (sampleWho(null, data.teacherName) || units.some(id => (st.unitIds || []).includes(id))));
+        if (!about) return false;
+        st[kind].push({ ...plain(data), id: ref.id, createdMs: (data && data.createdMs) || Date.now() });
+      }
+      saveSampleStore(st);
+      setTimeout(refreshSample, 0);
+      return true;
+    }
+    function sampleGuardSDK(S) {
+      return {
+        ...S,
+        setDoc: (ref, data, opts) => (sampleCatch(ref, data, 'set') ? Promise.resolve() : S.setDoc(ref, data, opts)),
+        updateDoc: (ref, data) => (sampleCatch(ref, data, 'update') ? Promise.resolve() : S.updateDoc(ref, data)),
+        writeBatch: db => {
+          const b = S.writeBatch(db);
+          let n = 0;
+          const w = {
+            set: (ref, data, opts) => { if (!sampleCatch(ref, data, 'set')) { n++; b.set(ref, data, opts); } return w; },
+            update: (ref, data) => { if (!sampleCatch(ref, data, 'update')) { n++; b.update(ref, data); } return w; },
+            delete: ref => { n++; b.delete(ref); return w; },
+            commit: () => (n ? b.commit() : Promise.resolve())
+          };
+          return w;
+        }
+      };
+    }
+
+    async function loadSampleData() {
+      if (sampleStore()) {
+        showToast('Sample data is already loaded · clear it from More', 'ph-info', { label: 'Teachers', onClick: () => openTeachersView() });
+        return;
+      }
+      if (!await appConfirm('Sample items, five teachers and their slips, counts and reports are added so you can try every screen. The sample teachers stay on this phone. Clear it any time from More → Clear sample data.',
+        { title: 'Load sample data?', ok: 'Load sample', tone: 'write', icon: 'ph-magic-wand' })) return;
+      const clone = v => (v == null ? null : JSON.parse(JSON.stringify(v)));
+      const before = { codes: {}, school: schoolInfo.school ? null : clone(schoolInfo) };
+      Object.keys(SAMPLE_INVENTORY).forEach(c => { before.codes[c] = clone(userState[c]); });
+      await loadSampleInventory({ quiet: true });
+      buildSampleTeachers(before);
+      showToast('Sample data loaded · see it on the Teachers page', 'ph-magic-wand', { label: 'Teachers', onClick: () => openTeachersView() });
+    }
+
+    function buildSampleTeachers(before) {
+      const DAY = 864e5, now = Date.now();
+      const iso = daysAgo => localISODate(new Date(now - daysAgo * DAY));
+      const item = code => items.find(i => i.code === code);
+      const people = {
+        ana: { uid: 'sample-ana', name: 'Ana Reyes', position: 'Teacher III', office: 'Grade 7 – Science' },
+        ben: { uid: 'sample-ben', name: 'Ben Cruz', position: 'Teacher I', office: 'Grade 10 – Mathematics' },
+        carla: { uid: 'sample-carla', name: 'Carla Mendoza', position: 'Master Teacher I', office: 'Grade 4' },
+        liza: { uid: 'sample-liza', name: 'Liza Ramos', position: 'Teacher II', office: 'Grade 8 – English' },
+        pedro: { uid: null, name: 'Pedro Santos', position: '', office: '' },
+        areyes: { uid: null, name: 'A. Reyes', position: '', office: '' }
+      };
+      // Property numbers for the sample equipment (replaced, put back by Clear sample data)
+      const EQUIP = ['45111609-MM-P01', '45121517-DO-C02', '43211507-DSK001', '43211503-LAP001', '43212105-PR-L01'];
+      const units = {};
+      EQUIP.forEach(code => {
+        const it = item(code);
+        if (!it) return;
+        const state = userState[code] || (userState[code] = { qty: it.qty });
+        state.units = [];
+        const { unserv, repair } = getCondition(it);
+        state.units = nextPropertyNumbers(it.qty).map((no, i) => ({
+          id: newUnitId(), no, serial: '', loc: '', to: '', cond: i < unserv ? 'U' : i < unserv + repair ? 'R' : 'S', seen: null, printed: null, added: now
+        }));
+        units[code] = state.units;
+      });
+      const [P, DOC, DSK, LAP, PRN] = EQUIP.map(c => units[c] || []);
+      let seq = 0;
+      const releases = [], reports = [];
+      const no = kind => `SAMPLE-${kind}-${String(++seq).padStart(2, '0')}`;
+      const rel = (who, kind, daysAgo, lines, extra = {}) => {
+        const r = { id: `sample-rel-${seq + 1}`, teacherUid: who.uid, teacherName: who.name, position: who.position, office: who.office,
+          by: schoolInfo.custodian || '', createdMs: now - daysAgo * DAY, kind, no: no(kind), date: iso(daysAgo), purpose: '', lines,
+          total: kind === 'RETURN' ? 0 : relTotal(lines), ...extra };
+        releases.push(r);
+        return r;
+      };
+      const issue = (who, daysAgo, code, list, extra) => {
+        const r = rel(who, 'ICS', daysAgo, [], extra);
+        list.forEach(u => { u.to = who.name; if (who.uid) u.toUid = who.uid; u.ics = r.no; u.icsDate = r.date; u.doc = 'ICS'; u.released = r.createdMs; });
+        r.lines = [relLine(item(code), list.length, list)];
+        r.total = relTotal(r.lines);
+        return r;
+      };
+      const ris = (who, daysAgo, lines, purpose) => rel(who, 'RIS', daysAgo, lines.map(([code, qty]) => relLine(item(code), qty)), { purpose });
+      const report = (who, kind, extra) => { const x = { id: `sample-rep-${reports.length + 1}`, uid: who.uid, name: who.name, kind, releaseId: '', releaseNo: '', code: '', desc: '', units: [], reason: '', note: '', status: 'open', createdMs: now, ...extra }; reports.push(x); return x; };
+      const received = (who, r, daysAgo) => report(who, 'received', { releaseId: r.id, releaseNo: `${r.kind} ${r.no}`, desc: r.lines.map(l => l.desc).join(', '), createdMs: now - daysAgo * DAY });
+      const { ana, ben, carla, liza, pedro, areyes } = people;
+      const counted = now - 3 * DAY;
+
+      // Ana: laptop (confirmed, counted), projector released 12 days ago, not confirmed yet → Remind
+      const anaLap = LAP[1], anaPj = P[0];
+      received(ana, issue(ana, 90, '43211503-LAP001', [anaLap], { purpose: 'For classroom instruction' }), 88);
+      issue(ana, 12, '45111609-MM-P01', [anaPj], { purpose: 'Science laboratory' });
+      anaLap.seen = counted;
+      received(ana, ris(ana, 250, [['14111507-PP-M01', 2], ['12191601-AL-E04', 3]], 'Quarterly classroom supplies'), 249);
+      received(ana, ris(ana, 150, [['14111507-PP-M01', 3]], 'Test papers'), 149);
+      received(ana, ris(ana, 40, [['12191601-AL-E04', 5], ['14111507-PP-M01', 2]], 'Laboratory activities'), 39);
+      // Ben: two desktops (one already for repair), counted on his phone · one marked broken
+      const benA = DSK[1], benB = DSK[3];
+      const benIcs = issue(ben, 60, '43211507-DSK001', [benA, benB], { purpose: 'Mathematics computer corner' });
+      received(ben, benIcs, 59);
+      benA.seen = counted; benB.seen = counted;
+      received(ben, ris(ben, 120, [['44121708-MW-B01', 2], ['14111507-PP-M01', 2]], 'Board work'), 118);
+      received(ben, ris(ben, 20, [['44121708-MW-B01', 1]], 'Board work'), 19);
+      report(ben, 'count', { releaseNo: `Count ${countSince().year}`, reason: String(countSince().year), applied: true, createdMs: counted,
+        desc: '2 items · 1 present · 1 broken', note: 'The second unit no longer turns on.',
+        units: [{ id: benA.id, no: benA.no, code: '43211507-DSK001', desc: 'Desktop computer', s: 'ok' }, { id: benB.id, no: benB.no, code: '43211507-DSK001', desc: 'Desktop computer', s: 'broken' }] });
+      // Carla: an unserviceable printer, and a laptop with an open problem report
+      const carlaPr = PRN[0], carlaLap = LAP[3];
+      const carlaIcs = issue(carla, 200, '43212105-PR-L01', [carlaPr], { purpose: 'Grade 4 reports' });
+      received(carla, carlaIcs, 199);
+      const carlaLapIcs = issue(carla, 75, '43211503-LAP001', [carlaLap], { purpose: 'Class records' });
+      received(carla, carlaLapIcs, 74);
+      carlaPr.seen = counted;
+      report(carla, 'problem', { releaseId: carlaLapIcs.id, releaseNo: `ICS ${carlaLapIcs.no}`, code: '43211503-LAP001', desc: carlaLapIcs.lines[0].desc,
+        units: [{ id: carlaLap.id, no: carlaLap.no }], reason: 'repair', note: 'Some keyboard keys no longer work.', createdMs: now - 2 * DAY });
+      received(carla, ris(carla, 30, [['12191601-AL-E04', 2]], 'Classroom sanitation'), 29);
+      // Liza: had a laptop, returned it → nothing left: ready for clearance
+      const lizaLap = LAP[2];
+      const lizaIcs = issue(liza, 300, '43211503-LAP001', [lizaLap], { purpose: 'Class records' });
+      received(liza, lizaIcs, 299);
+      const back = relLine(item('43211503-LAP001'), 1, [lizaLap]);
+      clearUnitHolder(lizaLap);
+      lizaLap.returned = now - 20 * DAY;
+      rel(liza, 'RETURN', 20, [back], { source: 'returned', purpose: 'Transferring to another school' });
+      received(liza, ris(liza, 180, [['14111507-PP-M01', 4]], 'Grade 8 test papers'), 179);
+      // Typed names (no account): Pedro holds the document camera; "A. Reyes" is really Ana
+      [[DOC[0], pedro], [DSK[4], areyes]].forEach(([u, who]) => { if (u) u.to = who.name; });
+
+      EQUIP.forEach(code => item(code) && syncUnitCondition(item(code)));
+      saveSampleStore({
+        at: now, before,
+        names: [personKey(pedro.name), personKey(areyes.name)],
+        unitIds: Object.values(units).flat().map(u => u.id),
+        members: [ana, ben, carla, liza].map(p => ({ uid: p.uid, name: p.name, position: p.position, office: p.office, email: '', joinedMs: now - 320 * DAY })),
+        releases, reports
+      });
+      saveStateWith({ summary: { kind: 'system', text: 'Loaded sample teachers (Ana Reyes, Ben Cruz, Carla Mendoza, Liza Ramos, Pedro Santos)' } });
+      refreshSample();
+      renderMoreSample();
+    }
+
+    async function clearSampleData() {
+      const st = sampleStore();
+      if (!st) return;
+      if (!await appConfirm('The sample teachers, slips and reports are removed, and the sample items go back to how they were before (your other items are not touched).',
+        { title: 'Clear sample data?', ok: 'Clear sample', tone: 'danger', icon: 'ph-broom' })) return;
+      const us = { ...userState };
+      Object.entries((st.before && st.before.codes) || {}).forEach(([code, prev]) => { if (prev) us[code] = prev; else delete us[code]; });
+      saveSampleStore(null);
+      memberList = memberList.filter(x => !x.sample);
+      releaseList = releaseList.filter(x => !x.sample);
+      tReports = tReports.filter(x => !x.sample);
+      teachersSel = null; teachersClear = null; tvLastPerson = null;
+      applyData({ userState: us, schoolInfo: (st.before && st.before.school) || schoolInfo, customRawItems });
+      saveStateWith({ summary: { kind: 'system', text: 'Cleared sample data' } });
+      refreshSample();
+      renderMoreSample();
+      showToast('Sample data cleared', 'ph-broom');
+    }
+    function renderMoreSample() {
+      const on = !!sampleStore();
+      document.getElementById('moreSampleClear')?.classList.toggle('hidden', !on);
+      const load = document.getElementById('moreSampleLoad');
+      if (load) load.innerHTML = on ? '<i class="ph-bold ph-magic-wand text-slate-500"></i> Sample data loaded' : '<i class="ph-bold ph-magic-wand text-slate-500"></i> Load sample data';
+    }
+
+    // Summary of accountability: one page per person (all, or the one selected).
+    function printAccountability(key = null) {
+      const people = accountabilityPeople().filter(p => (key ? p.key === key : p.equipment.length || p.ris.length));
+      if (!people.length) return;
+      printPrHTML(people.map(p => accountabilityPrintHTML(p)).join(''));
+    }
+
+    function accountabilityPrintHTML(p, opts = {}) {
+      const e = v => escapeHTML(v || '');
+      const d = prDefaults();
+      const docOf = u => (u.docLabel != null ? u.docLabel : unitDocLabel(u));
       const today = new Date().toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
       const condText = u => (UNIT_COND[u.cond] || UNIT_COND.S).label;
-      const eqRows = p.equipment.map(({ item, unit }) => `<tr><td class="pr-sn">${e(unitDocLabel(unit))}</td><td class="c" style="font-size:9pt">${e(unit.icsDate ? new Date(unit.icsDate + 'T00:00:00').toLocaleDateString('en-PH') : '')}</td><td class="pr-sn">${e(unit.no)}</td><td>${e(item.name)}${unit.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(unit.serial)}</span>` : ''}</td><td class="c" style="font-size:9pt">${e(condText(unit))}</td><td class="r">${peso2(item.price)}</td></tr>`).join('');
+      const eqRows = p.equipment.map(({ item, unit }) => `<tr><td class="pr-sn">${e(docOf(unit))}</td><td class="c" style="font-size:9pt">${e(unit.icsDate ? new Date(unit.icsDate + 'T00:00:00').toLocaleDateString('en-PH') : '')}</td><td class="pr-sn">${e(unit.no)}</td><td>${e(item.name)}${unit.serial ? `<br><span style="font-size:8.5pt">S/N: ${e(unit.serial)}</span>` : ''}</td><td class="c" style="font-size:9pt">${e(condText(unit))}</td><td class="r">${peso2(item.price)}</td></tr>`).join('');
       const risRows = p.ris.flatMap(r => r.lines.map((l, i) => `<tr><td class="pr-sn">${i ? '' : e(r.no)}</td><td class="c" style="font-size:9pt">${i ? '' : e(r.date ? new Date(r.date + 'T00:00:00').toLocaleDateString('en-PH') : '')}</td><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td><td>${e(l.desc)}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td></tr>`)).join('');
       return `
         <div class="pr-form acct-page">
           <h1 style="margin-bottom:2pt">SUMMARY OF ACCOUNTABILITY</h1>
           <p style="text-align:center;margin:0 0 10pt">Property and supplies issued · as of ${e(today)}</p>
-          <div class="pr-top"><span>Entity Name: <b>${e(d.entity || schoolInfo.school)}</b></span><span>Fund Cluster: <b>${e(d.fund)}</b></span></div>
+          <div class="pr-top"><span>Entity Name: <b>${e(opts.entity || d.entity || schoolInfo.school)}</b></span><span>Fund Cluster: <b>${e(opts.entity ? '' : d.fund)}</b></span></div>
           <div class="pr-top"><span>Accountable person: <b>${e(p.name).toUpperCase()}</b></span><span>Position/Office: <b>${e([p.position, p.office].filter(Boolean).join(', '))}</b></span></div>
           <p style="font-weight:700;margin:8pt 0 3pt">A. Equipment issued on ICS / PAR (${p.equipment.length})</p>
           <table class="pr-table">
@@ -10867,6 +11772,7 @@
     }
     // Resizing across the breakpoint switches an open Forms between page and pop-up.
     SIDEBAR_MQ.addEventListener?.('change', () => {
+      if (activeMainView === 'TEACHERS') renderTeachersView();
       const modal = document.getElementById('coaModal');
       if (!modal || modal.classList.contains('hidden')) return;
       modal.classList.toggle('coa-page', sidebarLayout());
@@ -11385,7 +12291,8 @@
     let coaLostAuto = {};    // officer / designation / office filled in from the first unit's holder
     function lostUnits(ppe) {
       const lost = new Map();
-      tReports.filter(x => x.kind === 'problem' && x.reason === 'lost').forEach(x => (x.units || []).forEach(u => lost.set(u.id, x.name || 'a teacher')));
+      tReports.filter(x => (x.kind === 'problem' && x.reason === 'lost') || x.kind === 'count')
+        .forEach(x => (x.units || []).forEach(u => { if (x.kind !== 'count' || u.s === 'missing') lost.set(u.id, x.name || 'a teacher'); }));
       return allTaggedUnits().filter(x => relIsEquip(x.item) && isPPE(x.item) === ppe)
         .map(x => ({ ...x, reportedBy: lost.get(x.unit.id) || '' }))
         .sort((a, b) => (b.reportedBy ? 1 : 0) - (a.reportedBy ? 1 : 0) || String(a.unit.no).localeCompare(String(b.unit.no), undefined, { numeric: true }));
@@ -11711,7 +12618,7 @@
       if (pick === 'import') openImport();
       else if (pick === 'ics') openIcsScanner();
       else if (pick === 'catalog') switchMainView('CATALOG');
-      else if (pick === 'sample') loadSampleInventory();
+      else if (pick === 'sample') loadSampleData();
       else showToast('All set · add items any time from More', 'ph-check-circle');
     }
     function tourBack() { if (tourStep > 0) { tourStep -= 1; renderTour(); } }
@@ -11986,12 +12893,17 @@
           : (isIssueKind(r.kind) || r.kind === 'RIS')
           ? { title: 'New items released to you', body: `${r.kind} ${r.no || ''} · ${relNotifSummary(r)} · tap Received when you have them`, icon: 'ph-hand-arrow-down', tone: 'teal', go: 'teacher-items' }
           : null
-      })), fromCacheOf(meta));
+      })).concat((() => {
+        // The custodian tapped Remind on slips still not confirmed: one notification per tap.
+        const waiting = myReleases.filter(r => r.remindMs && !tAcked(r.id));
+        const at = Math.max(0, ...waiting.map(r => r.remindMs));
+        return [{ key: 'rr', sig: at, make: () => (at ? { title: 'Reminder from the property custodian', body: `Please confirm ${listJoin(waiting.map(r => `${r.kind} ${r.no || ''}`.trim()))} · tap Received when you have the items`, icon: 'ph-bell-ringing', tone: 'amber', go: 'teacher-items' } : null) }];
+      })()), fromCacheOf(meta));
     }
 
     function notifFromReports(meta) {
       if (isCustodianDevice()) {
-        notifCheck('reports', tReports.map(x => ({
+        notifCheck('reports', tReports.filter(x => !x.sample).map(x => ({
           key: 'tr:' + x.id, sig: 'seen',
           make: prev => {
             if (prev !== undefined) return null;
@@ -12001,6 +12913,9 @@
             if (x.status !== 'open') return null;
             if (x.kind === 'return') return { title: `${who} wants to return an item`, body: [x.desc, units, x.note].filter(Boolean).join(' · '), icon: 'ph-arrow-u-down-left', tone: 'amber', go: 'inbox' };
             if (x.kind === 'problem') return { title: `Problem reported by ${who}`, body: [tReasonLabel(x.reason), x.desc, units].filter(Boolean).join(' · '), icon: 'ph-warning', tone: 'rose', go: 'inbox' };
+            if (x.kind === 'count') return countFlags(x).length
+              ? { title: `${who} counted their items · something is missing or broken`, body: [x.desc, x.note].filter(Boolean).join(' · '), icon: 'ph-clipboard-text', tone: 'amber', go: 'inbox' }
+              : { title: `${who} counted their items · all present`, body: x.desc || '', icon: 'ph-seal-check', tone: 'emerald', go: 'teachers', person: x.uid || null };
             return null;
           }
         })), fromCacheOf(meta));
@@ -12022,7 +12937,7 @@
     // ---- A teacher joined the school (custodian) ----
     function notifFromMembers(meta) {
       if (!isCustodianDevice() || !cloud.user) return;
-      notifCheck('members', memberList.filter(m => m.uid && m.uid !== cloud.user.uid).map(m => ({
+      notifCheck('members', memberList.filter(m => m.uid && !m.sample && m.uid !== cloud.user.uid).map(m => ({
         key: 'mb:' + m.uid, sig: 'joined',
         make: prev => prev !== undefined ? null : {
           title: `${m.name || 'A teacher'} joined your school`,
@@ -12235,7 +13150,8 @@
         if (!held) return;
         st.seen[key] = season.week;
         saveNotifs();
-        addNotif({ title: `Year-end count: check the ${plural(held, 'item')} you hold`, body: 'Make sure each one is still with you and working · report a problem if not', icon: 'ph-clipboard-text', tone: 'teal', go: 'teacher-items' });
+        if (tRepLoaded && myLastCount()) return; // already counted on the phone
+        addNotif({ title: `Year-end count: check the ${plural(held, 'item')} you hold`, body: 'Tap All present under My Items, or mark what is missing or broken', icon: 'ph-clipboard-text', tone: 'teal', go: 'teacher-items' });
       }
     }
 
@@ -12261,7 +13177,7 @@
         if (!releasesLoaded || !tRepLoaded) return;
         const acked = id => tReports.some(x => x.kind === 'received' && x.releaseId === id);
         const members = new Set(memberList.map(m => m.uid));
-        due = releaseList.filter(r => needsReceipt(r) && r.teacherUid && members.has(r.teacherUid) && !acked(r.id)
+        due = releaseList.filter(r => !r.sample && needsReceipt(r) && r.teacherUid && members.has(r.teacherUid) && !acked(r.id)
           && age(r) >= REMIND_CUSTODIAN_DAYS && age(r) <= REMIND_MAX_DAYS && !st.seen['rm:' + r.id]);
         if (!due.length) return;
         due.forEach(r => { st.seen['rm:' + r.id] = 1; });
@@ -12662,6 +13578,13 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-teachers-page', date: 'Nov 2026', title: 'A better Teachers page', points: [
+        'Property clearance: one tap shows what a teacher still holds, with Transfer all and Take back all, and prints a Certificate of No Property Accountability when nothing is left.',
+        'Teachers help with the year-end count: on their phone they tap All present or mark what is missing or broken, and their items count for the RPCPPE / RPCSP. You see "Counted 2026: 8 of 10" for each person.',
+        'Filters (Has items, To confirm, Open reports, Not counted yet, No account, Hasn’t joined), sorting, a Remind button for slips not yet confirmed, and "Same person as…" to merge a typed name into a teacher’s account.',
+        'Supply usage per teacher by quarter or school year, with a CSV for the APP-CSE. On a computer or a tablet held sideways, the list and the person sit side by side. Teachers can print their own list.',
+        'To try it all, More → Load sample data now adds sample teachers with slips, a count and a problem report. Nothing about them is sent to your account, and More → Clear sample data removes them and puts your items back as they were.'
+      ] },
       { id: '2026-11-tablet-sidebar', date: 'Nov 2026', title: 'The sidebar on tablets held sideways', points: [
         'Turn a tablet sideways (or use it with a keyboard like a laptop) and the tabs move to a sidebar, with Supply requests, Teachers and Forms one tap away. Turned upright, the tabs go back to the bottom.',
         'On a computer, every government form fits on the Forms page without scrolling, and the Print button stays in view on long forms.'
