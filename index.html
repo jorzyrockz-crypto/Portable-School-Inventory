@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="8f960738f1fc">
+  <meta name="app-version" content="d54f9a3f8021">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -2125,7 +2125,8 @@
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-bold uppercase text-slate-500 mb-1">School / Office Name</label>
-          <input type="text" id="infoSchool" oninput="updatePrefixPreview()" placeholder="e.g., San Jose National High School" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
+          <input type="text" id="infoSchool" oninput="updatePrefixPreview()" placeholder="e.g., 114656 - San Jose National High School" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium">
+          <p class="mt-1 text-[11px] text-slate-500">Start with the 6-digit DepEd School ID (e.g. <b>114656 - </b>…) so teachers can type it to join.</p>
         </div>
         <div>
           <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Agency Code / UACS / Division</label>
