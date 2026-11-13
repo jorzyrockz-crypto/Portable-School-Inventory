@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="a8d348d76dd4">
+  <meta name="app-version" content="3d24e7c0d250">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -581,6 +581,14 @@
         <i class="ph-bold ph-list text-lg"></i>
         <span class="hidden sm:inline">More</span>
       </button>
+      </div>
+    </div>
+    <!-- Exploring without an account (sample data, nothing saved): shown until they sign in -->
+    <div id="exploreBar" class="hidden max-w-4xl mx-auto px-4 pb-2.5">
+      <div class="rounded-xl bg-amber-50 border border-amber-200 pl-3 pr-1.5 py-1.5 flex items-center gap-2.5 text-xs text-amber-800">
+        <i class="ph-bold ph-compass text-lg shrink-0"></i>
+        <p class="flex-1 min-w-0 leading-snug"><b>Exploring</b> with sample data<span class="hidden sm:inline"> · nothing here is saved to a school</span></p>
+        <button id="exploreSignIn" onclick="endExplore()" class="shrink-0 h-8 px-3 rounded-lg bg-amber-700 hover:bg-amber-800 text-white font-bold flex items-center gap-1.5"><i class="ph-bold ph-sign-in"></i> Sign in</button>
       </div>
     </div>
 
@@ -4410,6 +4418,7 @@
           ? now - meta.lastBackupAt >= REMIND_AFTER_MS
           : now - meta.dirtySince >= FIRST_REMIND_AFTER_MS;
       }
+      if (exploring()) due = false;
       banner.classList.toggle('hidden', !due);
       if (due) {
         document.getElementById('backupReminderText').textContent = meta.lastBackupAt
@@ -8225,6 +8234,7 @@
       renderTeachersBadges();
       let text;
       if (!cloudConfigured()) text = 'Teachers request supplies from their phones · set up';
+      else if (exploring()) text = 'Sign in to receive teachers’ requests';
       else if (!isCustodianDevice()) text = 'Connect to receive teachers’ requests';
       else if (cloud.state === 'ready' && !cloud.user) text = 'Signed out · sign in to see requests';
       else if (pending || toBuy) text = [pending && `${pending} waiting for review`, toBuy && `${toBuy} approved to purchase`].filter(Boolean).join(' · ');
@@ -8282,6 +8292,7 @@
       if (connected) status.classList.add('hidden');
       else if (!cloudConfigured()) chip('bg-amber-50 border-amber-200 text-amber-700', 'ph-wrench', 'Setup needed');
       else if (isCustodianDevice()) chip('bg-slate-100 border-slate-200 text-slate-600', 'ph-circle-notch animate-spin', 'Connecting');
+      else if (exploring()) chip('bg-amber-50 border-amber-200 text-amber-700', 'ph-compass', 'Exploring');
       else chip('bg-slate-100 border-slate-200 text-slate-600', 'ph-plugs', 'Not connected');
       document.getElementById('reqViewSchool').textContent = isCustodianDevice()
         ? `${reqRole.schoolName}${reqRole.email ? ` · ${reqRole.email}` : ''}` : 'Teachers request · you review, approve and prepare the Purchase Request';
@@ -8291,6 +8302,7 @@
         return;
       }
       // Signed out: the sign-in screen covers the app and carries the form (one set of field ids).
+      if (!connected && exploring()) { body.innerHTML = reqSignedOutLayout(exploreRequestsHTML(), false); return; }
       if (!connected) { body.innerHTML = loginGateNeeded() ? '' : reqSignedOutLayout(reqConnectHTML(), true); if (navigator.onLine) cloudStart().catch(() => {}); return; }
 
       const pending = reqList.filter(r => r.status === 'pending');
@@ -8722,6 +8734,7 @@
     function checkJoinLink() {
       const m = location.hash.match(/[#&]join=([A-Za-z0-9_-]{6,64})/);
       if (!m) return;
+      if (exploring()) { exploreRestore(); location.reload(); return; } // join with the real phone data
       history.replaceState(null, '', location.pathname + location.search);
       if (!reqRole) { gateStep = 'teacher'; renderLoginGate(); }
       openJoin(m[1]);
@@ -11890,19 +11903,20 @@
       };
     }
 
-    async function loadSampleData() {
+    async function loadSampleData(opts = {}) {
+      const ask = opts.ask !== false;
       if (sampleStore()) {
         showToast('Sample data is already loaded · clear it from More', 'ph-info', { label: 'Teachers', onClick: () => openTeachersView() });
         return;
       }
-      if (!await appConfirm('Sample items, five teachers and their slips, counts and reports are added so you can try every screen. The sample teachers stay on this phone. Clear it any time from More → Clear sample data.',
+      if (ask && !await appConfirm('Sample items, five teachers and their slips, counts and reports are added so you can try every screen. The sample teachers stay on this phone. Clear it any time from More → Clear sample data.',
         { title: 'Load sample data?', ok: 'Load sample', tone: 'write', icon: 'ph-magic-wand' })) return;
       const clone = v => (v == null ? null : JSON.parse(JSON.stringify(v)));
       const before = { codes: {}, school: schoolInfo.school ? null : clone(schoolInfo) };
       Object.keys(SAMPLE_INVENTORY).forEach(c => { before.codes[c] = clone(userState[c]); });
       await loadSampleInventory({ quiet: true });
       buildSampleTeachers(before);
-      showToast('Sample data loaded · see it on the Teachers page', 'ph-magic-wand', { label: 'Teachers', onClick: () => openTeachersView() });
+      if (ask) showToast('Sample data loaded · see it on the Teachers page', 'ph-magic-wand', { label: 'Teachers', onClick: () => openTeachersView() });
     }
 
     function buildSampleTeachers(before) {
@@ -14623,8 +14637,75 @@
 
     function loginGateNeeded() {
       if (!cloudConfigured()) return false;
-      if (!reqRole) return true;
+      if (!reqRole) return !exploring();
       return isCustodianDevice() && cloud.state === 'ready' && !cloud.user;
+    }
+
+    // ---- Explore without an account -------------------------------------------------------
+    // "Explore the app" on the sign-in screen opens the custodian screens filled with the
+    // sample data, with no account and no cloud (nothing can reach a school). Everything on
+    // the phone is kept aside first and put back when they leave to sign in, so nothing done
+    // while exploring stays behind or is uploaded later.
+    var EXPLORE_KEY = 'custodian_explore_v1';
+    // Theme, background picture and install choices stay as set while exploring.
+    var EXPLORE_KEEP = ['custodian_theme_v1', 'custodian_page_art_v1', 'custodian_install_dismissed_v1'];
+    function exploring() { return !reqRole && !!localStorage.getItem(EXPLORE_KEY); }
+
+    async function startExplore() {
+      if (reqRole || exploring()) return;
+      const saved = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k !== EXPLORE_KEY) saved[k] = localStorage.getItem(k);
+      }
+      localStorage.setItem(EXPLORE_KEY, JSON.stringify({ at: Date.now(), saved }));
+      gateStep = 'welcome';
+      renderLoginGate();
+      switchMainView('HOME');
+      if (!sampleStore()) await loadSampleData({ ask: false });
+      renderMoreAccount();
+      renderRequestsEverywhere();
+      showToast('Exploring with sample data · sign in any time from the bar at the top', 'ph-compass');
+    }
+
+    // Put the phone back the way it was before exploring (theme and picture choices stay).
+    function exploreRestore() {
+      let snap = null;
+      try { snap = JSON.parse(localStorage.getItem(EXPLORE_KEY) || 'null'); } catch (e) { snap = null; }
+      const saved = (snap && snap.saved) || {};
+      const keep = new Set(EXPLORE_KEEP);
+      const now = [];
+      for (let i = 0; i < localStorage.length; i++) now.push(localStorage.key(i));
+      now.forEach(k => { if (!keep.has(k) && !(k in saved)) localStorage.removeItem(k); });
+      Object.entries(saved).forEach(([k, v]) => { if (!keep.has(k)) localStorage.setItem(k, v); });
+      localStorage.removeItem(EXPLORE_KEY);
+    }
+
+    function endExplore() {
+      if (!localStorage.getItem(EXPLORE_KEY)) return;
+      exploreRestore();
+      location.reload();
+    }
+
+    function renderExploreBar() {
+      const bar = document.getElementById('exploreBar');
+      if (bar) bar.classList.toggle('hidden', !exploring());
+    }
+
+    // Requests screen while exploring: there is no school to receive requests from.
+    function exploreRequestsHTML() {
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3">
+          <div class="flex items-center gap-3">
+            <span class="w-11 h-11 shrink-0 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center"><i class="ph-bold ph-compass text-2xl"></i></span>
+            <div>
+              <p class="text-sm font-extrabold text-slate-900">You are exploring without an account</p>
+              <p class="text-xs text-slate-500">Teachers’ requests arrive once you sign in as the property custodian and invite your teachers.</p>
+            </div>
+          </div>
+          <button onclick="endExplore()" class="w-full h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-sign-in"></i> Sign in</button>
+          <button onclick="openTeachersView()" class="w-full h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-bold flex items-center justify-center gap-2"><i class="ph-bold ph-users-three"></i> See the sample teachers</button>
+        </div>`;
     }
 
     function renderLoginGate() {
@@ -14635,6 +14716,7 @@
       root.classList.toggle('gated', need);
       document.querySelectorAll(GATE_BEHIND).forEach(el => { el.inert = need; });
       syncPageArt();
+      renderExploreBar();
       if (!need) {
         if (gate.dataset.step) { gate.dataset.step = ''; document.getElementById('gatePanel').innerHTML = ''; }
         gateStep = 'welcome';
@@ -14719,7 +14801,12 @@
           ${role('custodian', 'ph-identification-badge', 'bg-brand-50 text-brand-600', 'Property custodian', 'School inventory, physical count, teachers’ requests and purchase requests')}
           ${role('teacher', 'ph-chalkboard-teacher', 'bg-teal-50 text-teal-600', 'Teacher', 'Request supplies and see the items released to you')}
           ${gateLocalNote()}
-        </div>`;
+        </div>
+        <button id="gateExplore" onclick="startExplore()" class="mt-3 w-full min-h-14 rounded-2xl bg-white/85 hover:bg-white backdrop-blur-xl border border-white/80 shadow-lg px-4 py-2.5 flex items-center justify-center gap-2.5 active:scale-[0.99] transition">
+          <i class="ph-bold ph-compass text-2xl text-amber-600"></i>
+          <span class="text-left"><span class="block text-sm font-extrabold text-slate-900">Explore without an account</span>
+            <span class="block text-[11px] font-medium text-slate-600">Look around with sample data · nothing is saved</span></span>
+        </button>`;
     }
 
     // Inventory already on this phone (from before sign-in was required) is never lost.
@@ -14797,6 +14884,18 @@
     function renderMoreAccount() {
       const el = document.getElementById('moreAccount');
       if (!el) return;
+      if (exploring()) {
+        el.classList.remove('hidden');
+        el.innerHTML = `
+          <p class="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Account</p>
+          <div class="px-2 py-1.5 flex items-center gap-3">
+            <span class="w-9 h-9 shrink-0 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center"><i class="ph-bold ph-compass"></i></span>
+            <span class="min-w-0 flex-1"><span class="block text-sm font-bold text-slate-800 truncate">Exploring · no account</span>
+              <span class="block text-[11px] text-slate-500 truncate">Sample data · nothing is saved</span></span>
+          </div>
+          <button id="moreExploreEnd" onclick="closeMoreMenu(); endExplore()" class="more-item"><i class="ph-bold ph-sign-in text-brand-600"></i> Sign in or join a school</button>`;
+        return;
+      }
       el.classList.toggle('hidden', !isCustodianDevice());
       if (!isCustodianDevice()) { el.innerHTML = ''; return; }
       el.innerHTML = `

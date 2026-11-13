@@ -28,6 +28,15 @@ Inventory that was already on a phone before sign-in was required is never lost.
 card says how many items the phone has. On the custodian's first sign-in they become the school
 inventory, or are merged with it (the merge question explains the choice).
 
+**Explore without an account.** The button under the welcome card opens the property custodian's
+screens filled with the sample data (items, teachers, To review), with no account and no cloud, so
+nothing can reach a school. It is handy for a quick look, or for previews on sites where Google
+sign-in is not allowed. An amber *Exploring* bar under the header (and More → Account) has **Sign in**.
+Everything on the phone is set aside when exploring starts and put back when they leave, so nothing
+done while exploring stays behind or is uploaded later. Only the theme and background-picture choices
+are kept. Supply requests shows a short note instead of the sign-in form, and opening an invite link
+leaves explore mode first.
+
 Without a Firebase project (`firebase-config.js` set to `null`) there is nobody to sign in with,
 so the app stays the local-only inventory with no sign-in screen.
 
