@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="3d24e7c0d250">
+  <meta name="app-version" content="22d8916d7358">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -7768,7 +7768,7 @@
       myMember = null; myMemberLoaded = false; myMemberSrv = null;
       reqUnsubs.forEach(off => { try { off(); } catch (e) {} });
       reqUnsubs = [];
-      memberList = []; releaseList = []; releasesLoaded = false; teamError = '';
+      memberList = []; releaseList = []; releaseAll = []; releasesLoaded = false; teamError = '';
       myReleases = []; tReports = [];
       myRelLoaded = false; tRepLoaded = false;
       stopInventorySync();
@@ -9498,6 +9498,7 @@
     let memberList = sampleList('members');
     var myMember = null, myMemberLoaded = false;   // teacher: my own card (status: pending / active / removed)
     let releaseList = sampleList('releases');
+    let releaseAll = [];   // also the cancelled slips (removed typed names): their numbers are never reused
     let releasesLoaded = false;
     let teamError = '';
     let releaseDraft = null;
@@ -9537,7 +9538,7 @@
 
     function nextReleaseNo(kind, date) {
       const ym = (date || localISODate()).slice(0, 7);
-      const used = releaseList.filter(r => r.kind === kind).map(r => String(r.no || ''))
+      const used = [...releaseAll, ...releaseList].filter(r => r.kind === kind).map(r => String(r.no || ''))
         .filter(no => no.startsWith(ym + '-')).map(no => parseInt(no.slice(ym.length + 1), 10) || 0);
       return `${ym}-${String(Math.max(0, ...used) + 1).padStart(3, '0')}`;
     }
@@ -9568,8 +9569,9 @@
         notifFromMembers(snap.metadata);
       }, soft('members')));
       reqUnsubs.push(F.onSnapshot(relCol(), { includeMetadataChanges: true }, snap => {
-        releaseList = sampleList('releases', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) })));
-        releaseList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
+        releaseAll = sampleList('releases', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) })));
+        releaseAll.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
+        releaseList = releaseAll.filter(r => !r.void);   // cancelled slips are hidden everywhere
         if (!(snap.metadata && snap.metadata.fromCache)) releasesLoaded = true;
         onTeamChange();
         notifReminders();
@@ -11260,7 +11262,7 @@
               <span class="w-10 h-10 shrink-0 rounded-full ${p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-sm font-extrabold">${escapeHTML(personInitials(p.name))}</span>
               <span class="min-w-0 flex-1">
                 <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(p.name)}</span>
-                <span class="block text-[11px] text-slate-500 truncate">${escapeHTML([p.position, p.office].filter(Boolean).join(' · ') || (p.uid ? 'Teacher' : 'Typed under Assigned to'))}</span>
+                <span class="block text-[11px] text-slate-500 truncate">${escapeHTML([p.position, p.office].filter(Boolean).join(' · ') || (p.uid ? 'Teacher' : p.equipment.length ? 'Typed under Assigned to' : 'Typed on a slip'))}</span>
                 ${chips ? `<span class="mt-1 flex flex-wrap gap-1">${chips}</span>` : ''}
               </span>
               <span class="shrink-0 text-right">
@@ -11339,6 +11341,8 @@
             ${p.removed ? `<button id="tvAddBack" onclick="addBackMember('${escapeHTML(p.uid)}')" title="Add back to the school" aria-label="Add back to the school" class="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 text-emerald-700 flex items-center justify-center"><i class="ph-bold ph-user-plus"></i></button>`
               : `<button id="tvRemoveMember" onclick="removeMember('${escapeHTML(p.uid)}')" title="Remove from the school" aria-label="Remove from the school" class="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-600 flex items-center justify-center"><i class="ph-bold ph-user-minus"></i></button>`}
           </div>` : ''}
+          ${!p.uid && !p.equipment.length && p.records.length && connected ? `
+          <button id="tvRemoveName" onclick="removeTypedName('${k}')" title="Remove from the list" aria-label="Remove from the list" class="shrink-0 w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-600 flex items-center justify-center"><i class="ph-bold ph-trash"></i></button>` : ''}
         </div>
         <div class="mt-3 grid grid-cols-3 gap-2 text-center">
           <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${p.equipment.length}</p><p class="text-[11px] font-bold uppercase text-slate-500">Equipment</p></div>
@@ -11636,6 +11640,47 @@
           sub: [x.uid ? ([x.position, x.office].filter(Boolean).join(' · ') || 'Has the app') : 'No account · typed name', x.equipment.length && plural(x.equipment.length, 'unit')].filter(Boolean).join(' · ') }));
       const to = await appPick({ title: `Same person as “${p.name}”?`, message: 'Pick who this really is. Units, slips and history move over; with an account, the items show in their My Items.', options });
       if (to) await mergePerson(key, to);
+    }
+
+    // ---- Remove a typed name (no account, no units left): e.g. a test release or a typo ----
+    // Slips can't be deleted (they are accountability records), so they are marked Cancelled
+    // (who and when kept) and hidden from the list, prints and totals. Supplies on its RIS go
+    // back to stock, as if never released.
+    async function removeTypedName(key) {
+      const p = accountabilityPeople().find(x => x.key === key);
+      if (!p || p.uid || p.equipment.length || !p.records.length) return;
+      if (!(isCustodianDevice() && cloud.user)) { showToast('Sign in as the property custodian to remove names', 'ph-info'); return; }
+      const back = new Map();
+      p.records.filter(r => r.kind === 'RIS').forEach(r => (r.lines || []).forEach(l => {
+        const item = items.find(i => i.code === l.code);
+        const q = parseInt(l.qty, 10) || 0;
+        if (item && q > 0) back.set(item.code, { item, qty: ((back.get(item.code) || {}).qty || 0) + q });
+      }));
+      const slips = p.records.map(r => `${r.kind} ${r.no || ''}`.trim());
+      const stockText = back.size ? ` Supplies go back to stock: ${[...back.values()].map(b => `${b.qty} ${b.item.unit || ''} ${b.item.name}`.replace(/\s+/g, ' ')).join(', ')}.` : '';
+      if (!await appConfirm(`${plural(slips.length, 'slip')} (${listJoin(slips)}) ${slips.length === 1 ? 'is' : 'are'} marked Cancelled and hidden from the list, prints and totals. ${slips.length === 1 ? 'It is' : 'They are'} not deleted: who cancelled ${slips.length === 1 ? 'it' : 'them'} and when is kept.${stockText}`,
+        { title: `Remove “${p.name}” from the list?`, ok: 'Remove', tone: 'danger', icon: 'ph-trash' })) return;
+      const F = cloud.sdk;
+      const now = Date.now();
+      const patch = { void: true, voidedMs: now, voidedBy: schoolInfo.custodian || reqRole.email || '', voidedByUid: cloud.user.uid };
+      const ids = new Set(p.records.map(r => r.id));
+      const batch = F.writeBatch(cloud.db);
+      p.records.forEach(r => batch.update(F.doc(relCol(), r.id), patch));
+      cloudWrite(batch.commit(), 'Removing the name');
+      releaseList = releaseList.filter(r => !ids.has(r.id));
+      releaseAll = releaseAll.map(r => (ids.has(r.id) ? { ...r, ...patch } : r));
+      back.forEach(({ item, qty }) => {
+        const state = userState[item.code] || (userState[item.code] = { qty: item.qty });
+        item.qty = (item.qty || 0) + qty;
+        state.qty = item.qty;
+        clampCondition(item);
+      });
+      saveStateWith({ summary: { kind: 'release', text: `Removed “${p.name}” from Teachers: cancelled ${listJoin(slips)}${back.size ? ' · supplies back to stock' : ''}`, track: back.size > 0 } });
+      if (back.size) pushStock();
+      teachersSel = null; teachersClear = null; tvLastPerson = null;
+      onTeamChange();
+      if (activeMainView === 'ITEMS') renderDashboardLedger();
+      showToast(`“${p.name}” removed · ${plural(slips.length, 'slip')} cancelled${back.size ? ', supplies back in stock' : ''}`, 'ph-trash');
     }
 
     async function mergePerson(fromKey, toKey) {
