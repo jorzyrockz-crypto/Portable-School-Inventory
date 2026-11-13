@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="b4d6735e7609">
+  <meta name="app-version" content="59e60842538a">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1735,7 +1735,7 @@
     <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad">
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
-          <p class="text-[11px] font-bold uppercase tracking-wider text-amber-600">Request supplies</p>
+          <p id="joinKicker" class="text-[11px] font-bold uppercase tracking-wider text-amber-600">Teacher · join your school</p>
           <h3 id="joinSchool" class="font-extrabold text-lg text-slate-900 leading-snug">Connecting…</h3>
           <p id="joinSchoolNo" class="hidden text-xs font-bold text-amber-700"></p>
           <p class="text-xs text-slate-500">Your name goes on every request you send to the property custodian.</p>
@@ -8758,6 +8758,7 @@
       document.getElementById('joinError').classList.add('hidden');
       document.getElementById('joinGoogleOnly').classList.add('hidden');
       document.getElementById('joinGoogleHint').classList.remove('hidden');
+      document.getElementById('joinKicker').textContent = edit ? 'Your details' : 'Teacher · join your school';
       document.getElementById('joinBtnLabel').textContent = edit ? 'Save' : 'Continue';
       document.getElementById('joinGoogleWrap').classList.toggle('hidden', edit);
       document.getElementById('joinSchool').textContent = edit ? reqRole.schoolName : 'Connecting…';
@@ -8781,7 +8782,7 @@
             if (!/operation-not-allowed|admin-restricted/.test(String((err && (err.code || err.message)) || ''))) throw err;
             if (joinState !== st) return;
             st.googleOnly = true;
-            document.getElementById('joinSchool').textContent = 'Join your school';
+            document.getElementById('joinSchool').textContent = 'Sign in with Google';
             document.getElementById('joinGoogleOnly').classList.remove('hidden');
             document.getElementById('joinGoogleHint').classList.add('hidden');
             gBtn.disabled = false;

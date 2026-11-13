@@ -203,6 +203,7 @@ try {
   await t.click('#gateJoinBtn');
   await until(t, () => !document.getElementById('joinModal').classList.contains('hidden') && /San Jose/.test(document.getElementById('joinSchool').textContent), 'join sheet for the school');
   check(await ev(t, () => /San Jose/.test(document.getElementById('joinSchool').textContent)), 'pasted invite link opens the join sheet');
+  check(await ev(t, () => document.getElementById('joinKicker').textContent) === 'Teacher · join your school', 'join sheet label: Teacher · join your school');
   check(await ev(t, () => +getComputedStyle(document.getElementById('joinModal')).zIndex > +getComputedStyle(document.getElementById('loginGate')).zIndex), 'join sheet sits above the sign-in screen');
   await ev(t, () => { joinName.value = 'Ana Reyes'; submitJoin(); });
   check(!(await gated(t)), 'joined → sign-in screen gone');
@@ -234,7 +235,8 @@ try {
   await until(g, () => !document.getElementById('joinGoogleOnly').classList.contains('hidden'), 'google-only note', 8000);
   check(await ev(g, () => !document.getElementById('joinGoogleOnly').classList.contains('hidden') && document.getElementById('joinError').classList.contains('hidden')), 'explains: use Continue with Google (no red error)');
   check(await ev(g, () => document.getElementById('joinBtn').disabled && !document.getElementById('joinGoogleBtn').disabled), 'name-only Continue off, Google on');
-  check(await ev(g, () => document.getElementById('joinSchool').textContent) === 'Join your school', 'heading: Join your school');
+  check(await ev(g, () => document.getElementById('joinSchool').textContent) === 'Sign in with Google', 'heading: Sign in with Google');
+  check(await ev(g, () => document.getElementById('joinKicker').textContent) === 'Teacher · join your school', 'label above says what the sheet is for (not “Request supplies”)');
   await g.screenshot({ path: `${SHOTS}/join-google-only.png` });
   await g.click('#joinGoogleBtn');
   await until(g, () => reqRole && reqRole.role === 'teacher', 'joined with Google', 8000);
