@@ -37,6 +37,13 @@ export function createBackend({ autoApprove = true } = {}) {
   function checkWrite(kind, path, data, before, ctx) {
     const p = parts(path);
     if (!ctx.uid) deny('not signed in', { kind, path });
+    if (p[0] === 'schoolIds' && p.length === 2) {
+      const ok = Object.keys(data).every(k => ['schoolId', 'name', 'updatedMs'].includes(k)) && str(data.name, 120);
+      if (kind === 'create' || !before) {
+        if (!/^[0-9]{6}$/.test(p[1]) || !ok || typeof data.schoolId !== 'string' || !isCust(ctx, data.schoolId)) deny('school id create', { path, data });
+      } else if (!isCust(ctx, before.schoolId) || !ok || (data.schoolId ?? before.schoolId) !== before.schoolId) deny('school id update', { path, data });
+      return;
+    }
     if (p[0] !== 'schools') deny('unknown collection', { path });
     if (p.length === 2) {
       if (kind === 'create') {
@@ -125,6 +132,7 @@ export function createBackend({ autoApprove = true } = {}) {
   function checkRead(path, filters, ctx, single = false) {
     const p = parts(path);
     if (!ctx.uid) deny('read signed out', { path });
+    if (p[0] === 'schoolIds') { if (single && p.length === 2) return; deny('list school ids', { path }); }
     if (p.length <= 2) {
       if (single) return;
       if (!filters.some(f => f.field === 'custodians' && f.op === 'array-contains' && f.value === ctx.uid)) deny('list schools', { path, filters });

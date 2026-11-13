@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="59e60842538a">
+  <meta name="app-version" content="8f960738f1fc">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -4133,6 +4133,7 @@
       updateSchoolHeader();
       renderPrintReport();
       closeSchoolModal();
+      if (changed.includes('school')) publishSchoolNo();
     }
 
     function updatePrefixPreview() {
@@ -7665,6 +7666,8 @@
       if (/popup-blocked/.test(code)) return 'The Google sign-in window was blocked. Allow pop-ups for this site and try again.';
       if (/account-exists-with-different-credential/.test(code)) return 'This email already signs in with a password. Use email and password instead.';
       if (/credential-already-in-use/.test(code)) return 'That Google account is already used on another phone.';
+      if (/no-school-no/.test(code)) return `No school in CustodianPro uses School ID ${(err && err.schoolNo) || 'that'} yet. Ask your property custodian for the invite link or school code.`;
+      if (/invite-only/.test(code)) return 'This school only accepts its invite link. Ask your property custodian for it.';
       if (/no-school/.test(code)) return 'This invite link is not valid. Ask the property custodian for a new one.';
       if (/old-invite/.test(code)) return 'This invite link was replaced by a newer one. Ask the property custodian for the new link.';
       return 'Something went wrong: ' + code.replace(/^Firebase:\s*/, '').slice(0, 140);
@@ -7797,6 +7800,7 @@
         }, onErr));
         subscribeTeam(F);
         startInventorySync();
+        setTimeout(publishSchoolNo, 1500);   // lists the DepEd School ID (once, or when it changes)
         scheduleLowStockCheck(300);   // remember today's stock levels (primes low-stock notifications)
       } else {
         upsertMyMember();
@@ -8417,7 +8421,7 @@
       return `
         <div class="rounded-2xl bg-amber-50 border border-amber-200 p-4 space-y-2">
           <p class="text-sm font-extrabold text-amber-900 flex items-center gap-2"><i class="ph-bold ph-chalkboard-teacher"></i> Are you a teacher?</p>
-          <p class="text-xs text-amber-800">Open the invite link your property custodian shared, or type the school code:</p>
+          <p class="text-xs text-amber-800">Open the invite link your property custodian shared, or type the school code or School ID:</p>
           <div class="flex gap-2">
             <input id="rcCode" type="text" autocomplete="off" spellcheck="false" placeholder="School code" class="flex-1 min-w-0 h-10 px-3 rounded-xl border border-amber-300 bg-white text-sm font-mono focus:border-amber-500 outline-none">
             <button onclick="openJoin(reqVal('rcCode'))" class="h-10 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-sm font-extrabold">Join</button>
@@ -8658,6 +8662,44 @@
     // DepEd School ID, e.g. "114656 - San Jose NHS" → "114656" (shown when a teacher joins).
     const schoolNoOf = text => ((String(text || '').match(/(?:^|\D)(\d{6})(?:\D|$)/) || [])[1] || '');
 
+    function mySchoolNo() { return schoolNoOf(schoolInfo.school) || schoolNoOf(reqRole && reqRole.schoolName); }
+    function renderInviteSchoolNo() {
+      const noEl = document.getElementById('inviteSchoolNo');
+      if (!noEl || !isCustodianDevice()) return;
+      const no = mySchoolNo();
+      noEl.textContent = !no ? '' : reqRole.schoolNoListed === no
+        ? (schoolInfo.invite ? `School ID ${no} · since the new invite link, teachers need the link or code` : `School ID ${no} · teachers can also type this to join`)
+        : reqRole.schoolNoTaken === no ? `School ID ${no} · already used by another school in CustodianPro, so teachers need the code` : `School ID ${no}`;
+      noEl.classList.toggle('hidden', !no);
+    }
+    // The DepEd School ID (from the school name, e.g. "114656 - San Jose NHS"): kept on the
+    // school's card (teachers see it when they join) and listed under schoolIds/{id}, so a
+    // teacher can type the ID instead of the school code. One school per ID (first come).
+    async function publishSchoolNo() {
+      if (!isCustodianDevice() || !cloud.user || !cloud.db || !navigator.onLine) return;
+      const no = mySchoolNo();
+      if (!no || (reqRole.schoolNo === no && (reqRole.schoolNoListed === no || reqRole.schoolNoTaken === no))) return;
+      const F = cloud.sdk;
+      const sid = reqRole.schoolId;
+      try {
+        if (reqRole.schoolNo !== no) await F.updateDoc(F.doc(cloud.db, 'schools', sid), { schoolNo: no });
+        const ref = F.doc(cloud.db, 'schoolIds', no);
+        const cur = await F.getDoc(ref);
+        if (!reqRole || reqRole.schoolId !== sid) return;
+        if (cur.exists() && cur.data().schoolId !== sid) {
+          reqRole.schoolNoTaken = no;
+        } else {
+          await F.setDoc(ref, { schoolId: sid, name: String(reqRole.schoolName || schoolInfo.school || 'School').slice(0, 120), updatedMs: Date.now() });
+          reqRole.schoolNoListed = no;
+          delete reqRole.schoolNoTaken;
+        }
+        reqRole.schoolNo = no;
+        saveReqRole();
+      } catch (err) {
+        console.warn('school id', err);
+      }
+    }
+
     async function openInvite() {
       if (!isCustodianDevice()) return;
       const link = inviteLink();
@@ -8665,16 +8707,8 @@
       document.getElementById('inviteLinkText').textContent = link;
       document.getElementById('inviteCode').textContent = inviteCodeText();
       document.getElementById('inviteSchool').textContent = reqRole.schoolName || '';
-      const no = schoolNoOf(schoolInfo.school) || schoolNoOf(reqRole.schoolName);
-      const noEl = document.getElementById('inviteSchoolNo');
-      noEl.textContent = no ? `School ID ${no}` : '';
-      noEl.classList.toggle('hidden', !no);
-      // Teachers see the School ID when they join: keep it on the school's public card.
-      if (no && reqRole.schoolNo !== no && cloud.user && cloud.db) {
-        const F = cloud.sdk;
-        F.updateDoc(F.doc(cloud.db, 'schools', reqRole.schoolId), { schoolNo: no })
-          .then(() => { reqRole.schoolNo = no; saveReqRole(); }).catch(err => console.warn('school no', err));
-      }
+      renderInviteSchoolNo();
+      publishSchoolNo().then(renderInviteSchoolNo);
       document.getElementById('inviteModal').classList.remove('hidden');
       const box = document.getElementById('inviteQr');
       try {
@@ -8708,7 +8742,8 @@
     // joined yet. Teachers already in are not affected.
     async function newInviteLink() {
       if (!isCustodianDevice() || !cloud.user) return;
-      if (!await appConfirm('Teachers who already joined are not affected. The old link, QR code and printed posters stop working for new teachers, so share the new one.',
+      const listedNo = reqRole.schoolNoListed && reqRole.schoolNoListed === mySchoolNo();
+      if (!await appConfirm(`Teachers who already joined are not affected. The old link, QR code and printed posters${listedNo && !schoolInfo.invite ? `, and typing School ID ${reqRole.schoolNoListed}, ` : ' '}stop working for new teachers, so share the new one.`,
         { title: 'Make a new invite link?', ok: 'New link', icon: 'ph-arrows-clockwise', tone: 'warn' })) return;
       const F = cloud.sdk, now = Date.now();
       const abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -8745,12 +8780,13 @@
       schoolId = String(schoolId || '').trim();
       if (!/^[A-Za-z0-9_-]{6,64}$/.test(schoolId)) { showToast('That school code does not look right', 'ph-warning'); return; }
       let invite = '';
+      const byNo = /^\d{6}$/.test(schoolId);   // a DepEd School ID instead of the school code
       const parts = schoolId.match(/^([A-Za-z0-9_]{6,40})-([A-Za-z0-9]{8,12})$/);   // school code - invite code
       if (parts && !edit) { schoolId = parts[1]; invite = parts[2]; }
-      if (isCustodianDevice() && reqRole.schoolId === schoolId) { showToast('This is your own school’s invite link · share it with your teachers', 'ph-info'); return; }
+      if (isCustodianDevice() && (reqRole.schoolId === schoolId || (byNo && reqRole.schoolNo === schoolId))) { showToast('This is your own school’s invite link · share it with your teachers', 'ph-info'); return; }
       if (!edit && isCustodianDevice() &&
           !await appConfirm(`This device is signed in as the property custodian of ${reqRole.schoolName}. Use it to request supplies as a teacher instead?`, { title: 'Join as a teacher?', ok: 'Join as teacher', tone: 'warn' })) return;
-      joinState = { schoolId, schoolName: '', edit, invite };
+      joinState = { schoolId, schoolName: '', edit, invite, byNo: byNo && !edit };
       const me = (isTeacherDevice() && reqRole.me) || {};
       document.getElementById('joinName').value = me.name || '';
       document.getElementById('joinPosition').value = me.position || '';
@@ -8812,6 +8848,13 @@
     // The school's name and School ID, and whether the invite link still works.
     async function joinLoadSchool(st) {
       const F = cloud.sdk;
+      if (st.byNo) {
+        const idSnap = await F.getDoc(F.doc(cloud.db, 'schoolIds', st.schoolId));
+        if (!idSnap.exists() || !idSnap.data().schoolId) throw Object.assign(new Error('no-school-no'), { schoolNo: st.schoolId });
+        st.typedNo = st.schoolId;
+        st.schoolId = idSnap.data().schoolId;
+        st.byNo = false;
+      }
       const snap = await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId));
       if (!snap.exists()) throw new Error('no-school');
       const school = snap.data();
@@ -8822,6 +8865,7 @@
         joinShowNo(st.schoolNo);
       }
       if (school.inviteOnly) {
+        if (!st.invite && st.typedNo) throw new Error('invite-only');
         const inv = st.invite ? await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId, 'invites', st.invite)) : null;
         if (!inv || !inv.exists() || inv.data().active !== true) throw new Error('old-invite');
       }
@@ -14861,12 +14905,12 @@
               <span class="w-11 h-11 shrink-0 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center"><i class="ph-bold ph-chalkboard-teacher text-2xl"></i></span>
               <div>
                 <p class="text-sm font-extrabold text-slate-900">Teacher · join your school</p>
-                <p class="text-xs text-slate-500">Your property custodian shares an invite link or a school code.</p>
+                <p class="text-xs text-slate-500">Your property custodian shares an invite link or a school code. Your school’s 6-digit School ID works too.</p>
               </div>
             </div>
-            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500">Invite link or school code
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500">Invite link, school code or School ID
               <input id="gateCode" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"
-                placeholder="Paste the link or type the code" onkeydown="if (event.key === 'Enter') gateJoin()"
+                placeholder="Paste the link, or type the code or School ID" onkeydown="if (event.key === 'Enter') gateJoin()"
                 class="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium normal-case tracking-normal text-slate-900 focus:border-teal-500 outline-none">
             </label>
             <p id="gateCodeError" class="hidden text-xs font-semibold text-rose-600"></p>
@@ -14908,10 +14952,11 @@
     function gateJoin() {
       const raw = (document.getElementById('gateCode').value || '').trim();
       const err = document.getElementById('gateCodeError');
-      const m = raw.match(/[#&?]join=([A-Za-z0-9_-]{6,64})/) || raw.match(/^([A-Za-z0-9_-]{6,64})$/);
+      const m = raw.match(/[#&?]join=([A-Za-z0-9_-]{6,64})/) || raw.match(/^([A-Za-z0-9_-]{6,64})$/)
+        || raw.match(/^(?:school\s*id[\s:#]*)?(\d{6})(?:\s*[-–].*)?$/i);   // "114656", "School ID 114656", "114656 - San Jose NHS"
       const fail = msg => { err.textContent = msg; err.classList.remove('hidden'); };
-      if (!raw) return fail('Paste the invite link or type the school code.');
-      if (!m) return fail('That does not look like an invite link or school code. Ask your property custodian to send it again.');
+      if (!raw) return fail('Paste the invite link, or type the school code or School ID.');
+      if (!m) return fail('That does not look like an invite link, school code or 6-digit School ID. Ask your property custodian to send it again.');
       if (!navigator.onLine) return fail('Joining needs internet once. Connect and try again.');
       err.classList.add('hidden');
       openJoin(m[1]);

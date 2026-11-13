@@ -184,7 +184,9 @@ Everything else moved out of the way:
 Teachers request supplies from their own phones; the custodian reviews each request, checks it against stock, approves it, and turns approved requests into a **Purchase Request (Appendix 60)**.
 
 **Teacher**
-1. Open the invite link (or scan the QR code) the custodian shared, or choose **Teacher** on the sign-in screen and paste the link or type the school code. Then type your name, position and grade/section once.
+1. Open the invite link (or scan the QR code) the custodian shared, or choose **Teacher** on the sign-in screen and paste the link or type the school code. The school's 6-digit DepEd **School ID** (e.g. `114656`) works too. Then type your name, position and grade/section once.
+
+   **School ID.** The ID comes from the school name in School info (`114656 - San Jose NHS`). When the custodian signs in or opens Invite, the app lists it under `schoolIds/114656`. Only an exact ID can be looked up, and each ID belongs to one school: the first to list it keeps it, and the Invite screen tells a second school that it's taken. School IDs are public, so anyone could find the school, but new teachers still wait for the custodian's **Approve**. After **New invite link**, the School ID alone no longer works and teachers need the new link or code.
 2. Tap **New supply request**, search for items (e.g. “bond paper”, “ballpen”) or type anything not in the catalog, set quantities, add a purpose and a needed-by date, and send.
 3. Follow the status on the same screen: *To review → Approved → Being purchased (PR No.) → Supplied*, or *Declined* with the custodian’s reason. A pending request can still be cancelled.
 
@@ -226,7 +228,7 @@ The app is connected to the Firebase project **russapps-custodianpro** (settings
    - **Email/Password** (optional: custodians without a Google account).
 2. **Authentication → Settings → Authorized domains**: add `jorzyrockz-crypto.github.io`. Without it, Google sign-in shows “This website is not on the Firebase authorized domains list”.
 3. **Build → Firestore Database → Create database**: pick a location near you (e.g. `asia-southeast1`, Singapore) and start in **production mode**.
-4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school, and nothing can be deleted.
+4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school, and nothing can be deleted. **Publish again after updating the app** when `firestore.rules` changed (latest: the `schoolIds` lookup for joining by School ID).
 
 The config values are not secret; access is controlled by the published rules. To use a different project, replace the object in `firebase-config.js` (or set it to `null` to hide Supply requests).
 

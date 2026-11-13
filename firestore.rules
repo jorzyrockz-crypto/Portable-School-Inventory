@@ -15,6 +15,7 @@ rules_version = '2';
 //   schools/{schoolId}/stock/{code}           supplies left (name, unit, qty), for teachers who were approved
 //   schools/{schoolId}/stockHolds/{requestId} "I took this" from a teacher, until the custodian confirms
 //   schools/{schoolId}/invites/{code}         the current invite link (after "New invite link")
+//   schoolIds/{schoolNo}                      DepEd School ID (6 digits) → school, so teachers can type it
 //
 // Members: a teacher who joins waits for the custodian's approval (status 'pending'), then is
 // 'active'; the custodian can also edit their name or remove them ('removed'). Cards written
@@ -50,6 +51,25 @@ service cloud.firestore {
         || (data.get('invite', '') is string && data.get('invite', '').size() > 0
             && exists(/databases/$(database)/documents/schools/$(schoolId)/invites/$(data.invite))
             && get(/databases/$(database)/documents/schools/$(schoolId)/invites/$(data.invite)).data.active == true);
+    }
+
+    // DepEd School ID → school: a teacher may type "114656" instead of the school code. Only
+    // an exact ID can be looked up (no listing). One school per ID: the first custodian who
+    // lists it keeps it, and only a custodian of that school can change or remove it. Joining
+    // still waits for the custodian's Approve, and an invite-only school still needs its link.
+    match /schoolIds/{schoolNo} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() && schoolNo.matches('^[0-9]{6}$')
+        && request.resource.data.keys().hasOnly(['schoolId', 'name', 'updatedMs'])
+        && request.resource.data.schoolId is string
+        && isCustodian(request.resource.data.schoolId)
+        && shortText(request.resource.data.name, 120);
+      allow update: if isCustodian(resource.data.schoolId)
+        && request.resource.data.keys().hasOnly(['schoolId', 'name', 'updatedMs'])
+        && request.resource.data.schoolId == resource.data.schoolId
+        && shortText(request.resource.data.name, 120);
+      allow delete: if isCustodian(resource.data.schoolId);
     }
 
     match /schools/{schoolId} {
