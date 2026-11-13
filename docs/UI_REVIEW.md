@@ -119,7 +119,8 @@ About 20 elements per list screen are 10 px.
 - **13. Toast button wraps:** add `whitespace-nowrap shrink-0` to the toast action.
 - **14. About wording:** reuse the new sharing text: *Property and supplies for school custodians and teachers: QR tags, physical count, ICS/PAR/RIS, COA forms and supply requests.*
 - **15. Computers:** at ≥1024 px, use a left sidebar instead of the bottom tabs, and a two-column Home (encode on the left, recent items and requests on the right).
-  - **Fixed (Nov 2026):** with a mouse at 1024 px and wider, the tabs become a left sidebar (plus Supply requests, Teachers and Forms) and the top bar spans the window. Inventory and Catalog widen to 76rem with column headings and extra columns (category, tagged units, unit cost; category, APP part, value). Home keeps its focused single column. Touch tablets keep the bottom tabs. Checked in `tests/e2e/tablet-layout.mjs` section 4.
+  - **Fixed (Nov 2026):** with a mouse at 1024 px and wider, the tabs become a left sidebar (plus Supply requests, Teachers and Forms) and the top bar spans the window. Inventory and Catalog widen to 76rem with column headings and extra columns (category, tagged units, unit cost; category, APP part, value). Home keeps its focused single column. Checked in `tests/e2e/tablet-layout.mjs` section 4.
+  - Touch tablets held sideways (1000 × 600 px and larger) get the same sidebar with finger-sized rows; upright tablets and phones keep the bottom tabs (section 3 of the same test).
 - **16. Grey on grey:** use `text-slate-600` on `bg-slate-100`.
 
 ## What looks good
