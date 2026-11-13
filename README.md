@@ -222,7 +222,7 @@ The app is connected to the Firebase project **russapps-custodianpro** (settings
 
 1. **Build → Authentication → Get started → Sign-in method**: turn on
    - **Google** (custodian, and teachers who want their requests on every phone). Pick a support email and save.
-   - **Anonymous** (teachers who just type their name).
+   - **Anonymous** (teachers who just type their name). If it's off, the join sheet can't load the school with just a name. It says so (no red error) and lets the teacher join with **Continue with Google** instead, then shows the school name and ID.
    - **Email/Password** (optional: custodians without a Google account).
 2. **Authentication → Settings → Authorized domains**: add `jorzyrockz-crypto.github.io`. Without it, Google sign-in shows “This website is not on the Firebase authorized domains list”.
 3. **Build → Firestore Database → Create database**: pick a location near you (e.g. `asia-southeast1`, Singapore) and start in **production mode**.

@@ -82,7 +82,7 @@ window.FirebaseSDK = (() => {
     initializeApp: options => ({ options }),
     getAuth: () => auth,
     onAuthStateChanged: (a, f) => { a.listeners.push(f); setTimeout(() => f(a.currentUser), 0); return () => { a.listeners = a.listeners.filter(x => x !== f); }; },
-    signInAnonymously: async () => { const u = await rpc('anon', {}); setUser(u); return { user: u }; },
+    signInAnonymously: async () => { if (window.__anonOff) throw err('auth/operation-not-allowed'); const u = await rpc('anon', {}); setUser(u); return { user: u }; },
     createUserWithEmailAndPassword: async (a, email, pass) => { const u = await rpc('createUser', { email, pass }); setUser(u); return { user: u }; },
     signInWithEmailAndPassword: async (a, email, pass) => { const u = await rpc('signIn', { email, pass }); setUser(u); return { user: u }; },
     sendPasswordResetEmail: async () => {},

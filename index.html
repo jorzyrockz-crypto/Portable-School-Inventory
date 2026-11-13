@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="22d8916d7358">
+  <meta name="app-version" content="b4d6735e7609">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1748,6 +1748,7 @@
         <input id="joinOffice" type="text" maxlength="80" placeholder="Office or grade &amp; section, e.g. Grade 7 – Rizal" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
       </div>
       <p id="joinError" class="hidden text-xs font-semibold text-rose-600"></p>
+      <p id="joinGoogleOnly" class="hidden rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800"><b>Use Continue with Google to join.</b> Joining with just your name is turned off for this app. <span class="text-amber-700">(Property custodian: turn on <b>Anonymous</b> in Firebase: Authentication · Sign-in method.)</span></p>
       <button id="joinBtn" onclick="submitJoin()" class="w-full h-12 rounded-xl bg-amber-700 hover:bg-amber-800 disabled:opacity-50 text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2">
         <i class="ph-bold ph-check"></i> <span id="joinBtnLabel">Continue</span>
       </button>
@@ -1755,7 +1756,7 @@
         <button id="joinGoogleBtn" onclick="joinWithGoogle()" class="w-full h-11 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-50 text-slate-800 font-bold text-sm flex items-center justify-center gap-2.5">
           <svg viewBox="0 0 48 48" class="w-5 h-5 shrink-0" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Continue with Google
         </button>
-        <p class="text-[11px] text-slate-500 text-center">Optional · keeps your requests if you change phones</p>
+        <p id="joinGoogleHint" class="text-[11px] text-slate-500 text-center">Optional · keeps your requests if you change phones</p>
       </div>
     </div>
   </div>
@@ -8755,46 +8756,79 @@
       document.getElementById('joinPosition').value = me.position || '';
       document.getElementById('joinOffice').value = me.office || '';
       document.getElementById('joinError').classList.add('hidden');
+      document.getElementById('joinGoogleOnly').classList.add('hidden');
+      document.getElementById('joinGoogleHint').classList.remove('hidden');
       document.getElementById('joinBtnLabel').textContent = edit ? 'Save' : 'Continue';
       document.getElementById('joinGoogleWrap').classList.toggle('hidden', edit);
       document.getElementById('joinSchool').textContent = edit ? reqRole.schoolName : 'Connecting…';
-      const noEl = document.getElementById('joinSchoolNo');
-      const showNo = no => { noEl.textContent = no ? `School ID ${no}` : ''; noEl.classList.toggle('hidden', !no); };
-      showNo(edit ? (reqRole.schoolNo || schoolNoOf(reqRole.schoolName)) : '');
+      joinShowNo(edit ? (reqRole.schoolNo || schoolNoOf(reqRole.schoolName)) : '');
       document.getElementById('joinModal').classList.remove('hidden');
       if (edit) return;
       const btn = document.getElementById('joinBtn');
       const gBtn = document.getElementById('joinGoogleBtn');
       btn.disabled = gBtn.disabled = true;
+      const st = joinState;
       try {
         await cloudStart();
         const F = cloud.sdk;
         if (isCustodianDevice()) { stopRequestSync(); await F.signOut(cloud.auth); cloud.user = null; }
-        if (!cloud.user) cloud.user = (await F.signInAnonymously(cloud.auth)).user;
-        const snap = await F.getDoc(F.doc(cloud.db, 'schools', schoolId));
-        if (!snap.exists()) throw new Error('no-school');
-        const school = snap.data();
-        joinState.schoolName = school.name || 'School';
-        joinState.schoolNo = school.schoolNo || schoolNoOf(school.name);
-        document.getElementById('joinSchool').textContent = joinState.schoolName;
-        showNo(joinState.schoolNo);
-        if (school.inviteOnly) {
-          const inv = invite ? await F.getDoc(F.doc(cloud.db, 'schools', schoolId, 'invites', invite)) : null;
-          if (!inv || !inv.exists() || inv.data().active !== true) throw new Error('old-invite');
+        if (!cloud.user) {
+          try {
+            cloud.user = (await F.signInAnonymously(cloud.auth)).user;
+          } catch (err) {
+            // Anonymous sign-in turned off in Firebase: Google still works, and the school is
+            // read once they have signed in with it.
+            if (!/operation-not-allowed|admin-restricted/.test(String((err && (err.code || err.message)) || ''))) throw err;
+            if (joinState !== st) return;
+            st.googleOnly = true;
+            document.getElementById('joinSchool').textContent = 'Join your school';
+            document.getElementById('joinGoogleOnly').classList.remove('hidden');
+            document.getElementById('joinGoogleHint').classList.add('hidden');
+            gBtn.disabled = false;
+            return;
+          }
         }
+        await joinLoadSchool(st);
+        if (joinState !== st) return;
         btn.disabled = gBtn.disabled = false;
         setTimeout(() => document.getElementById('joinName').focus(), 50);
       } catch (err) {
-        document.getElementById('joinSchool').textContent = 'Could not connect';
-        const e = document.getElementById('joinError');
-        e.textContent = cloudErrorText(err);
-        e.classList.remove('hidden');
+        if (joinState !== st) return;
+        joinShowError(err);
+      }
+    }
+    function joinShowNo(no) {
+      const noEl = document.getElementById('joinSchoolNo');
+      noEl.textContent = no ? `School ID ${no}` : '';
+      noEl.classList.toggle('hidden', !no);
+    }
+    function joinShowError(err) {
+      document.getElementById('joinSchool').textContent = 'Could not connect';
+      const e = document.getElementById('joinError');
+      e.textContent = cloudErrorText(err);
+      e.classList.remove('hidden');
+    }
+    // The school's name and School ID, and whether the invite link still works.
+    async function joinLoadSchool(st) {
+      const F = cloud.sdk;
+      const snap = await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId));
+      if (!snap.exists()) throw new Error('no-school');
+      const school = snap.data();
+      st.schoolName = school.name || 'School';
+      st.schoolNo = school.schoolNo || schoolNoOf(school.name);
+      if (joinState === st) {
+        document.getElementById('joinSchool').textContent = st.schoolName;
+        joinShowNo(st.schoolNo);
+      }
+      if (school.inviteOnly) {
+        const inv = st.invite ? await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId, 'invites', st.invite)) : null;
+        if (!inv || !inv.exists() || inv.data().active !== true) throw new Error('old-invite');
       }
     }
     function closeJoin() { joinState = null; document.getElementById('joinModal').classList.add('hidden'); }
 
     function submitJoin() {
-      if (!joinState) return;
+      if (!joinState || joinState.googleOnly) return;
       const me = { name: reqVal('joinName'), position: reqVal('joinPosition'), office: reqVal('joinOffice') };
       if (!me.name) {
         const e = document.getElementById('joinError');
@@ -8822,6 +8856,13 @@
       try {
         const user = await googleSignIn({ link: true });
         cloud.user = user;
+        if (joinState.googleOnly) {
+          const st = joinState;
+          try { await joinLoadSchool(st); } catch (err) { if (joinState === st) { joinShowError(err); btns[1].disabled = false; } return; }
+          if (joinState !== st) return;
+          st.googleOnly = false;
+          document.getElementById('joinGoogleOnly').classList.add('hidden');
+        }
         joinState.email = user.email || '';
         const nameEl = document.getElementById('joinName');
         if (!nameEl.value.trim() && user.displayName) nameEl.value = user.displayName;
@@ -8830,6 +8871,7 @@
         submitJoin();
       } catch (err) {
         btns.forEach(b => b.disabled = false);
+        if (joinState && joinState.googleOnly) btns[0].disabled = true;   // the name-only Continue can't work
         if (googleCancelled(err)) return;
         errEl.textContent = cloudErrorText(err);
         errEl.classList.remove('hidden');

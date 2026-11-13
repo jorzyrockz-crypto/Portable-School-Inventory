@@ -227,6 +227,22 @@ try {
   check(await gated(j) && await gateStepNow(j) === 'teacher', 'teacher step behind the join sheet');
   check(await ev(j, () => !document.getElementById('joinModal').classList.contains('hidden')), 'join sheet open straight away');
 
+  out('9b Anonymous sign-in turned off in Firebase → join with Google');
+  const g = await openPhone('google-only', backend);
+  await g.evaluateOnNewDocument(() => { window.__anonOff = true; window.__googleAccount = { email: 'mila.santos@gmail.com', name: 'Mila Santos' }; });
+  await g.goto(`${BASE_URL}#join=${schoolId}`, { waitUntil: 'networkidle0' });
+  await until(g, () => !document.getElementById('joinGoogleOnly').classList.contains('hidden'), 'google-only note', 8000);
+  check(await ev(g, () => !document.getElementById('joinGoogleOnly').classList.contains('hidden') && document.getElementById('joinError').classList.contains('hidden')), 'explains: use Continue with Google (no red error)');
+  check(await ev(g, () => document.getElementById('joinBtn').disabled && !document.getElementById('joinGoogleBtn').disabled), 'name-only Continue off, Google on');
+  check(await ev(g, () => document.getElementById('joinSchool').textContent) === 'Join your school', 'heading: Join your school');
+  await g.screenshot({ path: `${SHOTS}/join-google-only.png` });
+  await g.click('#joinGoogleBtn');
+  await until(g, () => reqRole && reqRole.role === 'teacher', 'joined with Google', 8000);
+  check(await ev(g, () => reqRole && reqRole.role === 'teacher' && /San Jose/.test(reqRole.schoolName) && reqRole.email === 'mila.santos@gmail.com'), 'joined the school with Google');
+  check(await ev(g, () => reqRole.me.name) === 'Mila Santos', 'name taken from the Google account');
+  check(!(await gated(g)), 'sign-in screen gone');
+  await g.close();
+
   out('10 big screens, dark phone');
   const d = await openPhone('desktop', backend, { width: 1280, height: 800 });
   await d.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
