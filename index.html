@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="3e535d00efde">
+  <meta name="app-version" content="a8d348d76dd4">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -189,6 +189,13 @@
       margin-inline: -1rem; padding: 0.125rem 1rem 0.375rem; scroll-padding-inline: 1rem; }
     .rv-track > .rv-card { flex: 0 0 min(85%, 20rem); scroll-snap-align: start; }
     .rv-track > .rv-card:only-child { flex-basis: 100%; }
+    /* Wider spaces: as many whole cards as fit (about 19rem+ each) plus a peek of the next;
+       with fewer cards they share the row instead of leaving a gap (a lone card stays card-sized). */
+    #tvReviewBox { container-type: inline-size; }
+    @container (min-width: 38rem) { .rv-track > .rv-card { flex: 1 0 calc((100% - 2 * 0.75rem) / 2.2); } }
+    @container (min-width: 60rem) { .rv-track > .rv-card { flex-basis: calc((100% - 3 * 0.75rem) / 3.2); } }
+    @container (min-width: 82rem) { .rv-track > .rv-card { flex-basis: calc((100% - 4 * 0.75rem) / 4.2); } }
+    @container (min-width: 104rem) { .rv-track > .rv-card { flex-basis: calc((100% - 5 * 0.75rem) / 5.2); } }
     .rv-track:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; border-radius: 1rem; }
     @media (pointer: coarse) { .rv-arrows { display: none !important; } }
     @media screen and (min-width: 1024px) and (not (pointer: coarse)), screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1000px) and (min-height: 600px) {
@@ -216,6 +223,10 @@
       .lap-only.flex { display: flex; }
       /* Teachers: people on the left, the one picked on the right (like an inbox) */
       html:not(.no-tabs) #viewTeachers { max-width: 76rem; }
+      @media (min-width: 1680px) {   /* large monitors: use the room (wider list, more cards in view) */
+        html:not(.no-tabs) #viewTeachers { max-width: 112rem; }
+        html:not(.no-tabs) #tvPanes { grid-template-columns: minmax(22rem, 27rem) minmax(0, 1fr); }
+      }
       html:not(.no-tabs) #tvPanes { display: grid; grid-template-columns: minmax(19rem, 24rem) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
       html:not(.no-tabs) #tvPanes > #tvListPane, html:not(.no-tabs) #tvPanes > #tvDetailPane { display: block; }
       html:not(.no-tabs) #tvPanes > #tvListPane { position: sticky; top: calc(var(--hdr-h, 3.75rem) + 1rem); max-height: calc(100vh - var(--hdr-h, 3.75rem) - 4.5rem);
@@ -225,9 +236,14 @@
       html:not(.no-tabs) #viewTeachers .tv-back { display: none; }
       html:not(.no-tabs) #tvListHead .tv-acts { width: 100%; }
       html:not(.no-tabs) #tvListHead .tv-acts > button { flex: 1 1 auto; }
-      html:not(.no-tabs) #tvPanes > #tvListPane { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+      /* The list scrolls on its own without a visible bar; a soft fade says there is more. */
+      html:not(.no-tabs) #tvPanes > #tvListPane { scrollbar-width: none; max-height: calc(100vh - var(--hdr-h, 3.75rem) - 2rem); }
+      html:not(.no-tabs) #tvPanes > #tvListPane::-webkit-scrollbar { display: none; }
+      html:not(.no-tabs) #tvListPane.tv-more-below { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 3rem), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 3rem), transparent); }
+      html:not(.no-tabs) #tvListPane.tv-more-above { -webkit-mask-image: linear-gradient(to top, #000 calc(100% - 2rem), transparent); mask-image: linear-gradient(to top, #000 calc(100% - 2rem), transparent); }
+      html:not(.no-tabs) #tvListPane.tv-more-above.tv-more-below { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 2rem, #000 calc(100% - 3rem), transparent); mask-image: linear-gradient(to bottom, transparent, #000 2rem, #000 calc(100% - 3rem), transparent); }
       html:not(.no-tabs) #tvDetailPane .rv-track { margin-inline: 0; padding-inline: 0; scroll-padding-inline: 0; }
-      html:not(.no-tabs) #tvDetailPane .rv-track > .rv-card:only-child { flex-basis: min(100%, 26rem); }
+      html:not(.no-tabs) #tvDetailPane .rv-track > .rv-card:only-child { flex-basis: min(100%, 28rem); flex-grow: 0; }
       html:not(.no-tabs) #tvChips { flex-wrap: wrap; margin-inline: 0; padding-inline: 0; overflow: visible; }
       /* Government forms open as a page beside the sidebar instead of a pop-up. The page itself
          scrolls (no box scrolling inside the card), and a form's Back / Print bar sticks to the bottom. */
@@ -1147,7 +1163,7 @@
   <!-- Phones: the list, or one person. Computers and tablets held sideways: both side by side. -->
   <section id="viewTeachers" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 no-print">
     <div id="tvPanes">
-      <div id="tvListPane" class="space-y-4">
+      <div id="tvListPane" class="space-y-4" onscroll="tvListFade()">
         <div id="tvListHead">
           <div id="tvListTitle"></div>
           <div id="tvReviewSlot"><div id="tvReview" class="hidden"></div><div id="tvReviewRow" class="hidden"></div></div>
@@ -9691,9 +9707,9 @@
         ...joins.map(m => `
             <div ${rvWrap(true, 'join')} data-tvjoin="${escapeHTML(m.uid)}">
               ${rvStripe(true, 'join')}
-              ${rvKicker('Wants to join', 'ph-user-plus', 'text-brand-700', m.joinedMs)}
-              <p class="text-sm text-slate-900"><b>${escapeHTML(m.name)}</b></p>
-              ${[m.position, m.office].filter(Boolean).length ? `<p class="text-xs text-slate-600 line-clamp-2">${escapeHTML([m.position, m.office].filter(Boolean).join(' · '))}</p>` : ''}
+              ${rvHead(true, 'join', 'Wants to join', 'ph-user-plus', 'text-brand-700', m.joinedMs,
+                `<p class="text-sm text-slate-900"><b>${escapeHTML(m.name)}</b></p>
+              ${[m.position, m.office].filter(Boolean).length ? `<p class="text-xs text-slate-600 line-clamp-2">${escapeHTML([m.position, m.office].filter(Boolean).join(' · '))}</p>` : ''}`)}
               <p class="text-xs text-slate-500">${m.email ? `${escapeHTML(m.email)} · ` : 'No Google account · '}joined with your invite link</p>
               <div ${rvActs(true)}>
                 <button onclick="approveMember('${escapeHTML(m.uid)}')" class="h-9 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-user-check"></i> Approve</button>
@@ -10863,6 +10879,18 @@
     const RV_STRIPE = { join: 'bg-brand-600', count: 'bg-amber-600', problem: 'bg-rose-600', return: 'bg-emerald-600' };
     const rvStripe = (card, kind) => (card ? `<span aria-hidden="true" class="absolute inset-x-0 top-0 h-1 ${RV_STRIPE[kind]}"></span>` : '');
     const rvKicker = (label, icon, color, ms) => `<p class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider ${color}"><i class="ph-bold ${icon} text-xs"></i><span class="flex-1 min-w-0 truncate">${label}</span><span class="shrink-0 normal-case tracking-normal font-semibold text-slate-500">${escapeHTML(formatTimeAgo(ms || Date.now()))}</span></p>`;
+    const RV_TILE = { join: 'bg-brand-50 text-brand-600', count: 'bg-amber-50 text-amber-700', problem: 'bg-rose-50 text-rose-600', return: 'bg-emerald-50 text-emerald-700' };
+    // the same icons the teacher picked the reason with
+    const rvReasonIcon = key => ([...T_REASONS.equip, ...T_REASONS.supply].find(r => r[0] === key) || [])[2] || 'ph-warning';
+    const rvHead = (card, kind, label, icon, color, ms, main) => (card
+      ? `<div class="flex items-start gap-3">
+          <span data-rv-tile class="w-11 h-11 shrink-0 rounded-xl ${RV_TILE[kind]} flex items-center justify-center"><i class="ph-duotone ${icon} text-2xl"></i></span>
+          <div class="min-w-0 flex-1 space-y-0.5">
+            <p class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider ${color}"><span class="flex-1 min-w-0 truncate">${label}</span><span class="shrink-0 normal-case tracking-normal font-semibold text-slate-500">${escapeHTML(formatTimeAgo(ms || Date.now()))}</span></p>
+            ${main}
+          </div>
+        </div>`
+      : `${rvKicker(label, icon, color, ms)}${main}`);
     const rvNote = (note, card) => (note ? `<p ${card ? 'onclick="this.classList.toggle(\'line-clamp-2\')" title="Tap to read it all"' : ''} class="text-xs text-slate-700 bg-slate-50 rounded-lg px-2.5 py-1.5 ${card ? 'line-clamp-2 cursor-pointer' : ''}">“${escapeHTML(note)}”</p>` : '');
     const rvActs = card => `class="flex flex-wrap items-center gap-2 pt-1 ${card ? 'mt-auto' : ''}"`;
 
@@ -10878,8 +10906,8 @@
             return `
               <div ${rvWrap(card, kind)} data-treport="${x.id}">
                 ${rvStripe(card, kind)}
-                ${rvKicker(ret ? 'Return' : 'Equipment report', ret ? 'ph-arrow-u-down-left' : 'ph-warning', ret ? 'text-emerald-700' : 'text-rose-700', x.createdMs)}
-                <p class="text-sm text-slate-900">${reportWhoHTML(x)} ${ret ? 'is returning' : `reports <b class="text-rose-700">${escapeHTML(tReasonLabel(x.reason).toLowerCase())}</b>`}</p>
+                ${rvHead(card, kind, ret ? 'Return' : (x.units || []).length ? 'Equipment report' : 'Supply report', ret ? 'ph-arrow-u-down-left' : card ? rvReasonIcon(x.reason) : 'ph-warning', ret ? 'text-emerald-700' : 'text-rose-700', x.createdMs,
+                  `<p class="text-sm text-slate-900">${reportWhoHTML(x)} ${ret ? 'is returning' : `reports <b class="text-rose-700">${escapeHTML(tReasonLabel(x.reason).toLowerCase())}</b>`}</p>`)}
                 <p class="text-xs text-slate-600 ${card ? 'line-clamp-2' : ''}">${escapeHTML(x.desc)}${units ? ` · <span class="font-mono font-bold">${escapeHTML(units)}</span>` : ''} · ${escapeHTML(x.releaseNo || '')}</p>
                 ${rvNote(x.note, card)}
                 <div ${rvActs(card)}>
@@ -10901,8 +10929,8 @@
       return `
         <div ${rvWrap(card, 'count')} data-treport="${x.id}">
           ${rvStripe(card, 'count')}
-          ${rvKicker('Year-end count', 'ph-seal-check', 'text-amber-700', x.createdMs)}
-          <p class="text-sm text-slate-900">${reportWhoHTML(x)} counted their items: <b class="text-rose-700">${[missing.length && `${missing.length} missing`, broken.length && `${broken.length} broken`].filter(Boolean).join(' · ')}</b></p>
+          ${rvHead(card, 'count', 'Year-end count', card ? 'ph-clipboard-text' : 'ph-seal-check', 'text-amber-700', x.createdMs,
+            `<p class="text-sm text-slate-900">${reportWhoHTML(x)} counted their items: <b class="text-rose-700">${[missing.length && `${missing.length} missing`, broken.length && `${broken.length} broken`].filter(Boolean).join(' · ')}</b></p>`)}
           ${missing.length ? `<p class="text-xs text-slate-600 ${card ? 'line-clamp-2' : ''}"><b class="text-rose-700">Missing:</b> ${list(missing)}</p>` : ''}
           ${broken.length ? `<p class="text-xs text-slate-600 ${card ? 'line-clamp-2' : ''}"><b class="text-amber-700">Broken:</b> ${list(broken)}</p>` : ''}
           <p class="text-[11px] text-slate-500">${escapeHTML(x.releaseNo || '')} · the rest are marked counted</p>
@@ -11079,7 +11107,7 @@
       if (key !== teachersClear) teachersClear = null;
       switchMainView('TEACHERS');
     }
-    function setTeachersQuery(v) { teachersQuery = v; renderTeachersList(); }
+    function setTeachersQuery(v) { teachersQuery = v; renderTeachersList(); tvListFade(); }
     function setTeachersFilter(f) { teachersFilter = teachersFilter === f ? 'all' : f; renderTeachersView(); }
     function setTeachersSort(s) { teachersSort = s; renderTeachersView(); }
 
@@ -11094,6 +11122,7 @@
       document.getElementById('tvPanes').classList.toggle('tv-sel', !!teachersSel);
       placeTeachersReview();
       renderTeachersBadges();
+      requestAnimationFrame(tvListFade);
       // Typing in the search box: leave the box alone, so the keyboard stays open.
       if (!(document.activeElement && document.activeElement.id === 'tvSearch')) renderTeachersListHead(people);
       renderTeachersList(people);
@@ -11133,6 +11162,15 @@
           <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">To review</span><span class="block text-xs text-slate-600 truncate">${what}</span></span>
           <span class="shrink-0 min-w-6 h-6 px-1.5 rounded-full bg-rose-600 text-white text-xs font-extrabold flex items-center justify-center">${total}</span>
         </button>`;
+    }
+
+    // Two panes: the list scrolls by itself with no bar showing; fade the edge that has more.
+    function tvListFade() {
+      const el = document.getElementById('tvListPane');
+      if (!el) return;
+      const on = sidebarLayout() && el.scrollHeight > el.clientHeight + 4;
+      el.classList.toggle('tv-more-above', on && el.scrollTop > 4);
+      el.classList.toggle('tv-more-below', on && el.scrollTop + el.clientHeight < el.scrollHeight - 4);
     }
 
     function renderTeachersListHead(people) {
@@ -12433,6 +12471,7 @@
       return !!modal && modal.classList.contains('coa-page') && !modal.classList.contains('hidden');
     }
     // Resizing across the breakpoint switches an open Forms between page and pop-up.
+    window.addEventListener('resize', () => { if (activeMainView === 'TEACHERS') { tvListFade(); rvScrolled(); } }, { passive: true });
     SIDEBAR_MQ.addEventListener?.('change', () => {
       if (activeMainView === 'TEACHERS') renderTeachersView();
       const modal = document.getElementById('coaModal');
