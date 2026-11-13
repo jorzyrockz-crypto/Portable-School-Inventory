@@ -44,7 +44,7 @@ async function joinAsTeacher(page, schoolId, name, position, office) {
   await until(page, () => !document.getElementById('joinModal').classList.contains('hidden') && !document.getElementById('joinBtn').disabled, 'join sheet');
   await ev(page, (n, p, o) => { joinName.value = n; joinPosition.value = p; joinOffice.value = o; }, name, position, office);
   await page.click('#joinBtn');
-  await until(page, () => reqRole && reqRole.role === 'teacher' && cloud.user, 'joined');
+  await until(page, () => reqRole && reqRole.role === 'teacher' && cloud.user && myMemberLoaded && myMemberStatus() === 'active', 'joined and approved', 8000);
   return ev(page, () => cloud.user.uid);
 }
 async function teacherRequest(page, what) {
@@ -103,7 +103,7 @@ try {
   await teacherRequest(t, 'Bond paper, A4');
   await waitNotif(a, /New supply request from Ana Reyes/, 'custodian notified');
   let list = await notifs(a);
-  check(list.length === 1 && /Bond paper, A4/.test(list[0].body), `custodian: “${list[0] && list[0].title}” · ${list[0] && list[0].body}`);
+  check(list.length === 1 && /Bond paper, A4/.test(list[0].body), `custodian: “${list[0] && list[0].title}” · ${list[0] && list[0].body}${list.length === 1 ? "" : " · all: " + list.map(n => n.title).join(" / ")}`);
   b = await bell(a);
   check(b.count === '1', 'bell shows 1 unread');
   check(await ev(a, () => window.__badge.includes(1)), 'app icon badge set to 1');
@@ -189,7 +189,7 @@ try {
   check(await ev(a, uid => activeMainView === 'TEACHERS' && teachersSel === uid, ana), 'receipt → Teachers, Ana’s page');
   await ev(a, id => openNotif(id), prob.id);
   await sleep(300);
-  check(await ev(a, () => activeMainView === 'REQUESTS' && /From teachers/.test(document.getElementById('reqViewBody').innerText)), 'problem → From teachers inbox');
+  check(await ev(a, uid => activeMainView === 'TEACHERS' && teachersSel === uid && /Equipment report/i.test(document.getElementById('viewTeachers').innerText), ana), 'problem → the teacher’s page, with the report');
   check((await notifs(t)).every(n => !/Problem|confirmed/.test(n.title)), 'teacher not notified of her own reports');
 
   out('8 custodian answers → teacher is told');

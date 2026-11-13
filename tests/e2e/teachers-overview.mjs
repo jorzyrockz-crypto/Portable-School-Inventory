@@ -48,7 +48,7 @@ try {
   await until(t, () => !document.getElementById('joinBtn').disabled, 'join');
   await ev(t, () => { joinName.value = 'Ana Reyes'; joinPosition.value = 'Teacher III'; joinOffice.value = 'Grade 7 – Science'; });
   await t.click('#joinBtn');
-  await until(t, () => reqRole && reqRole.role === 'teacher' && cloud.user, 'joined');
+  await until(t, () => reqRole && reqRole.role === 'teacher' && cloud.user && myMemberLoaded && myMemberStatus() === 'active', 'joined and approved', 8000);
   const ana = await ev(t, () => cloud.user.uid);
   await until(a, uid => teacherRoster().some(x => x.uid === uid && x.joined), 'roster', 8000, ana);
   await release(a, ana, [{ code: S, qty: 5 }, { code: P, qty: 2 }]);
@@ -198,10 +198,10 @@ try {
   await sleep(200);
   const yr = await ev(a, () => countSince().year);
   check(new RegExp(`Counted ${yr}: 1 of 2`).test(await ev(a, () => document.getElementById('tvCounted').innerText)), `Ana’s page: “Counted ${yr}: 1 of 2”`);
-  await ev(a, () => openRequestsView());
+  await ev(a, () => openTeachersView(null));
   await sleep(200);
-  const inbox = await ev(a, () => document.getElementById('reqViewBody').innerText);
-  check(/counted their items/.test(inbox) && /1 missing/.test(inbox) && /DOCUMENT CAMERA/i.test(inbox), 'From teachers: “Ana Reyes counted their items: 1 missing”');
+  const inbox = await ev(a, () => document.getElementById('tvReview').innerText);
+  check(/Year-end count/i.test(inbox) && /counted their items/.test(inbox) && /1 missing/.test(inbox) && /DOCUMENT CAMERA/i.test(inbox), 'To review: “Year-end count · Ana Reyes counted their items: 1 missing”');
   await ev(a, () => openTeachersView());
   await sleep(100);
   await a.click('[data-tvf="uncounted"]');

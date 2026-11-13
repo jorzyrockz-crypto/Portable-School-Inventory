@@ -122,7 +122,7 @@ window.FirebaseSDK = (() => {
       if (window.__fakeOffline) throw err('unavailable');
       return { docs: (await rpc('list', { path: q.path, filters: q.filters || [], ctx: ctx() })).map(d => snapDoc(d)) };
     },
-    setDoc: (ref, data) => write([['set', ref.path, data]]),
+    setDoc: (ref, data, opts) => write([[opts && opts.merge ? 'merge' : 'set', ref.path, data]]),
     updateDoc: (ref, data) => write([['update', ref.path, data]]),
     addDoc: async (c, data) => { const ref = docRef(c.path + '/' + autoId()); await write([['set', ref.path, data]]); return ref; },
     query: (c, ...filters) => ({ type: 'query', path: c.path, filters: filters.filter(f => f && f.field) }),
@@ -135,7 +135,7 @@ window.FirebaseSDK = (() => {
     writeBatch: () => {
       const ops = [];
       return {
-        set: (r, d) => { ops.push(['set', r.path, d]); },
+        set: (r, d, o) => { ops.push([o && o.merge ? 'merge' : 'set', r.path, d]); },
         update: (r, d) => { ops.push(['update', r.path, d]); },
         commit: () => write(ops)
       };

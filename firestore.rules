@@ -12,7 +12,14 @@ rules_version = '2';
 //   schools/{schoolId}/members/{uid}          teachers who joined (each writes their own)
 //   schools/{schoolId}/releases/{id}          RIS / ICS releases to teachers (teacher reads own)
 //   schools/{schoolId}/teacherReports/{id}    received / problem / return / count, from teachers (own only)
+//   schools/{schoolId}/stock/{code}           supplies left (name, unit, qty), for teachers who were approved
+//   schools/{schoolId}/stockHolds/{requestId} "I took this" from a teacher, until the custodian confirms
+//   schools/{schoolId}/invites/{code}         the current invite link (after "New invite link")
 //
+// Members: a teacher who joins waits for the custodian's approval (status 'pending'), then is
+// 'active'; the custodian can also edit their name or remove them ('removed'). Cards written
+// before approvals existed have no status and count as active. Only active members send
+// requests or reports and see the stock.
 // Teachers join from the invite link (anonymously, or with Google to keep their requests
 // across phones): they can send requests and see or cancel only their own. The property
 // custodian signs in with Google or email + password and sees, reviews and approves
@@ -30,6 +37,20 @@ service cloud.firestore {
         request.auth.uid in get(/databases/$(database)/documents/schools/$(schoolId)).data.custodians;
     }
     function shortText(v, max) { return v is string && v.size() <= max; }
+    function memberPath(schoolId) {
+      return /databases/$(database)/documents/schools/$(schoolId)/members/$(request.auth.uid);
+    }
+    function isMember(schoolId) {
+      return signedIn() && exists(memberPath(schoolId))
+        && get(memberPath(schoolId)).data.get('status', 'active') == 'active';
+    }
+    // After "New invite link", joining needs the current link's code.
+    function inviteOk(schoolId, data) {
+      return !get(/databases/$(database)/documents/schools/$(schoolId)).data.get('inviteOnly', false)
+        || (data.get('invite', '') is string && data.get('invite', '').size() > 0
+            && exists(/databases/$(database)/documents/schools/$(schoolId)/invites/$(data.invite))
+            && get(/databases/$(database)/documents/schools/$(schoolId)/invites/$(data.invite)).data.active == true);
+    }
 
     match /schools/{schoolId} {
       // Teachers read the school name after opening the invite link (the ID is the secret).
@@ -45,10 +66,11 @@ service cloud.firestore {
       allow delete: if false;
 
       match /requests/{requestId} {
-        allow create: if signedIn()
-          && exists(/databases/$(database)/documents/schools/$(schoolId))
+        // kind 'took': the teacher already took it from the supply room (custodian confirms → RIS)
+        allow create: if (isCustodian(schoolId) || isMember(schoolId))
           && request.resource.data.keys().hasOnly(['uid', 'name', 'position', 'office', 'purpose', 'neededBy',
-                                                   'lines', 'status', 'createdAt', 'clientAt', 'via'])
+                                                   'lines', 'status', 'createdAt', 'clientAt', 'via', 'kind'])
+          && request.resource.data.get('kind', 'request') in ['request', 'took']
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.status == 'pending'
           && request.resource.data.name is string
@@ -93,20 +115,67 @@ service cloud.firestore {
         allow delete: if false;
       }
 
-      // Teachers who joined: each teacher's phone writes only its own card (name, position,
-      // office). The custodian reads all of them for the "Released to" list.
+      // Teachers who joined: each teacher's phone writes its own card (name, position, office),
+      // starting as 'pending'. The custodian reads all of them, approves, edits or removes.
       match /members/{uid} {
+        function cardOk() {
+          return request.resource.data.uid == uid
+            && request.resource.data.name is string
+            && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
+            && shortText(request.resource.data.position, 80)
+            && shortText(request.resource.data.office, 80)
+            && shortText(request.resource.data.get('email', ''), 120);
+        }
         allow get: if signedIn() && (request.auth.uid == uid || isCustodian(schoolId));
         allow list: if isCustodian(schoolId);
-        allow create, update: if signedIn() && request.auth.uid == uid
+        allow create: if signedIn() && request.auth.uid == uid
           && exists(/databases/$(database)/documents/schools/$(schoolId))
-          && request.resource.data.keys().hasOnly(['uid', 'name', 'position', 'office', 'email', 'joinedMs', 'updatedAt'])
-          && request.resource.data.uid == uid
-          && request.resource.data.name is string
-          && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
-          && shortText(request.resource.data.position, 80)
-          && shortText(request.resource.data.office, 80)
-          && shortText(request.resource.data.email, 120);
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'position', 'office', 'email', 'joinedMs', 'updatedAt', 'status', 'invite'])
+          && request.resource.data.status == 'pending'
+          && inviteOk(schoolId, request.resource.data)
+          && cardOk();
+        // The teacher: their own details only (never the status).
+        allow update: if (signedIn() && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'position', 'office', 'email', 'joinedMs', 'updatedAt'])
+            && cardOk())
+          // The custodian: approve, remove, or correct the details.
+          || (isCustodian(schoolId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'position', 'office', 'status',
+                                                                                 'approvedMs', 'removedMs', 'editedMs', 'by', 'updatedAt'])
+            && request.resource.data.get('status', 'active') in ['pending', 'active', 'removed']
+            && cardOk());
+        allow delete: if false;
+      }
+
+      // The current invite link's code (the school document only says inviteOnly: true).
+      match /invites/{code} {
+        allow get: if signedIn();
+        allow create, update: if isCustodian(schoolId);
+        allow list, delete: if false;
+      }
+
+      // Supplies left, published from the custodian's inventory (no prices, no property numbers).
+      match /stock/{code} {
+        allow read: if isCustodian(schoolId) || isMember(schoolId);
+        allow create, update: if isCustodian(schoolId);
+        allow delete: if false;
+      }
+
+      // "I took this": the amounts a teacher took, subtracted from the stock everyone sees until
+      // the custodian confirms (RIS → 'done') or corrects it ('cancelled'). Same ID as the request.
+      match /stockHolds/{holdId} {
+        allow read: if isCustodian(schoolId) || isMember(schoolId);
+        allow create: if isMember(schoolId)
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'reqId', 'lines', 'status', 'createdMs'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.reqId == holdId
+          && request.resource.data.status == 'open'
+          && request.resource.data.lines is list
+          && request.resource.data.lines.size() > 0 && request.resource.data.lines.size() <= 50;
+        allow update: if (isCustodian(schoolId) && request.resource.data.uid == resource.data.uid)
+          || (signedIn() && resource.data.uid == request.auth.uid
+              && resource.data.status == 'open' && request.resource.data.status == 'cancelled'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
         allow delete: if false;
       }
 
@@ -122,8 +191,7 @@ service cloud.firestore {
       // A teacher's answers about their items: "received", "problem" or "return". Teachers
       // create their own (always 'open') and read only their own; the custodian resolves them.
       match /teacherReports/{reportId} {
-        allow create: if signedIn()
-          && exists(/databases/$(database)/documents/schools/$(schoolId))
+        allow create: if isMember(schoolId)
           && request.resource.data.keys().hasOnly(['uid', 'name', 'kind', 'releaseId', 'releaseNo', 'code', 'desc',
                                                    'units', 'reason', 'note', 'status', 'createdMs', 'createdAt'])
           && request.resource.data.uid == request.auth.uid

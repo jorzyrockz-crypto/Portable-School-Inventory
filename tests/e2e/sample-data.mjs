@@ -37,8 +37,8 @@ try {
   check((txt.match(/to confirm/g) || []).length === 1 && /1 to confirm/.test(txt) && /1 open/.test(txt) && /Counted \d{4}: 2 of 2/.test(txt) && /No account/.test(txt), 'to confirm, open reports, counted, no account');
   check(await ev(a, () => [...document.querySelectorAll('[data-tvcond]')].map(b => b.innerText).join(' ')).then(t => /for repair/.test(t) && /unserviceable/.test(t)), 'condition summaries link to the IIRUP');
   check(await ev(a, () => !!document.getElementById('tvUsageBtn') && !document.getElementById('tvUsageBtn').disabled), 'Supply usage has data');
-  const inbox = await ev(a, () => { openRequestsView(); return document.getElementById('reqViewBody').innerText; });
-  check(/Ben Cruz.*counted their items/s.test(inbox) && /1 broken/.test(inbox) && /Carla Mendoza/.test(inbox), 'From teachers: Ben’s count (1 broken) and Carla’s report');
+  const inbox = await ev(a, () => { openTeachersView(null); return document.getElementById('tvReview').innerText; });
+  check(/Ben Cruz.*counted their items/s.test(inbox) && /1 broken/.test(inbox) && /Carla Mendoza/.test(inbox) && /Marco Villanueva/.test(inbox), 'To review: Ben’s count (1 broken), Carla’s report, Marco wants to join');
   await ev(a, () => openMoreMenu());
   check(await ev(a, () => !document.getElementById('moreSampleClear').classList.contains('hidden') && /loaded/.test(document.getElementById('moreSampleLoad').innerText)), 'More: “Sample data loaded” and Clear sample data');
   await ev(a, () => closeMoreMenu());

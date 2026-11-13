@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="a68ebf75ccad">
+  <meta name="app-version" content="cef0ed12425c">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -671,6 +671,15 @@
           <i class="ph-bold ph-plus"></i> Request
         </button>
       </div>
+      <!-- Teachers: equipment reports and people asking to join (shown only when there is something) -->
+      <button id="homeTeachCard" onclick="openTeachersView(null)" class="hidden w-full rounded-2xl bg-white border border-rose-200 shadow-sm p-3 items-center gap-3 text-left hover:bg-rose-50/40">
+        <span class="w-11 h-11 shrink-0 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center"><i class="ph-bold ph-chalkboard-teacher text-2xl"></i></span>
+        <span class="min-w-0 flex-1">
+          <span id="homeTeachTitle" class="block text-sm font-extrabold text-slate-800">Teachers · to review</span>
+          <span id="homeTeachSub" class="block text-[11px] text-slate-500 truncate"></span>
+        </span>
+        <i class="ph-bold ph-caret-right text-slate-400"></i>
+      </button>
 
       <div id="homeRecentWrap" class="hidden">
         <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Recently encoded</h2>
@@ -1115,7 +1124,7 @@
       <span id="reqViewStatus" class="shrink-0 mt-6 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold"></span>
       <div id="reqViewActions" class="hidden shrink-0 flex items-center gap-1.5 w-full sm:w-auto sm:pt-5 [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center [&>button]:h-10 sm:[&>button]:h-9">
         <button onclick="openInvite()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-user-plus text-brand-600"></i> Invite</button>
-<button onclick="openTeachersView()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-teal-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-users-three text-teal-600"></i> Teachers</button>
+<button onclick="openTeachersView()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-teal-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-users-three text-teal-600"></i> Teachers <span id="reqTeachCount" class="hidden px-1.5 rounded-full bg-rose-100 text-rose-800 font-mono text-[11px]"></span></button>
         <button onclick="openRequestForm()" class="h-9 px-3 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-plus"></i> New</button>
       </div>
     </div>
@@ -1125,6 +1134,7 @@
   <!-- RELEASED TO TEACHERS (custodian): who holds what, accountability print -->
   <!-- Phones: the list, or one person. Computers and tablets held sideways: both side by side. -->
   <section id="viewTeachers" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 no-print">
+    <div id="tvReview" class="hidden mb-4"></div>
     <div id="tvPanes">
       <div id="tvListPane" class="space-y-4">
         <div id="tvListHead"></div>
@@ -1144,12 +1154,15 @@
       <h1 id="rqTitle" class="text-2xl font-extrabold text-slate-900 tracking-tight">Request supplies</h1>
       <p id="rqSchool" class="text-xs text-slate-500"></p>
     </div>
-    <div role="tablist" aria-label="My items or requests" class="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-200/70">
+    <div role="tablist" aria-label="My items, requests or school stock" class="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-slate-200/70">
       <button id="rqTab-items" role="tab" onclick="setTeacherTab('items')"><i class="ph-bold ph-backpack text-base"></i> My Items <span id="rqItemsCount" class="hidden"></span><span id="rqItemsDot" class="hidden w-2 h-2 rounded-full bg-emerald-500"></span></button>
       <button id="rqTab-requests" role="tab" onclick="setTeacherTab('requests')"><i class="ph-bold ph-paper-plane-tilt text-base"></i> Requests</button>
+      <button id="rqTab-stock" role="tab" onclick="setTeacherTab('stock')"><i class="ph-bold ph-package text-base"></i> Stock</button>
     </div>
     <p id="rqSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
+    <div id="rqStatus" class="empty:hidden"></div>
     <div id="rqItemsPane" class="hidden space-y-5"></div>
+    <div id="rqStockPane" class="hidden space-y-3"></div>
     <div id="rqRequestsPane" class="space-y-5">
     <button onclick="openRequestForm()" class="w-full h-16 rounded-2xl bg-amber-700 hover:bg-amber-800 active:scale-[0.98] text-white font-extrabold text-base shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition">
       <i class="ph-bold ph-plus-circle text-2xl"></i> New supply request
@@ -1302,7 +1315,7 @@
       <button onclick="openTeachersView()" data-view="TEACHERS" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
         <i class="ph-bold ph-chalkboard-teacher text-[22px]"></i>
-        <span class="flex items-center gap-1">Teachers</span>
+        <span class="flex items-center gap-1">Teachers <span id="sideTeachCount" class="hidden px-1.5 rounded-full bg-rose-100 text-rose-800 font-mono text-[11px]"></span></span>
       </button>
       <button id="sideForms" onclick="openCoa()" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
@@ -1331,7 +1344,7 @@
           <p class="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Reports &amp; files</p>
           <button onclick="closeMoreMenu(); openSummaryModal()" class="more-item"><i class="ph-bold ph-receipt text-brand-600"></i> APP-CSE summary</button>
           <button id="moreReqItem" onclick="closeMoreMenu(); openRequestsView()" class="more-item"><i class="ph-bold ph-tray text-amber-600"></i> Supply requests &amp; purchase requests</button>
-          <button onclick="closeMoreMenu(); openTeachersView()" class="more-item"><i class="ph-bold ph-users-three text-teal-600"></i> Released to teachers</button>
+          <button onclick="closeMoreMenu(); openTeachersView()" class="more-item"><i class="ph-bold ph-users-three text-teal-600"></i> Released to teachers <span id="moreTeachCount" class="hidden ml-auto px-1.5 rounded-full bg-rose-100 text-rose-800 font-mono text-[11px] font-bold"></span></button>
           <button id="moreCoaItem" onclick="openCoa()" class="more-item"><i class="ph-bold ph-stamp text-brand-600"></i> Government forms <span class="ml-auto text-[11px] font-bold text-slate-500">RPCPPE · PTR · IIRUP</span></button>
           <button onclick="closeMoreMenu(); printReport()" class="more-item"><i class="ph-bold ph-printer text-slate-600"></i> Print report</button>
           <button onclick="closeMoreMenu(); exportCSV()" class="more-item"><i class="ph-bold ph-download-simple text-emerald-600"></i> Export inventory (CSV)</button>
@@ -1645,6 +1658,7 @@
           <div class="min-w-0">
             <h3 class="font-extrabold text-base text-slate-900 leading-tight">Invite teachers</h3>
             <p id="inviteSchool" class="text-xs font-semibold text-slate-500 truncate"></p>
+            <p id="inviteSchoolNo" class="hidden text-[11px] font-bold text-brand-700"></p>
           </div>
         </div>
         <button onclick="closeInvite()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
@@ -1672,7 +1686,8 @@
         <button onclick="shareInvite()" class="h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-share-network"></i> Share</button>
       </div>
       <button id="invitePoster" onclick="printInvitePoster()" class="w-full h-11 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print a poster for the faculty room</button>
-      <p class="text-[11px] text-slate-500 text-center">Paste it in your faculty group chat. Teachers only see their own requests; you review every one.</p>
+      <p class="text-[11px] text-slate-500 text-center">Paste it in your faculty group chat. New teachers wait for your <b>Approve</b> on the Teachers page; they only see their own requests and items, plus the supplies left.</p>
+      <button id="inviteNewLink" onclick="newInviteLink()" class="w-full min-h-10 text-xs font-bold text-slate-500 hover:text-rose-600 flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrows-clockwise"></i> Link shared too widely? Make a new invite link</button>
     </div>
   </div>
 
@@ -1683,6 +1698,7 @@
         <div class="min-w-0">
           <p class="text-[11px] font-bold uppercase tracking-wider text-amber-600">Request supplies</p>
           <h3 id="joinSchool" class="font-extrabold text-lg text-slate-900 leading-snug">Connecting…</h3>
+          <p id="joinSchoolNo" class="hidden text-xs font-bold text-amber-700"></p>
           <p class="text-xs text-slate-500">Your name goes on every request you send to the property custodian.</p>
         </div>
         <button onclick="closeJoin()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
@@ -1702,6 +1718,52 @@
         </button>
         <p class="text-[11px] text-slate-500 text-center">Optional · keeps your requests if you change phones</p>
       </div>
+    </div>
+  </div>
+
+  <!-- EDIT A TEACHER (custodian): name, position, office -->
+  <div id="memberModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeMemberEdit()">
+    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h3 class="font-extrabold text-base text-slate-900 leading-tight">Edit teacher</h3>
+          <p class="text-xs text-slate-500">They see the change on their phone. Slips already printed keep the old name.</p>
+        </div>
+        <button onclick="closeMemberEdit()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div class="space-y-2">
+        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500">Name<input id="meName" type="text" maxlength="80" class="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-semibold normal-case tracking-normal text-slate-900 focus:border-brand-500 outline-none"></label>
+        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500">Position<input id="mePosition" type="text" maxlength="80" placeholder="e.g. Teacher III" class="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 text-sm normal-case tracking-normal text-slate-900 focus:border-brand-500 outline-none"></label>
+        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500">Office or grade<input id="meOffice" type="text" maxlength="80" placeholder="e.g. Grade 7 – Rizal" class="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 text-sm normal-case tracking-normal text-slate-900 focus:border-brand-500 outline-none"></label>
+      </div>
+      <p id="meError" class="hidden text-xs font-semibold text-rose-600"></p>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="closeMemberEdit()" class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Cancel</button>
+        <button id="meSave" onclick="saveMemberEdit()" class="h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-check"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- I TOOK THIS (teacher): supplies taken from the supply room, confirmed later by the custodian -->
+  <div id="tookModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeTook()">
+    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-amber-700">I took this</p>
+          <h3 id="tkName" class="font-extrabold text-base text-slate-900 leading-snug"></h3>
+          <p id="tkLeft" class="text-xs text-slate-500"></p>
+        </div>
+        <button onclick="closeTook()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div class="flex items-center justify-center gap-3">
+        <button onclick="stepTook(-1)" class="w-12 h-12 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center" aria-label="Minus one"><i class="ph-bold ph-minus text-lg"></i></button>
+        <input id="tkQty" type="number" inputmode="numeric" min="1" value="1" onfocus="this.select()" onchange="setTookQty(this.value)" aria-label="How many" class="w-20 h-12 text-center rounded-xl border-2 border-slate-300 font-mono font-extrabold text-xl focus:border-amber-500 outline-none">
+        <button onclick="stepTook(1)" class="w-12 h-12 rounded-xl bg-amber-700 text-white flex items-center justify-center" aria-label="Plus one"><i class="ph-bold ph-plus text-lg"></i></button>
+        <span id="tkUnit" class="text-sm font-semibold text-slate-500"></span>
+      </div>
+      <input id="tkNote" type="text" maxlength="300" placeholder="What for? e.g. Grade 7 quiz papers (optional)" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
+      <p class="text-[11px] text-slate-500">The number goes down for everyone right away. The property custodian confirms it and prepares the RIS for your signature.</p>
+      <button id="tkSave" onclick="saveTook()" class="w-full h-12 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2"><i class="ph-bold ph-hand-grabbing"></i> <span id="tkSaveLabel">Record</span></button>
     </div>
   </div>
 
@@ -7563,6 +7625,7 @@
       if (/account-exists-with-different-credential/.test(code)) return 'This email already signs in with a password. Use email and password instead.';
       if (/credential-already-in-use/.test(code)) return 'That Google account is already used on another phone.';
       if (/no-school/.test(code)) return 'This invite link is not valid. Ask the property custodian for a new one.';
+      if (/old-invite/.test(code)) return 'This invite link was replaced by a newer one. Ask the property custodian for the new link.';
       return 'Something went wrong: ' + code.replace(/^Firebase:\s*/, '').slice(0, 140);
     }
 
@@ -7660,6 +7723,9 @@
     }
 
     function stopRequestSync() {
+      stockUnsubs.forEach(off => { try { off(); } catch (e) {} });
+      stockUnsubs = []; stockList = []; stockHolds = []; stockLoaded = false;
+      myMember = null; myMemberLoaded = false; myMemberSrv = null;
       reqUnsubs.forEach(off => { try { off(); } catch (e) {} });
       reqUnsubs = [];
       memberList = []; releaseList = []; releasesLoaded = false; teamError = '';
@@ -8017,6 +8083,7 @@
           writes.push([key, { code: t.code, deleted: true }, null]);
         }
       }
+      pushStock();
       if (!writes.length) { saveInvSync(); return; }
       const by = cloud.user.uid, now = Date.now();
       if (!invSync.pendingSince) invSync.pendingSince = now;   // oldest change not yet in the account
@@ -8122,20 +8189,43 @@
       if (!sub) return;
       const pending = reqList.filter(r => r.status === 'pending').length;
       const toBuy = reqList.filter(r => r.status === 'approved' && reqBuyLines(r).length).length;
-      const fromTeachers = isCustodianDevice() ? openTeacherReports().length : 0;
       const side = document.getElementById('sideReqCount');
-      if (side) { side.textContent = pending + fromTeachers; side.classList.toggle('hidden', !(pending + fromTeachers)); }
+      if (side) { side.textContent = pending; side.classList.toggle('hidden', !pending); }
+      renderTeachersBadges();
       let text;
       if (!cloudConfigured()) text = 'Teachers request supplies from their phones · set up';
       else if (!isCustodianDevice()) text = 'Connect to receive teachers’ requests';
       else if (cloud.state === 'ready' && !cloud.user) text = 'Signed out · sign in to see requests';
-      else if (pending || toBuy || fromTeachers) text = [pending && `${pending} waiting for review`, toBuy && `${toBuy} approved to purchase`, fromTeachers && `${fromTeachers} from teachers`].filter(Boolean).join(' · ');
+      else if (pending || toBuy) text = [pending && `${pending} waiting for review`, toBuy && `${toBuy} approved to purchase`].filter(Boolean).join(' · ');
       else text = cloud.state === 'loading' ? 'Connecting…' : 'No new requests';
       sub.textContent = text;
       const badge = document.getElementById('homeReqBadge');
       badge.textContent = pending > 99 ? '99+' : pending;
       badge.classList.toggle('hidden', !pending);
       badge.classList.toggle('flex', !!pending);
+    }
+
+    // Teachers: people asking to join + equipment reports (sidebar, More, Supply requests, Home).
+    function renderTeachersBadges() {
+      const { joins, reports, total } = teachersToReview();
+      [['sideTeachCount'], ['moreTeachCount'], ['reqTeachCount']].forEach(([id]) => {
+        const el = document.getElementById(id);
+        if (el) { el.textContent = total; el.classList.toggle('hidden', !total); }
+      });
+      const card = document.getElementById('homeTeachCard');
+      if (!card) return;
+      card.classList.toggle('hidden', !total);
+      card.classList.toggle('flex', !!total);
+      if (!total) return;
+      const kinds = { problem: 0, count: 0, return: 0 };
+      reports.forEach(x => { kinds[x.kind] = (kinds[x.kind] || 0) + 1; });
+      document.getElementById('homeTeachTitle').textContent = `Teachers · ${total} to review`;
+      document.getElementById('homeTeachSub').textContent = [
+        joins.length && `${joins.length} ${joins.length === 1 ? 'wants' : 'want'} to join`,
+        kinds.problem && plural(kinds.problem, 'equipment report'),
+        kinds.count && `${kinds.count} year-end ${kinds.count === 1 ? 'count' : 'counts'}`,
+        kinds.return && plural(kinds.return, 'return')
+      ].filter(Boolean).join(' · ');
     }
 
     function openRequestsView() {
@@ -8179,7 +8269,6 @@
       let html = `
         ${cloud.error ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2">${escapeHTML(cloud.error)}</p>` : ''}
         ${!navigator.onLine ? `<p class="rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-cloud-slash"></i> Offline · showing saved requests. Your changes are sent when you reconnect.</p>` : ''}
-        ${teacherInboxHTML()}
         ${reqFlowHTML(counts)}
         <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1 pt-1">${REQ_STAGES.find(st => st.key === reqTab).title}</h2>`;
 
@@ -8321,7 +8410,7 @@
           <button onclick="openReview('${r.id}')" class="flex-1 min-w-0 p-3 text-left hover:bg-slate-50">
             <span class="flex items-start justify-between gap-2">
               <span class="min-w-0">
-                <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(r.name || 'Unnamed')}</span>
+                <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(r.name || 'Unnamed')}${r.kind === 'took' ? ' <span class="ml-1 align-middle inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold"><i class="ph-bold ph-hand-grabbing"></i> Took it</span>' : ''}</span>
                 <span class="block text-[11px] text-slate-500 truncate">${escapeHTML(reqWho(r) || '—')} · ${escapeHTML(formatTimeAgo(reqTime(r)))}${r.neededBy ? ` · needed ${escapeHTML(formatShortDate(r.neededBy + 'T00:00:00'))}` : ''}</span>
               </span>
               ${reqStatusChip(r)}
@@ -8332,6 +8421,7 @@
             ${r.status === 'declined' && r.declineReason ? `<span class="block mt-1 text-[11px] text-rose-600">Reason: ${escapeHTML(r.declineReason)}</span>` : ''}
             ${r.status === 'released' && r.releaseNos ? `<span class="block mt-1 text-[11px] font-bold text-teal-700">${escapeHTML(r.releaseNos.join(' · '))}</span>` : ''}
           </button>
+          ${r.kind === 'took' && r.status === 'pending' ? `<button data-took-confirm onclick="openReleaseFromRequest('${r.id}')" class="shrink-0 w-20 px-2 border-l border-slate-100 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 flex flex-col items-center justify-center gap-1"><i class="ph-bold ph-check-circle text-xl"></i> Confirm · RIS</button>` : ''}
           ${supply ? `<button onclick="openReleaseFromRequest('${r.id}')" class="shrink-0 w-20 px-2 border-l border-slate-100 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 flex flex-col items-center justify-center gap-1"><i class="ph-bold ph-hand-arrow-up text-lg"></i>Release</button>` : ''}
         </div>`;
     }
@@ -8515,17 +8605,32 @@
     }
 
     // ---- Invite + join ---------------------------------------------------------
+    // The link carries the school code, plus the current invite code after "New invite link"
+    // (then older links stop working for new teachers).
+    const inviteCodeText = () => `${reqRole.schoolId}${schoolInfo.invite ? `-${schoolInfo.invite}` : ''}`;
     function inviteLink() {
-      return `${location.origin}${location.pathname}#join=${reqRole.schoolId}`;
+      return `${location.origin}${location.pathname}#join=${inviteCodeText()}`;
     }
+    // DepEd School ID, e.g. "114656 - San Jose NHS" → "114656" (shown when a teacher joins).
+    const schoolNoOf = text => ((String(text || '').match(/(?:^|\D)(\d{6})(?:\D|$)/) || [])[1] || '');
 
     async function openInvite() {
       if (!isCustodianDevice()) return;
       const link = inviteLink();
       document.getElementById('inviteLink').value = link;
       document.getElementById('inviteLinkText').textContent = link;
-      document.getElementById('inviteCode').textContent = reqRole.schoolId;
+      document.getElementById('inviteCode').textContent = inviteCodeText();
       document.getElementById('inviteSchool').textContent = reqRole.schoolName || '';
+      const no = schoolNoOf(schoolInfo.school) || schoolNoOf(reqRole.schoolName);
+      const noEl = document.getElementById('inviteSchoolNo');
+      noEl.textContent = no ? `School ID ${no}` : '';
+      noEl.classList.toggle('hidden', !no);
+      // Teachers see the School ID when they join: keep it on the school's public card.
+      if (no && reqRole.schoolNo !== no && cloud.user && cloud.db) {
+        const F = cloud.sdk;
+        F.updateDoc(F.doc(cloud.db, 'schools', reqRole.schoolId), { schoolNo: no })
+          .then(() => { reqRole.schoolNo = no; saveReqRole(); }).catch(err => console.warn('school no', err));
+      }
       document.getElementById('inviteModal').classList.remove('hidden');
       const box = document.getElementById('inviteQr');
       try {
@@ -8543,7 +8648,7 @@
       showToast('Invite link copied · paste it in your faculty chat', 'ph-copy');
     }
     async function copyInviteCode() {
-      const code = reqRole.schoolId;
+      const code = inviteCodeText();
       try { await navigator.clipboard.writeText(code); }
       catch (e) { const r = document.createRange(); r.selectNodeContents(document.getElementById('inviteCode')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.execCommand('copy'); }
       showToast('School code copied', 'ph-copy');
@@ -8553,6 +8658,34 @@
       const data = { title: `${reqRole.schoolName} supply requests`, text: `Request school supplies from ${reqRole.schoolName}'s property custodian:`, url };
       if (navigator.share) { try { await navigator.share(data); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
       copyInvite();
+    }
+
+    // A new invite code: the old link and printed posters stop working for teachers who have not
+    // joined yet. Teachers already in are not affected.
+    async function newInviteLink() {
+      if (!isCustodianDevice() || !cloud.user) return;
+      if (!await appConfirm('Teachers who already joined are not affected. The old link, QR code and printed posters stop working for new teachers, so share the new one.',
+        { title: 'Make a new invite link?', ok: 'New link', icon: 'ph-arrows-clockwise', tone: 'warn' })) return;
+      const F = cloud.sdk, now = Date.now();
+      const abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const bytes = crypto.getRandomValues(new Uint8Array(10));
+      const code = [...bytes].map(b => abc[b % abc.length]).join('');
+      const old = schoolInfo.invite;
+      const batch = F.writeBatch(cloud.db);
+      batch.set(F.doc(cloud.db, 'schools', reqRole.schoolId, 'invites', code), { active: true, createdMs: now, by: cloud.user.uid });
+      if (old) batch.set(F.doc(cloud.db, 'schools', reqRole.schoolId, 'invites', old), { active: false, createdMs: 0, by: cloud.user.uid, endedMs: now });
+      batch.update(F.doc(cloud.db, 'schools', reqRole.schoolId), { inviteOnly: true });
+      try {
+        await batch.commit();
+      } catch (err) {
+        showToast(`Could not make a new link: ${cloudErrorText(err)}`, 'ph-warning');
+        return;
+      }
+      schoolInfo.invite = code;
+      localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+      scheduleInventorySync();
+      openInvite();
+      showToast('New invite link ready · share it with your teachers', 'ph-arrows-clockwise');
     }
 
     function checkJoinLink() {
@@ -8566,10 +8699,13 @@
     async function openJoin(schoolId, edit = false) {
       schoolId = String(schoolId || '').trim();
       if (!/^[A-Za-z0-9_-]{6,64}$/.test(schoolId)) { showToast('That school code does not look right', 'ph-warning'); return; }
+      let invite = '';
+      const parts = schoolId.match(/^([A-Za-z0-9_]{6,40})-([A-Za-z0-9]{8,12})$/);   // school code - invite code
+      if (parts && !edit) { schoolId = parts[1]; invite = parts[2]; }
       if (isCustodianDevice() && reqRole.schoolId === schoolId) { showToast('This is your own school’s invite link · share it with your teachers', 'ph-info'); return; }
       if (!edit && isCustodianDevice() &&
           !await appConfirm(`This device is signed in as the property custodian of ${reqRole.schoolName}. Use it to request supplies as a teacher instead?`, { title: 'Join as a teacher?', ok: 'Join as teacher', tone: 'warn' })) return;
-      joinState = { schoolId, schoolName: '', edit };
+      joinState = { schoolId, schoolName: '', edit, invite };
       const me = (isTeacherDevice() && reqRole.me) || {};
       document.getElementById('joinName').value = me.name || '';
       document.getElementById('joinPosition').value = me.position || '';
@@ -8578,6 +8714,9 @@
       document.getElementById('joinBtnLabel').textContent = edit ? 'Save' : 'Continue';
       document.getElementById('joinGoogleWrap').classList.toggle('hidden', edit);
       document.getElementById('joinSchool').textContent = edit ? reqRole.schoolName : 'Connecting…';
+      const noEl = document.getElementById('joinSchoolNo');
+      const showNo = no => { noEl.textContent = no ? `School ID ${no}` : ''; noEl.classList.toggle('hidden', !no); };
+      showNo(edit ? (reqRole.schoolNo || schoolNoOf(reqRole.schoolName)) : '');
       document.getElementById('joinModal').classList.remove('hidden');
       if (edit) return;
       const btn = document.getElementById('joinBtn');
@@ -8590,8 +8729,15 @@
         if (!cloud.user) cloud.user = (await F.signInAnonymously(cloud.auth)).user;
         const snap = await F.getDoc(F.doc(cloud.db, 'schools', schoolId));
         if (!snap.exists()) throw new Error('no-school');
-        joinState.schoolName = snap.data().name || 'School';
+        const school = snap.data();
+        joinState.schoolName = school.name || 'School';
+        joinState.schoolNo = school.schoolNo || schoolNoOf(school.name);
         document.getElementById('joinSchool').textContent = joinState.schoolName;
+        showNo(joinState.schoolNo);
+        if (school.inviteOnly) {
+          const inv = invite ? await F.getDoc(F.doc(cloud.db, 'schools', schoolId, 'invites', invite)) : null;
+          if (!inv || !inv.exists() || inv.data().active !== true) throw new Error('old-invite');
+        }
         btn.disabled = gBtn.disabled = false;
         setTimeout(() => document.getElementById('joinName').focus(), 50);
       } catch (err) {
@@ -8613,14 +8759,14 @@
         return;
       }
       const joining = !joinState.edit;
-      if (joining) reqRole = { role: 'teacher', schoolId: joinState.schoolId, schoolName: joinState.schoolName, me, email: joinState.email || '' };
+      if (joining) reqRole = { role: 'teacher', schoolId: joinState.schoolId, schoolName: joinState.schoolName, schoolNo: joinState.schoolNo || '', invite: joinState.invite || '', me, email: joinState.email || '' };
       else reqRole.me = me;
       saveReqRole();
       closeJoin();
       if (joining) subscribeRequests();
       else upsertMyMember();
       switchMainView('REQUESTER');
-      showToast(`Hi ${me.name.split(' ')[0]}! Tap New supply request to ask for supplies.`, 'ph-hand-waving');
+      showToast(joining ? `Hi ${me.name.split(' ')[0]}! Your property custodian will approve you shortly.` : 'Saved', joining ? 'ph-hand-waving' : 'ph-check-circle');
     }
 
     async function joinWithGoogle() {
@@ -8674,6 +8820,7 @@
       reqRole = null;
       saveReqRole();
       reqList = [];
+      myMember = null; myMemberLoaded = false; myMemberSrv = null;
       teacherTab = null;
       switchMainView('HOME');
       updateSchoolHeader();
@@ -8697,6 +8844,9 @@
       sync.innerHTML = msg ? `<i class="ph-bold ${cloud.error ? 'ph-warning text-rose-500' : 'ph-cloud-slash'}"></i> ${escapeHTML(msg)}` : '';
       sync.classList.toggle('hidden', !msg);
       sync.classList.toggle('flex', !!msg);
+      const status = document.getElementById('rqStatus');
+      const banner = teacherStockTab() ? '' : teacherStatusBanner();
+      if (status.innerHTML !== banner) status.innerHTML = banner;
       renderTeacherTabs();
       const list = document.getElementById('rqList');
       list.innerHTML = reqList.length ? reqList.map(teacherReqCardHTML).join('') : `
@@ -8717,7 +8867,11 @@
       }).join('');
       const st = REQ_STATUS[r.status] || REQ_STATUS.pending;
       const note = r.status === 'declined' ? (r.declineReason || '') : (r.review && r.review.note) || '';
+      const took = r.kind === 'took';
       const info = r.sending ? '<i class="ph-bold ph-cloud-arrow-up"></i> Sending…'
+        : took && r.status === 'pending' ? '<i class="ph-bold ph-hand-grabbing"></i> You took this · waiting for the custodian to confirm'
+        : took && r.status === 'released' ? `Confirmed${r.releaseNos ? ` · ${escapeHTML(r.releaseNos.join(' · '))}` : ''} · sign the RIS`
+        : took && r.status === 'declined' ? 'The custodian corrected this'
         : r.status === 'pr' ? `Being purchased · PR No. ${escapeHTML(r.prNo || '')}`
         : r.status === 'closed' ? 'Ready · get it from the property custodian'
         : r.status === 'released' ? `Released to you${r.releaseNos ? ` · ${escapeHTML(r.releaseNos.join(' · '))}` : ''}`
@@ -8733,7 +8887,7 @@
           </div>
           <ul class="text-xs text-slate-700 space-y-0.5">${lines}</ul>
           ${note ? `<p class="rounded-lg ${r.status === 'declined' ? 'bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-600'} text-[11px] px-2.5 py-1.5"><b>Custodian:</b> ${escapeHTML(note)}</p>` : ''}
-          ${r.status === 'pending' && !r.sending ? `<button onclick="cancelMyRequest('${r.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600">Cancel request</button>` : ''}
+          ${r.status === 'pending' && !r.sending ? `<button onclick="cancelMyRequest('${r.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600">${took ? 'I didn’t take it after all' : 'Cancel request'}</button>` : ''}
         </div>`;
     }
 
@@ -8741,6 +8895,7 @@
       if (!await appConfirm('The custodian sees it as cancelled.', { title: 'Cancel this request?', ok: 'Cancel request', cancel: 'Keep it', tone: 'danger', icon: 'ph-prohibit', focusCancel: true })) return;
       const F = cloud.sdk;
       cloudWrite(F.updateDoc(F.doc(reqCol(), id), { status: 'cancelled', updatedAt: F.serverTimestamp() }), 'Cancelling');
+      closeHold(id, 'cancelled');
       showToast('Request cancelled', 'ph-prohibit');
     }
 
@@ -8751,6 +8906,7 @@
         if (cloudConfigured()) showToast(isCustodianDevice() ? 'Connecting… try again in a moment' : 'Sign in first to take requests', 'ph-info');
         return;
       }
+      if (isTeacherDevice() && !teacherMayAct()) return;
       reqDraft = { lines: [], forOther: isCustodianDevice() };
       const me = (isTeacherDevice() && reqRole.me) || {};
       document.getElementById('rfWho').classList.toggle('hidden', !reqDraft.forOther);
@@ -9043,11 +9199,13 @@
         review: { note: reason.trim().slice(0, 300), by: schoolInfo.custodian || reqRole.email || '', atMs: Date.now() },
         updatedAt: F.serverTimestamp()
       }), 'Declining');
+      closeHold(st.id, 'cancelled');
       closeReview();
       showToast('Request declined', 'ph-x-circle');
     }
 
     function markReqSupplied(id) {
+      closeHold(id, 'done');
       const F = cloud.sdk;
       cloudWrite(F.updateDoc(F.doc(reqCol(), id), { status: 'closed', suppliedAtMs: Date.now(), updatedAt: F.serverTimestamp() }), 'Updating');
       showToast('Marked as supplied from stock', 'ph-package');
@@ -9294,6 +9452,7 @@
     const clearUnitHolder = u => { u.to = ''; delete u.toUid; u.ics = ''; delete u.icsDate; delete u.released; delete u.doc; };
 
     let memberList = sampleList('members');
+    var myMember = null, myMemberLoaded = false;   // teacher: my own card (status: pending / active / removed)
     let releaseList = sampleList('releases');
     let releasesLoaded = false;
     let teamError = '';
@@ -9317,7 +9476,11 @@
     function teacherRoster() {
       const map = new Map();
       reqList.forEach(r => { if (r.uid && r.name && !map.has(r.uid)) map.set(r.uid, { uid: r.uid, name: r.name, position: r.position || '', office: r.office || '' }); });
-      memberList.forEach(m => { if (m.uid && m.name) map.set(m.uid, { ...(map.get(m.uid) || {}), ...m, joined: true }); });
+      memberList.forEach(m => {
+        if (!m.uid || !m.name) return;
+        if (memberStatus(m) !== 'active') { map.delete(m.uid); return; }   // waiting for approval, or removed
+        map.set(m.uid, { ...(map.get(m.uid) || {}), ...m, joined: true });
+      });
       return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
     }
     const rosterByUid = uid => (uid ? teacherRoster().find(t => t.uid === uid) || null : null);
@@ -9375,6 +9538,7 @@
         notifFromReports(snap.metadata);
         notifReminders();
       }, soft('teacher reports')));
+      reqUnsubs.push(subscribeHolds(F));
     }
 
     function onTeamChange() {
@@ -9382,11 +9546,13 @@
       refreshTeacherNameList();
       if (releaseDraft) renderRelease();
       if (activeMainView === 'TEACHERS') renderTeachersView();
+      renderTeachersBadges();
     }
 
     // Teacher phones keep their name card in the roster (written once, and when it changes).
     function upsertMyMember() {
       if (!isTeacherDevice() || !cloud.user || !cloud.db || !reqRole.me || !reqRole.me.name) return;
+      if (!myMemberLoaded) return;   // wait for my card: create it (pending) or update my details only
       const u = cloud.user;
       if (!reqRole.joinedMs) { reqRole.joinedMs = Date.now(); saveReqRole(); }
       const data = {
@@ -9394,11 +9560,369 @@
         office: (reqRole.me.office || '').slice(0, 80), email: (!u.isAnonymous && u.email ? u.email : '').slice(0, 120), joinedMs: reqRole.joinedMs
       };
       const sig = invHash(data);
-      if (reqRole.memberSig === sig) return;
+      if (myMember && reqRole.memberSig === sig) return;
       const F = cloud.sdk;
-      F.setDoc(F.doc(memberCol(), u.uid), { ...data, updatedAt: F.serverTimestamp() })
-        .then(() => { if (reqRole) { reqRole.memberSig = sig; saveReqRole(); } })
+      const write = myMember
+        ? F.setDoc(F.doc(memberCol(), u.uid), { ...data, updatedAt: F.serverTimestamp() }, { merge: true })
+        : F.setDoc(F.doc(memberCol(), u.uid), { ...data, status: 'pending', ...(reqRole.invite ? { invite: reqRole.invite } : {}), updatedAt: F.serverTimestamp() });
+      if (!myMember) myMember = { ...data, status: 'pending' };
+      write.then(() => { if (reqRole) { reqRole.memberSig = sig; saveReqRole(); } })
         .catch(err => console.warn('member', err));
+    }
+
+    // ---- Members: approve, edit, remove (custodian) · my status (teacher) ------------------
+    // A teacher who joins starts as 'pending' and can look around but not send anything until
+    // the custodian approves ('active'). Removed teachers ('removed') keep their history.
+    // Cards from before approvals have no status and count as active.
+    function memberStatus(m) { return (m && m.status) || 'active'; }
+    function pendingMembers() {
+      if (!(isCustodianDevice() || sampleStore())) return [];
+      return memberList.filter(m => m.uid && memberStatus(m) === 'pending' && !(cloud.user && m.uid === cloud.user.uid))
+        .sort((a, b) => (a.joinedMs || 0) - (b.joinedMs || 0));
+    }
+    function removedMembers() { return memberList.filter(m => m.uid && memberStatus(m) === 'removed').sort((a, b) => a.name.localeCompare(b.name)); }
+    function isRemovedUid(uid) { return !!uid && memberList.some(m => m.uid === uid && memberStatus(m) === 'removed'); }
+    function teachersToReview() {
+      if (!(isCustodianDevice() && cloud.user) && !sampleStore()) return { joins: [], reports: [], total: 0 };
+      const joins = pendingMembers(), reports = openTeacherReports();
+      return { joins, reports, total: joins.length + reports.length };
+    }
+
+    // One write to a member card (sample teachers stay on this device).
+    function patchMember(uid, patch) {
+      if (String(uid).startsWith('sample-')) {
+        const st = sampleStore();
+        const m = st && (st.members || []).find(x => x.uid === uid);
+        if (m) { Object.assign(m, patch); saveSampleStore(st); refreshSample(); }
+        return;
+      }
+      const F = cloud.sdk;
+      if (!F || !cloud.user) return;
+      cloudWrite(F.updateDoc(F.doc(memberCol(), uid), { ...patch, by: (schoolInfo.custodian || reqRole.email || '').slice(0, 80), updatedAt: F.serverTimestamp() }), 'Updating the teacher');
+      memberList = memberList.map(x => (x.uid === uid ? { ...x, ...patch } : x));
+      onTeamChange();
+      renderRequestsEverywhere();
+    }
+    function approveMember(uid) {
+      const m = memberList.find(x => x.uid === uid);
+      if (!m) return;
+      patchMember(uid, { status: 'active', approvedMs: Date.now() });
+      showToast(`${m.name.split(' ')[0]} can now send requests and see the stock`, 'ph-user-check');
+    }
+    async function declineMember(uid) {
+      const m = memberList.find(x => x.uid === uid);
+      if (!m) return;
+      if (!await appConfirm(`${m.name} will not be able to send requests or see the stock. If they are from your school after all, add them back from the bottom of the Teachers list.`,
+        { title: 'Not from your school?', ok: 'Decline', icon: 'ph-user-minus', tone: 'danger', focusCancel: true })) return;
+      patchMember(uid, { status: 'removed', removedMs: Date.now() });
+      showToast(`${m.name.split(' ')[0]} declined`, 'ph-user-minus');
+    }
+    async function removeMember(uid) {
+      const m = memberList.find(x => x.uid === uid);
+      if (!m) return;
+      const p = accountabilityPeople().find(x => x.uid === uid);
+      const holds = p ? p.equipment.length : 0;
+      if (!await appConfirm(`${m.name} can no longer send requests or reports, or see the stock. Their slips and history are kept for audit.` +
+        (holds ? `\n\nThey still hold ${plural(holds, 'item')}. Use Clearance to take them back or transfer them.` : ''),
+        { title: `Remove ${m.name.split(' ')[0]} from the school?`, ok: 'Remove', icon: 'ph-user-minus', tone: 'danger', focusCancel: true })) return;
+      patchMember(uid, { status: 'removed', removedMs: Date.now() });
+      showToast(`${m.name.split(' ')[0]} removed from the school`, 'ph-user-minus');
+    }
+    function addBackMember(uid) {
+      const m = memberList.find(x => x.uid === uid);
+      if (!m) return;
+      patchMember(uid, { status: 'active', approvedMs: Date.now() });
+      showToast(`${m.name.split(' ')[0]} is back on the list`, 'ph-user-check');
+    }
+    var memberEditUid = null;
+    function openMemberEdit(uid) {
+      const m = memberList.find(x => x.uid === uid);
+      if (!m) return;
+      memberEditUid = uid;
+      document.getElementById('meName').value = m.name || '';
+      document.getElementById('mePosition').value = m.position || '';
+      document.getElementById('meOffice').value = m.office || '';
+      document.getElementById('meError').classList.add('hidden');
+      document.getElementById('memberModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('meName').focus(), 50);
+    }
+    function closeMemberEdit() { memberEditUid = null; document.getElementById('memberModal').classList.add('hidden'); }
+    function saveMemberEdit() {
+      const uid = memberEditUid;
+      const m = uid && memberList.find(x => x.uid === uid);
+      if (!m) { closeMemberEdit(); return; }
+      const v = id => document.getElementById(id).value.trim().replace(/\s+/g, ' ').slice(0, 80);
+      const next = { name: v('meName'), position: v('mePosition'), office: v('meOffice') };
+      if (!next.name) { const e = document.getElementById('meError'); e.textContent = 'Type the teacher’s name.'; e.classList.remove('hidden'); return; }
+      closeMemberEdit();
+      if (next.name === m.name && next.position === (m.position || '') && next.office === (m.office || '')) return;
+      const renamed = next.name !== m.name;
+      patchMember(uid, { ...next, editedMs: Date.now() });
+      // Units already with them carry the name printed on the slips: follow the new name.
+      if (renamed) {
+        let n = 0;
+        items.forEach(item => getUnits(item.code).forEach(u => { if (u.toUid === uid && u.to !== next.name) { u.to = next.name; n++; } }));
+        if (n) saveStateWith({ summary: { kind: 'system', text: `Renamed ${m.name} to ${next.name} (${plural(n, 'unit')})` } });
+      }
+      showToast(`Saved · ${next.name.split(' ')[0]} sees the change on their phone`, 'ph-check-circle');
+    }
+
+    // The "To review" box at the top of the Teachers page: people asking to join, then reports
+    // about equipment (problems, counts with something missing or broken, returns).
+    function teachersReviewHTML() {
+      const { joins, reports, total } = teachersToReview();
+      if (!total) return '';
+      return `
+        <div id="tvReviewBox" class="rounded-2xl bg-white border border-rose-200 shadow-sm overflow-hidden">
+          <p class="px-4 pt-3 pb-2 text-xs font-extrabold text-slate-900 flex items-center gap-2"><span class="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><i class="ph-bold ph-bell-ringing"></i></span> To review · ${total}</p>
+          ${joins.map(m => `
+            <div class="px-4 py-3 border-t border-slate-100 space-y-1.5" data-tvjoin="${escapeHTML(m.uid)}">
+              <p class="text-[11px] font-bold uppercase tracking-wider text-brand-700">Wants to join</p>
+              <p class="text-sm text-slate-900"><b>${escapeHTML(m.name)}</b>${[m.position, m.office].filter(Boolean).length ? ` · <span class="text-slate-600">${escapeHTML([m.position, m.office].filter(Boolean).join(' · '))}</span>` : ''}</p>
+              <p class="text-xs text-slate-500">${m.email ? `${escapeHTML(m.email)} · ` : 'No Google account · '}joined with your invite link</p>
+              <div class="flex items-center gap-2 pt-1">
+                <button onclick="approveMember('${escapeHTML(m.uid)}')" class="h-9 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-user-check"></i> Approve</button>
+                <button onclick="declineMember('${escapeHTML(m.uid)}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Not from our school</button>
+                <span class="ml-auto text-[11px] text-slate-500">${escapeHTML(formatTimeAgo(m.joinedMs || Date.now()))}</span>
+              </div>
+            </div>`).join('')}
+          ${reports.map(teacherReportCardHTML).join('')}
+        </div>`;
+    }
+
+    // Teacher removed or not approved yet: say so, and stop the action.
+    function myMemberStatus() {
+      if (!isTeacherDevice()) return 'active';
+      if (!myMemberLoaded) return 'active';    // not known yet: let it try (the rules decide)
+      return myMember ? memberStatus(myMember) : 'pending';
+    }
+    function teacherMayAct() {
+      const st = myMemberStatus();
+      if (st === 'active') return true;
+      if (st === 'removed') appAlert(`The property custodian of ${reqRole.schoolName} removed you from the school. Your past requests and items stay here. If this is a mistake, ask them to add you back.`, { title: 'You were removed', icon: 'ph-user-minus', tone: 'warn' });
+      else appAlert(`Your property custodian has not approved you yet. You can send requests and see the school's stock once they tap Approve.`, { title: 'Waiting for approval', icon: 'ph-hourglass-medium', tone: 'info' });
+      return false;
+    }
+    function teacherStatusBanner() {
+      const st = myMemberStatus();
+      if (st === 'pending') return `<div id="rqPending" class="rounded-2xl bg-sky-50 border border-sky-200 p-3 flex items-start gap-3"><i class="ph-bold ph-hourglass-medium text-xl text-sky-700 mt-0.5"></i><div class="min-w-0"><p class="text-sm font-extrabold text-slate-900">Waiting for approval</p><p class="text-xs text-slate-600">Your property custodian has to approve you first. Then you can send requests and see what the school has in stock.</p></div></div>`;
+      if (st === 'removed') return `<div id="rqRemoved" class="rounded-2xl bg-amber-50 border border-amber-200 p-3 flex items-start gap-3"><i class="ph-bold ph-user-minus text-xl text-amber-700 mt-0.5"></i><div class="min-w-0"><p class="text-sm font-extrabold text-slate-900">Removed from ${escapeHTML(reqRole.schoolName)}</p><p class="text-xs text-slate-600">You can still see your past requests and items. Ask the property custodian if this is a mistake.</p></div></div>`;
+      return '';
+    }
+
+    // Teacher: my own card (status, and details the custodian corrected).
+    var myMemberSrv = null;   // my status as last read from the server (null: no card yet)
+    function onMyMember(snap) {
+      const before = myMemberSrv;
+      myMember = snap.exists() ? snap.data() : null;
+      myMemberLoaded = true;
+      myMemberSrv = myMember ? memberStatus(myMember) : null;
+      if (myMember && myMember.editedMs && myMember.editedMs > (reqRole.editSeen || 0)) {
+        reqRole.me = { name: myMember.name || reqRole.me.name, position: myMember.position || '', office: myMember.office || '' };
+        reqRole.editSeen = myMember.editedMs;
+        reqRole.memberSig = null;
+        saveReqRole();
+      }
+      upsertMyMember();
+      const now = myMemberStatus();
+      if (before && myMemberSrv && before !== now && notifScope()) {
+        if (now === 'active' && before === 'pending') addNotif({ title: 'You’re in!', body: `${reqRole.schoolName} approved you · you can now send requests and see the stock`, icon: 'ph-user-check', tone: 'emerald', go: 'teacher-requests' });
+        if (now === 'removed') addNotif({ title: `Removed from ${reqRole.schoolName}`, body: 'Your past requests and items stay on your phone', icon: 'ph-user-minus', tone: 'amber', go: 'teacher-requests' });
+      }
+      syncTeacherStock();
+      renderRequestsEverywhere();
+    }
+
+    // ---- School stock (supplies left) ------------------------------------------------------
+    // The custodian's devices publish each supply's quantity (no prices, no property numbers)
+    // to schools/{id}/stock/{code}; approved teachers see it, so they need not ask "meron pa
+    // ba?". "I took this" adds a hold that lowers the number for everyone until the custodian
+    // confirms it with an RIS (or corrects it).
+    var STOCK_SYNC_KEY = 'custodian_stock_sync_v1';
+    var stockSync = null;
+    var stockList = [], stockLoaded = false;     // teacher: the school's supplies
+    var stockHolds = [];                          // open holds (teacher and custodian)
+    var stockUnsubs = [];
+    var stockQuery = '', stockFilter = 'all';
+    function stockCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'stock'); }
+    function holdCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'stockHolds'); }
+    var stockDocOf = item => ({ code: item.code, name: item.name, unit: item.unit || '', qty: Math.max(0, item.qty || 0), low: Math.max(0, item.minQty || 0), cat: item.category || '' });
+
+    function pushStock() {
+      if (!invReady || invApplying || !cloud.db || !cloud.user || !isCustodianDevice()) return;
+      if (!stockSync || stockSync.schoolId !== reqRole.schoolId) {
+        try { stockSync = JSON.parse(localStorage.getItem(STOCK_SYNC_KEY)) || null; } catch (e) { stockSync = null; }
+        if (!stockSync || stockSync.schoolId !== reqRole.schoolId) stockSync = { schoolId: reqRole.schoolId, synced: {} };
+      }
+      const writes = [];
+      items.forEach(item => {
+        if (relIsEquip(item) || (!(item.qty > 0) && stockSync.synced[item.code] === undefined)) return;
+        const body = stockDocOf(item);
+        const h = invHash(body);
+        if (stockSync.synced[item.code] !== h) writes.push([item.code, body, h]);
+      });
+      // Items removed from the inventory, or turned into equipment: none left for teachers.
+      Object.keys(stockSync.synced).forEach(code => {
+        const item = items.find(i => i.code === code);
+        if ((!item || relIsEquip(item)) && stockSync.synced[code] !== 'gone') writes.push([code, { code, name: item ? item.name : '', unit: item ? item.unit || '' : '', qty: 0, low: 0, cat: '', gone: true }, 'gone']);
+      });
+      if (!writes.length) return;
+      const F = cloud.sdk, now = Date.now();
+      for (let i = 0; i < writes.length; i += 400) {
+        const chunk = writes.slice(i, i + 400);
+        const batch = F.writeBatch(cloud.db);
+        chunk.forEach(([code, body]) => batch.set(F.doc(stockCol(), code), { ...body, updatedMs: now }));
+        chunk.forEach(([code, , h]) => { stockSync.synced[code] = h; });
+        batch.commit().catch(err => {
+          console.warn('stock', err);
+          chunk.forEach(([code]) => { delete stockSync.synced[code]; });
+          localStorage.setItem(STOCK_SYNC_KEY, JSON.stringify(stockSync));
+        });
+      }
+      localStorage.setItem(STOCK_SYNC_KEY, JSON.stringify(stockSync));
+    }
+
+    // Holds: the custodian follows the open ones (to close them); teachers too (to subtract them).
+    function subscribeHolds(F) {
+      return F.onSnapshot(F.query(holdCol(), F.where('status', '==', 'open')), snap => {
+        stockHolds = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        if (activeMainView === 'REQUESTER') renderRequesterView();
+      }, err => console.warn('holds', err));
+    }
+    function closeHold(reqId, status) {
+      const h = stockHolds.find(x => x.id === reqId);
+      if (!h || !cloud.user) return;
+      const F = cloud.sdk;
+      cloudWrite(F.updateDoc(F.doc(holdCol(), reqId), { status }), 'Updating the stock');
+      stockHolds = stockHolds.filter(x => x.id !== reqId);
+    }
+
+    // Access refused (e.g. just removed): stop both listeners; the member card update re-runs syncTeacherStock.
+    function stopTeacherStock() { stockUnsubs.forEach(off => { try { off(); } catch (e) {} }); stockUnsubs = []; }
+    // Teacher: follow the stock while approved.
+    function syncTeacherStock() {
+      const on = isTeacherDevice() && cloud.user && cloud.db && myMemberStatus() === 'active' && myMemberLoaded;
+      if (on && stockUnsubs.length) return;
+      stockUnsubs.forEach(off => { try { off(); } catch (e) {} });
+      stockUnsubs = [];
+      if (!on) { stockList = []; stockHolds = []; stockLoaded = false; return; }
+      const F = cloud.sdk;
+      stockUnsubs.push(F.onSnapshot(stockCol(), snap => {
+        stockList = snap.docs.map(d => ({ ...d.data(), code: d.id })).filter(s => !s.gone);
+        stockLoaded = true;
+        if (activeMainView === 'REQUESTER') renderRequesterView();
+      }, err => { console.warn('stock', err); stopTeacherStock(); }));
+      stockUnsubs.push(subscribeHolds(F));
+    }
+    function heldQty(code) { return stockHolds.reduce((n, h) => n + (h.lines || []).filter(l => l.code === code).reduce((m, l) => m + (l.qty || 0), 0), 0); }
+    function stockLeft(s) { return Math.max(0, (s.qty || 0) - heldQty(s.code)); }
+    function stockLevel(s) { const left = stockLeft(s); return left <= 0 ? 'out' : left <= (s.low || 0) ? 'low' : 'ok'; }
+
+    function renderTeacherStock() {
+      const pane = document.getElementById('rqStockPane');
+      if (!pane) return;
+      const st = myMemberStatus();
+      if (st !== 'active') { pane.innerHTML = teacherStatusBanner(); return; }
+      if (!stockLoaded) { pane.innerHTML = `<div class="rounded-2xl bg-white border border-slate-200 p-6 text-center text-sm text-slate-500"><i class="ph-bold ph-circle-notch animate-spin text-2xl text-brand-500"></i><p class="mt-2">Loading the school’s stock…</p></div>`; return; }
+      const all = [...stockList].sort((a, b) => a.name.localeCompare(b.name));
+      const q = stockQuery.trim().toLowerCase();
+      const counts = { all: all.length, low: all.filter(s => stockLevel(s) === 'low').length, out: all.filter(s => stockLevel(s) === 'out').length };
+      const list = all.filter(s => (stockFilter === 'all' || stockLevel(s) === stockFilter) && (!q || s.name.toLowerCase().includes(q) || String(s.cat || '').toLowerCase().includes(q)));
+      const updated = all.reduce((m, s) => Math.max(m, s.updatedMs || 0), 0);
+      const chip = (key, label) => `<button type="button" data-stf="${key}" onclick="setStockFilter('${key}')" aria-pressed="${stockFilter === key}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${stockFilter === key ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-600'}">${label} <span class="opacity-70">${counts[key]}</span></button>`;
+      const row = s => {
+        const left = stockLeft(s), held = heldQty(s.code), lvl = stockLevel(s);
+        const tag = lvl === 'out' ? '<span class="px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold">Out of stock</span>'
+          : lvl === 'low' ? '<span class="px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold">Low</span>' : '';
+        return `
+          <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3" data-stock="${escapeHTML(s.code)}">
+            <div class="flex items-start gap-3">
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-slate-900 leading-snug line-clamp-2">${escapeHTML(s.name)}</p>
+                <p class="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">${tag}${s.cat ? `<span class="truncate">${escapeHTML(s.cat)}</span>` : ''}</p>
+              </div>
+              <div class="shrink-0 text-right">
+                <p class="text-xl font-extrabold font-mono leading-none ${lvl === 'out' ? 'text-rose-700' : lvl === 'low' ? 'text-amber-800' : 'text-slate-900'}" data-left>${left}</p>
+                <p class="text-[11px] font-semibold text-slate-500">${escapeHTML(s.unit || '')} left</p>
+              </div>
+            </div>
+            ${held ? `<p class="mt-1.5 text-[11px] text-slate-500"><i class="ph-bold ph-hourglass-medium"></i> ${held} taken · waiting for the custodian to confirm</p>` : ''}
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <button onclick="requestFromStock('${escapeHTML(s.code)}')" class="h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-paper-plane-tilt"></i> Request</button>
+              <button onclick="openTook('${escapeHTML(s.code)}')" ${left > 0 ? '' : 'disabled'} class="h-10 rounded-xl bg-amber-700 hover:bg-amber-800 disabled:bg-slate-200 disabled:text-slate-500 text-white text-xs font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-hand-grabbing"></i> I took this</button>
+            </div>
+          </div>`;
+      };
+      const searching = document.activeElement && document.activeElement.id === 'stSearch';
+      const listHTML = list.length ? list.map(row).join('') : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500"><i class="ph-bold ph-package text-3xl text-slate-300"></i><p class="mt-1 font-bold text-slate-700 text-sm">${all.length ? 'Nothing matches' : 'No stock shared yet'}</p><p>${all.length ? 'Try another word, or tap New supply request to ask for it.' : 'Supplies appear here once the property custodian’s inventory is saved to the account.'}</p></div>`;
+      if (searching && document.getElementById('stList')) { document.getElementById('stList').innerHTML = listHTML; return; }
+      pane.innerHTML = `
+        <div class="space-y-2">
+          <div class="relative">
+            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+            <input id="stSearch" type="search" value="${escapeHTML(stockQuery)}" oninput="setStockQuery(this.value)" placeholder="Meron pa ba? Search bond paper, alcohol…" class="w-full h-11 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-brand-500 outline-none">
+          </div>
+          <div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('low', 'Low')}${chip('out', 'Out')}</div>
+          <p class="text-[11px] text-slate-500 px-1">${updated ? `Updated ${escapeHTML(formatTimeAgo(updated))} · ` : ''}from the property custodian’s inventory</p>
+        </div>
+        <div id="stList" class="space-y-2">${listHTML}</div>`;
+    }
+    function setStockQuery(v) { stockQuery = v; renderTeacherStock(); }
+    function setStockFilter(f) { stockFilter = stockFilter === f ? 'all' : f; renderTeacherStock(); }
+
+    function requestFromStock(code) {
+      const s = stockList.find(x => x.code === code);
+      if (!s || !teacherMayAct()) return;
+      openRequestForm();
+      if (!reqDraft) return;
+      reqDraft.lines.push({ id: newReqLineId(), code: s.code, desc: s.name, unit: s.unit || 'piece', qty: 1 });
+      renderReqLines();
+    }
+
+    // "I took this": the amount comes off the stock for everyone at once; the custodian confirms.
+    var tookDraft = null;
+    function openTook(code) {
+      const s = stockList.find(x => x.code === code);
+      if (!s || !teacherMayAct()) return;
+      tookDraft = { code, qty: 1 };
+      document.getElementById('tkName').textContent = s.name;
+      document.getElementById('tkNote').value = '';
+      renderTook();
+      document.getElementById('tookModal').classList.remove('hidden');
+    }
+    function closeTook() { tookDraft = null; document.getElementById('tookModal').classList.add('hidden'); }
+    function renderTook() {
+      const s = tookDraft && stockList.find(x => x.code === tookDraft.code);
+      if (!s) return;
+      const left = stockLeft(s);
+      tookDraft.qty = Math.max(1, Math.min(left || 1, tookDraft.qty));
+      document.getElementById('tkLeft').textContent = `${left} ${s.unit || ''} left · after this: ${Math.max(0, left - tookDraft.qty)}`;
+      document.getElementById('tkQty').value = tookDraft.qty;
+      document.getElementById('tkUnit').textContent = s.unit || '';
+      document.getElementById('tkSaveLabel').textContent = `Record · ${tookDraft.qty} ${s.unit || ''}`.trim();
+    }
+    function stepTook(d) { if (tookDraft) { tookDraft.qty += d; renderTook(); } }
+    function setTookQty(v) { if (tookDraft) { tookDraft.qty = parseInt(v, 10) || 1; renderTook(); } }
+    function saveTook() {
+      const s = tookDraft && stockList.find(x => x.code === tookDraft.code);
+      if (!s || !cloud.user || !teacherMayAct()) return;
+      const qty = tookDraft.qty;
+      if (qty > stockLeft(s)) { appAlert(`Only ${stockLeft(s)} ${s.unit || ''} left.`); return; }
+      const F = cloud.sdk, me = reqRole.me || {}, now = Date.now();
+      const ref = F.doc(reqCol());
+      const note = document.getElementById('tkNote').value.trim().slice(0, 300);
+      const batch = F.writeBatch(cloud.db);
+      batch.set(ref, {
+        uid: cloud.user.uid, name: (me.name || '').slice(0, 80), position: (me.position || '').slice(0, 80), office: (me.office || '').slice(0, 80),
+        purpose: note || 'Taken from the supply room', neededBy: '', lines: [{ id: newReqLineId(), code: s.code, desc: s.name.slice(0, 160), unit: (s.unit || 'piece').slice(0, 20), qty }],
+        status: 'pending', kind: 'took', createdAt: F.serverTimestamp(), clientAt: now, via: 'teacher'
+      });
+      batch.set(F.doc(holdCol(), ref.id), { uid: cloud.user.uid, name: (me.name || '').slice(0, 80), reqId: ref.id, lines: [{ code: s.code, qty }], status: 'open', createdMs: now });
+      cloudWrite(batch.commit(), 'Recording');
+      stockHolds = [...stockHolds.filter(h => h.id !== ref.id), { id: ref.id, uid: cloud.user.uid, reqId: ref.id, lines: [{ code: s.code, qty }], status: 'open', createdMs: now }];
+      closeTook();
+      renderRequesterView();
+      showToast(`Recorded · ${qty} ${s.unit || ''} ${s.name.slice(0, 40)} · the custodian will confirm`.replace(/\s+/g, ' '), 'ph-hand-grabbing');
     }
 
     // Names typed or scanned under "Assigned to" (e.g. from printed ICS slips) are linked to the
@@ -9794,6 +10318,7 @@
         status: 'released', releaseIds: refs, releaseNos: docs.map(x => `${x.kind} ${x.no}`), releasedMs: now, updatedAt: F.serverTimestamp()
       });
       cloudWrite(batch.commit(), 'Saving the release');
+      if (d.requestId) { pushStock(); closeHold(d.requestId, 'done'); }   // "I took this": the RIS replaces the hold
       releaseDone = { teacherName: t.name, docs: docs.map((x, i) => ({ ...x, id: refs[i] })) };
       releaseDraft = null;
       renderRelease();
@@ -9937,6 +10462,7 @@
 
     function subscribeTeacherItems(F) {
       const soft = what => err => { console.warn(what, err); };
+      reqUnsubs.push(F.onSnapshot(F.doc(memberCol(), cloud.user.uid), onMyMember, soft('my card')));
       reqUnsubs.push(F.onSnapshot(F.query(relCol(), F.where('teacherUid', '==', cloud.user.uid)), { includeMetadataChanges: true }, snap => {
         myReleases = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
         if (!(snap.metadata && snap.metadata.fromCache)) myRelLoaded = true;
@@ -9953,6 +10479,7 @@
       }, soft('my reports')));
     }
 
+    function teacherStockTab() { return teacherTab === 'stock'; }   // the Stock tab shows the banner itself
     function setTeacherTab(tab) {
       teacherTab = tab;
       renderRequesterView();
@@ -9964,11 +10491,12 @@
       const toAck = myReleases.filter(r => (isIssueKind(r.kind) || r.kind === 'RIS') && !r.sameHolder && !tAcked(r.id));
       if (!teacherTab) teacherTab = myReleases.length ? 'items' : 'requests';
       const tab = teacherTab;
-      document.getElementById('rqTitle').textContent = tab === 'items' ? 'My items' : 'Request supplies';
-      ['items', 'requests'].forEach(t => {
+      document.getElementById('rqTitle').textContent = tab === 'items' ? 'My items' : tab === 'stock' ? 'School stock' : 'Request supplies';
+      document.getElementById('rqSchool').textContent = tab === 'stock' ? `Supplies left at ${reqRole.schoolName}` : `To the property custodian of ${reqRole.schoolName}`;
+      ['items', 'requests', 'stock'].forEach(t => {
         const b = document.getElementById(`rqTab-${t}`);
         const on = t === tab;
-        b.className = `h-11 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 transition ${on ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5 seg-on' : 'text-slate-500 hover:text-slate-800'}`;
+        b.className = `h-11 rounded-xl text-[13px] sm:text-sm font-extrabold flex items-center justify-center gap-1 sm:gap-1.5 transition ${on ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5 seg-on' : 'text-slate-500 hover:text-slate-800'}`;
         b.setAttribute('aria-selected', on ? 'true' : 'false');
       });
       const n = document.getElementById('rqItemsCount');
@@ -9977,7 +10505,9 @@
       document.getElementById('rqItemsDot').classList.toggle('hidden', !toAck.length);
       document.getElementById('rqItemsPane').classList.toggle('hidden', tab !== 'items');
       document.getElementById('rqRequestsPane').classList.toggle('hidden', tab !== 'requests');
+      document.getElementById('rqStockPane').classList.toggle('hidden', tab !== 'stock');
       if (tab === 'items') renderTeacherItems(h, toAck);
+      if (tab === 'stock') renderTeacherStock();
     }
 
     function renderTeacherItems(h, toAck) {
@@ -10120,6 +10650,7 @@
     }
 
     function openTeacherCount() {
+      if (!teacherMayAct()) return;
       const h = teacherHoldings(myReleases);
       if (!h.equipment.length) return;
       const since = countSince();
@@ -10198,6 +10729,7 @@
 
     const ackSent = new Set();
     function ackRelease(relId) {
+      if (!teacherMayAct()) return;
       const rel = myReleases.find(r => r.id === relId);
       if (!rel || !cloud.user || ackSent.has(relId) || tAcked(relId)) return;
       ackSent.add(relId);
@@ -10208,6 +10740,7 @@
     }
 
     function openTeacherReport(kind, relId, unitId = null) {
+      if (!teacherMayAct()) return;
       const rel = myReleases.find(r => r.id === relId);
       if (!rel) return;
       let line = null, unit = null;
@@ -10263,13 +10796,8 @@
     const openTeacherReports = () => tReports.filter(tReportOpen)
       .sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
 
-    function teacherInboxHTML() {
-      const open = openTeacherReports();
-      if (!open.length) return '';
-      return `
-        <div class="rounded-2xl bg-white border border-rose-200 shadow-sm overflow-hidden">
-          <p class="px-4 pt-3 pb-2 text-xs font-extrabold text-slate-900 flex items-center gap-2"><span class="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><i class="ph-bold ph-chalkboard-teacher"></i></span> From teachers · ${open.length}</p>
-          ${open.map(x => {
+    // One report from a teacher about their equipment, with the custodian's answers.
+    function teacherReportCardHTML(x) {
             const units = (x.units || []).map(u => u.no).filter(Boolean).join(', ');
             const ret = x.kind === 'return';
             if (x.kind === 'count') return teacherCountInboxHTML(x);
@@ -10279,19 +10807,20 @@
               : ['resolveTeacherReport', 'Noted', 'ph-check', 'bg-slate-700 hover:bg-slate-800', 'noted'];
             return `
               <div class="px-4 py-3 border-t border-slate-100 space-y-1.5" data-treport="${x.id}">
-                <p class="text-sm text-slate-900"><b>${escapeHTML(x.name)}</b> ${ret ? 'is returning' : `reports <b class="text-rose-700">${escapeHTML(tReasonLabel(x.reason).toLowerCase())}</b>`}</p>
+                <p class="text-[11px] font-bold uppercase tracking-wider ${ret ? 'text-emerald-700' : 'text-rose-700'}">${ret ? 'Return' : 'Equipment report'}</p>
+                <p class="text-sm text-slate-900">${reportWhoHTML(x)} ${ret ? 'is returning' : `reports <b class="text-rose-700">${escapeHTML(tReasonLabel(x.reason).toLowerCase())}</b>`}</p>
                 <p class="text-xs text-slate-600">${escapeHTML(x.desc)}${units ? ` · <span class="font-mono font-bold">${escapeHTML(units)}</span>` : ''} · ${escapeHTML(x.releaseNo || '')}</p>
                 ${x.note ? `<p class="text-xs text-slate-700 bg-slate-50 rounded-lg px-2.5 py-1.5">“${escapeHTML(x.note)}”</p>` : ''}
                 <div class="flex items-center gap-2 pt-1">
-                  <button onclick="${action[0]}('${x.id}'${action[4] ? `, '${action[4]}'` : ''})" class="h-9 px-3 rounded-lg ${action[3]} text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ${action[2]}"></i> ${action[1]}</button>
+                  <button data-tr-act onclick="${action[0]}('${x.id}'${action[4] ? `, '${action[4]}'` : ''})" class="h-9 px-3 rounded-lg ${action[3]} text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ${action[2]}"></i> ${action[1]}</button>
                   ${action[4] && action[4] !== 'noted' ? `<button onclick="resolveTeacherReport('${x.id}', 'noted')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Noted</button>` : ''}
                   ${ret ? `<button onclick="declineTeacherReport('${x.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Decline</button>` : ''}
                   <span class="ml-auto text-[11px] text-slate-500">${escapeHTML(formatTimeAgo(x.createdMs))}</span>
                 </div>
               </div>`;
-          }).join('')}
-        </div>`;
     }
+    // The teacher's name opens their page.
+    const reportWhoHTML = x => (x.uid ? `<button onclick="openTeachersView('${escapeHTML(x.uid)}')" class="font-bold hover:underline">${escapeHTML(x.name)}</button>` : `<b>${escapeHTML(x.name)}</b>`);
 
     // A teacher's count with something missing or broken.
     function teacherCountInboxHTML(x) {
@@ -10301,7 +10830,8 @@
       const list = us => us.map(u => `${escapeHTML(u.desc || '')} <span class="font-mono font-bold">${escapeHTML(u.no || '')}</span>`).join(', ');
       return `
         <div class="px-4 py-3 border-t border-slate-100 space-y-1.5" data-treport="${x.id}">
-          <p class="text-sm text-slate-900"><b>${escapeHTML(x.name)}</b> counted their items: <b class="text-rose-700">${[missing.length && `${missing.length} missing`, broken.length && `${broken.length} broken`].filter(Boolean).join(' · ')}</b></p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-amber-700">Year-end count</p>
+          <p class="text-sm text-slate-900">${reportWhoHTML(x)} counted their items: <b class="text-rose-700">${[missing.length && `${missing.length} missing`, broken.length && `${broken.length} broken`].filter(Boolean).join(' · ')}</b></p>
           ${missing.length ? `<p class="text-xs text-slate-600"><b class="text-rose-700">Missing:</b> ${list(missing)}</p>` : ''}
           ${broken.length ? `<p class="text-xs text-slate-600"><b class="text-amber-700">Broken:</b> ${list(broken)}</p>` : ''}
           <p class="text-[11px] text-slate-500">${escapeHTML(x.releaseNo || '')} · the rest are marked counted</p>
@@ -10440,7 +10970,7 @@
         const counted = equipment.filter(x => (x.unit.seen || 0) >= since).length;
         const repair = equipment.filter(x => x.unit.cond === 'R').length;
         const unserv = equipment.filter(x => x.unit.cond === 'U').length;
-        return { ...p, records, equipment, ris, toConfirm, open, value, last, oldest: oldest === Infinity ? 0 : oldest, counted, repair, unserv };
+        return { ...p, records, equipment, ris, toConfirm, open, value, last, oldest: oldest === Infinity ? 0 : oldest, counted, repair, unserv, removed: isRemovedUid(p.uid) };
       }).sort((a, b) => (b.equipment.length + b.records.length > 0) - (a.equipment.length + a.records.length > 0) || a.name.localeCompare(b.name));
     }
 
@@ -10451,7 +10981,7 @@
       ['reports', 'Open reports', p => p.open.length > 0],
       ['uncounted', 'Not counted yet', p => p.equipment.length > 0 && p.counted < p.equipment.length],
       ['noacct', 'No account', p => !p.uid],
-      ['notjoined', 'Hasn’t joined', p => (p.uid ? !p.joined : p.equipment.length > 0)]
+      ['notjoined', 'Hasn’t joined', p => (p.uid ? !p.joined && !p.removed : p.equipment.length > 0)]
     ];
     const TV_SORTS = [['name', 'Name'], ['value', 'Value'], ['units', 'Units'], ['oldest', 'Oldest unconfirmed slip']];
     function sortPeople(list) {
@@ -10492,6 +11022,11 @@
       if (teachersSel && !usage && !person) teachersSel = null;
       if (person) tvLastPerson = person;
       document.getElementById('tvPanes').classList.toggle('tv-sel', !!teachersSel);
+      const review = document.getElementById('tvReview');
+      const reviewHTML = teachersReviewHTML();
+      review.innerHTML = reviewHTML;
+      review.classList.toggle('hidden', !reviewHTML || (!!teachersSel && !sidebarLayout()));
+      renderTeachersBadges();
       // Typing in the search box: leave the box alone, so the keyboard stays open.
       if (!(document.activeElement && document.activeElement.id === 'tvSearch')) renderTeachersListHead(people);
       renderTeachersList(people);
@@ -10562,7 +11097,8 @@
           p.toConfirm.length && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold"><i class="ph-bold ph-hourglass-medium"></i> ${p.toConfirm.length} to confirm${age >= 3 ? ` · ${plural(age, 'day')}` : ''}</span>`,
           p.open.length && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold"><i class="ph-bold ph-warning"></i> ${p.open.length} open</span>`,
           showCount(p) && `<span data-tvcount class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[11px] font-bold ${p.counted >= p.equipment.length ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-600 border-slate-200'}"><i class="ph-bold ph-seal-check"></i> Counted ${since.year}: ${p.counted} of ${p.equipment.length}</span>`,
-          !p.uid && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-bold">No account</span>`
+          !p.uid && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-bold">No account</span>`,
+          p.removed && `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold"><i class="ph-bold ph-user-minus"></i> Removed</span>`
         ].filter(Boolean).join('');
         const cond = personCondText(p);
         const on = p.key === teachersSel;
@@ -10584,6 +11120,22 @@
             ${cond ? `<button data-tvcond onclick="openCoa('unserv')" class="w-full min-h-9 px-3 py-1.5 border-t border-slate-100 text-left text-[11px] font-bold text-amber-700 hover:bg-amber-50 flex items-center gap-1.5"><i class="ph-bold ph-wrench"></i> ${cond}<span class="ml-auto font-semibold text-slate-500 flex items-center gap-0.5">IIRUP <i class="ph-bold ph-caret-right"></i></span></button>` : ''}
           </div>`;
       }).join('') : `<p class="text-center text-xs text-slate-500 py-6">${q ? `No one matches “${escapeHTML(teachersQuery)}”${teachersFilter !== 'all' ? ` under ${escapeHTML(filterName)}` : ''}.` : `No one under ${escapeHTML(filterName)}.`}${teachersFilter !== 'all' ? ` <button onclick="setTeachersFilter('all')" class="font-bold text-brand-600 underline">Show all</button>` : ''}</p>`;
+      if (!q && teachersFilter === 'all') body.insertAdjacentHTML('beforeend', removedMembersHTML());
+    }
+
+    // Removed or declined teachers who hold nothing: listed at the bottom, to add back.
+    function removedMembersHTML() {
+      const gone = removedMembers();
+      if (!gone.length || !isCustodianDevice()) return '';
+      return `
+        <details id="tvRemoved" class="rounded-2xl bg-white border border-slate-200 overflow-hidden">
+          <summary class="min-h-11 px-4 flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer"><i class="ph-bold ph-user-minus"></i> Removed from the school · ${gone.length}</summary>
+          ${gone.map(m => `
+            <div class="px-4 py-2.5 border-t border-slate-100 flex items-center gap-3" data-tvgone="${escapeHTML(m.uid)}">
+              <div class="min-w-0 flex-1"><p class="text-sm font-bold text-slate-800 truncate">${escapeHTML(m.name)}</p><p class="text-[11px] text-slate-500 truncate">${escapeHTML([m.position, m.office].filter(Boolean).join(' · ') || 'Teacher')}${m.removedMs ? ` · removed ${escapeHTML(formatTimeAgo(m.removedMs))}` : ''}</p></div>
+              <button onclick="addBackMember('${escapeHTML(m.uid)}')" class="shrink-0 h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-user-plus"></i> Add back</button>
+            </div>`).join('')}
+        </details>`;
     }
 
     // Computers and tablets held sideways: nothing picked yet on the right.
@@ -10626,8 +11178,14 @@
           <span class="w-12 h-12 shrink-0 rounded-full ${p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-base font-extrabold">${escapeHTML(personInitials(p.name))}</span>
           <div class="min-w-0 flex-1">
             <h1 class="text-xl font-extrabold text-slate-900 leading-tight">${escapeHTML(p.name)}</h1>
-            <p class="text-xs text-slate-500">${escapeHTML([p.position, p.office].filter(Boolean).join(' · ') || '—')}${p.uid ? ' · <span class="text-teal-700 font-bold">has the app</span>' : ' · no account'}</p>
+            <p class="text-xs text-slate-500">${escapeHTML([p.position, p.office].filter(Boolean).join(' · ') || '—')}${p.removed ? ' · <span class="text-amber-800 font-bold">removed from the school</span>' : p.uid ? ' · <span class="text-teal-700 font-bold">has the app</span>' : ' · no account'}</p>
           </div>
+          ${p.uid && memberList.some(m => m.uid === p.uid) && (connected || String(p.uid).startsWith('sample-')) ? `
+          <div class="shrink-0 flex items-center gap-1">
+            <button id="tvEditMember" onclick="openMemberEdit('${escapeHTML(p.uid)}')" title="Edit name, position or office" aria-label="Edit name, position or office" class="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-600 flex items-center justify-center"><i class="ph-bold ph-pencil-simple"></i></button>
+            ${p.removed ? `<button id="tvAddBack" onclick="addBackMember('${escapeHTML(p.uid)}')" title="Add back to the school" aria-label="Add back to the school" class="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 text-emerald-700 flex items-center justify-center"><i class="ph-bold ph-user-plus"></i></button>`
+              : `<button id="tvRemoveMember" onclick="removeMember('${escapeHTML(p.uid)}')" title="Remove from the school" aria-label="Remove from the school" class="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-600 flex items-center justify-center"><i class="ph-bold ph-user-minus"></i></button>`}
+          </div>` : ''}
         </div>
         <div class="mt-3 grid grid-cols-3 gap-2 text-center">
           <div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${p.equipment.length}</p><p class="text-[11px] font-bold uppercase text-slate-500">Equipment</p></div>
@@ -10657,7 +11215,9 @@
 
       let html = '';
       if (teachersClear === p.key) html += clearanceHTML(p, connected);
-      if (p.open.length) html += `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-warning"></i> ${plural(p.open.length, 'open report')} · see <button onclick="openRequestsView()" class="underline font-bold">From teachers</button></p>`;
+      if (p.open.length) html += wide
+        ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-warning"></i> ${plural(p.open.length, 'open report')} · under To review above</p>`
+        : `<div class="rounded-2xl bg-white border border-rose-200 shadow-sm overflow-hidden">${p.open.map(teacherReportCardHTML).join('')}</div>`;
       const unconfirmedIssue = p.toConfirm.slice().sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
       if (unconfirmedIssue.length) {
         const first = unconfirmedIssue[0];
@@ -10808,7 +11368,7 @@
             <p class="text-sm font-extrabold text-amber-900 flex items-center gap-1.5"><i class="ph-bold ph-seal-warning"></i> Not cleared yet · ${plural(p.equipment.length, 'item')} to return or transfer</p>${close}
           </div>
           <ul class="text-xs text-amber-900 space-y-0.5">${p.equipment.map(({ item, unit }) => `<li class="flex justify-between gap-3"><span class="min-w-0 truncate">${escapeHTML(item.name)}</span><span class="shrink-0 font-mono font-bold">${escapeHTML(unit.no || '—')}</span></li>`).join('')}</ul>
-          ${pendingReturns ? `<p class="text-[11px] font-semibold text-amber-800">${plural(pendingReturns, 'return request')} waiting under <button onclick="openRequestsView()" class="underline font-bold">From teachers</button>.</p>` : ''}
+          ${pendingReturns ? `<p class="text-[11px] font-semibold text-amber-800">${plural(pendingReturns, 'return request')} waiting under <button onclick="openTeachersView(null)" class="underline font-bold">To review</button>.</p>` : ''}
           <div class="flex flex-wrap gap-2 pt-1">
             ${connected ? `<button id="tvXferAll" onclick="openTransfer({ fromKey: '${k}', unitIds: ${escapeHTML(JSON.stringify(p.equipment.map(x => x.unit.id)))} })" class="h-10 px-4 rounded-xl bg-white border border-amber-300 hover:border-amber-400 text-amber-900 text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-arrows-left-right"></i> Transfer all to…</button>` : ''}
             <button id="tvTakeAll" onclick="takeBackAll('${k}')" class="h-10 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-arrow-u-down-left"></i> Take back all</button>
@@ -11302,7 +11862,9 @@
         at: now, before,
         names: [personKey(pedro.name), personKey(areyes.name)],
         unitIds: Object.values(units).flat().map(u => u.id),
-        members: [ana, ben, carla, liza].map(p => ({ uid: p.uid, name: p.name, position: p.position, office: p.office, email: '', joinedMs: now - 320 * DAY })),
+        members: [...[ana, ben, carla, liza].map(p => ({ uid: p.uid, name: p.name, position: p.position, office: p.office, email: '', joinedMs: now - 320 * DAY })),
+          // someone who just opened the invite link: Approve on the Teachers page
+          { uid: 'sample-marco', name: 'Marco Villanueva', position: 'Teacher I', office: 'Grade 9 – Filipino', email: '', joinedMs: now - 2 * 3600e3, status: 'pending' }],
         releases, reports
       });
       saveStateWith({ summary: { kind: 'system', text: 'Loaded sample teachers (Ana Reyes, Ben Cruz, Carla Mendoza, Liza Ramos, Pedro Santos)' } });
@@ -12564,6 +13126,7 @@
         <div class="poster">
           <p class="poster-kicker">For teachers of</p>
           <h1 class="poster-school">${e(school)}</h1>
+          ${schoolNoOf(school) ? `<p class="poster-lead" style="margin-bottom:2mm"><b>School ID ${e(schoolNoOf(school))}</b></p>` : ''}
           <p class="poster-lead">Request school supplies and see the equipment issued to you – right on your phone.</p>
           <div class="poster-qr">${qrSVG(link)}</div>
           <p class="poster-scan">Scan with your phone camera</p>
@@ -12572,7 +13135,7 @@
             <li><b>2</b><span>Choose <i>Teacher</i>, then type your name and position.</span></li>
             <li><b>3</b><span>Send requests, and tap <i>Received</i> when items reach you.</span></li>
           </ol>
-          <div class="poster-code"><span>School code</span><b>${e(reqRole.schoolId)}</b></div>
+          <div class="poster-code"><span>School code</span><b>${e(inviteCodeText())}</b></div>
           <p class="poster-link">${e(link)}</p>
           <p class="poster-foot"><img src="assets/icons/icon-192.png" alt="" width="22" height="22"> CustodianPro · ask ${e(schoolInfo.custodian || 'the property custodian')} for help</p>
         </div>`);
@@ -12867,7 +13430,9 @@
         notifCheck('requests', list.map(r => ({
           key: 'rq:' + r.id, sig: r.status || 'pending',
           make: prev => (prev === undefined && (r.status || 'pending') === 'pending' && r.via !== 'custodian')
-            ? { title: `New supply request from ${r.name || 'a teacher'}`, body: reqNotifSummary(r), icon: 'ph-tray', tone: 'amber', go: 'requests' }
+            ? (r.kind === 'took'
+              ? { title: `${r.name || 'A teacher'} took supplies · confirm`, body: reqNotifSummary(r), icon: 'ph-hand-grabbing', tone: 'amber', go: 'requests' }
+              : { title: `New supply request from ${r.name || 'a teacher'}`, body: reqNotifSummary(r), icon: 'ph-tray', tone: 'amber', go: 'requests' })
             : null
         })), fromCacheOf(meta));
       } else if (isTeacherDevice()) {
@@ -12911,10 +13476,10 @@
             const units = (x.units || []).map(u => u.no).filter(Boolean).join(', ');
             if (x.kind === 'received') return { title: `${who} confirmed receipt`, body: [x.releaseNo, x.desc].filter(Boolean).join(' · '), icon: 'ph-check-circle', tone: 'emerald', go: 'teachers', person: x.uid || null };
             if (x.status !== 'open') return null;
-            if (x.kind === 'return') return { title: `${who} wants to return an item`, body: [x.desc, units, x.note].filter(Boolean).join(' · '), icon: 'ph-arrow-u-down-left', tone: 'amber', go: 'inbox' };
-            if (x.kind === 'problem') return { title: `Problem reported by ${who}`, body: [tReasonLabel(x.reason), x.desc, units].filter(Boolean).join(' · '), icon: 'ph-warning', tone: 'rose', go: 'inbox' };
+            if (x.kind === 'return') return { title: `${who} wants to return an item`, body: [x.desc, units, x.note].filter(Boolean).join(' · '), icon: 'ph-arrow-u-down-left', tone: 'amber', go: 'teachers', person: x.uid || null };
+            if (x.kind === 'problem') return { title: `Problem reported by ${who}`, body: [tReasonLabel(x.reason), x.desc, units].filter(Boolean).join(' · '), icon: 'ph-warning', tone: 'rose', go: 'teachers', person: x.uid || null };
             if (x.kind === 'count') return countFlags(x).length
-              ? { title: `${who} counted their items · something is missing or broken`, body: [x.desc, x.note].filter(Boolean).join(' · '), icon: 'ph-clipboard-text', tone: 'amber', go: 'inbox' }
+              ? { title: `${who} counted their items · something is missing or broken`, body: [x.desc, x.note].filter(Boolean).join(' · '), icon: 'ph-clipboard-text', tone: 'amber', go: 'teachers', person: x.uid || null }
               : { title: `${who} counted their items · all present`, body: x.desc || '', icon: 'ph-seal-check', tone: 'emerald', go: 'teachers', person: x.uid || null };
             return null;
           }
@@ -12939,7 +13504,11 @@
       if (!isCustodianDevice() || !cloud.user) return;
       notifCheck('members', memberList.filter(m => m.uid && !m.sample && m.uid !== cloud.user.uid).map(m => ({
         key: 'mb:' + m.uid, sig: 'joined',
-        make: prev => prev !== undefined ? null : {
+        make: prev => prev !== undefined || memberStatus(m) === 'removed' ? null : memberStatus(m) === 'pending' ? {
+          title: `${m.name || 'A teacher'} wants to join your school`,
+          body: [[m.position, m.office].filter(Boolean).join(' · '), 'Approve on the Teachers page'].filter(Boolean).join(' · '),
+          icon: 'ph-user-plus', tone: 'brand', go: 'teachers'
+        } : {
           title: `${m.name || 'A teacher'} joined your school`,
           body: [m.position, m.office].filter(Boolean).join(' · ') || 'They can now send supply requests and receive items',
           icon: 'ph-user-plus', tone: 'brand', go: 'teachers', person: m.uid
@@ -13420,8 +13989,8 @@
         openRequestsView();
         setReqTab('pending');
         window.scrollTo({ top: 0 });
-      } else if (n.go === 'inbox') {
-        openRequestsView();
+      } else if (n.go === 'inbox') {          // older notifications: reports now live on the Teachers page
+        openTeachersView(null);
         window.scrollTo({ top: 0 });
       } else if (n.go === 'teachers') {
         openTeachersView(n.person || null);
@@ -13578,6 +14147,12 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-stock-members', date: 'Nov 2026', title: 'Teachers see what’s left, and you decide who joins', points: [
+        'No more “Sir, meron pa ba nito?”: teachers get a Stock tab with the exact number of each supply left (no equipment, no prices), with a Request button on every line.',
+        '“I took this”: a teacher who took supplies from the office records it, and the number drops for everyone at once. You see “Took it” and tap Confirm · RIS, or Decline to put it back. Supplies only; equipment still needs an ICS or PAR.',
+        'New teachers wait for your Approve. On a teacher’s page you can Edit details or Remove from school (their history stays), and Invite → New invite link makes old links stop working. The DepEd School ID shows on the join screen and the poster.',
+        'Equipment problem reports, year-end counts and returns moved to the Teachers page under To review, so Supply requests shows only supply requests.'
+      ] },
       { id: '2026-11-teachers-page', date: 'Nov 2026', title: 'A better Teachers page', points: [
         'Property clearance: one tap shows what a teacher still holds, with Transfer all and Take back all, and prints a Certificate of No Property Accountability when nothing is left.',
         'Teachers help with the year-end count: on their phone they tap All present or mark what is missing or broken, and their items count for the RPCPPE / RPCSP. You see "Counted 2026: 8 of 10" for each person.',

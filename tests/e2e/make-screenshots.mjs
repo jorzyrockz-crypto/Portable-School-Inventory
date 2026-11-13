@@ -54,7 +54,7 @@ try {
   await until(t, () => !document.getElementById('joinModal').classList.contains('hidden') && !document.getElementById('joinBtn').disabled, 'join');
   await ev(t, () => { joinName.value = 'Ana Reyes'; joinPosition.value = 'Teacher III'; joinOffice.value = 'Grade 7 – Science'; });
   await t.click('#joinBtn');
-  await until(t, () => reqRole && cloud.user, 'joined');
+  await until(t, () => reqRole && cloud.user && myMemberLoaded && myMemberStatus() === 'active', 'joined and approved', 8000);
   for (const w of ['Bond paper, A4, 80 gsm', 'Whiteboard marker, black']) {
     await ev(t, x => { openRequestForm(); rfSearch.value = x; addReqLine(); reqDraft.lines[0].qty = 5; sendRequest(); }, w);
     await sleep(600);
