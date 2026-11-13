@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="bcb4775520d4">
+  <meta name="app-version" content="35769d1a54ae">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -172,16 +172,19 @@
       .notif-sw { position: relative; }
       .notif-sw::before { content: ""; position: absolute; inset: -0.5rem -0.375rem; }
     }
-    /* Computers (mouse, 1024px+ wide; UI review finding 15): the four tabs become a left sidebar
+    /* Computers (mouse, 1024px+ wide; UI review finding 15) and tablets held sideways (touch,
+       1000px+ wide, 600px+ tall, so not phones in landscape): the four tabs become a left sidebar
        (with Supply requests, Teachers and Forms under them), the top bar spans the window, and
-       Inventory and Catalog get wider lists with extra columns. Phones and tablets keep the
-       bottom tab bar. html.no-tabs is set on a teacher's phone (no tabs there). */
+       Inventory and Catalog get wider lists with extra columns. Phones and upright tablets keep
+       the bottom tab bar. html.no-tabs is set on a teacher's phone (no tabs there).
+       Keep SIDEBAR_MQ in the script in step with this query. */
     .lap-only, .lap-col { display: none; }
-    @media screen and (min-width: 1024px) and (not (pointer: coarse)) {
-      html:not(.no-tabs) body { padding-left: 14.5rem; padding-bottom: 2.5rem; }
-      html:not(.no-tabs) body > header { margin-left: -14.5rem; }
+    :root { --side-w: 14.5rem; }
+    @media screen and (min-width: 1024px) and (not (pointer: coarse)), screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1000px) and (min-height: 600px) {
+      html:not(.no-tabs) body { padding-left: var(--side-w); padding-bottom: 2.5rem; }
+      html:not(.no-tabs) body > header { margin-left: calc(-1 * var(--side-w)); }
       html body > header > div.max-w-4xl { max-width: none; padding-left: 1.5rem; padding-right: 1.5rem; }
-      #tabBar { top: var(--hdr-h, 3.75rem); bottom: 0; right: auto; width: 14.5rem; padding: 1rem 0.75rem; overflow-y: auto;
+      #tabBar { top: var(--hdr-h, 3.75rem); bottom: 0; right: auto; width: var(--side-w); padding: 1rem 0.75rem; overflow-y: auto;
         border-top: 0; border-right: 1px solid #e2e8f0; box-shadow: none; background: rgba(255, 255, 255, 0.92); }
       #tabBar > div { display: flex; flex-direction: column; gap: 0.125rem; max-width: none; margin: 0; }
       #tabBar .tab-btn { height: 2.75rem; flex-direction: row; justify-content: flex-start; gap: 0.75rem; padding: 0 0.875rem;
@@ -197,12 +200,12 @@
       .lap-col { display: block; }
       .lap-w { width: 7.5rem; }
       .lap-hide { display: none !important; }
-      html:not(.no-tabs) #appToast { margin-left: 7.25rem; }   /* centred over the content, not the sidebar */
+      html:not(.no-tabs) #appToast { margin-left: calc(var(--side-w) / 2); }   /* centred over the content, not the sidebar */
       .cat-step-w { width: 7.25rem; }
       .lap-only.flex { display: flex; }
       /* Government forms open as a page beside the sidebar instead of a pop-up. The page itself
          scrolls (no box scrolling inside the card), and a form's Back / Print bar sticks to the bottom. */
-      html:not(.no-tabs) #coaModal.coa-page { left: 14.5rem; top: var(--hdr-h, 3.75rem); z-index: 30; padding: 1rem 1.5rem 0;
+      html:not(.no-tabs) #coaModal.coa-page { left: var(--side-w); top: var(--hdr-h, 3.75rem); z-index: 30; padding: 1rem 1.5rem 0;
         align-items: flex-start; overflow-y: auto; background: #f1f5f9; backdrop-filter: none; -webkit-backdrop-filter: none; }
       html:not(.no-tabs) #coaModal.coa-page > div { max-width: 60rem; max-height: none; margin-bottom: 1rem; border-radius: 1rem; box-shadow: 0 1px 2px rgb(15 23 42 / 0.06); }
       html:not(.no-tabs) #coaModal.coa-page #coaBody { overflow: visible; }
@@ -215,7 +218,7 @@
       html:not(.no-tabs) #coaModal.coa-page #coaBody.coa-home > * { margin-top: 0; }
       html:not(.no-tabs) #coaModal.coa-page #coaBody.coa-home > p { grid-column: 1 / -1; }
       html:not(.no-tabs) #coaModal.coa-page .coa-group > * + * { margin-top: 0.5rem; }
-      @media (min-width: 1340px) {
+      @media (min-width: 1340px) and (not (pointer: coarse)) {
         html:not(.no-tabs) #coaModal.coa-page > div { max-width: 72rem; }
         html:not(.no-tabs) #coaModal.coa-page #coaBody.coa-home { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         html:not(.no-tabs) #coaModal.coa-page .coa-group:nth-child(1) { grid-column: 1; grid-row: 1 / span 2; }
@@ -228,6 +231,22 @@
       html.dark #tabBar { background: rgba(15, 23, 42, 0.92); border-color: #1e293b; }
       html.dark #tabBar .tab-btn:hover { background: #1e293b; }
       html.dark #tabBar .tab-btn[aria-current="page"] { background: rgba(99, 102, 241, 0.18); }
+    }
+    /* Tablets held sideways: the text is scaled up (see the tablet rule above), so the sidebar is
+       narrower in rem (13rem, about 260 px) and its rows are taller for a finger. The extra Inventory / Catalog columns
+       only fit on the big ones (1300px+, e.g. a 12.9" iPad Pro); below that the rows stay as on
+       an upright tablet. */
+    @media screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1000px) and (min-height: 600px) {
+      :root { --side-w: 13rem; }
+      #tabBar { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+      #tabBar .tab-btn { height: 3rem; white-space: nowrap; }
+      .lap-col.w-44, .lap-head .w-44 { width: 9rem; }
+      #tabBar .tab-btn:hover:not([aria-current="page"]) { background: transparent; }
+      html.dark #tabBar .tab-btn:hover:not([aria-current="page"]) { background: transparent; }
+    }
+    @media screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1000px) and (max-width: 1299.98px) and (min-height: 600px) {
+      .lap-col, .lap-only.lap-head { display: none; }
+      .lap-hide { display: inline !important; }
     }
     /* QR property labels (printed 3 across on A4 / Letter) */
     .label-sheet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3mm; }
@@ -977,7 +996,7 @@
         </div>
       </div>
 
-      <div class="lap-only flex items-center gap-3 px-5 py-2 bg-slate-50 border-y border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500" aria-hidden="true">
+      <div class="lap-only lap-head flex items-center gap-3 px-5 py-2 bg-slate-50 border-y border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500" aria-hidden="true">
         <span class="w-11 shrink-0"></span><span class="flex-1">Item · room</span><span class="w-44 shrink-0">Category</span><span class="w-24 shrink-0 text-right">Tagged</span><span class="w-28 shrink-0 text-right">Unit cost</span><span class="lap-w shrink-0 text-right">On hand · value</span><span class="w-3 shrink-0"></span>
       </div>
       <div id="dashboardLedgerContainer" class="divide-y divide-slate-100">
@@ -1041,7 +1060,7 @@
       </div>
 
       <!-- One row per catalog item: name, price per unit · code, a few labels, and a small − qty + -->
-      <div class="lap-only flex items-center gap-2 pl-4 pr-3 py-2 bg-slate-50 border-y border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500" aria-hidden="true">
+      <div class="lap-only lap-head flex items-center gap-2 pl-4 pr-3 py-2 bg-slate-50 border-y border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500" aria-hidden="true">
         <span class="w-11 shrink-0"></span><span class="flex-1 pl-1">Item · unit price</span><span class="w-44 shrink-0">Category</span><span class="w-16 shrink-0">APP</span><span class="w-28 shrink-0 text-right">Value on hand</span><span class="cat-step-w shrink-0 text-center">Quantity</span>
       </div>
       <div id="itemsContainer" class="divide-y divide-slate-100">
@@ -10838,8 +10857,9 @@
       placeToast();
       if (wasPage) paintTabs();
     }
-    // Computers (mouse, 1024px+) show the tabs as a sidebar; there the forms are a page, not a pop-up.
-    var SIDEBAR_MQ = window.matchMedia('screen and (min-width: 1024px) and (not (pointer: coarse))');
+    // Computers (mouse, 1024px+) and tablets held sideways show the tabs as a sidebar; there the
+    // forms are a page, not a pop-up. Same query as the sidebar CSS.
+    var SIDEBAR_MQ = window.matchMedia('screen and (min-width: 1024px) and (not (pointer: coarse)), screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1000px) and (min-height: 600px)');
     function sidebarLayout() { return SIDEBAR_MQ.matches && !document.documentElement.classList.contains('no-tabs'); }
     function coaIsPage() {
       const modal = document.getElementById('coaModal');
@@ -12642,6 +12662,10 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-tablet-sidebar', date: 'Nov 2026', title: 'The sidebar on tablets held sideways', points: [
+        'Turn a tablet sideways (or use it with a keyboard like a laptop) and the tabs move to a sidebar, with Supply requests, Teachers and Forms one tap away. Turned upright, the tabs go back to the bottom.',
+        'On a computer, every government form fits on the Forms page without scrolling, and the Print button stays in view on long forms.'
+      ] },
       { id: '2026-11-depreciation', date: 'Nov 2026', title: 'Depreciation, count season and a computer layout', points: [
         'Each tagged unit can keep its date acquired and useful life. They fill the Property Card, RegSPI and IIRUP, and items of P50,000 and up show straight-line depreciation and carrying amount.',
         'From 1 December the bell keeps track of the year-end count. It also warns about requests waiting over 2 days, units in Needs repair for over a month, and changes that have not reached your account.',

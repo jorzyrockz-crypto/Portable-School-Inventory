@@ -101,7 +101,30 @@ try {
   await ev(t, () => switchMainView('ITEMS'));
   await sleep(300);
   let L = await layout();
-  check(L.top > 700 && L.side.length === 4 && !L.lapCol, `tablet landscape (touch): tabs stay at the bottom, no extra columns (${L.side.join(', ')})`);
+  check(L.left === 0 && L.top < 120 && L.w >= 250 && L.w <= 270 && L.h > 600, `tablet held sideways (1280 × 800, touch): tabs in a left sidebar (${L.w} px wide)`);
+  check(L.side.join() === 'Home,Inventory,Catalog,Reports,Supply requests,Teachers,Forms' && L.homeH >= 56, `finger-sized sidebar rows (${L.homeH} px): ${L.side.join(', ')}`);
+  check(await ev(t, () => [...document.querySelectorAll('#tabBar .tab-btn')].filter(b => b.offsetParent).every(b => b.getBoundingClientRect().height < 70)), 'every sidebar label fits on one line');
+  check(L.pad === `${L.w}px` && await fits(t) && !L.lapCol, 'content beside it; the extra columns stay off (not enough room at 20 px text)');
+  await t.screenshot({ path: `${SHOTS}/tablet-landscape-inventory.png` });
+  await t.click('#sideForms');
+  await sleep(300);
+  check(await ev(t, () => document.getElementById('coaModal').classList.contains('coa-page') && document.getElementById('sideForms').getAttribute('aria-current') === 'page'), 'Forms opens as a page beside the sidebar');
+  await t.setViewport({ width: 800, height: 1280, deviceScaleFactor: 1.5, isMobile: true, hasTouch: true });
+  await sleep(300);
+  L = await layout();
+  check(L.top > 1100 && L.side.length === 4 && L.pad === '0px' && await ev(t, () => !document.getElementById('coaModal').classList.contains('coa-page')),
+    'turned upright: bottom tabs again, and Forms is a pop-up');
+  await ev(t, () => closeCoa());
+  await t.setViewport({ width: 1366, height: 1024, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await ev(t, () => switchMainView('ITEMS'));
+  await sleep(300);
+  L = await layout();
+  check(L.w >= 250 && L.lapCol && await fits(t), 'big tablet sideways (1366 × 1024): sidebar plus the extra Inventory columns');
+  await t.screenshot({ path: `${SHOTS}/tablet-pro-inventory.png` });
+  await t.setViewport({ width: 915, height: 412, deviceScaleFactor: 2.6, isMobile: true, hasTouch: true });
+  await sleep(300);
+  L = await layout();
+  check(L.pad === '0px' && L.side.length === 4 && L.top > 300, 'phone held sideways (915 × 412): bottom tabs as before');
 
   out('4 computer: sidebar instead of the bottom tabs (UI review finding 15)');
   await t.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
