@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="385d0bb2e45a">
+  <meta name="app-version" content="3e535d00efde">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -184,6 +184,13 @@
     #tvPanes.tv-sel > #tvListPane, #tvPanes:not(.tv-sel) > #tvDetailPane { display: none; }
     #tvReviewSlot > #tvReview, #tvReviewSlot > #tvReviewRow { margin-top: 0.75rem; }
     #tvHead:empty { display: none; }
+    /* To review: cards in one row that swipes sideways (the next card peeks in) */
+    .rv-track { display: flex; align-items: stretch; gap: 0.75rem; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+      margin-inline: -1rem; padding: 0.125rem 1rem 0.375rem; scroll-padding-inline: 1rem; }
+    .rv-track > .rv-card { flex: 0 0 min(85%, 20rem); scroll-snap-align: start; }
+    .rv-track > .rv-card:only-child { flex-basis: 100%; }
+    .rv-track:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; border-radius: 1rem; }
+    @media (pointer: coarse) { .rv-arrows { display: none !important; } }
     @media screen and (min-width: 1024px) and (not (pointer: coarse)), screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1000px) and (min-height: 600px) {
       html:not(.no-tabs) body { padding-left: var(--side-w); padding-bottom: 2.5rem; }
       html:not(.no-tabs) body > header { margin-left: calc(-1 * var(--side-w)); }
@@ -219,6 +226,8 @@
       html:not(.no-tabs) #tvListHead .tv-acts { width: 100%; }
       html:not(.no-tabs) #tvListHead .tv-acts > button { flex: 1 1 auto; }
       html:not(.no-tabs) #tvPanes > #tvListPane { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+      html:not(.no-tabs) #tvDetailPane .rv-track { margin-inline: 0; padding-inline: 0; scroll-padding-inline: 0; }
+      html:not(.no-tabs) #tvDetailPane .rv-track > .rv-card:only-child { flex-basis: min(100%, 26rem); }
       html:not(.no-tabs) #tvChips { flex-wrap: wrap; margin-inline: 0; padding-inline: 0; overflow: visible; }
       /* Government forms open as a page beside the sidebar instead of a pop-up. The page itself
          scrolls (no box scrolling inside the card), and a form's Back / Print bar sticks to the bottom. */
@@ -9678,22 +9687,66 @@
     function teachersReviewHTML() {
       const { joins, reports, total } = teachersToReview();
       if (!total) return '';
-      return `
-        <div id="tvReviewBox" class="rounded-2xl bg-white border border-rose-200 shadow-sm overflow-hidden">
-          <p class="px-4 pt-3 pb-2 text-xs font-extrabold text-slate-900 flex items-center gap-2"><span class="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><i class="ph-bold ph-bell-ringing"></i></span> To review · ${total}</p>
-          ${joins.map(m => `
-            <div class="px-4 py-3 border-t border-slate-100 space-y-1.5" data-tvjoin="${escapeHTML(m.uid)}">
-              <p class="text-[11px] font-bold uppercase tracking-wider text-brand-700">Wants to join</p>
-              <p class="text-sm text-slate-900"><b>${escapeHTML(m.name)}</b>${[m.position, m.office].filter(Boolean).length ? ` · <span class="text-slate-600">${escapeHTML([m.position, m.office].filter(Boolean).join(' · '))}</span>` : ''}</p>
+      const cards = [
+        ...joins.map(m => `
+            <div ${rvWrap(true, 'join')} data-tvjoin="${escapeHTML(m.uid)}">
+              ${rvStripe(true, 'join')}
+              ${rvKicker('Wants to join', 'ph-user-plus', 'text-brand-700', m.joinedMs)}
+              <p class="text-sm text-slate-900"><b>${escapeHTML(m.name)}</b></p>
+              ${[m.position, m.office].filter(Boolean).length ? `<p class="text-xs text-slate-600 line-clamp-2">${escapeHTML([m.position, m.office].filter(Boolean).join(' · '))}</p>` : ''}
               <p class="text-xs text-slate-500">${m.email ? `${escapeHTML(m.email)} · ` : 'No Google account · '}joined with your invite link</p>
-              <div class="flex items-center gap-2 pt-1">
+              <div ${rvActs(true)}>
                 <button onclick="approveMember('${escapeHTML(m.uid)}')" class="h-9 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-user-check"></i> Approve</button>
                 <button onclick="declineMember('${escapeHTML(m.uid)}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Not from our school</button>
-                <span class="ml-auto text-[11px] text-slate-500">${escapeHTML(formatTimeAgo(m.joinedMs || Date.now()))}</span>
               </div>
-            </div>`).join('')}
-          ${reports.map(teacherReportCardHTML).join('')}
+            </div>`),
+        ...reports.map(x => teacherReportCardHTML(x, true))
+      ];
+      const many = total > 1;
+      return `
+        <div id="tvReviewBox">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><i class="ph-bold ph-bell-ringing"></i></span>
+            <h2 class="text-sm font-extrabold text-slate-900">To review · ${total}</h2>
+            ${many ? `<span id="rvPos" class="text-xs text-slate-500" aria-live="polite">1 of ${total}</span>
+            <div class="rv-arrows ml-auto flex items-center gap-1">
+              <button type="button" id="rvPrev" onclick="rvStep(-1)" aria-label="Previous" disabled class="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-40 text-slate-700 flex items-center justify-center"><i class="ph-bold ph-caret-left"></i></button>
+              <button type="button" id="rvNext" onclick="rvStep(1)" aria-label="Next" class="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-40 text-slate-700 flex items-center justify-center"><i class="ph-bold ph-caret-right"></i></button>
+            </div>` : ''}
+          </div>
+          <div id="rvTrack" class="rv-track no-scrollbar" role="region" aria-label="To review${many ? ', scroll sideways for more' : ''}" tabindex="0" onscroll="rvScrolled()">${cards.join('')}</div>
+          ${many && total <= 10 ? `<div id="rvDots" class="mt-2 flex justify-center gap-1.5" aria-hidden="true">${cards.map((c, i) => `<span class="h-1.5 rounded-full transition-all ${i ? 'w-1.5 bg-slate-300' : 'w-4 bg-slate-700'}"></span>`).join('')}</div>` : ''}
         </div>`;
+    }
+
+    // Swipe row: which card is in view (counter, dots, arrows), and the arrows for a mouse.
+    function rvStep(dir) {
+      const track = document.getElementById('rvTrack');
+      const card = track && track.querySelector('.rv-card');
+      if (!card) return;
+      const step = card.getBoundingClientRect().width + parseFloat(getComputedStyle(track).columnGap || 12);
+      track.scrollBy({ left: dir * step, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+    function rvScrolled() {
+      const track = document.getElementById('rvTrack');
+      if (!track) return;
+      const cards = [...track.querySelectorAll('.rv-card')];
+      if (cards.length < 2) return;
+      const left = track.getBoundingClientRect().left + parseFloat(getComputedStyle(track).scrollPaddingLeft || 0);
+      let at = 0, best = Infinity;
+      cards.forEach((c, i) => { const d = Math.abs(c.getBoundingClientRect().left - left); if (d < best) { best = d; at = i; } });
+      const end = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+      if (end) at = cards.length - 1;   // the last card is in view
+      const pos = document.getElementById('rvPos');
+      if (pos) pos.textContent = `${at + 1} of ${cards.length}`;
+      document.querySelectorAll('#rvDots > span').forEach((d, i) => { d.className = `h-1.5 rounded-full transition-all ${i === at ? 'w-4 bg-slate-700' : 'w-1.5 bg-slate-300'}`; });
+      const prev = document.getElementById('rvPrev'), next = document.getElementById('rvNext');
+      const arrows = document.querySelector('#tvReviewBox .rv-arrows');
+      const fits = track.scrollWidth <= track.clientWidth + 4;   // all cards in view: no arrows, counter or dots
+      if (arrows) arrows.classList.toggle('invisible', fits);
+      ['rvPos', 'rvDots'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('invisible', fits); });
+      if (prev) prev.disabled = track.scrollLeft <= 4;
+      if (next) next.disabled = end;
     }
 
     // Teacher removed or not approved yet: say so, and stop the action.
@@ -10803,25 +10856,36 @@
       .sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
 
     // One report from a teacher about their equipment, with the custodian's answers.
-    function teacherReportCardHTML(x) {
+    // To review items: stacked rows (a teacher's page) or, with card = true, cards in the swipe row.
+    const rvWrap = (card, kind) => (card
+      ? `data-rv="${kind}" class="rv-card relative flex flex-col gap-1.5 p-4 pt-4 rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden"`
+      : 'class="px-4 py-3 border-t border-slate-100 space-y-1.5"');
+    const RV_STRIPE = { join: 'bg-brand-600', count: 'bg-amber-600', problem: 'bg-rose-600', return: 'bg-emerald-600' };
+    const rvStripe = (card, kind) => (card ? `<span aria-hidden="true" class="absolute inset-x-0 top-0 h-1 ${RV_STRIPE[kind]}"></span>` : '');
+    const rvKicker = (label, icon, color, ms) => `<p class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider ${color}"><i class="ph-bold ${icon} text-xs"></i><span class="flex-1 min-w-0 truncate">${label}</span><span class="shrink-0 normal-case tracking-normal font-semibold text-slate-500">${escapeHTML(formatTimeAgo(ms || Date.now()))}</span></p>`;
+    const rvNote = (note, card) => (note ? `<p ${card ? 'onclick="this.classList.toggle(\'line-clamp-2\')" title="Tap to read it all"' : ''} class="text-xs text-slate-700 bg-slate-50 rounded-lg px-2.5 py-1.5 ${card ? 'line-clamp-2 cursor-pointer' : ''}">“${escapeHTML(note)}”</p>` : '');
+    const rvActs = card => `class="flex flex-wrap items-center gap-2 pt-1 ${card ? 'mt-auto' : ''}"`;
+
+    function teacherReportCardHTML(x, card = false) {
             const units = (x.units || []).map(u => u.no).filter(Boolean).join(', ');
             const ret = x.kind === 'return';
-            if (x.kind === 'count') return teacherCountInboxHTML(x);
+            if (x.kind === 'count') return teacherCountInboxHTML(x, card);
+            const kind = ret ? 'return' : 'problem';
             const action = ret ? ['acceptTeacherReturn', 'Received back', 'ph-arrow-u-down-left', 'bg-emerald-700 hover:bg-emerald-800']
               : x.reason === 'repair' && x.units.length ? ['resolveTeacherReport', 'Mark for repair', 'ph-wrench', 'bg-amber-700 hover:bg-amber-800', 'repair']
               : x.reason === 'unserv' && x.units.length ? ['resolveTeacherReport', 'Mark unserviceable', 'ph-x-circle', 'bg-rose-600 hover:bg-rose-700', 'unserv']
               : ['resolveTeacherReport', 'Noted', 'ph-check', 'bg-slate-700 hover:bg-slate-800', 'noted'];
             return `
-              <div class="px-4 py-3 border-t border-slate-100 space-y-1.5" data-treport="${x.id}">
-                <p class="text-[11px] font-bold uppercase tracking-wider ${ret ? 'text-emerald-700' : 'text-rose-700'}">${ret ? 'Return' : 'Equipment report'}</p>
+              <div ${rvWrap(card, kind)} data-treport="${x.id}">
+                ${rvStripe(card, kind)}
+                ${rvKicker(ret ? 'Return' : 'Equipment report', ret ? 'ph-arrow-u-down-left' : 'ph-warning', ret ? 'text-emerald-700' : 'text-rose-700', x.createdMs)}
                 <p class="text-sm text-slate-900">${reportWhoHTML(x)} ${ret ? 'is returning' : `reports <b class="text-rose-700">${escapeHTML(tReasonLabel(x.reason).toLowerCase())}</b>`}</p>
-                <p class="text-xs text-slate-600">${escapeHTML(x.desc)}${units ? ` · <span class="font-mono font-bold">${escapeHTML(units)}</span>` : ''} · ${escapeHTML(x.releaseNo || '')}</p>
-                ${x.note ? `<p class="text-xs text-slate-700 bg-slate-50 rounded-lg px-2.5 py-1.5">“${escapeHTML(x.note)}”</p>` : ''}
-                <div class="flex items-center gap-2 pt-1">
+                <p class="text-xs text-slate-600 ${card ? 'line-clamp-2' : ''}">${escapeHTML(x.desc)}${units ? ` · <span class="font-mono font-bold">${escapeHTML(units)}</span>` : ''} · ${escapeHTML(x.releaseNo || '')}</p>
+                ${rvNote(x.note, card)}
+                <div ${rvActs(card)}>
                   <button data-tr-act onclick="${action[0]}('${x.id}'${action[4] ? `, '${action[4]}'` : ''})" class="h-9 px-3 rounded-lg ${action[3]} text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ${action[2]}"></i> ${action[1]}</button>
                   ${action[4] && action[4] !== 'noted' ? `<button onclick="resolveTeacherReport('${x.id}', 'noted')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Noted</button>` : ''}
                   ${ret ? `<button onclick="declineTeacherReport('${x.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Decline</button>` : ''}
-                  <span class="ml-auto text-[11px] text-slate-500">${escapeHTML(formatTimeAgo(x.createdMs))}</span>
                 </div>
               </div>`;
     }
@@ -10829,23 +10893,23 @@
     const reportWhoHTML = x => (x.uid ? `<button onclick="openTeachersView('${escapeHTML(x.uid)}')" class="font-bold hover:underline">${escapeHTML(x.name)}</button>` : `<b>${escapeHTML(x.name)}</b>`);
 
     // A teacher's count with something missing or broken.
-    function teacherCountInboxHTML(x) {
+    function teacherCountInboxHTML(x, card = false) {
       const flags = countFlags(x);
       const broken = flags.filter(u => u.s === 'broken');
       const missing = flags.filter(u => u.s === 'missing');
       const list = us => us.map(u => `${escapeHTML(u.desc || '')} <span class="font-mono font-bold">${escapeHTML(u.no || '')}</span>`).join(', ');
       return `
-        <div class="px-4 py-3 border-t border-slate-100 space-y-1.5" data-treport="${x.id}">
-          <p class="text-[11px] font-bold uppercase tracking-wider text-amber-700">Year-end count</p>
+        <div ${rvWrap(card, 'count')} data-treport="${x.id}">
+          ${rvStripe(card, 'count')}
+          ${rvKicker('Year-end count', 'ph-seal-check', 'text-amber-700', x.createdMs)}
           <p class="text-sm text-slate-900">${reportWhoHTML(x)} counted their items: <b class="text-rose-700">${[missing.length && `${missing.length} missing`, broken.length && `${broken.length} broken`].filter(Boolean).join(' · ')}</b></p>
-          ${missing.length ? `<p class="text-xs text-slate-600"><b class="text-rose-700">Missing:</b> ${list(missing)}</p>` : ''}
-          ${broken.length ? `<p class="text-xs text-slate-600"><b class="text-amber-700">Broken:</b> ${list(broken)}</p>` : ''}
+          ${missing.length ? `<p class="text-xs text-slate-600 ${card ? 'line-clamp-2' : ''}"><b class="text-rose-700">Missing:</b> ${list(missing)}</p>` : ''}
+          ${broken.length ? `<p class="text-xs text-slate-600 ${card ? 'line-clamp-2' : ''}"><b class="text-amber-700">Broken:</b> ${list(broken)}</p>` : ''}
           <p class="text-[11px] text-slate-500">${escapeHTML(x.releaseNo || '')} · the rest are marked counted</p>
-          ${x.note ? `<p class="text-xs text-slate-700 bg-slate-50 rounded-lg px-2.5 py-1.5">“${escapeHTML(x.note)}”</p>` : ''}
-          <div class="flex items-center gap-2 pt-1">
+          ${rvNote(x.note, card)}
+          <div ${rvActs(card)}>
             ${broken.length ? `<button onclick="resolveTeacherReport('${x.id}', 'repair')" class="h-9 px-3 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-wrench"></i> Mark broken for repair</button>` : ''}
             <button onclick="resolveTeacherReport('${x.id}', 'noted')" class="h-9 px-3 rounded-lg ${broken.length ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold' : 'bg-slate-700 hover:bg-slate-800 text-white font-extrabold'} text-xs flex items-center gap-1.5">${broken.length ? '' : '<i class="ph-bold ph-check"></i> '}Noted</button>
-            <span class="ml-auto text-[11px] text-slate-500">${escapeHTML(formatTimeAgo(x.createdMs))}</span>
           </div>
         </div>`;
     }
@@ -11048,7 +11112,15 @@
       const wide = sidebarLayout();
       const home = wide && !teachersSel ? document.getElementById('tvDetailPane') : document.getElementById('tvReviewSlot');
       if (review.parentNode !== home) home.insertBefore(review, home.firstChild);
-      review.innerHTML = html;
+      if (review._html !== html) {
+        const old = document.getElementById('rvTrack');
+        const keep = old ? old.scrollLeft : 0;
+        review.innerHTML = html;
+        review._html = html;
+        const track = document.getElementById('rvTrack');
+        if (track && keep) { track.scrollLeft = keep; }
+      }
+      requestAnimationFrame(rvScrolled);   // also when it just became visible (sizes known now)
       review.classList.toggle('hidden', !html || !!teachersSel);
       const { joins, reports, total } = teachersToReview();
       row.classList.toggle('hidden', !(wide && total));
@@ -11245,7 +11317,7 @@
 
       let html = '';
       if (teachersClear === p.key) html += clearanceHTML(p, connected);
-      if (p.open.length) html += `<div class="rounded-2xl bg-white border border-rose-200 shadow-sm overflow-hidden">${p.open.map(teacherReportCardHTML).join('')}</div>`;
+      if (p.open.length) html += `<div class="rounded-2xl bg-white border border-rose-200 shadow-sm overflow-hidden">${p.open.map(x => teacherReportCardHTML(x)).join('')}</div>`;
       const unconfirmedIssue = p.toConfirm.slice().sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
       if (unconfirmedIssue.length) {
         const first = unconfirmedIssue[0];

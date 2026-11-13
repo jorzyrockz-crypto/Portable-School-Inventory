@@ -45,6 +45,22 @@ try {
   });
   check(ph.order && ph.row, 'phone: page title, then To review, then search and the list');
   check(ph.oneLine, 'phone: Print all · Supply usage · Release on one line each');
+  // To review as cards in one row that swipes; the next card peeks in
+  const row = await ev(a, () => {
+    const track = document.getElementById('rvTrack'), cards = [...track.querySelectorAll('.rv-card')].map(c => c.getBoundingClientRect());
+    return { n: cards.length, oneRow: cards.every(c => Math.abs(c.top - cards[0].top) < 2), sameH: cards.every(c => Math.abs(c.height - cards[0].height) < 2),
+      peek: cards[1].left < innerWidth && cards[1].right > innerWidth, page: document.documentElement.scrollWidth <= innerWidth,
+      kinds: [...track.querySelectorAll('.rv-card')].map(c => c.dataset.rv).join(','), pos: document.getElementById('rvPos').textContent, arrows: getComputedStyle(document.querySelector('.rv-arrows')).display };
+  });
+  check(row.n === 3 && row.oneRow && row.sameH, `phone: ${row.n} To review cards in one row, same height`);
+  check(row.peek && row.page, 'phone: the next card peeks in; the page itself does not scroll sideways');
+  check(row.kinds === 'join,count,problem' && row.pos === '1 of 3', `phone: join, count, report · “${row.pos}”`);
+  check(row.arrows === 'none', 'phone: no arrow buttons (swipe)');
+  await ev(a, () => { const t = document.getElementById('rvTrack'); t.scrollLeft = t.querySelectorAll('.rv-card')[1].offsetLeft - 16; });
+  await sleep(300);
+  check(await ev(a, () => document.getElementById('rvPos').textContent === '2 of 3' && document.querySelectorAll('#rvDots > span')[1].classList.contains('w-4')), 'phone: swiped → “2 of 3”, second dot');
+  await ev(a, () => renderTeachersView());
+  check(await ev(a, () => document.getElementById('rvTrack').scrollLeft > 100), 'phone: a refresh keeps the swipe position');
   await ev(a, () => openMoreMenu());
   check(await ev(a, () => !document.getElementById('moreSampleClear').classList.contains('hidden') && /loaded/.test(document.getElementById('moreSampleLoad').innerText)), 'More: “Sample data loaded” and Clear sample data');
   await ev(a, () => closeMoreMenu());
