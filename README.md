@@ -102,10 +102,10 @@ CustodianPro is laid out for a 360–430 px phone first and widens on tablets an
 
 The custodian's list of everything the school has (quantity above 0). It was called *My Items*; the teacher's own *My Items* (what was released to them) keeps its name.
 
-- **Top:** *Inventory*, the saved-online chip, `N items · ₱ total` and **Add items** (opens the Catalog). Then a search box (name, code, room, property or serial number, teacher) and a sort menu: highest value, name, room, most / least quantity.
+- **Top:** *Inventory*, the saved-online chip, `N items · ₱ total`, **Stock in** (a delivery with its actual cost, see [Deliveries](#deliveries-and-actual-costs)) and **Add items** (opens the Catalog). Then a search box (name, code, room, property or serial number, teacher) and a sort menu: highest value, name, room, most / least quantity.
 - **Filter chips** wrap onto a second line instead of scrolling sideways, each with its count: *All · Equipment · Consumables · Low stock · Needs repair · With teachers*, plus *Not counted* during a physical count. Chips with nothing in them are hidden.
 - **One row per item:** type icon, name (2 lines at most), *room · code*, at most two status labels (repair / unserviceable, low stock, with a teacher, tagged; more show as *+N*), and on the right the quantity and total value. There are no +/− buttons on the rows, so a count can't change by accident while scrolling.
-- **Tap a row** for the **item sheet** (a bottom sheet on phones): on hand, unit cost and total value; a low-stock note; the quantity stepper; room, category, condition, property numbers and who has the units (each name opens that teacher's page); and **Release · Edit details · History** at the bottom.
+- **Tap a row** for the **item sheet** (a bottom sheet on phones): on hand, unit cost and total value; a low-stock note; the quantity stepper; room, category, condition, property numbers and who has the units (each name opens that teacher's page); a **Prices** row (average cost and last paid) and a **Catalog** row (rename, hide or delete); and **Release · Edit details · History** at the bottom.
 - **During a physical count** each row has a check button on the left (tap to mark counted without opening the item), and the sheet has **Mark as counted**, which returns to the list.
 - `tests/e2e/phone-layout.mjs` checks the rows, chips, sheet and count mode at 390 px; `release.mjs` and `teachers-overview.mjs` use the sheet for Release and the teacher links.
 
@@ -117,7 +117,7 @@ The full APP-CSE catalog (361 items plus custom ones), where quantities are ente
   - *Catalog*, with *N items · N in stock* (or *Showing X of N* while filtering) and a chip showing the chosen category (tap ✕ to clear it);
   - **Custom item** on the right, where Inventory has *Add items*;
   - a search box (name, code, room) and a **Category** drop-down with how many items each category has. That one control replaced a strip of 30 category pills that ran off the screen.
-- **Chips** below, which wrap like Inventory's: *All (count) · Part I (PS-DBM) · Part II (Other) · In stock (count)*.
+- **Chips** below, which wrap like Inventory's: *All (count) · Part I (PS-DBM) · Part II (Other) · In stock (count)*, plus *Show hidden (count)* once anything is hidden.
 - **Reset all quantities** is at the end of the list. It is rarely needed and asks for confirmation first.
 - **One row per item:**
   - the name (2 lines at most);
@@ -132,6 +132,16 @@ The full APP-CSE catalog (361 items plus custom ones), where quantities are ente
   - the categories are in the drop-down;
   - + and − update the row;
   - tapping a name opens the details.
+
+### Editing, hiding and deleting catalog items
+
+Open an item (item sheet → *Catalog*, or *Edit details* → *Catalog*):
+
+- **Your own (custom) items:** change the name, unit, category and classification. **Delete** is offered only when the item has quantity 0, no property numbers and isn't on any slip, PR or delivery; otherwise it is **archived** (hidden, but kept for past slips and reports). Deleted numbers are not reused.
+- **APP-CSE items:** name, unit and stock no. are locked (they come from the DBM list); you can set your own unit cost. They can't be deleted but can be **hidden**.
+- Items you still have (quantity above 0) can't be hidden or deleted.
+- Hidden items leave the Catalog, Home search and scan suggestions; **Show hidden** lists them with *Show again*.
+- Old slips keep the name and cost they were printed with. Every change is in Change history and syncs to the school account.
 
 ## Sharing and link previews
 
@@ -324,6 +334,19 @@ Tap **Start count** on the dashboard, give the count a name (e.g. "Year-end coun
   stock. **Not counted** filters the ledger to what's left.
 - **Finish** shows which items were missed and writes a summary into Change History.
 - The count survives closing the app and is included in JSON backups.
+
+## Deliveries and actual costs
+
+**Home → Deliveries** (also *More → Deliveries* and Inventory's **Stock in**) records what you actually paid.
+
+- **Stock in:** supplier, date received, IAR no., DR / invoice no., PO no., and per line the item, quantity, unit and unit cost. Stock goes up when you save, with **Undo** right after.
+- **Scan PO:** a photo (or pasted text) of a **Purchase Order** is read like the ICS scanner (PO no., date, supplier, PR no., stock no., unit, description, quantity, unit cost, amount; quantities cross-checked against the amounts). Saving makes an **expected delivery** and does **not** change stock.
+- **Received:** open the PO and tap *Received*. Enter what came, all of it or only part, with the IAR or DR no.; only then does stock go up. A partly received PO stays open for the rest. **Scan IAR / DR** reads an Inspection and Acceptance Report or delivery receipt; when it names a waiting PO it is linked to it.
+- **Costs:** supplies keep an **average cost** across deliveries. Each equipment unit gets its own property number and its **own cost**, and that unit cost decides PAR (₱50,000 and up) or ICS when it is released, transferred or reported lost. A PR marked delivered uses the PR unit cost.
+- **Price history:** every item has a *Prices* window: unit cost now, last paid, each delivery (cost, quantity, supplier, document) and corrections with a reason. The PS-DBM price shows as *PS-DBM price (APP-CSE 2027)*, for reference only. New PR lines show what you last paid. Items you already had keep their current price as the starting cost.
+- **Matching:** the scanner suggests catalog items, tolerates reading slips (*BOND PAPFR*), and **remembers** your pick for a supplier's wording, so the same wording is matched by itself next time. A warning shows when the paper's unit (box) differs from the item's (piece).
+- Deliveries are saved in Change history, in backups, and in the school account (`settings/dlv-…` and `settings/matches`), so every custodian device sees them.
+- `tests/e2e/deliveries.mjs` covers PO reading, the expected → partly received → received flow, average cost, price history, per-unit PPE, remembered matches, Undo, Catalog editing and the sync to a second device.
 
 ## Scanning a printed ICS
 
@@ -595,6 +618,7 @@ node coa-forms.mjs                    # welcome tour, poster, PAR, ITR/PTR trans
 node phone-layout.mjs                 # 390 px phone: no sideways scroll, 32 px+ buttons, bottom sheets, toast placement
 node members-stock.mjs                # approval, edit / remove / add back, new invite link, School stock, "I took this"
 node app-reset.mjs                    # Reset app: this device only / and the school in the cloud, teacher phones, rules
+node deliveries.mjs                   # PO scan, expected / received deliveries, average cost, prices, Catalog editing
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

@@ -154,8 +154,8 @@ try {
   check(await ev(a, () => !document.getElementById('itemModal').classList.contains('hidden')), 'tapping the name opens room · price · minimum stock');
   await ev(a, () => closeItemModal());
   await a.screenshot({ path: `${SHOTS}/phone-catalog.png` });
-  check(await ev(a, () => new Set([...document.querySelectorAll('.part-tab')].map(t => Math.round(t.getBoundingClientRect().top))).size) === 1, 'All / Part I / Part II / In stock on one line');
-  check(await ev(a, () => [...document.querySelectorAll('.part-tab')].every(t => t.getBoundingClientRect().height <= 40)), 'tab labels do not wrap');
+  check(await ev(a, () => new Set([...document.querySelectorAll('.part-tab')].filter(t => t.offsetParent).map(t => Math.round(t.getBoundingClientRect().top))).size) === 1, 'All / Part I / Part II / In stock on one line');
+  check(await ev(a, () => [...document.querySelectorAll('.part-tab')].filter(t => t.offsetParent).every(t => t.getBoundingClientRect().height <= 40)), 'tab labels do not wrap');
 
   out('7 Reports');
   await ev(a, () => switchMainView('REPORTS'));
