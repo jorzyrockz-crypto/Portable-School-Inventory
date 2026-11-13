@@ -57,6 +57,7 @@ window.FirebaseSDK = (() => {
       const id = parts.pop();
       if (parts.join('/') !== path) return;
       pending = true;
+      if (kind === 'delete') { map.delete(id); return; }
       const before = map.get(id);
       map.set(id, { id, data: kind === 'set' || !before ? resolveTS(data) : { ...before.data, ...resolveTS(data) } });
     }));
@@ -124,6 +125,7 @@ window.FirebaseSDK = (() => {
     },
     setDoc: (ref, data, opts) => write([[opts && opts.merge ? 'merge' : 'set', ref.path, data]]),
     updateDoc: (ref, data) => write([['update', ref.path, data]]),
+    deleteDoc: ref => write([['delete', ref.path, null]]),
     addDoc: async (c, data) => { const ref = docRef(c.path + '/' + autoId()); await write([['set', ref.path, data]]); return ref; },
     query: (c, ...filters) => ({ type: 'query', path: c.path, filters: filters.filter(f => f && f.field) }),
     where: (field, op, value) => ({ field, op, value }),
@@ -137,6 +139,7 @@ window.FirebaseSDK = (() => {
       return {
         set: (r, d, o) => { ops.push([o && o.merge ? 'merge' : 'set', r.path, d]); },
         update: (r, d) => { ops.push(['update', r.path, d]); },
+        delete: r => { ops.push(['delete', r.path, null]); },
         commit: () => write(ops)
       };
     },

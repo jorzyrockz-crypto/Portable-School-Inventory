@@ -23,7 +23,8 @@ export function createBackend({ autoApprove = true } = {}) {
   const str = (v, max) => typeof v === 'string' && v.length <= max;
   const CUSTODIAN_ONLY = ['purchaseRequests', 'inventory', 'catalog', 'settings'];
   const member = (ctx, sid) => store.get(`schools/${sid}/members/${ctx.uid}`);
-  const isMember = (ctx, sid) => { const m = member(ctx, sid); return !!(ctx.uid && m && (m.status || 'active') === 'active'); };
+  const erasing = sid => !!(school(sid) && school(sid).erasing);
+  const isMember = (ctx, sid) => { const m = member(ctx, sid); return !!(ctx.uid && m && (m.status || 'active') === 'active' && !erasing(sid)); };
   const inviteOk = (sid, data) => {
     if (!(school(sid) && school(sid).inviteOnly)) return true;
     const inv = typeof data.invite === 'string' && data.invite && store.get(`schools/${sid}/invites/${data.invite}`);
@@ -41,7 +42,8 @@ export function createBackend({ autoApprove = true } = {}) {
       const ok = Object.keys(data).every(k => ['schoolId', 'name', 'updatedMs'].includes(k)) && str(data.name, 120);
       if (kind === 'create' || !before) {
         if (!/^[0-9]{6}$/.test(p[1]) || !ok || typeof data.schoolId !== 'string' || !isCust(ctx, data.schoolId)) deny('school id create', { path, data });
-      } else if (!isCust(ctx, before.schoolId) || !ok || (data.schoolId ?? before.schoolId) !== before.schoolId) deny('school id update', { path, data });
+      } else if (!ok || !((isCust(ctx, before.schoolId) && (data.schoolId ?? before.schoolId) === before.schoolId) ||
+                          (!school(before.schoolId) && typeof data.schoolId === 'string' && isCust(ctx, data.schoolId)))) deny('school id update', { path, data });
       return;
     }
     if (p[0] !== 'schools') deny('unknown collection', { path });
@@ -73,7 +75,7 @@ export function createBackend({ autoApprove = true } = {}) {
     if (p.length === 4 && sub === 'members') {
       if (kind === 'create') {
         const keys = ['uid', 'name', 'position', 'office', 'email', 'joinedMs', 'updatedAt', 'status', 'invite'];
-        const ok = ctx.uid === p[3] && school(sid) && Object.keys(data).every(k => keys.includes(k)) && data.status === 'pending' &&
+        const ok = ctx.uid === p[3] && school(sid) && !erasing(sid) && Object.keys(data).every(k => keys.includes(k)) && data.status === 'pending' &&
           inviteOk(sid, data) && cardOk(data, p[3]);
         if (!ok) deny('member create', { path, data });
         return;
@@ -151,7 +153,7 @@ export function createBackend({ autoApprove = true } = {}) {
       deny('read members', { path });
     }
     if (sub === 'invites') {
-      if (single) return;
+      if (single || isCust(ctx, sid)) return;
       deny('list invites', { path });
     }
     if (sub === 'stock' || sub === 'stockHolds') {
@@ -175,7 +177,21 @@ export function createBackend({ autoApprove = true } = {}) {
 
   // kind: 'set' (replace), 'merge' (set with { merge: true }) or 'update'. Rules see the
   // document as it would be after the write (request.resource.data), like Firestore.
+  // Deletes (Reset app → erase the school): the custodian of that school only, like firestore.rules.
+  function remove(path, ctx) {
+    const p = parts(path);
+    const before = store.get(path);
+    if (!ctx.uid) deny('delete signed out', { path });
+    if (p[0] === 'schoolIds' && p.length === 2) {
+      if (before && !isCust(ctx, before.schoolId)) deny('school id delete', { path });
+    } else if (p[0] === 'schools' && (p.length === 2 || p.length === 4)) {
+      if (!isCust(ctx, p[1])) deny('delete', { path });
+    } else deny('delete: no rule', { path });
+    store.delete(path);
+    writes.push(path);
+  }
   function write(kind, path, data, ctx) {
+    if (kind === 'delete') return remove(path, ctx);
     const before = store.get(path);
     if (kind === 'update' && !before) throw new Error('not-found');
     let after = kind === 'set' || !before ? resolveTS(data) : { ...before, ...resolveTS(data) };

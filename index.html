@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="153926d5a658">
+  <meta name="app-version" content="277fd635cff3">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1219,7 +1219,10 @@
     <div id="rqAccount" class="text-[11px] -mb-2"></div>
     <div class="flex items-center justify-between gap-3 text-xs pb-6">
       <button onclick="editMyDetails()" class="min-h-10 px-1 font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-user-circle"></i> Change my name or office</button>
-      <button onclick="leaveSchool()" class="min-h-10 px-1 font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-sign-out"></i> Leave</button>
+      <span class="flex items-center gap-2">
+        <button id="rqResetBtn" onclick="openResetApp()" class="min-h-10 px-1 font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-arrow-counter-clockwise"></i> Reset</button>
+        <button onclick="leaveSchool()" class="min-h-10 px-1 font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-sign-out"></i> Leave</button>
+      </span>
     </div>
   </section>
 
@@ -1294,6 +1297,11 @@
 
   <!-- TOAST (status messages, e.g. "ready to work offline") -->
   <!-- In-app dialog: replaces the browser's alert / confirm / prompt boxes ("… says") -->
+  <!-- Reset app: this device, or this device and the school in the cloud -->
+  <div id="resetModal" class="hidden fixed inset-0 z-[75] bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4 no-print" onclick="if (event.target === this) closeResetApp()" onkeydown="if (event.key === 'Escape') closeResetApp()">
+    <div id="resetCard" role="dialog" aria-modal="true" aria-labelledby="resetTitle" class="dlg-card w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl p-5 mb-[env(safe-area-inset-bottom)]"></div>
+  </div>
+
   <div id="appDialog" class="hidden fixed inset-0 z-[80] bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4 no-print" onkeydown="dialogKey(event)" onclick="if (event.target === this) dialogNudge()">
     <div id="appDialogCard" role="alertdialog" aria-modal="true" aria-labelledby="appDialogTitle" aria-describedby="appDialogMsg" class="dlg-card w-full max-w-sm max-h-[85vh] overflow-y-auto bg-white rounded-3xl shadow-2xl p-5 mb-[env(safe-area-inset-bottom)]">
       <div class="flex items-start gap-3">
@@ -1405,6 +1413,7 @@
           <button onclick="closeMoreMenu(); openHistory()" class="more-item"><i class="ph-bold ph-list-magnifying-glass text-brand-600"></i> Change history</button>
           <button id="moreSampleLoad" onclick="closeMoreMenu(); loadSampleData()" class="more-item"><i class="ph-bold ph-magic-wand text-slate-500"></i> Load sample data</button>
           <button id="moreSampleClear" onclick="closeMoreMenu(); clearSampleData()" class="more-item hidden"><i class="ph-bold ph-broom text-rose-600"></i> Clear sample data</button>
+          <button id="moreResetItem" onclick="openResetApp()" class="more-item"><i class="ph-bold ph-arrow-counter-clockwise text-rose-600"></i> Reset app…</button>
           <button id="moreTourItem" onclick="openTour()" class="more-item"><i class="ph-bold ph-signpost text-teal-600"></i> Welcome tour</button>
           <button id="moreAboutItem" onclick="closeMoreMenu(); openAbout()" class="more-item"><i class="ph-bold ph-info text-brand-600"></i> About &amp; what’s new <span id="moreUpdateDot" class="hidden ml-auto text-[11px] font-extrabold uppercase tracking-wider text-white bg-amber-700 rounded-full px-2 py-0.5">Update</span></button>
           <p id="backupStatusLine" class="px-2 pt-2 text-[11px] text-slate-500 flex items-center gap-1.5">
@@ -8686,8 +8695,12 @@
         if (reqRole.schoolNo !== no) await F.updateDoc(F.doc(cloud.db, 'schools', sid), { schoolNo: no });
         const ref = F.doc(cloud.db, 'schoolIds', no);
         const cur = await F.getDoc(ref);
-        if (!reqRole || reqRole.schoolId !== sid) return;
-        if (cur.exists() && cur.data().schoolId !== sid) {
+        if (!reqRole || reqRole.schoolId !== sid || resetBusy) return;
+        // Listed by a school that was since erased (Reset app): free to take.
+        const stale = cur.exists() && cur.data().schoolId !== sid
+          && !(await F.getDoc(F.doc(cloud.db, 'schools', String(cur.data().schoolId)))).exists();   // (the rules allow only this case)
+        if (!reqRole || reqRole.schoolId !== sid || resetBusy) return;
+        if (cur.exists() && cur.data().schoolId !== sid && !stale) {
           reqRole.schoolNoTaken = no;
         } else {
           await F.setDoc(ref, { schoolId: sid, name: String(reqRole.schoolName || schoolInfo.school || 'School').slice(0, 120), updatedMs: Date.now() });
@@ -9684,8 +9697,25 @@
     }
 
     // Teacher phones keep their name card in the roster (written once, and when it changes).
+    // No card and no school document: the custodian erased the school (More → Reset app).
+    async function checkSchoolGone() {
+      const sid = reqRole && reqRole.schoolId;
+      if (!sid || !cloud.db) return false;
+      try {
+        const snap = await cloud.sdk.getDoc(cloud.sdk.doc(cloud.db, 'schools', sid));
+        if ((snap.exists() && !(snap.data() || {}).erasing) || !reqRole || reqRole.schoolId !== sid) return false;
+        if (reqRole.schoolGone) return true;
+        reqRole.schoolGone = true;
+        saveReqRole();
+        if (notifScope()) addNotif({ title: `${reqRole.schoolName} was reset`, body: 'The property custodian erased the school’s records · leave, then join again', icon: 'ph-arrow-counter-clockwise', tone: 'amber', go: 'teacher-requests' });
+        renderRequestsEverywhere();
+        return true;
+      } catch (e) { return false; /* offline: the card write waits in the queue */ }
+    }
+
     function upsertMyMember() {
       if (!isTeacherDevice() || !cloud.user || !cloud.db || !reqRole.me || !reqRole.me.name) return;
+      if (reqRole.schoolGone) return;
       if (!myMemberLoaded) return;   // wait for my card: create it (pending) or update my details only
       const u = cloud.user;
       if (!reqRole.joinedMs) { reqRole.joinedMs = Date.now(); saveReqRole(); }
@@ -9871,19 +9901,22 @@
     // Teacher removed or not approved yet: say so, and stop the action.
     function myMemberStatus() {
       if (!isTeacherDevice()) return 'active';
+      if (reqRole.schoolGone) return 'gone';
       if (!myMemberLoaded) return 'active';    // not known yet: let it try (the rules decide)
       return myMember ? memberStatus(myMember) : 'pending';
     }
     function teacherMayAct() {
       const st = myMemberStatus();
       if (st === 'active') return true;
-      if (st === 'removed') appAlert(`The property custodian of ${reqRole.schoolName} removed you from the school. Your past requests and items stay here. If this is a mistake, ask them to add you back.`, { title: 'You were removed', icon: 'ph-user-minus', tone: 'warn' });
+      if (st === 'gone') appAlert(`The property custodian reset ${reqRole.schoolName} and erased its records. Tap Leave, then join again with the new invite link or School ID.`, { title: 'This school was reset', icon: 'ph-arrow-counter-clockwise', tone: 'warn' });
+      else if (st === 'removed') appAlert(`The property custodian of ${reqRole.schoolName} removed you from the school. Your past requests and items stay here. If this is a mistake, ask them to add you back.`, { title: 'You were removed', icon: 'ph-user-minus', tone: 'warn' });
       else appAlert(`Your property custodian has not approved you yet. You can send requests and see the school's stock once they tap Approve.`, { title: 'Waiting for approval', icon: 'ph-hourglass-medium', tone: 'info' });
       return false;
     }
     function teacherStatusBanner() {
       const st = myMemberStatus();
       if (st === 'pending') return `<div id="rqPending" class="rounded-2xl bg-sky-50 border border-sky-200 p-3 flex items-start gap-3"><i class="ph-bold ph-hourglass-medium text-xl text-sky-700 mt-0.5"></i><div class="min-w-0"><p class="text-sm font-extrabold text-slate-900">Waiting for approval</p><p class="text-xs text-slate-600">Your property custodian has to approve you first. Then you can send requests and see what the school has in stock.</p></div></div>`;
+      if (st === 'gone') return `<div id="rqGone" class="rounded-2xl bg-amber-50 border border-amber-200 p-3 flex items-start gap-3"><i class="ph-bold ph-arrow-counter-clockwise text-xl text-amber-700 mt-0.5"></i><div class="min-w-0 flex-1"><p class="text-sm font-extrabold text-slate-900">${escapeHTML(reqRole.schoolName)} was reset</p><p class="text-xs text-slate-600">The property custodian erased the school’s records. Leave, then join again with the new invite link or School ID.</p><button onclick="leaveSchool()" class="mt-2 h-9 px-3 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-sign-out"></i> Leave</button></div></div>`;
       if (st === 'removed') return `<div id="rqRemoved" class="rounded-2xl bg-amber-50 border border-amber-200 p-3 flex items-start gap-3"><i class="ph-bold ph-user-minus text-xl text-amber-700 mt-0.5"></i><div class="min-w-0"><p class="text-sm font-extrabold text-slate-900">Removed from ${escapeHTML(reqRole.schoolName)}</p><p class="text-xs text-slate-600">You can still see your past requests and items. Ask the property custodian if this is a mistake.</p></div></div>`;
       return '';
     }
@@ -9901,7 +9934,10 @@
         reqRole.memberSig = null;
         saveReqRole();
       }
-      upsertMyMember();
+      // No card: first make sure the school still exists (it may have been erased), then
+      // create the card (pending).
+      if (myMember) upsertMyMember();
+      else if (!reqRole.schoolGone) checkSchoolGone().then(gone => { if (!gone) upsertMyMember(); });
       const now = myMemberStatus();
       if (before && myMemberSrv && before !== now && notifScope()) {
         if (now === 'active' && before === 'pending') addNotif({ title: 'You’re in!', body: `${reqRole.schoolName} approved you · you can now send requests and see the stock`, icon: 'ph-user-check', tone: 'emerald', go: 'teacher-requests' });
@@ -15246,6 +15282,184 @@
       });
     }
 
+    // ---- Reset app ------------------------------------------------------------------------
+    // "This device": everything stored here (inventory, history, forms, settings, sample data,
+    // sign-in, Firestore's offline copy). "This device and the school": first erases every
+    // document of the school in the cloud (custodian only; firestore.rules allows the delete),
+    // so nothing syncs back. Typed RESET confirms; the page reloads clean.
+    var resetScope = 'device';
+    var resetBusy = false;
+    const RESET_SUBS = ['teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members'];
+    const canEraseCloud = () => isCustodianDevice() && !!cloud.user && !!cloud.db && !!(reqRole && reqRole.schoolId);
+    function openResetApp() {
+      if (typeof closeMoreMenu === 'function') { try { closeMoreMenu(); } catch (e) {} }
+      resetScope = 'device';
+      resetBusy = false;
+      renderResetApp();
+      document.getElementById('resetModal').classList.remove('hidden');
+      setTimeout(() => { const el = document.getElementById('resetConfirm'); if (el) el.focus({ preventScroll: true }); }, 50);
+    }
+    function closeResetApp() {
+      if (resetBusy) return;
+      document.getElementById('resetModal').classList.add('hidden');
+    }
+    function setResetScope(v) {
+      if (resetBusy || (v === 'cloud' && !canEraseCloud())) return;
+      const typed = (document.getElementById('resetConfirm') || {}).value || '';
+      resetScope = v;
+      renderResetApp();
+      const el = document.getElementById('resetConfirm');
+      if (el) { el.value = typed; resetTyped(); }
+    }
+    function resetTyped() {
+      const ok = (document.getElementById('resetConfirm').value || '').trim().toUpperCase() === 'RESET';
+      document.getElementById('resetGo').disabled = !ok || resetBusy;
+    }
+    function renderResetApp() {
+      const card = document.getElementById('resetCard');
+      if (!card) return;
+      const custodian = isCustodianDevice();
+      const cloudOk = canEraseCloud();
+      const school = escapeHTML((reqRole && reqRole.schoolName) || schoolInfo.school || 'your school');
+      const here = isTeacherDevice() ? 'this phone' : 'this device';
+      const opt = (key, icon, title, body, disabled = false, why = '') => `
+        <button type="button" data-reset-opt="${key}" onclick="setResetScope('${key}')" role="radio" aria-checked="${resetScope === key}" ${disabled ? 'disabled' : ''}
+          class="w-full text-left rounded-2xl border-2 p-3 flex items-start gap-3 transition ${resetScope === key ? 'border-rose-500 bg-rose-50' : 'border-slate-200 bg-white hover:border-slate-300'} disabled:opacity-50">
+          <span class="mt-0.5 w-5 h-5 shrink-0 rounded-full border-2 ${resetScope === key ? 'border-rose-600' : 'border-slate-300'} flex items-center justify-center">${resetScope === key ? '<span class="w-2.5 h-2.5 rounded-full bg-rose-600"></span>' : ''}</span>
+          <span class="min-w-0">
+            <span class="block text-sm font-extrabold text-slate-900 flex items-center gap-1.5"><i class="ph-bold ${icon}"></i> ${title}</span>
+            <span class="block mt-0.5 text-xs text-slate-600 leading-relaxed">${body}</span>
+            ${why ? `<span class="block mt-1 text-[11px] font-bold text-slate-500">${why}</span>` : ''}
+          </span>
+        </button>`;
+      card.innerHTML = `
+        <div class="flex items-start gap-3">
+          <div class="w-11 h-11 shrink-0 rounded-2xl flex items-center justify-center bg-rose-50 text-rose-600"><i class="ph-bold ph-arrow-counter-clockwise text-2xl"></i></div>
+          <div class="min-w-0 flex-1 pt-0.5">
+            <h2 id="resetTitle" class="text-base font-extrabold text-slate-900 leading-snug">Reset app</h2>
+            <p class="mt-0.5 text-sm text-slate-600">Start clean · after testing, or before the school uses it for real.</p>
+          </div>
+          <button onclick="closeResetApp()" class="w-9 h-9 shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+        </div>
+        <div role="radiogroup" aria-label="What to reset" class="mt-4 space-y-2">
+          ${opt('device', 'ph-device-mobile', `Only ${here}`, isTeacherDevice()
+            ? `Your items, requests, notifications, settings and sign-in on ${here}. Your requests and reports stay with the custodian.`
+            : `Inventory, change history, forms, sample data, settings and sign-in on ${here}. ${custodian ? `${school} in the cloud is kept: sign in again and it comes back.` : 'Nothing in the cloud is touched.'}`)}
+          ${isTeacherDevice() ? '' : opt('cloud', 'ph-cloud-x', `${here[0].toUpperCase() + here.slice(1)} and the school in the cloud`,
+            `Also erases ${school} for good: inventory, teachers, RIS / ICS / PAR and returns, reports, requests and PRs, stock, invite links and the School ID. Teachers’ phones lose access and must join again. Your sign-in account stays, ready for a new school.`,
+            !cloudOk, cloudOk ? '' : 'Sign in as the property custodian to erase the school in the cloud.')}
+        </div>
+        ${isTeacherDevice() ? '' : `
+        <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3 flex items-center gap-3">
+          <p class="min-w-0 flex-1 text-xs text-slate-600">Keep a copy first? The backup file has the inventory, history and school info on ${here}.</p>
+          <button id="resetBackup" onclick="exportBackupJSON()" class="shrink-0 h-9 px-3 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-floppy-disk text-emerald-600"></i> Back up</button>
+        </div>`}
+        <label for="resetConfirm" class="mt-4 block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Type RESET to confirm</label>
+        <input id="resetConfirm" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" oninput="resetTyped()" onkeydown="if (event.key === 'Enter' && !document.getElementById('resetGo').disabled) runResetApp()" placeholder="RESET"
+          class="w-full h-11 px-3 rounded-xl border border-slate-300 bg-white text-sm font-bold tracking-widest text-slate-900 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 outline-none">
+        <p id="resetStatus" role="status" aria-live="polite" class="hidden mt-2 text-xs font-semibold"></p>
+        <div class="mt-5 flex gap-2 sm:justify-end">
+          <button id="resetCancel" onclick="closeResetApp()" class="flex-1 sm:flex-none h-11 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 transition">Cancel</button>
+          <button id="resetGo" onclick="runResetApp()" disabled class="flex-1 sm:flex-none h-11 px-5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white text-sm font-bold shadow-sm transition flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrow-counter-clockwise"></i> ${resetScope === 'cloud' ? 'Erase and reset' : 'Reset'}</button>
+        </div>`;
+    }
+    function resetStatus(text, tone = 'slate') {
+      const el = document.getElementById('resetStatus');
+      if (!el) return;
+      el.className = `mt-2 text-xs font-semibold ${tone === 'error' ? 'text-rose-600' : 'text-slate-600'} flex items-center gap-1.5`;
+      el.innerHTML = tone === 'error' ? `<i class="ph-bold ph-warning-circle"></i> ${escapeHTML(text)}` : `<i class="ph-bold ph-circle-notch animate-spin"></i> ${escapeHTML(text)}`;
+    }
+    async function runResetApp() {
+      if (resetBusy) return;
+      if ((document.getElementById('resetConfirm').value || '').trim().toUpperCase() !== 'RESET') return;
+      const scope = resetScope === 'cloud' && canEraseCloud() ? 'cloud' : 'device';
+      resetBusy = true;
+      ['resetGo', 'resetCancel', 'resetConfirm', 'resetBackup'].forEach(id => { const el = document.getElementById(id); if (el) el.disabled = true; });
+      document.querySelectorAll('[data-reset-opt]').forEach(b => { b.disabled = true; });
+      try {
+        if (scope === 'cloud') {
+          if (navigator.onLine === false) throw Object.assign(new Error('offline'), { code: 'unavailable' });
+          resetStatus('Erasing the school in the cloud…');
+          await eraseSchoolCloud((n, total) => resetStatus(`Erasing the school in the cloud… ${n} of ${total}`));
+        }
+        resetStatus(`Clearing ${isTeacherDevice() ? 'this phone' : 'this device'}…`);
+        await wipeThisDevice(scope);
+      } catch (err) {
+        console.warn('reset', err);
+        resetBusy = false;
+        ['resetGo', 'resetCancel', 'resetConfirm', 'resetBackup'].forEach(id => { const el = document.getElementById(id); if (el) el.disabled = false; });
+        document.querySelectorAll('[data-reset-opt]').forEach(b => { b.disabled = b.dataset.resetOpt === 'cloud' && !canEraseCloud(); });
+        resetTyped();
+        const code = String((err && (err.code || err.message)) || '');
+        resetStatus(/permission-denied|insufficient permissions/i.test(code)
+          ? 'Firebase refused the delete. Publish the updated firestore.rules first (README · Reset app), then try again. Nothing was reset on this device.'
+          : `${cloudErrorText(err)} Nothing was reset on this device.`, 'error');
+      }
+    }
+    // Every document of the school, in batches (max 500 writes each); the school document last,
+    // since the rules check it to know who the custodian is.
+    async function eraseSchoolCloud(progress = () => {}) {
+      const F = cloud.sdk, db = cloud.db, sid = reqRole.schoolId;
+      stopRequestSync();   // no listener or sync writes while it is being erased
+      // First mark it: from now on teachers' phones see "was reset" and can't add anything.
+      await F.updateDoc(F.doc(db, 'schools', sid), { erasing: Date.now() });
+      const refs = [];
+      for (const sub of RESET_SUBS) {
+        const snap = await F.getDocs(F.collection(db, 'schools', sid, sub));
+        snap.docs.forEach(d => refs.push(F.doc(db, 'schools', sid, sub, d.id)));
+      }
+      const ids = [];
+      for (const no of [...new Set([mySchoolNo(), schoolNoOf(schoolInfo.school), schoolNoOf(reqRole.schoolName)].filter(Boolean))]) {
+        try {
+          const snap = await F.getDoc(F.doc(db, 'schoolIds', no));
+          if (snap.exists() && (snap.data() || {}).schoolId === sid) ids.push(F.doc(db, 'schoolIds', no));
+        } catch (e) { /* not ours */ }
+      }
+      const total = refs.length + ids.length + 1;
+      let done = 0;
+      progress(done, total);
+      for (let i = 0; i < refs.length; i += 400) {
+        const b = F.writeBatch(db);
+        refs.slice(i, i + 400).forEach(r => b.delete(r));
+        await b.commit();
+        done += Math.min(400, refs.length - i);
+        progress(done, total);
+      }
+      if (ids.length) {
+        const b = F.writeBatch(db);
+        ids.forEach(r => b.delete(r));
+        await b.commit();
+        done += ids.length;
+        progress(done, total);
+      }
+      const last = F.writeBatch(db);
+      last.delete(F.doc(db, 'schools', sid));
+      await last.commit();
+      progress(total, total);
+      return total;
+    }
+    async function wipeThisDevice(scope) {
+      try { stopRequestSync(); } catch (e) {}
+      try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
+      // Firestore's offline copy (IndexedDB); the delete finishes as the page reloads.
+      try {
+        const dbs = indexedDB && indexedDB.databases ? await indexedDB.databases() : [];
+        dbs.forEach(d => { if (d && d.name) { try { indexedDB.deleteDatabase(d.name); } catch (e) {} } });
+      } catch (e) {}
+      try { localStorage.clear(); } catch (e) {}
+      try { sessionStorage.clear(); } catch (e) {}
+      const set = Storage.prototype.setItem;
+      try { set.call(sessionStorage, 'cp_reset_done', scope); } catch (e) {}
+      // Nothing may write old state back before the reload.
+      Storage.prototype.setItem = function () {};
+      location.replace(location.pathname);
+    }
+    function announceReset() {
+      let done = null;
+      try { done = sessionStorage.getItem('cp_reset_done'); sessionStorage.removeItem('cp_reset_done'); } catch (e) {}
+      if (done) setTimeout(() => showToast(done === 'cloud' ? 'School erased · this device is clean' : 'Reset done · this device is clean', 'ph-arrow-counter-clockwise'), 400);
+    }
+
     // ---- More → Account -------------------------------------------------------------
     function renderMoreAccount() {
       const el = document.getElementById('moreAccount');
@@ -15286,6 +15500,7 @@
       initInstall();
       initAppUpdates();
       handleLaunchParams();
+      announceReset();
       // Re-check when the app comes back to the foreground (iPad apps stay open for days).
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') updateBackupReminder();

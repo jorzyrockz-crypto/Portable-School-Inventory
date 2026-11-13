@@ -228,7 +228,7 @@ The app is connected to the Firebase project **russapps-custodianpro** (settings
    - **Email/Password** (optional: custodians without a Google account).
 2. **Authentication → Settings → Authorized domains**: add `jorzyrockz-crypto.github.io`. Without it, Google sign-in shows “This website is not on the Firebase authorized domains list”.
 3. **Build → Firestore Database → Create database**: pick a location near you (e.g. `asia-southeast1`, Singapore) and start in **production mode**.
-4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school, and nothing can be deleted. **Publish again after updating the app** when `firestore.rules` changed (latest: the `schoolIds` lookup for joining by School ID).
+4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school. Nothing can be deleted, except by the school's custodian through **Reset app** (below). **Publish again after updating the app** when `firestore.rules` changed (latest: custodian-only delete for Reset app, and the `schoolIds` lookup for joining by School ID).
 
 The config values are not secret; access is controlled by the published rules. To use a different project, replace the object in `firebase-config.js` (or set it to `null` to hide Supply requests).
 
@@ -487,6 +487,12 @@ On a computer or a tablet held sideways, the list stays on the left and the pers
 
 > Publish the updated [`firestore.rules`](firestore.rules) again: they add member approval (`status` on `members`), invite links that can be replaced (`invites`, `inviteOnly`), **School stock** (`stock`, `stockHolds`) and requests of kind `took`. Until then, approvals, the stock list and “I took this” are refused.
 
+**Reset app.** More → *Reset app…* starts clean, after testing or before the school uses the app for real. Pick one option, optionally tap **Back up**, then type **RESET**:
+
+- **Only this device:** clears everything stored on this phone or computer: inventory, change history, forms, sample data, settings, notifications, sign-in and Firestore's offline copy. The page then reloads like a new install. The school in the cloud is kept, so signing in again brings it back.
+- **This device and the school in the cloud** (custodian, online): first marks the school as being erased, so teachers' phones can't add anything. Then it deletes every document of the school (inventory, catalog, settings, teachers, RIS / ICS / PAR and returns, reports, requests, PRs, stock, holds, invite links), its School ID entry and the school itself, and finally clears this device. Teachers' phones show *San Jose NHS was reset* with **Leave**, and they join again with the new link or School ID. The custodian's sign-in account stays: signing in again asks for the school name and makes a new, empty school. This needs the current `firestore.rules` published. With older rules Firebase refuses, and nothing is reset.
+- On a teacher's phone, **Reset** (next to Leave) clears only that phone. Their requests and reports stay with the custodian.
+
 **Sample data.** More → *Load sample data* adds sample counts plus six sample people (Ana Reyes, Ben Cruz, Carla Mendoza, Liza Ramos and the typed names Pedro Santos and “A. Reyes”), and Marco Villanueva waiting for approval, with ICS and RIS slips, a teacher count with one broken unit, an open problem report and a returned laptop. That way every filter, Remind, Clearance, the merge and Supply usage have something to show. The sample people, slips and reports live only on that device, in `custodian_sample_v1`. Writes about them are kept local and never reach Firestore, and they raise no notifications. *Clear sample data* removes them and restores the inventory snapshot taken before loading.
 
 ## Notifications
@@ -584,6 +590,7 @@ node login-theme.mjs                  # sign-in screen, teacher code / invite li
 node coa-forms.mjs                    # welcome tour, poster, PAR, ITR/PTR transfers, RRSP, RPCPPE/IIRUP, background update check
 node phone-layout.mjs                 # 390 px phone: no sideways scroll, 32 px+ buttons, bottom sheets, toast placement
 node members-stock.mjs                # approval, edit / remove / add back, new invite link, School stock, "I took this"
+node app-reset.mjs                    # Reset app: this device only / and the school in the cloud, teacher phones, rules
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```
