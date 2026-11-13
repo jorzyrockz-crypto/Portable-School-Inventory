@@ -317,7 +317,26 @@ try {
   await a.screenshot({ path: '/tmp/e2e_tv_laptop.png' });
   await ev(a, () => openTeachersView(null));
   await sleep(200);
-  check(/Pick someone on the left/.test(await ev(a, () => document.getElementById('tvBody').innerText)), 'nothing picked: a hint on the right');
+  check(/pick someone on the left/i.test(await ev(a, () => document.getElementById('tvBody').innerText)), 'nothing picked: a hint on the right');
+  // To review lives in the right pane while nobody is picked; the list keeps a row that brings it back
+  const rv = await ev(a, () => {
+    const box = document.getElementById('tvReview'), row = document.querySelector('#tvReviewRow button');
+    const top = document.getElementById('tvListTitle').getBoundingClientRect().top;
+    return { total: teachersToReview().total, inDetail: box.parentNode.id === 'tvDetailPane' && !box.classList.contains('hidden'), firstRight: document.getElementById('tvDetailPane').firstElementChild === box,
+      sameTop: Math.abs(box.getBoundingClientRect().top - top) < 12, row: !!row && row.getAttribute('aria-current') === 'true' && /To review/.test(row.innerText) };
+  });
+  check(rv.total > 0, `something to review (${rv.total})`);
+  check(rv.inDetail && rv.firstRight && rv.sameTop, 'To review: at the top of the right pane, level with the page title (not above both panes)');
+  check(rv.row, 'the list has a “To review” row, marked current');
+  await ev(a, uid => openTeachersView(uid), ana);
+  await sleep(200);
+  const picked = await ev(a, () => ({ hidden: document.getElementById('tvReview').classList.contains('hidden'), rowOn: document.querySelector('#tvReviewRow button').hasAttribute('aria-current'), inline: !!document.querySelector('#tvBody [data-treport]'), note: /under To review above/.test(document.getElementById('tvBody').innerText) }));
+  check(picked.hidden && !picked.rowOn, 'someone picked: their page replaces To review');
+  check(picked.inline && !picked.note, 'their open report is shown on their page, with its buttons');
+  await a.click('#tvReviewRow button');
+  await sleep(200);
+  check(await ev(a, () => !teachersSel && !document.getElementById('tvReview').classList.contains('hidden')), 'the To review row brings it back');
+  check(await ev(a, () => [...document.querySelectorAll('#tvListTitle .tv-acts > button')].every(b => b.getBoundingClientRect().height < 44)), 'header buttons on one line (“Supply usage” does not wrap)');
   // (switching to touch reloads the page)
   await a.setViewport({ width: 1180, height: 820, deviceScaleFactor: 1.5, isMobile: true, hasTouch: true });
   await sleep(500);

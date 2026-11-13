@@ -39,6 +39,12 @@ try {
   check(await ev(a, () => !!document.getElementById('tvUsageBtn') && !document.getElementById('tvUsageBtn').disabled), 'Supply usage has data');
   const inbox = await ev(a, () => { openTeachersView(null); return document.getElementById('tvReview').innerText; });
   check(/Ben Cruz.*counted their items/s.test(inbox) && /1 broken/.test(inbox) && /Carla Mendoza/.test(inbox) && /Marco Villanueva/.test(inbox), 'To review: Ben’s count (1 broken), Carla’s report, Marco wants to join');
+  const ph = await ev(a, () => {
+    const h1 = document.querySelector('#tvListTitle h1').getBoundingClientRect(), box = document.getElementById('tvReview').getBoundingClientRect(), search = document.getElementById('tvSearch').getBoundingClientRect();
+    return { order: h1.bottom <= box.top && box.bottom <= search.top, row: document.getElementById('tvReviewRow').classList.contains('hidden'), oneLine: [...document.querySelectorAll('#tvListTitle .tv-acts > button')].every(b => b.getBoundingClientRect().height <= 44) };
+  });
+  check(ph.order && ph.row, 'phone: page title, then To review, then search and the list');
+  check(ph.oneLine, 'phone: Print all · Supply usage · Release on one line each');
   await ev(a, () => openMoreMenu());
   check(await ev(a, () => !document.getElementById('moreSampleClear').classList.contains('hidden') && /loaded/.test(document.getElementById('moreSampleLoad').innerText)), 'More: “Sample data loaded” and Clear sample data');
   await ev(a, () => closeMoreMenu());

@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="cef0ed12425c">
+  <meta name="app-version" content="385d0bb2e45a">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -182,6 +182,8 @@
     :root { --side-w: 14.5rem; }
     /* Teachers page on a phone: the list, or the person picked (side by side on computers, below) */
     #tvPanes.tv-sel > #tvListPane, #tvPanes:not(.tv-sel) > #tvDetailPane { display: none; }
+    #tvReviewSlot > #tvReview, #tvReviewSlot > #tvReviewRow { margin-top: 0.75rem; }
+    #tvHead:empty { display: none; }
     @media screen and (min-width: 1024px) and (not (pointer: coarse)), screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1000px) and (min-height: 600px) {
       html:not(.no-tabs) body { padding-left: var(--side-w); padding-bottom: 2.5rem; }
       html:not(.no-tabs) body > header { margin-left: calc(-1 * var(--side-w)); }
@@ -215,7 +217,8 @@
       html:not(.no-tabs) #tvPanes > #tvDetailPane > * + * { margin-top: 1rem; }
       html:not(.no-tabs) #viewTeachers .tv-back { display: none; }
       html:not(.no-tabs) #tvListHead .tv-acts { width: 100%; }
-      html:not(.no-tabs) #tvListHead .tv-acts > button { flex: 1 1 0; }
+      html:not(.no-tabs) #tvListHead .tv-acts > button { flex: 1 1 auto; }
+      html:not(.no-tabs) #tvPanes > #tvListPane { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
       html:not(.no-tabs) #tvChips { flex-wrap: wrap; margin-inline: 0; padding-inline: 0; overflow: visible; }
       /* Government forms open as a page beside the sidebar instead of a pop-up. The page itself
          scrolls (no box scrolling inside the card), and a form's Back / Print bar sticks to the bottom. */
@@ -1134,10 +1137,13 @@
   <!-- RELEASED TO TEACHERS (custodian): who holds what, accountability print -->
   <!-- Phones: the list, or one person. Computers and tablets held sideways: both side by side. -->
   <section id="viewTeachers" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 no-print">
-    <div id="tvReview" class="hidden mb-4"></div>
     <div id="tvPanes">
       <div id="tvListPane" class="space-y-4">
-        <div id="tvListHead"></div>
+        <div id="tvListHead">
+          <div id="tvListTitle"></div>
+          <div id="tvReviewSlot"><div id="tvReview" class="hidden"></div><div id="tvReviewRow" class="hidden"></div></div>
+          <div id="tvListTools"></div>
+        </div>
         <div id="tvList" class="space-y-2.5"></div>
       </div>
       <div id="tvDetailPane" class="space-y-4">
@@ -11022,10 +11028,7 @@
       if (teachersSel && !usage && !person) teachersSel = null;
       if (person) tvLastPerson = person;
       document.getElementById('tvPanes').classList.toggle('tv-sel', !!teachersSel);
-      const review = document.getElementById('tvReview');
-      const reviewHTML = teachersReviewHTML();
-      review.innerHTML = reviewHTML;
-      review.classList.toggle('hidden', !reviewHTML || (!!teachersSel && !sidebarLayout()));
+      placeTeachersReview();
       renderTeachersBadges();
       // Typing in the search box: leave the box alone, so the keyboard stays open.
       if (!(document.activeElement && document.activeElement.id === 'tvSearch')) renderTeachersListHead(people);
@@ -11035,8 +11038,33 @@
       else renderTeachersNone(people);
     }
 
+    // "To review": on a phone it sits under the page title (the list's screen). With two panes it
+    // is what the right side shows while nobody is picked, and the list keeps a "To review" row
+    // that brings it back (like an inbox), so the people and the person stay in view.
+    function placeTeachersReview() {
+      const review = document.getElementById('tvReview');
+      const row = document.getElementById('tvReviewRow');
+      const html = teachersReviewHTML();
+      const wide = sidebarLayout();
+      const home = wide && !teachersSel ? document.getElementById('tvDetailPane') : document.getElementById('tvReviewSlot');
+      if (review.parentNode !== home) home.insertBefore(review, home.firstChild);
+      review.innerHTML = html;
+      review.classList.toggle('hidden', !html || !!teachersSel);
+      const { joins, reports, total } = teachersToReview();
+      row.classList.toggle('hidden', !(wide && total));
+      if (!(wide && total)) { row.innerHTML = ''; return; }
+      const on = !teachersSel;
+      const what = [joins.length && `${joins.length} ${joins.length === 1 ? 'wants' : 'want'} to join`, reports.length && plural(reports.length, 'equipment report')].filter(Boolean).join(' · ');
+      row.innerHTML = `
+        <button type="button" onclick="openTeachersView(null)" ${on ? 'aria-current="true"' : ''} class="w-full text-left rounded-2xl border px-3 py-2.5 flex items-center gap-3 transition ${on ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-200 hover:border-slate-300'}">
+          <span class="w-9 h-9 shrink-0 rounded-xl ${on ? 'bg-white' : 'bg-rose-50'} text-rose-600 flex items-center justify-center"><i class="ph-bold ph-bell-ringing text-lg"></i></span>
+          <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">To review</span><span class="block text-xs text-slate-600 truncate">${what}</span></span>
+          <span class="shrink-0 min-w-6 h-6 px-1.5 rounded-full bg-rose-600 text-white text-xs font-extrabold flex items-center justify-center">${total}</span>
+        </button>`;
+    }
+
     function renderTeachersListHead(people) {
-      const head = document.getElementById('tvListHead');
+      const head = document.getElementById('tvListTitle');
       const withItems = people.filter(p => p.equipment.length);
       const units = withItems.reduce((n, p) => n + p.equipment.length, 0);
       const value = withItems.reduce((n, p) => n + p.value, 0);
@@ -11053,12 +11081,13 @@
             <h1 class="text-xl font-extrabold text-slate-900 whitespace-nowrap">Released to teachers</h1>
             <p class="text-xs text-slate-500">${people.length} ${people.length === 1 ? 'person' : 'people'} · ${plural(units, 'equipment unit')} · ₱${peso2(value)}</p>
           </div>
-          <div class="tv-acts shrink-0 flex items-center gap-1.5 sm:pt-1 w-full sm:w-auto [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center [&>button]:h-10 sm:[&>button]:h-9">
+          <div class="tv-acts shrink-0 flex items-center gap-1.5 sm:pt-1 w-full sm:w-auto [&>button]:flex-auto sm:[&>button]:flex-none [&>button]:justify-center [&>button]:whitespace-nowrap [&>button]:h-10 sm:[&>button]:h-9">
             <button onclick="printAccountability()" ${withItems.length || hasRis ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print all</button>
             <button id="tvUsageBtn" onclick="openTeachersView('@usage')" ${hasRis ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-chart-bar"></i> Supply usage</button>
             ${isCustodianDevice() && cloud.user ? `<button onclick="openRelease()" class="h-9 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release</button>` : ''}
           </div>
-        </div>
+        </div>`;
+      document.getElementById('tvListTools').innerHTML = `
         <div class="relative mt-3">
           <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
           <input id="tvSearch" type="search" value="${escapeHTML(teachersQuery)}" oninput="setTeachersQuery(this.value)" placeholder="Find a teacher, item or property no." class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-brand-500 outline-none">
@@ -11146,10 +11175,11 @@
       const units = withItems.reduce((n, p) => n + p.equipment.length, 0);
       const counted = withItems.reduce((n, p) => n + p.counted, 0);
       const toConfirm = people.filter(p => p.toConfirm.length).length;
+      const below = sidebarLayout() && teachersToReview().total;   // To review is above it
       document.getElementById('tvBody').innerHTML = `
-        <div class="rounded-2xl bg-white border border-slate-200 p-8 text-center">
-          <i class="ph-bold ph-cursor-click text-3xl text-slate-300"></i>
-          <p class="mt-1 text-sm font-bold text-slate-700">Pick someone on the left</p>
+        <div class="rounded-2xl bg-white border border-slate-200 ${below ? 'p-5' : 'p-8'} text-center">
+          ${below ? '' : '<i class="ph-bold ph-cursor-click text-3xl text-slate-300"></i>'}
+          <p class="mt-1 text-sm font-bold text-slate-700">${below ? 'Or pick someone on the left' : 'Pick someone on the left'}</p>
           <p class="text-xs text-slate-500">Their equipment, supplies and history show here.</p>
           ${units ? `<div class="mt-4 grid grid-cols-3 gap-2 text-center max-w-md mx-auto">
             <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${withItems.length}</p><p class="text-[11px] font-bold uppercase text-slate-500">With items</p></div>
@@ -11215,9 +11245,7 @@
 
       let html = '';
       if (teachersClear === p.key) html += clearanceHTML(p, connected);
-      if (p.open.length) html += wide
-        ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-warning"></i> ${plural(p.open.length, 'open report')} · under To review above</p>`
-        : `<div class="rounded-2xl bg-white border border-rose-200 shadow-sm overflow-hidden">${p.open.map(teacherReportCardHTML).join('')}</div>`;
+      if (p.open.length) html += `<div class="rounded-2xl bg-white border border-rose-200 shadow-sm overflow-hidden">${p.open.map(teacherReportCardHTML).join('')}</div>`;
       const unconfirmedIssue = p.toConfirm.slice().sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
       if (unconfirmedIssue.length) {
         const first = unconfirmedIssue[0];
