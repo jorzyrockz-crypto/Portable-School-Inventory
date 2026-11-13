@@ -140,7 +140,7 @@ try {
   await ev(a, () => openTeachersView());
   await sleep(200);
   const names = async () => (await ev(a, () => [...document.querySelectorAll('#tvList [data-tvrow]')].map(r => r.querySelector('.block.text-sm').textContent)));
-  check(await ev(a, () => document.querySelectorAll('#tvChips [data-tvf]').length) === 7, 'seven filter chips');
+  check(await ev(a, () => document.querySelectorAll('#tvChips [data-tvf]').length === 8 && !!document.querySelector('#tvChips [data-tvf="lost"]')), 'eight filter chips, incl. Lost');
   await a.click('[data-tvf="confirm"]');
   check(JSON.stringify(await names()) === '["Ana Reyes"]', 'To confirm: Ana only');
   await a.click('[data-tvf="noacct"]');

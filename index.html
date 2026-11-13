@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="d54f9a3f8021">
+  <meta name="app-version" content="153926d5a658">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -10666,7 +10666,9 @@
 
     function renderTeacherTabs() {
       const h = teacherHoldings(myReleases);
-      const toAck = myReleases.filter(r => (isIssueKind(r.kind) || r.kind === 'RIS') && !r.sameHolder && !tAcked(r.id));
+      // An ICS / PAR whose units have all gone back (taken back, relieved) no longer asks for Received.
+      const stillHeld = new Set(h.equipment.map(x => x.rel.id));
+      const toAck = myReleases.filter(r => (r.kind === 'RIS' || (isIssueKind(r.kind) && (stillHeld.has(r.id) || !(r.lines || []).some(l => (l.units || []).length)))) && !r.sameHolder && !tAcked(r.id));
       if (!teacherTab) teacherTab = myReleases.length ? 'items' : 'requests';
       const tab = teacherTab;
       document.getElementById('rqTitle').textContent = tab === 'items' ? 'My items' : tab === 'stock' ? 'School stock' : 'Request supplies';
@@ -10721,7 +10723,9 @@
             <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Accountable equipment · ICS / PAR</h2>
             ${h.equipment.length ? `<span class="text-[11px] font-bold text-slate-500">${plural(h.equipment.length, 'item')} · ₱${peso2(value)}</span>` : ''}
           </div>
-          <div class="space-y-2">${h.equipment.length ? h.equipment.map(teacherUnitCardHTML).join('') : `
+          ${h.equipment.length >= 8 ? `<div class="relative mb-2"><i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+            <input id="tEquipSearch" type="search" value="${escapeHTML(tEquipQuery)}" oninput="setTEquipQuery(this.value)" placeholder="Find an item, property no. or slip" aria-label="Find in my equipment" class="w-full h-11 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm font-medium focus:border-amber-500 outline-none"></div>` : ''}
+          <div id="tEquipList" class="space-y-2">${h.equipment.length ? teacherEquipListHTML(h.equipment) : `
             <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
               <i class="ph-bold ph-desktop-tower text-3xl text-slate-300"></i>
               <p class="mt-1 font-bold text-slate-700 text-sm">No equipment under your name</p>
@@ -10730,43 +10734,153 @@
         </div>
         <div>
           <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Supplies received · RIS</h2>
-          <div class="space-y-2">${h.supplies.length ? h.supplies.map(teacherRisCardHTML).join('') : `
+          <div class="space-y-2">${h.supplies.length ? teacherSuppliesHTML(h.supplies) : `
             <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
               <i class="ph-bold ph-package text-3xl text-slate-300"></i>
               <p class="mt-1 font-bold text-slate-700 text-sm">No supplies yet</p>
               <p>Supplies released to you are listed here. Ask for more under <button onclick="setTeacherTab('requests')" class="font-bold text-amber-700 underline">Requests</button>.</p>
             </div>`}</div>
         </div>`;
+      const typing = document.activeElement && document.activeElement.id === 'tEquipSearch';
+      const caret = typing ? document.activeElement.selectionStart : 0;
       pane.innerHTML = html;
+      if (typing) { const el = document.getElementById('tEquipSearch'); if (el) { el.focus(); try { el.setSelectionRange(caret, caret); } catch (e) {} } }
     }
+
+    // Where a unit stands for the teacher, from their latest report about it and the
+    // custodian's answer: chip + which buttons are locked + a short flag for group summaries.
+    function tUnitStatus(unit) {
+      const last = tLatestFor(unit.id);
+      const res = { chip: '', lockReport: false, lockReturn: false, flag: '' };
+      if (!last) return res;
+      const open = last.status === 'open';
+      const since = last.repairedMs || last.foundMs || last.resolvedMs || last.createdMs || 0;
+      const recent = Date.now() - since < 30 * 86400000;
+      const pill = (tone, icon, text) => `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${tone} text-[11px] font-bold"><i class="ph-bold ${icon}"></i> ${text}</span>`;
+      const said = text => `<span class="block rounded-lg bg-slate-50 text-slate-600 text-[11px] px-2.5 py-1.5"><b>Custodian:</b> ${escapeHTML(text)}</span>`;
+      if (open && last.kind === 'return') {
+        Object.assign(res, { lockReturn: true, flag: 'return', chip: pill('bg-amber-50 text-amber-700 border-amber-200', last.sending ? 'ph-cloud-arrow-up' : 'ph-hourglass-medium', last.sending ? 'Sending…' : 'Return requested · waiting for the custodian') });
+      } else if (open) {
+        Object.assign(res, { lockReport: true, flag: 'reported', chip: pill('bg-rose-50 text-rose-700 border-rose-200', last.sending ? 'ph-cloud-arrow-up' : 'ph-warning', last.sending ? 'Sending…' : `Reported: ${escapeHTML(tReasonLabel(last.reason))}`) });
+      } else if (last.kind === 'problem' && last.resolution === 'lost' && !last.foundMs && !last.relievedMs) {
+        // stays on their list (and their accountability) until found or relieved
+        Object.assign(res, { lockReport: true, lockReturn: true, flag: 'lost', chip: `${pill('bg-rose-50 text-rose-700 border-rose-200', 'ph-question', 'Lost · still under your name until the custodian relieves it')}${last.reply ? said(last.reply) : ''}` });
+      } else if (last.kind === 'problem' && last.resolution === 'repair' && !last.repairedMs) {
+        Object.assign(res, { lockReport: true, flag: 'repair', chip: pill('bg-amber-50 text-amber-700 border-amber-200', 'ph-wrench', 'In repair · marked by the custodian') });
+      } else if (recent && last.status === 'declined') {
+        res.chip = said(last.reply || 'Return declined');
+      } else if (recent && last.status === 'done' && last.kind === 'problem') {
+        res.chip = said(last.reply || (last.resolution === 'repair' ? 'Marked for repair' : last.resolution === 'unserv' ? 'Marked unserviceable' : 'Noted'));
+      }
+      return res;
+    }
+    const tUnitButtons = (rel, unit, st, small = false) => `
+      <button onclick="openTeacherReport('problem', '${rel.id}', '${unit.id}')" ${st.lockReport ? 'disabled' : ''} data-t-report class="${small ? 'h-8 px-2.5' : 'h-9 px-3'} rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-warning"></i> ${small ? 'Report' : 'Report a problem'}</button>
+      <button onclick="openTeacherReport('return', '${rel.id}', '${unit.id}')" ${st.lockReturn ? 'disabled' : ''} data-t-return class="${small ? 'h-8 px-2.5' : 'h-9 px-3'} rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-arrow-u-up-left"></i> Return</button>`;
+    const tSlipText = rel => `${escapeHTML(rel.kind)} ${rel.no ? escapeHTML(rel.no) : '—'}${rel.fromName && !rel.sameHolder ? ` · from ${escapeHTML(rel.fromName)}` : ''}${rel.date ? ` · ${escapeHTML(formatShortDate(rel.date + 'T00:00:00'))}` : ''}`;
 
     function teacherUnitCardHTML(x) {
       const { unit, line, rel } = x;
-      const last = tLatestFor(unit.id);
-      const open = last && last.status === 'open';
-      const recent = last && Date.now() - (last.resolvedMs || last.createdMs || 0) < 30 * 86400000;
-      let chip = '';
-      if (last && open) chip = last.kind === 'return'
-        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-200 text-[11px] font-bold"><i class="ph-bold ph-${last.sending ? 'cloud-arrow-up' : 'hourglass-medium'}"></i> ${last.sending ? 'Sending…' : 'Return requested · waiting for the custodian'}</span>`
-        : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-rose-50 text-rose-700 border-rose-200 text-[11px] font-bold"><i class="ph-bold ph-${last.sending ? 'cloud-arrow-up' : 'warning'}"></i> ${last.sending ? 'Sending…' : `Reported: ${escapeHTML(tReasonLabel(last.reason))}`}</span>`;
-      else if (last && recent && last.status === 'declined') chip = `<span class="block rounded-lg bg-slate-50 text-slate-600 text-[11px] px-2.5 py-1.5"><b>Custodian:</b> ${escapeHTML(last.reply || 'Return declined')}</span>`;
-      else if (last && recent && last.status === 'done' && last.kind === 'problem') chip = `<span class="block rounded-lg bg-slate-50 text-slate-600 text-[11px] px-2.5 py-1.5"><b>Custodian:</b> ${escapeHTML(last.reply || (last.resolution === 'repair' ? 'Marked for repair' : last.resolution === 'unserv' ? 'Marked unserviceable' : 'Noted'))}</span>`;
+      const st = tUnitStatus(unit);
       return `
-        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2">
+        <div data-tunit-card="${unit.id}" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <p class="text-sm font-extrabold text-slate-900 leading-snug">${escapeHTML(line.desc)}</p>
               <p class="mt-0.5 text-[11px] text-slate-500"><span class="font-mono font-bold text-slate-700">${escapeHTML(unit.no || '—')}</span>${unit.serial ? ` · S/N ${escapeHTML(unit.serial)}` : ''}</p>
-              <p class="text-[11px] text-slate-500">${escapeHTML(rel.kind)} ${rel.no ? escapeHTML(rel.no) : '—'}${rel.fromName && !rel.sameHolder ? ` · from ${escapeHTML(rel.fromName)}` : ''}${rel.date ? ` · ${escapeHTML(formatShortDate(rel.date + 'T00:00:00'))}` : ''}</p>
+              <p class="text-[11px] text-slate-500">${tSlipText(rel)}</p>
             </div>
             <p class="shrink-0 text-xs font-extrabold font-mono text-slate-700">₱${peso2(line.unitCost)}</p>
           </div>
-          ${chip}
-          <div class="flex gap-2">
-            <button onclick="openTeacherReport('problem', '${rel.id}', '${unit.id}')" ${open && last.kind === 'problem' ? 'disabled' : ''} class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-warning"></i> Report a problem</button>
-            <button onclick="openTeacherReport('return', '${rel.id}', '${unit.id}')" ${open && last.kind === 'return' ? 'disabled' : ''} class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-arrow-u-up-left"></i> Return</button>
-          </div>
+          ${st.chip}
+          <div class="flex gap-2">${tUnitButtons(rel, unit, st)}</div>
         </div>`;
+    }
+
+    // ---- Many items: same item grouped (Armchair × 20), a search box, older RIS folded ----
+    const tGroupOpen = new Map();  // item groups the teacher opened or closed (few units: open by default)
+    let tEquipQuery = '';
+    let tSupEarlierOpen = false;
+    const tGroupKey = x => String(x.line.code || x.line.desc || '').trim() || 'item';
+    function tEquipGroups(list) {
+      const map = new Map();
+      list.forEach(x => { const k = tGroupKey(x); if (!map.has(k)) map.set(k, []); map.get(k).push(x); });
+      return [...map.entries()].map(([key, units]) => ({ key, units: units.sort((a, b) => String(a.unit.no || '').localeCompare(String(b.unit.no || ''), undefined, { numeric: true })) }))
+        .sort((a, b) => a.units[0].line.desc.localeCompare(b.units[0].line.desc));
+    }
+    const tUnitHay = x => `${x.line.desc} ${x.unit.no || ''} ${x.unit.serial || ''} ${x.rel.kind} ${x.rel.no || ''}`.toLowerCase();
+    function teacherEquipListHTML(equipment) {
+      const words = tEquipQuery.toLowerCase().split(/\s+/).filter(Boolean);
+      const shown = words.length ? equipment.filter(x => words.every(w => tUnitHay(x).includes(w))) : equipment;
+      if (!shown.length) return `<p class="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-center text-xs text-slate-500">Nothing matches “${escapeHTML(tEquipQuery)}”.</p>`;
+      return tEquipGroups(shown).map(g => {
+        if (g.units.length === 1 && !words.length && equipment.filter(x => tGroupKey(x) === g.key).length === 1) return teacherUnitCardHTML(g.units[0]);
+        const all = equipment.filter(x => tGroupKey(x) === g.key);
+        const open = words.length > 0 || (tGroupOpen.has(g.key) ? tGroupOpen.get(g.key) : equipment.length <= 6);
+        const value = all.reduce((n, x) => n + (x.line.unitCost || 0), 0);
+        const slips = [...new Set(all.map(x => `${x.rel.kind} ${x.rel.no || ''}`.trim()))];
+        const flags = {};
+        all.forEach(x => { const f = tUnitStatus(x.unit).flag; if (f) flags[f] = (flags[f] || 0) + 1; });
+        const FLAG = { reported: ['bg-rose-50 text-rose-700', 'reported'], lost: ['bg-rose-50 text-rose-700', 'lost'], repair: ['bg-amber-50 text-amber-700', 'in repair'], return: ['bg-amber-50 text-amber-700', 'return requested'] };
+        return `
+          <div data-tgroup="${escapeHTML(g.key)}" class="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <button type="button" onclick="toggleTGroup(this.closest('[data-tgroup]').dataset.tgroup, ${open})" aria-expanded="${open}" class="w-full p-3 flex items-center gap-3 text-left hover:bg-slate-50">
+              <span class="w-11 h-11 shrink-0 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-mono font-extrabold text-sm">×${all.length}</span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-extrabold text-slate-900 leading-snug">${escapeHTML(all[0].line.desc)}</span>
+                <span class="block text-[11px] text-slate-500 truncate">${plural(all.length, 'unit')} · ₱${peso2(value)} · ${escapeHTML(slips[0])}${slips.length > 1 ? ` +${slips.length - 1} more` : ''}</span>
+                ${Object.keys(flags).length ? `<span class="mt-1 flex flex-wrap gap-1">${Object.entries(flags).map(([f, n]) => `<span class="px-1.5 py-0.5 rounded-md text-[11px] font-bold ${FLAG[f][0]}">${n} ${FLAG[f][1]}</span>`).join('')}</span>` : ''}
+              </span>
+              <i class="ph-bold ph-caret-down text-slate-500 transition ${open ? 'rotate-180' : ''}"></i>
+            </button>
+            ${open ? `<div class="border-t border-slate-100 divide-y divide-slate-100">${g.units.map(x => {
+              const st = tUnitStatus(x.unit);
+              return `
+                <div data-tunit-row="${x.unit.id}" class="px-3 py-2.5 space-y-1.5">
+                  <div class="flex items-start justify-between gap-3">
+                    <p class="min-w-0 text-[11px] text-slate-500"><span class="font-mono font-bold text-xs text-slate-800">${escapeHTML(x.unit.no || '—')}</span>${x.unit.serial ? ` · S/N ${escapeHTML(x.unit.serial)}` : ''}<span class="block">${tSlipText(x.rel)}</span></p>
+                    <p class="shrink-0 text-[11px] font-bold font-mono text-slate-600">₱${peso2(x.line.unitCost)}</p>
+                  </div>
+                  ${st.chip}
+                  <div class="flex gap-2">${tUnitButtons(x.rel, x.unit, st, true)}</div>
+                </div>`;
+            }).join('')}</div>` : ''}
+          </div>`;
+      }).join('');
+    }
+    function toggleTGroup(key, wasOpen) {
+      tGroupOpen.set(key, !wasOpen);
+      renderRequesterView();
+    }
+    function setTEquipQuery(v) {
+      tEquipQuery = v;
+      const box = document.getElementById('tEquipList');
+      if (box) box.innerHTML = teacherEquipListHTML(teacherHoldings(myReleases).equipment);
+    }
+    // Calendar quarters (as on the APP-CSE): this quarter's slips open, older ones folded.
+    const quarterOf = iso => { const d = iso ? new Date(iso + 'T00:00:00') : new Date(); return { key: `${d.getFullYear()}-${Math.floor(d.getMonth() / 3) + 1}`, label: `${['Jan–Mar', 'Apr–Jun', 'Jul–Sep', 'Oct–Dec'][Math.floor(d.getMonth() / 3)]} ${d.getFullYear()}` }; };
+    function teacherSuppliesHTML(supplies) {
+      const groups = [];
+      supplies.forEach(r => {
+        const q = quarterOf(r.date || (r.createdMs ? localISODate(new Date(r.createdMs)) : ''));
+        let g = groups.find(x => x.key === q.key);
+        if (!g) { g = { ...q, slips: [] }; groups.push(g); }
+        g.slips.push(r);
+      });
+      const now = quarterOf(localISODate()).key;
+      const first = groups.find(g => g.key === now) || groups[0];
+      const rest = groups.filter(g => g !== first);
+      const count = rest.reduce((n, g) => n + g.slips.length, 0);
+      return `
+        ${first.key !== now ? `<p class="px-1 text-[11px] text-slate-500">None yet this quarter · latest from ${escapeHTML(first.label)}</p>` : ''}
+        ${first.slips.map(teacherRisCardHTML).join('')}
+        ${rest.length ? `
+          <button id="tSupEarlier" type="button" onclick="tSupEarlierOpen = !tSupEarlierOpen; renderRequesterView()" aria-expanded="${tSupEarlierOpen}" class="w-full h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5">
+            <i class="ph-bold ph-clock-counter-clockwise"></i> ${tSupEarlierOpen ? 'Hide earlier slips' : `Earlier · ${plural(count, 'slip')}`} <i class="ph-bold ph-caret-down transition ${tSupEarlierOpen ? 'rotate-180' : ''}"></i>
+          </button>
+          ${tSupEarlierOpen ? rest.map(g => `
+            <h3 class="px-1 pt-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">${escapeHTML(g.label)} · ${plural(g.slips.length, 'slip')}</h3>
+            ${g.slips.map(teacherRisCardHTML).join('')}`).join('') : ''}` : ''}`;
     }
 
     function teacherRisCardHTML(r) {
@@ -11005,6 +11119,7 @@
             const action = ret ? ['acceptTeacherReturn', 'Received back', 'ph-arrow-u-down-left', 'bg-emerald-700 hover:bg-emerald-800']
               : x.reason === 'repair' && x.units.length ? ['resolveTeacherReport', 'Mark for repair', 'ph-wrench', 'bg-amber-700 hover:bg-amber-800', 'repair']
               : x.reason === 'unserv' && x.units.length ? ['resolveTeacherReport', 'Mark unserviceable', 'ph-x-circle', 'bg-rose-600 hover:bg-rose-700', 'unserv']
+              : x.reason === 'lost' && x.units.length ? ['resolveTeacherReport', 'Start lost report', 'ph-question', 'bg-rose-600 hover:bg-rose-700', 'lost']
               : ['resolveTeacherReport', 'Noted', 'ph-check', 'bg-slate-700 hover:bg-slate-800', 'noted'];
             return `
               <div ${rvWrap(card, kind)} data-treport="${x.id}">
@@ -11082,12 +11197,25 @@
       showToast(`${x.name.split(' ')[0]}’s return received · back in stock, not assigned`, 'ph-arrow-u-down-left');
     }
 
-    function resolveTeacherReport(id, action) {
+    async function resolveTeacherReport(id, action) {
       const x = tReports.find(r => r.id === id);
       if (!x || !cloud.user) return;
       const F = cloud.sdk;
+      const touched = [];
+      if (action === 'lost') {
+        // Lost: it stays under the teacher's name (their accountability) until it is found or
+        // they are relieved; the RLSDDP / RLSDDSP opens with the unit ticked.
+        (x.units || []).forEach(({ id: uid }) => {
+          const found = findUnitWithItem(uid);
+          if (!found) return;
+          found.unit.lostMs = Date.now();
+          if (x.note) found.unit.lostNote = String(x.note).slice(0, 300);
+          touched.push(found);
+        });
+        if (touched.length) saveStateWith({ summary: { kind: 'condition', code: touched[0].item.code,
+          text: `${touched.map(f => f.unit.no).join(', ')} reported lost by ${x.name}${x.note ? `: ${x.note}` : ''} · lost report started` } });
+      }
       if (action === 'repair' || action === 'unserv') {
-        const touched = [];
         (x.units || []).filter(u => x.kind !== 'count' || u.s === 'broken').forEach(({ id: uid }) => {
           const found = findUnitWithItem(uid);
           if (!found) return;
@@ -11099,11 +11227,106 @@
         if (touched.length) saveStateWith({ summary: { kind: 'condition', code: touched[0].item.code,
           text: `${touched.map(f => f.unit.no).join(', ')} marked ${action === 'repair' ? 'for repair' : 'unserviceable'} (reported by ${x.name}${x.note ? `: ${x.note}` : ''})` } });
       }
-      const reply = action === 'repair' ? 'Marked for repair' : action === 'unserv' ? 'Marked unserviceable' : 'Noted';
-      cloudWrite(F.updateDoc(F.doc(tReportCol(), x.id), { status: 'done', resolution: action, reply, resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '' }), 'Updating');
-      tReports = tReports.map(r => (r.id === id ? { ...r, status: 'done' } : r));
+      const reply = action === 'repair' ? 'Marked for repair' : action === 'unserv' ? 'Marked unserviceable'
+        : action === 'lost' ? 'Lost report started · it stays under your name until you are relieved of accountability' : 'Noted';
+      const patch = { status: 'done', resolution: action, reply, resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '' };
+      cloudWrite(F.updateDoc(F.doc(tReportCol(), x.id), patch), 'Updating');
+      tReports = tReports.map(r => (r.id === id ? { ...r, ...patch } : r));
       renderRequestsEverywhere();
+      if (action === 'lost' && touched.length) {
+        showToast(`Lost report started · ${x.name.split(' ')[0]} will see it`, 'ph-question');
+        openCoa('lost');
+        coaSetOpt('lostType', isPPE(touched[0].item) ? 'ppe' : 'sep');
+        return;
+      }
       showToast(`${reply} · ${x.name.split(' ')[0]} will see it`, 'ph-check-circle');
+      // Beyond repair: take it back now, so it leaves the teacher's list and waits in stock
+      // for the IIRUP / IIRUSP and disposal.
+      const held = action === 'unserv' ? touched.filter(f => f.unit.to || f.unit.toUid) : [];
+      if (held.length && await appConfirm(`${held.map(f => f.unit.no || f.item.name).join(', ')} ${held.length === 1 ? 'leaves' : 'leave'} ${x.name}’s list with an RRSP and ${held.length === 1 ? 'waits' : 'wait'} in stock, marked Unserviceable, for the IIRUP / IIRUSP and disposal.`,
+        { title: 'Take it back now?', ok: 'Take back', cancel: 'Keep with the teacher', tone: 'warn', icon: 'ph-arrow-u-down-left' })) {
+        takeBackPairs(held, 'Unserviceable · returned for disposal');
+      }
+    }
+
+    // Units back from one holder at once (no question asked here): one RRSP for them all.
+    function takeBackPairs(pairs, purpose, extra = {}) {
+      const live = pairs.filter(f => f.unit.to || f.unit.toUid);
+      if (!live.length) return null;
+      const holder = unitHolder(live[0].unit);
+      const uid = live[0].unit.toUid || null;
+      const byItem = new Map();
+      live.forEach(({ item, unit }) => { if (!byItem.has(item.code)) byItem.set(item.code, { item, units: [] }); byItem.get(item.code).units.push(unit); });
+      const lines = [...byItem.values()].map(({ item, units }) => relLine(item, units.length, units));
+      live.forEach(({ unit }) => { clearUnitHolder(unit); unit.returned = Date.now(); });
+      if (isCustodianDevice() && cloud.user) {
+        const F = cloud.sdk;
+        const t = rosterByUid(uid) || { uid, name: holder };
+        cloudWrite(F.setDoc(F.doc(relCol()), cleanJSON(relBase(t, {
+          kind: 'RETURN', source: 'taken-back', no: nextReleaseNo('RETURN', localISODate()), date: localISODate(), purpose,
+          lines, total: 0, createdAt: F.serverTimestamp(), ...extra
+        }))), 'Saving the return');
+      }
+      saveStateWith({ summary: { kind: 'release', code: live[0].item.code, text: `Took back ${live.map(f => f.unit.no || f.item.name).join(', ')} from ${holder} · ${purpose}` } });
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+      showToast(`${plural(live.length, 'unit')} back in stock · RRSP made for ${holder}`, 'ph-arrow-u-down-left');
+      return lines;
+    }
+
+    // ---- After a report: repaired, found, or relieved of accountability ----------------------
+    // The teacher sees it on their item (the custodian adds it to the report they sent).
+    function tellTeacher(unitId, patch, pick) {
+      if (!(isCustodianDevice() && cloud.user)) return;
+      const r = tReports.filter(x => x.kind === 'problem' && (x.units || []).some(u => u.id === unitId) && pick(x))
+        .sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0))[0];
+      if (!r) return;
+      const F = cloud.sdk;
+      cloudWrite(F.updateDoc(F.doc(tReportCol(), r.id), patch), 'Updating');
+      tReports = tReports.map(x => (x.id === r.id ? { ...x, ...patch } : x));
+    }
+    function markRepaired(unitId) {
+      const found = findUnitWithItem(unitId);
+      if (!found || found.unit.cond !== 'R') return;
+      found.unit.cond = 'S';
+      found.unit.condAt = Date.now();
+      syncUnitCondition(found.item);
+      saveStateWith({ summary: { kind: 'condition', code: found.item.code, text: `${found.unit.no || found.item.name} repaired · back in use${unitHolder(found.unit) ? ` (${unitHolder(found.unit)})` : ''}` } });
+      tellTeacher(unitId, { repairedMs: Date.now(), reply: 'Repaired · back in use' }, x => x.resolution === 'repair' && !x.repairedMs);
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+      showToast(`${found.unit.no || found.item.name} repaired · back in use`, 'ph-wrench');
+    }
+    function markFound(unitId) {
+      const found = findUnitWithItem(unitId);
+      if (!found || !found.unit.lostMs) return;
+      delete found.unit.lostMs;
+      delete found.unit.lostNote;
+      saveStateWith({ summary: { kind: 'condition', code: found.item.code, text: `${found.unit.no || found.item.name} found${unitHolder(found.unit) ? ` (${unitHolder(found.unit)})` : ''}` } });
+      tellTeacher(unitId, { foundMs: Date.now(), reply: 'Found · back on your list as usual' }, x => x.resolution === 'lost' && !x.foundMs && !x.relievedMs);
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+      showToast(`${found.unit.no || found.item.name} found`, 'ph-check-circle');
+    }
+    // Relief granted (e.g. after the RLSDDP / RLSDDSP): off the teacher's list and dropped from
+    // the inventory (quantity − 1), with the reference kept in the history and on the record.
+    async function relieveLost(unitId) {
+      const found = findUnitWithItem(unitId);
+      if (!found || !found.unit.lostMs) return;
+      const { item, unit } = found;
+      const holder = unitHolder(unit) || 'the teacher';
+      const ref = await appPrompt(`${unit.no || item.name} leaves ${holder}’s list and is dropped from the inventory (quantity ${item.qty} → ${Math.max(0, item.qty - 1)}).`, '',
+        { title: `Relieve ${holder} of accountability?`, label: 'Reference (optional)', placeholder: 'e.g. RLSDDSP No. 2026-001 · relief granted 12 Nov 2026', ok: 'Relieve', tone: 'danger', icon: 'ph-seal-check' });
+      if (ref === null) return;
+      const why = ref.trim().slice(0, 200);
+      if (unit.to || unit.toUid) takeBackPairs([found], `Relieved of accountability (lost)${why ? ` · ${why}` : ''}`, { no: '', source: 'lost', ref: why });
+      const state = userState[item.code];
+      state.units = getUnits(item.code).filter(u => u.id !== unitId);
+      item.qty = Math.max(0, (item.qty || 0) - 1);
+      state.qty = item.qty;
+      if (state.units.length) syncUnitCondition(item);
+      else { delete state.units; clampCondition(item); }
+      saveStateWith({ summary: { kind: 'tag', code: item.code, text: `Dropped ${unit.no || item.name} (lost, ${holder} relieved of accountability${why ? `: ${why}` : ''}) · quantity ${item.qty + 1} → ${item.qty}` } });
+      tellTeacher(unitId, { relievedMs: Date.now(), reply: `Relieved of accountability${why ? ` · ${why}` : ''}` }, x => x.resolution === 'lost' && !x.foundMs && !x.relievedMs);
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+      showToast(`${holder.split(' ')[0]} relieved · ${unit.no || item.name} dropped from the inventory`, 'ph-seal-check');
     }
 
     async function declineTeacherReport(id) {
@@ -11171,7 +11394,8 @@
         const counted = equipment.filter(x => (x.unit.seen || 0) >= since).length;
         const repair = equipment.filter(x => x.unit.cond === 'R').length;
         const unserv = equipment.filter(x => x.unit.cond === 'U').length;
-        return { ...p, records, equipment, ris, toConfirm, open, value, last, oldest: oldest === Infinity ? 0 : oldest, counted, repair, unserv, removed: isRemovedUid(p.uid) };
+        const lost = equipment.filter(x => x.unit.lostMs).length;
+        return { ...p, records, equipment, ris, toConfirm, open, value, last, oldest: oldest === Infinity ? 0 : oldest, counted, repair, unserv, lost, removed: isRemovedUid(p.uid) };
       }).sort((a, b) => (b.equipment.length + b.records.length > 0) - (a.equipment.length + a.records.length > 0) || a.name.localeCompare(b.name));
     }
 
@@ -11181,6 +11405,7 @@
       ['confirm', 'To confirm', p => p.toConfirm.length > 0],
       ['reports', 'Open reports', p => p.open.length > 0],
       ['uncounted', 'Not counted yet', p => p.equipment.length > 0 && p.counted < p.equipment.length],
+      ['lost', 'Lost', p => p.equipment.some(x => x.unit.lostMs)],
       ['noacct', 'No account', p => !p.uid],
       ['notjoined', 'Hasn’t joined', p => (p.uid ? !p.joined && !p.removed : p.equipment.length > 0)]
     ];
@@ -11193,7 +11418,7 @@
       }[teachersSort];
       return by ? [...list].sort((a, b) => by(a, b) || a.name.localeCompare(b.name)) : list;
     }
-    const personCondText = p => [p.repair && `${p.repair} for repair`, p.unserv && `${p.unserv} unserviceable`].filter(Boolean).join(' · ');
+    const personCondText = p => [p.lost && `${p.lost} lost`, p.repair && `${p.repair} for repair`, p.unserv && `${p.unserv} unserviceable`].filter(Boolean).join(' · ');
     const daysSince = ms => Math.max(0, Math.floor((Date.now() - ms) / 864e5));
 
     // Someone whose last item was just taken back (and with no slips yet) stays on screen.
@@ -11359,7 +11584,7 @@
                 ${p.value ? `<span class="block text-[11px] font-mono text-slate-500">₱${peso2(p.value)}</span>` : ''}
               </span>
             </button>
-            ${cond ? `<button data-tvcond onclick="openCoa('unserv')" class="w-full min-h-9 px-3 py-1.5 border-t border-slate-100 text-left text-[11px] font-bold text-amber-700 hover:bg-amber-50 flex items-center gap-1.5"><i class="ph-bold ph-wrench"></i> ${cond}<span class="ml-auto font-semibold text-slate-500 flex items-center gap-0.5">IIRUP <i class="ph-bold ph-caret-right"></i></span></button>` : ''}
+            ${cond ? `<button data-tvcond onclick="openCoa('${p.repair || p.unserv ? 'unserv' : 'lost'}')" class="w-full min-h-9 px-3 py-1.5 border-t border-slate-100 text-left text-[11px] font-bold text-amber-700 hover:bg-amber-50 flex items-center gap-1.5"><i class="ph-bold ${p.repair || p.unserv ? 'ph-wrench' : 'ph-question'}"></i> ${cond}<span class="ml-auto font-semibold text-slate-500 flex items-center gap-0.5">${p.repair || p.unserv ? 'IIRUP' : 'Lost report'} <i class="ph-bold ph-caret-right"></i></span></button>` : ''}
           </div>`;
       }).join('') : `<p class="text-center text-xs text-slate-500 py-6">${q ? `No one matches “${escapeHTML(teachersQuery)}”${teachersFilter !== 'all' ? ` under ${escapeHTML(filterName)}` : ''}.` : `No one under ${escapeHTML(filterName)}.`}${teachersFilter !== 'all' ? ` <button onclick="setTeachersFilter('all')" class="font-bold text-brand-600 underline">Show all</button>` : ''}</p>`;
       if (!q && teachersFilter === 'all') body.insertAdjacentHTML('beforeend', removedMembersHTML());
@@ -11448,12 +11673,16 @@
 
       const condChip = u => {
         const c = UNIT_COND[u.cond] || UNIT_COND.S;
-        return u.cond && u.cond !== 'S' ? `<span class="inline-flex px-1.5 py-0.5 rounded-md border text-[11px] font-bold ${c.on}">${c.label}</span>` : '';
+        return (u.lostMs ? `<span data-lost-chip class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-rose-50 text-rose-700 border-rose-200 text-[11px] font-bold" title="${escapeHTML(u.lostNote || 'Reported lost')}"><i class="ph-bold ph-question"></i> Lost · ${escapeHTML(formatShortDate(localISODate(new Date(u.lostMs)) + 'T00:00:00'))}</span>` : '')
+          + (u.cond && u.cond !== 'S' ? `<span class="inline-flex px-1.5 py-0.5 rounded-md border text-[11px] font-bold ${c.on}">${c.label}</span>` : '');
       };
       const confirmedUnit = u => p.uid && releaseList.some(r => r.teacherUid === p.uid && isIssueKind(r.kind) && r.lines.some(l => (l.units || []).some(x => x.id === u.id)) && tReports.some(x => x.kind === 'received' && x.releaseId === r.id));
       const okChip = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-bold"><i class="ph-bold ph-check-circle"></i> Confirmed</span>';
       const countedChip = u => ((u.seen || 0) >= since.ms ? `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-brand-50 text-brand-700 border-brand-100 text-[11px] font-bold" title="Counted ${since.year}"><i class="ph-bold ph-seal-check"></i> Counted</span>` : '');
-      const unitActions = (item, unit) => `
+      const unitActions = (item, unit) => unit.lostMs ? `
+        <button data-relieve onclick="relieveLost('${unit.id}')" class="text-[11px] font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 ml-auto"><i class="ph-bold ph-seal-check"></i> Relieve</button>
+        <button data-found onclick="markFound('${unit.id}')" class="text-[11px] font-bold text-slate-500 hover:text-emerald-700 flex items-center gap-1 ml-auto"><i class="ph-bold ph-check-circle"></i> Found</button>` : `
+        ${unit.cond === 'R' ? `<button data-repaired onclick="markRepaired('${unit.id}')" class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 ml-auto"><i class="ph-bold ph-wrench"></i> Repaired · back in use</button>` : ''}
         ${connected ? `<button onclick="openTransfer({ fromKey: '${k}', unitIds: ['${unit.id}'] })" class="text-[11px] font-bold text-slate-500 hover:text-brand-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>` : ''}
         <button onclick="takeBackUnit('${item.code}', '${unit.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrow-u-down-left"></i> Take back</button>`;
       const docLine = unit => [unit.ics && unitDocLabel(unit), unit.icsDate && formatShortDate(unit.icsDate + 'T00:00:00')].filter(Boolean).join(' · ');
@@ -12235,7 +12464,7 @@
     //   RPCPPE Appendix 73  / RPCSP Annex A.8 · physical count, from the scans and checks recorded
     //   IIRUP  Appendix 74  / IIRUSP Annex A.10 · unserviceable property (units marked Unserviceable)
     // =========================================================================
-    const relDocName = r => (r.kind === 'RETURN' ? (r.no ? `RRSP ${r.no}` : (r.transferNo || '')) : `${r.kind} ${r.no || ''}`.trim());
+    const relDocName = r => (r.kind === 'RETURN' ? (r.source === 'lost' ? `Relieved (lost)${r.ref ? ` · ${r.ref}` : ''}` : r.no ? `RRSP ${r.no}` : (r.transferNo || '')) : `${r.kind} ${r.no || ''}`.trim());
     const relPrintable = r => r.kind !== 'RETURN' || r.source === 'returned' || r.source === 'taken-back'
       || (r.source === 'transferred' && releaseList.some(x => x.id === r.transferId));
     const fDate = iso => (iso ? new Date(iso + 'T00:00:00').toLocaleDateString('en-PH') : '');
@@ -13142,7 +13371,7 @@
       tReports.filter(x => (x.kind === 'problem' && x.reason === 'lost') || x.kind === 'count')
         .forEach(x => (x.units || []).forEach(u => { if (x.kind !== 'count' || u.s === 'missing') lost.set(u.id, x.name || 'a teacher'); }));
       return allTaggedUnits().filter(x => relIsEquip(x.item) && isPPE(x.item) === ppe)
-        .map(x => ({ ...x, reportedBy: lost.get(x.unit.id) || '' }))
+        .map(x => ({ ...x, reportedBy: lost.get(x.unit.id) || (x.unit.lostMs ? unitHolder(x.unit) || 'the custodian' : '') }))
         .sort((a, b) => (b.reportedBy ? 1 : 0) - (a.reportedBy ? 1 : 0) || String(a.unit.no).localeCompare(String(b.unit.no), undefined, { numeric: true }));
     }
     function coaToggleLost(id) { coaRead(); const ids = coaLostSel.ids; if (ids.has(id)) ids.delete(id); else ids.add(id); renderCoa(); }
@@ -13772,10 +14001,13 @@
         })), fromCacheOf(meta));
       } else if (isTeacherDevice()) {
         notifCheck('reports', tReports.filter(x => !x.sending && x.kind !== 'received').map(x => ({
-          key: 'tr:' + x.id, sig: x.status || 'open',
+          key: 'tr:' + x.id, sig: (x.status || 'open') + (x.repairedMs ? '+repaired' : x.foundMs ? '+found' : x.relievedMs ? '+relieved' : ''),
           make: prev => {
             if (!prev) return null;                // a report I just sent: nothing to announce
             const what = [x.desc, (x.units || []).map(u => u.no).filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+            if (x.kind === 'problem' && x.repairedMs) return { title: 'Repaired · back in use', body: what || 'Your item is repaired', icon: 'ph-wrench', tone: 'emerald', go: 'teacher-items' };
+            if (x.kind === 'problem' && x.foundMs) return { title: 'Lost item found', body: what ? `${what} is back on your list as usual` : 'It is back on your list as usual', icon: 'ph-check-circle', tone: 'emerald', go: 'teacher-items' };
+            if (x.kind === 'problem' && x.relievedMs) return { title: 'Relieved of accountability', body: [what && `${what} is off your list`, x.reply].filter(Boolean).join(' · '), icon: 'ph-seal-check', tone: 'emerald', go: 'teacher-items' };
             if (x.kind === 'return' && x.status === 'done') return { title: 'Return accepted', body: what ? `${what} is off your list` : 'The item is off your list', icon: 'ph-arrow-u-down-left', tone: 'emerald', go: 'teacher-items' };
             if (x.kind === 'return' && x.status === 'declined') return { title: 'Return not accepted', body: [what, x.reply].filter(Boolean).join(' · '), icon: 'ph-x-circle', tone: 'rose', go: 'teacher-items' };
             if (x.kind === 'problem' && (x.status === 'done' || x.status === 'declined')) return { title: 'The custodian answered your report', body: [what, x.reply].filter(Boolean).join(' · '), icon: 'ph-chat-text', tone: 'brand', go: 'teacher-items' };

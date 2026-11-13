@@ -429,12 +429,15 @@ On a teacher's phone the screen has two tabs: **My Items** and **Requests**.
 - **Accountable equipment · ICS:** every unit under the teacher's name, with its property number, serial, ICS no. and value. Returns are subtracted. Each unit has two actions:
   - **Report a problem:** needs repair, not working, lost or missing, or something else, plus a note.
   - **Return:** the item stays on the list, marked *Return requested*, until the custodian marks it received back.
-- **Supplies received · RIS:** every slip, newest first. *Report a problem* covers fewer than released, damaged, or wrong item.
+  - **Many items:** units of the same item make one row (*Monobloc chair × 20 · 20 units · ₱…*) with a count of any *reported / in repair / lost* units. Tap it to see each property number with its own **Report** and **Return**. With 6 units or fewer the rows start open. From 8 units, a search box finds an item, property number or slip.
+- **Supplies received · RIS:** this quarter's slips, newest first. Older slips fold under **Earlier · N slips**, grouped by quarter (*Jul–Sep 2026 · 3 slips*). *Report a problem* covers fewer than released, damaged, or wrong item.
 - Reports sent without signal are queued (*Sending…*) and go out when the phone reconnects.
 
 The custodian sees open reports at the top of the **Teachers** page under **To review**, labelled *Equipment report*, *Year-end count* or *Return* (and on that teacher's page). Home shows *Teachers · N to review*, and the Teachers tab, More → Released to teachers and the bell each show a count. **Supply requests** now counts only supply requests:
 
-- **Mark for repair / Mark unserviceable** sets the unit's condition in Inventory.
+- **Mark for repair** sets the unit to *For repair*. The teacher sees *In repair*. When it comes back, tap **Repaired · back in use** on the unit (the teacher's page under Teachers). It goes back to serviceable, and the teacher gets a notification.
+- **Mark unserviceable** also asks **Take it back now?** If yes, an RRSP is made, the unit leaves the teacher's list, and it waits in stock, still unserviceable, for the IIRUP / IIRUSP and disposal. Otherwise use **Take back** later.
+- **Start lost report** (lost or missing) flags the unit *Lost* and opens the RLSDDP / RLSDDSP with it ticked. The unit stays under the teacher's name, their accountability, until you tap **Found** or **Relieve** on it. **Relieve** asks for a reference (e.g. *RLSDDSP No. 2026-001*), takes the unit off the teacher's list, drops it from the inventory (quantity − 1) and keeps the reference in the history. The **Lost** filter on the Teachers page lists everyone with lost units, for the year-end count.
 - **Received back** clears the assignment. The unit is back in stock, and a return record is kept.
 - **Decline** asks for a reason. **Noted** closes a report without changes.
 - The teacher sees the answer on the item.
