@@ -44,6 +44,7 @@
 .ph-bold.ph-bell-simple-ringing:before { content: "\e5ea"; }
 .ph-bold.ph-bell-slash:before { content: "\e0d4"; }
 .ph-bold.ph-books:before { content: "\e758"; }
+.ph-bold.ph-broom:before { content: "\ec54"; }
 .ph-bold.ph-buildings:before { content: "\e102"; }
 .ph-bold.ph-calendar-check:before { content: "\e712"; }
 .ph-bold.ph-camera:before { content: "\e10e"; }
@@ -199,6 +200,7 @@
 .ph-fill.ph-bell-simple-ringing:before { content: "\e5ea"; }
 .ph-fill.ph-bell-slash:before { content: "\e0d4"; }
 .ph-fill.ph-books:before { content: "\e758"; }
+.ph-fill.ph-broom:before { content: "\ec54"; }
 .ph-fill.ph-buildings:before { content: "\e102"; }
 .ph-fill.ph-calendar-check:before { content: "\e712"; }
 .ph-fill.ph-camera:before { content: "\e10e"; }
@@ -360,6 +362,8 @@
 .ph-duotone.ph-bell-slash:after { content: "\e0d5"; margin-left: -1em; }
 .ph-duotone.ph-books:before { content: "\e758"; opacity: 0.2; }
 .ph-duotone.ph-books:after { content: "\e759"; margin-left: -1em; }
+.ph-duotone.ph-broom:before { content: "\ec54"; opacity: 0.2; }
+.ph-duotone.ph-broom:after { content: "\ec55"; margin-left: -1em; }
 .ph-duotone.ph-buildings:before { content: "\e102"; opacity: 0.2; }
 .ph-duotone.ph-buildings:after { content: "\e105"; margin-left: -1em; }
 .ph-duotone.ph-calendar-check:before { content: "\e712"; opacity: 0.2; }

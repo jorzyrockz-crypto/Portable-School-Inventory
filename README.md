@@ -168,7 +168,7 @@ Everything else moved out of the way:
 | **Inventory** tab | everything the school has (quantity above 0): search, filter chips, tap an item for its sheet; the physical count checklist while counting |
 | **Catalog** tab | the full APP-CSE catalog: search, category drop-down, part / in-stock chips, one row per item with − qty + |
 | **Reports** tab | valuation, condition, property tags, categories, rooms, print and APP-CSE summary |
-| **☰ More** menu | add custom item, import, scan ICS / QR, print, CSV exports, school info, backup, restore, change history, sample data |
+| **☰ More** menu | add custom item, import, scan ICS / QR, print, CSV exports, school info, backup, restore, change history, sample data (load / clear) |
 
 ## Supply requests & Purchase Requests
 
@@ -452,6 +452,8 @@ On a computer or a tablet held sideways, the list stays on the left and the pers
 
 > Publish the updated [`firestore.rules`](firestore.rules) again: teachers' reports now include the kind `count`. Until then, a teacher's count is refused.
 
+**Sample data.** More → *Load sample data* adds sample counts plus six sample people (Ana Reyes, Ben Cruz, Carla Mendoza, Liza Ramos and the typed names Pedro Santos and “A. Reyes”) with ICS and RIS slips, a teacher count with one broken unit, an open problem report and a returned laptop. That way every filter, Remind, Clearance, the merge and Supply usage have something to show. The sample people, slips and reports live only on that device, in `custodian_sample_v1`. Writes about them are kept local and never reach Firestore, and they raise no notifications. *Clear sample data* removes them and restores the inventory snapshot taken before loading.
+
 ## Notifications
 
 A bell in the header (next to **More**) shows what happened and how many you haven't read yet. Tap it for the list, and tap a notification to open the matching screen. The unread count also appears on the home-screen icon where Android supports it.
@@ -539,6 +541,7 @@ node inventory-sync.mjs               # Inventory saved to the account
 node release.mjs                      # teachers, RIS/ICS releases, stock in
 node teacher-items.mjs                # a teacher's My Items, reports and returns
 node teachers-overview.mjs            # Teachers page: filters, Remind, count, clearance, merge, supply usage, two panes
+node sample-data.mjs                  # Load / Clear sample data: sample teachers stay on the device, inventory restored
 node project-switch.mjs               # moving to another Firebase project keeps inventory, resets cloud links
 node notifications.mjs                # bell, phone notifications, shortcuts, install bar
 node app-updates.mjs                  # update notices (title bar), Restart, What's new (own server)

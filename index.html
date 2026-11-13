@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="a1677ab5176c">
+  <meta name="app-version" content="a68ebf75ccad">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -680,7 +680,7 @@
       <div id="homeWelcome" class="hidden rounded-2xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600 space-y-1.5">
         <p class="font-bold text-slate-800">Start by searching for an item above.</p>
         <p class="text-xs">Type a few letters of the item name or its code, e.g. <em>bond paper</em> or <em>laptop</em>, then enter the quantity you have on hand. Or scan an ICS or import your Excel list.</p>
-        <button onclick="loadSampleInventory()" class="min-h-10 px-2 text-xs font-bold text-brand-600 hover:underline">Just exploring? Load sample data</button>
+        <button onclick="loadSampleData()" class="min-h-10 px-2 text-xs font-bold text-brand-600 hover:underline">Just exploring? Load sample data</button>
       </div>
 
       <button id="homeStatus" onclick="switchMainView('REPORTS')" class="w-full min-h-10 flex items-center justify-between gap-2 px-1 text-xs text-slate-600 hover:text-slate-800">
@@ -1351,7 +1351,8 @@
           <button onclick="closeMoreMenu(); exportBackupJSON()" class="more-item"><i class="ph-bold ph-floppy-disk text-emerald-600"></i> Back up now</button>
           <button onclick="closeMoreMenu(); document.getElementById('restoreFileInput').click()" class="more-item"><i class="ph-bold ph-upload-simple text-amber-600"></i> Restore a backup</button>
           <button onclick="closeMoreMenu(); openHistory()" class="more-item"><i class="ph-bold ph-list-magnifying-glass text-brand-600"></i> Change history</button>
-          <button onclick="closeMoreMenu(); loadSampleInventory()" class="more-item"><i class="ph-bold ph-magic-wand text-slate-500"></i> Load sample data</button>
+          <button id="moreSampleLoad" onclick="closeMoreMenu(); loadSampleData()" class="more-item"><i class="ph-bold ph-magic-wand text-slate-500"></i> Load sample data</button>
+          <button id="moreSampleClear" onclick="closeMoreMenu(); clearSampleData()" class="more-item hidden"><i class="ph-bold ph-broom text-rose-600"></i> Clear sample data</button>
           <button id="moreTourItem" onclick="openTour()" class="more-item"><i class="ph-bold ph-signpost text-teal-600"></i> Welcome tour</button>
           <button id="moreAboutItem" onclick="closeMoreMenu(); openAbout()" class="more-item"><i class="ph-bold ph-info text-brand-600"></i> About &amp; what’s new <span id="moreUpdateDot" class="hidden ml-auto text-[11px] font-extrabold uppercase tracking-wider text-white bg-amber-700 rounded-full px-2 py-0.5">Update</span></button>
           <p id="backupStatusLine" class="px-2 pt-2 text-[11px] text-slate-500 flex items-center gap-1.5">
@@ -3394,36 +3395,39 @@
     // =========================================================================
     // 6. SAMPLE SCHOOL INVENTORY LOADER (FOR INSTANT DASHBOARD DEMO)
     // =========================================================================
-    async function loadSampleInventory() {
-      const hasExisting = items.some(i => i.qty > 0);
-      if (hasExisting && !await appConfirm("This will load sample school inventory counts so you can preview the dashboard.", { title: 'Load sample data?', ok: 'Load sample', tone: 'warn' })) {
-        return;
-      }
+    const SAMPLE_INVENTORY = {
+      "12191601-AL-E04": { qty: 45, note: "School Clinic" },
+      "12191601-AL-E03": { qty: 12, note: "Central Stockroom" },
+      "14111507-PP-M01": { qty: 120, note: "Central Stockroom" },
+      "14111507-PP-M02": { qty: 85, note: "Central Stockroom" },
+      "45111609-MM-P01": { qty: 4, note: "ICT / Computer Lab" },
+      "45121517-DO-C02": { qty: 2, note: "Audio-Visual Room" },
+      "43211507-DSK001": { qty: 15, repair: 2, unserv: 1, note: "ICT / Computer Lab" },
+      "43211503-LAP001": { qty: 6, repair: 1, note: "Faculty Room" },
+      "43212105-PR-L01": { qty: 4, unserv: 1, note: "Principal / Admin Office" },
+      "56101504-CM-B01": { qty: 60, note: "Social Hall / Covered Court" },
+      "40101604-EF-W01": { qty: 24, note: "Grade 7-10 Classrooms" },
+      "40101604-EF-S01": { qty: 3, note: "Faculty Room" },
+      "46191601-FE-M01": { qty: 8, note: "Main Building Corridors" },
+      "47131604-BR-S01": { qty: 20, note: "Utility / Janitorial Room" },
+      "47121804-MP-B01": { qty: 3, note: "Utility / Janitorial Room" },
+      "47121701-TB-P04": { qty: 30, note: "Utility / Janitorial Room" },
+      "44121708-MW-B01": { qty: 50, note: "Faculty Room" },
+      "44103105-EP-B17": { qty: 18, note: "Principal / Admin Office" },
+      "44103105-EP-C17": { qty: 4, note: "Principal / Admin Office" },
+      "39101628-LT-L01": { qty: 4, note: "Central Stockroom" },
+      "80141505-TS-012": { qty: 5, customPrice: 18500, note: "Grade 10 Classrooms" },
+      "80141505-TS-018": { qty: 4, customPrice: 8200, note: "Principal / Admin Office" }
+    };
 
-      const sampleData = {
-        "12191601-AL-E04": { qty: 45, note: "School Clinic" },
-        "12191601-AL-E03": { qty: 12, note: "Central Stockroom" },
-        "14111507-PP-M01": { qty: 120, note: "Central Stockroom" },
-        "14111507-PP-M02": { qty: 85, note: "Central Stockroom" },
-        "45111609-MM-P01": { qty: 4, note: "ICT / Computer Lab" },
-        "45121517-DO-C02": { qty: 2, note: "Audio-Visual Room" },
-        "43211507-DSK001": { qty: 15, repair: 2, unserv: 1, note: "ICT / Computer Lab" },
-        "43211503-LAP001": { qty: 6, repair: 1, note: "Faculty Room" },
-        "43212105-PR-L01": { qty: 4, unserv: 1, note: "Principal / Admin Office" },
-        "56101504-CM-B01": { qty: 60, note: "Social Hall / Covered Court" },
-        "40101604-EF-W01": { qty: 24, note: "Grade 7-10 Classrooms" },
-        "40101604-EF-S01": { qty: 3, note: "Faculty Room" },
-        "46191601-FE-M01": { qty: 8, note: "Main Building Corridors" },
-        "47131604-BR-S01": { qty: 20, note: "Utility / Janitorial Room" },
-        "47121804-MP-B01": { qty: 3, note: "Utility / Janitorial Room" },
-        "47121701-TB-P04": { qty: 30, note: "Utility / Janitorial Room" },
-        "44121708-MW-B01": { qty: 50, note: "Faculty Room" },
-        "44103105-EP-B17": { qty: 18, note: "Principal / Admin Office" },
-        "44103105-EP-C17": { qty: 4, note: "Principal / Admin Office" },
-        "39101628-LT-L01": { qty: 4, note: "Central Stockroom" },
-        "80141505-TS-012": { qty: 5, customPrice: 18500, note: "Grade 10 Classrooms" },
-        "80141505-TS-018": { qty: 4, customPrice: 8200, note: "Principal / Admin Office" }
-      };
+    // Counts only (loadSampleInventory); the buttons call loadSampleData, which also adds sample
+    // teachers with slips and reports (Teachers page) and can be cleared again.
+    async function loadSampleInventory(opts = {}) {
+      const hasExisting = items.some(i => i.qty > 0);
+      if (!opts.quiet && hasExisting && !await appConfirm("This will load sample school inventory counts so you can preview the dashboard.", { title: 'Load sample data?', ok: 'Load sample', tone: 'warn' })) {
+        return false;
+      }
+      const sampleData = SAMPLE_INVENTORY;
 
       Object.entries(sampleData).forEach(([code, data]) => {
         const item = items.find(i => i.code === code);
@@ -3460,6 +3464,7 @@
       saveStateWith({ summary: { kind: 'system', text: `Loaded sample inventory (${Object.keys(sampleData).length} items)` } });
       renderItems();
       renderDashboard();
+      return true;
     }
 
     // =========================================================================
@@ -7214,6 +7219,7 @@
     function openMoreMenu() {
       updateBackupReminder();
       renderMoreAccount();
+      renderMoreSample();
       document.getElementById('moreMenu').classList.remove('hidden');
     }
 
@@ -7567,7 +7573,7 @@
         if (!cloudConfigured()) throw new Error('not-configured');
         cloud.state = 'loading';
         if (typeof FirebaseSDK === 'undefined') await loadScript('assets/cloud/firebase.js');
-        const F = cloud.sdk = FirebaseSDK;
+        const F = cloud.sdk = sampleGuardSDK(FirebaseSDK); // sample teachers never reach the account
         const app = F.initializeApp(window.FIREBASE_CONFIG);
         cloud.auth = F.getAuth(app);
         try {
@@ -9287,8 +9293,8 @@
     const unitDocLabel = u => (u && u.ics ? `${unitDocKind(u)} ${u.ics}` : '');
     const clearUnitHolder = u => { u.to = ''; delete u.toUid; u.ics = ''; delete u.icsDate; delete u.released; delete u.doc; };
 
-    let memberList = [];
-    let releaseList = [];
+    let memberList = sampleList('members');
+    let releaseList = sampleList('releases');
     let releasesLoaded = false;
     let teamError = '';
     let releaseDraft = null;
@@ -9349,20 +9355,20 @@
       };
       // (metadata changes too: the first answer from the server primes "joined" notifications)
       reqUnsubs.push(F.onSnapshot(memberCol(), { includeMetadataChanges: true }, snap => {
-        memberList = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
+        memberList = sampleList('members', snap.docs.map(d => ({ ...d.data(), uid: d.id })));
         teamError = '';
         onTeamChange();
         notifFromMembers(snap.metadata);
       }, soft('members')));
       reqUnsubs.push(F.onSnapshot(relCol(), { includeMetadataChanges: true }, snap => {
-        releaseList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
+        releaseList = sampleList('releases', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) })));
         releaseList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
         if (!(snap.metadata && snap.metadata.fromCache)) releasesLoaded = true;
         onTeamChange();
         notifReminders();
       }, soft('releases')));
       reqUnsubs.push(F.onSnapshot(tReportCol(), { includeMetadataChanges: true }, snap => {
-        tReports = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+        tReports = sampleList('reports', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id })));
         if (!(snap.metadata && snap.metadata.fromCache)) tRepLoaded = true;
         applyCountReports();
         renderRequestsEverywhere();
@@ -9892,7 +9898,7 @@
     //       units: [{ id, no }], reason, note, status: 'open' | 'done' | 'declined',
     //       resolution, reply, createdMs }
     let myReleases = [];        // teacher phone: releases made out to me
-    let tReports = [];          // teacher: my reports · custodian: every teacher's reports
+    let tReports = sampleList('reports'); // teacher: my reports · custodian: every teacher's reports (+ sample ones)
     let myRelLoaded = false, tRepLoaded = false;   // first answer from the server (reminders wait for it)
     let teacherTab = null;      // 'items' | 'requests'
     let tReportDraft = null;
@@ -10411,7 +10417,7 @@
     function accountabilityPeople() {
       const map = new Map();
       const add = (key, p) => { if (!map.has(key)) map.set(key, { key, uid: null, name: '', position: '', office: '', joined: false, ...p }); return map.get(key); };
-      (isCustodianDevice() ? teacherRoster() : []).forEach(t => add(t.uid, { uid: t.uid, name: t.name, position: t.position || '', office: t.office || '', joined: !!t.joined }));
+      (isCustodianDevice() || sampleStore() ? teacherRoster() : []).forEach(t => add(t.uid, { uid: t.uid, name: t.name, position: t.position || '', office: t.office || '', joined: !!t.joined }));
       releaseList.forEach(r => { if (r.teacherName) add(personId(r.teacherUid, r.teacherName), { uid: r.teacherUid || null, name: r.teacherName, position: r.position || '', office: r.office || '' }); });
       const unitsOf = new Map();
       items.forEach(item => getUnits(item.code).forEach(unit => {
@@ -11105,6 +11111,228 @@
       cloudWrite(batch.commit(), 'Saving the count');
       tReports = tReports.map(x => (countApplied.has(x.id) && todo.includes(x) ? { ...x, applied: true, ...(countFlags(x).length ? {} : { status: 'done' }) } : x));
       if (activeMainView === 'TEACHERS') renderTeachersView();
+    }
+
+    // ---- Sample teachers (Load sample data) ------------------------------------------------
+    // Sample people, slips and reports live only on this device (localStorage), mixed into the
+    // lists the cloud provides. Anything the app writes about them (Remind, take back, merge,
+    // a report answered…) is caught before it reaches the account (sampleGuardSDK), so the
+    // school's real records never contain them. Clear sample data puts the touched items back
+    // as they were before the sample was loaded.
+    var sampleCache;
+    function sampleStore() {
+      if (sampleCache === undefined) {
+        try { sampleCache = JSON.parse(localStorage.getItem('custodian_sample_v1')) || null; } catch (e) { sampleCache = null; }
+      }
+      return sampleCache;
+    }
+    function saveSampleStore(st) {
+      sampleCache = st || null;
+      if (st) localStorage.setItem('custodian_sample_v1', JSON.stringify(st)); else localStorage.removeItem('custodian_sample_v1');
+    }
+    // Real list + the sample entries (copies, so changes go through the store).
+    function sampleList(kind, list = []) {
+      const st = sampleStore();
+      const real = list.filter(x => !x.sample);
+      return st && Array.isArray(st[kind]) ? real.concat(st[kind].map(x => ({ ...x, sample: true }))) : real;
+    }
+    function sampleWho(uid, name) {
+      const st = sampleStore();
+      if (!st) return false;
+      return uid ? String(uid).startsWith('sample-') : (st.names || []).includes(personKey(name));
+    }
+    function refreshSample() {
+      memberList = sampleList('members', memberList);
+      releaseList = sampleList('releases', releaseList).sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
+      tReports = sampleList('reports', tReports);
+      if (typeof onTeamChange === 'function') onTeamChange();
+      if (typeof renderRequestsEverywhere === 'function') renderRequestsEverywhere();
+    }
+    // Writes about sample people stay on the device.
+    function sampleCatch(ref, data, op) {
+      const st = sampleStore();
+      if (!st || !ref) return false;
+      const path = String(ref.path || '');
+      const kind = /\/releases\//.test(path) ? 'releases' : /\/teacherReports\//.test(path) ? 'reports' : null;
+      if (!kind) return false;
+      const plain = obj => { const o = { ...(obj || {}) }; delete o.createdAt; delete o.updatedAt; return JSON.parse(JSON.stringify(o)); };
+      const found = (st[kind] || []).find(x => x.id === ref.id);
+      if (op === 'update') {
+        if (!found) return false;
+        Object.assign(found, plain(data));
+      } else if (found) {
+        Object.assign(found, plain(data));
+      } else {
+        const units = (data && data.lines || []).flatMap(l => (l.units || []).map(u => u.id));
+        // a slip for a real account always goes online, even with sample units on it
+        const about = kind === 'releases' && (data.teacherUid ? sampleWho(data.teacherUid) : (sampleWho(null, data.teacherName) || units.some(id => (st.unitIds || []).includes(id))));
+        if (!about) return false;
+        st[kind].push({ ...plain(data), id: ref.id, createdMs: (data && data.createdMs) || Date.now() });
+      }
+      saveSampleStore(st);
+      setTimeout(refreshSample, 0);
+      return true;
+    }
+    function sampleGuardSDK(S) {
+      return {
+        ...S,
+        setDoc: (ref, data, opts) => (sampleCatch(ref, data, 'set') ? Promise.resolve() : S.setDoc(ref, data, opts)),
+        updateDoc: (ref, data) => (sampleCatch(ref, data, 'update') ? Promise.resolve() : S.updateDoc(ref, data)),
+        writeBatch: db => {
+          const b = S.writeBatch(db);
+          let n = 0;
+          const w = {
+            set: (ref, data, opts) => { if (!sampleCatch(ref, data, 'set')) { n++; b.set(ref, data, opts); } return w; },
+            update: (ref, data) => { if (!sampleCatch(ref, data, 'update')) { n++; b.update(ref, data); } return w; },
+            delete: ref => { n++; b.delete(ref); return w; },
+            commit: () => (n ? b.commit() : Promise.resolve())
+          };
+          return w;
+        }
+      };
+    }
+
+    async function loadSampleData() {
+      if (sampleStore()) {
+        showToast('Sample data is already loaded · clear it from More', 'ph-info', { label: 'Teachers', onClick: () => openTeachersView() });
+        return;
+      }
+      if (!await appConfirm('Sample items, five teachers and their slips, counts and reports are added so you can try every screen. The sample teachers stay on this phone. Clear it any time from More → Clear sample data.',
+        { title: 'Load sample data?', ok: 'Load sample', tone: 'write', icon: 'ph-magic-wand' })) return;
+      const clone = v => (v == null ? null : JSON.parse(JSON.stringify(v)));
+      const before = { codes: {}, school: schoolInfo.school ? null : clone(schoolInfo) };
+      Object.keys(SAMPLE_INVENTORY).forEach(c => { before.codes[c] = clone(userState[c]); });
+      await loadSampleInventory({ quiet: true });
+      buildSampleTeachers(before);
+      showToast('Sample data loaded · see it on the Teachers page', 'ph-magic-wand', { label: 'Teachers', onClick: () => openTeachersView() });
+    }
+
+    function buildSampleTeachers(before) {
+      const DAY = 864e5, now = Date.now();
+      const iso = daysAgo => localISODate(new Date(now - daysAgo * DAY));
+      const item = code => items.find(i => i.code === code);
+      const people = {
+        ana: { uid: 'sample-ana', name: 'Ana Reyes', position: 'Teacher III', office: 'Grade 7 – Science' },
+        ben: { uid: 'sample-ben', name: 'Ben Cruz', position: 'Teacher I', office: 'Grade 10 – Mathematics' },
+        carla: { uid: 'sample-carla', name: 'Carla Mendoza', position: 'Master Teacher I', office: 'Grade 4' },
+        liza: { uid: 'sample-liza', name: 'Liza Ramos', position: 'Teacher II', office: 'Grade 8 – English' },
+        pedro: { uid: null, name: 'Pedro Santos', position: '', office: '' },
+        areyes: { uid: null, name: 'A. Reyes', position: '', office: '' }
+      };
+      // Property numbers for the sample equipment (replaced, put back by Clear sample data)
+      const EQUIP = ['45111609-MM-P01', '45121517-DO-C02', '43211507-DSK001', '43211503-LAP001', '43212105-PR-L01'];
+      const units = {};
+      EQUIP.forEach(code => {
+        const it = item(code);
+        if (!it) return;
+        const state = userState[code] || (userState[code] = { qty: it.qty });
+        state.units = [];
+        const { unserv, repair } = getCondition(it);
+        state.units = nextPropertyNumbers(it.qty).map((no, i) => ({
+          id: newUnitId(), no, serial: '', loc: '', to: '', cond: i < unserv ? 'U' : i < unserv + repair ? 'R' : 'S', seen: null, printed: null, added: now
+        }));
+        units[code] = state.units;
+      });
+      const [P, DOC, DSK, LAP, PRN] = EQUIP.map(c => units[c] || []);
+      let seq = 0;
+      const releases = [], reports = [];
+      const no = kind => `SAMPLE-${kind}-${String(++seq).padStart(2, '0')}`;
+      const rel = (who, kind, daysAgo, lines, extra = {}) => {
+        const r = { id: `sample-rel-${seq + 1}`, teacherUid: who.uid, teacherName: who.name, position: who.position, office: who.office,
+          by: schoolInfo.custodian || '', createdMs: now - daysAgo * DAY, kind, no: no(kind), date: iso(daysAgo), purpose: '', lines,
+          total: kind === 'RETURN' ? 0 : relTotal(lines), ...extra };
+        releases.push(r);
+        return r;
+      };
+      const issue = (who, daysAgo, code, list, extra) => {
+        const r = rel(who, 'ICS', daysAgo, [], extra);
+        list.forEach(u => { u.to = who.name; if (who.uid) u.toUid = who.uid; u.ics = r.no; u.icsDate = r.date; u.doc = 'ICS'; u.released = r.createdMs; });
+        r.lines = [relLine(item(code), list.length, list)];
+        r.total = relTotal(r.lines);
+        return r;
+      };
+      const ris = (who, daysAgo, lines, purpose) => rel(who, 'RIS', daysAgo, lines.map(([code, qty]) => relLine(item(code), qty)), { purpose });
+      const report = (who, kind, extra) => { const x = { id: `sample-rep-${reports.length + 1}`, uid: who.uid, name: who.name, kind, releaseId: '', releaseNo: '', code: '', desc: '', units: [], reason: '', note: '', status: 'open', createdMs: now, ...extra }; reports.push(x); return x; };
+      const received = (who, r, daysAgo) => report(who, 'received', { releaseId: r.id, releaseNo: `${r.kind} ${r.no}`, desc: r.lines.map(l => l.desc).join(', '), createdMs: now - daysAgo * DAY });
+      const { ana, ben, carla, liza, pedro, areyes } = people;
+      const counted = now - 3 * DAY;
+
+      // Ana: laptop (confirmed, counted), projector released 12 days ago, not confirmed yet → Remind
+      const anaLap = LAP[1], anaPj = P[0];
+      received(ana, issue(ana, 90, '43211503-LAP001', [anaLap], { purpose: 'For classroom instruction' }), 88);
+      issue(ana, 12, '45111609-MM-P01', [anaPj], { purpose: 'Science laboratory' });
+      anaLap.seen = counted;
+      received(ana, ris(ana, 250, [['14111507-PP-M01', 2], ['12191601-AL-E04', 3]], 'Quarterly classroom supplies'), 249);
+      received(ana, ris(ana, 150, [['14111507-PP-M01', 3]], 'Test papers'), 149);
+      received(ana, ris(ana, 40, [['12191601-AL-E04', 5], ['14111507-PP-M01', 2]], 'Laboratory activities'), 39);
+      // Ben: two desktops (one already for repair), counted on his phone · one marked broken
+      const benA = DSK[1], benB = DSK[3];
+      const benIcs = issue(ben, 60, '43211507-DSK001', [benA, benB], { purpose: 'Mathematics computer corner' });
+      received(ben, benIcs, 59);
+      benA.seen = counted; benB.seen = counted;
+      received(ben, ris(ben, 120, [['44121708-MW-B01', 2], ['14111507-PP-M01', 2]], 'Board work'), 118);
+      received(ben, ris(ben, 20, [['44121708-MW-B01', 1]], 'Board work'), 19);
+      report(ben, 'count', { releaseNo: `Count ${countSince().year}`, reason: String(countSince().year), applied: true, createdMs: counted,
+        desc: '2 items · 1 present · 1 broken', note: 'The second unit no longer turns on.',
+        units: [{ id: benA.id, no: benA.no, code: '43211507-DSK001', desc: 'Desktop computer', s: 'ok' }, { id: benB.id, no: benB.no, code: '43211507-DSK001', desc: 'Desktop computer', s: 'broken' }] });
+      // Carla: an unserviceable printer, and a laptop with an open problem report
+      const carlaPr = PRN[0], carlaLap = LAP[3];
+      const carlaIcs = issue(carla, 200, '43212105-PR-L01', [carlaPr], { purpose: 'Grade 4 reports' });
+      received(carla, carlaIcs, 199);
+      const carlaLapIcs = issue(carla, 75, '43211503-LAP001', [carlaLap], { purpose: 'Class records' });
+      received(carla, carlaLapIcs, 74);
+      carlaPr.seen = counted;
+      report(carla, 'problem', { releaseId: carlaLapIcs.id, releaseNo: `ICS ${carlaLapIcs.no}`, code: '43211503-LAP001', desc: carlaLapIcs.lines[0].desc,
+        units: [{ id: carlaLap.id, no: carlaLap.no }], reason: 'repair', note: 'Some keyboard keys no longer work.', createdMs: now - 2 * DAY });
+      received(carla, ris(carla, 30, [['12191601-AL-E04', 2]], 'Classroom sanitation'), 29);
+      // Liza: had a laptop, returned it → nothing left: ready for clearance
+      const lizaLap = LAP[2];
+      const lizaIcs = issue(liza, 300, '43211503-LAP001', [lizaLap], { purpose: 'Class records' });
+      received(liza, lizaIcs, 299);
+      const back = relLine(item('43211503-LAP001'), 1, [lizaLap]);
+      clearUnitHolder(lizaLap);
+      lizaLap.returned = now - 20 * DAY;
+      rel(liza, 'RETURN', 20, [back], { source: 'returned', purpose: 'Transferring to another school' });
+      received(liza, ris(liza, 180, [['14111507-PP-M01', 4]], 'Grade 8 test papers'), 179);
+      // Typed names (no account): Pedro holds the document camera; "A. Reyes" is really Ana
+      [[DOC[0], pedro], [DSK[4], areyes]].forEach(([u, who]) => { if (u) u.to = who.name; });
+
+      EQUIP.forEach(code => item(code) && syncUnitCondition(item(code)));
+      saveSampleStore({
+        at: now, before,
+        names: [personKey(pedro.name), personKey(areyes.name)],
+        unitIds: Object.values(units).flat().map(u => u.id),
+        members: [ana, ben, carla, liza].map(p => ({ uid: p.uid, name: p.name, position: p.position, office: p.office, email: '', joinedMs: now - 320 * DAY })),
+        releases, reports
+      });
+      saveStateWith({ summary: { kind: 'system', text: 'Loaded sample teachers (Ana Reyes, Ben Cruz, Carla Mendoza, Liza Ramos, Pedro Santos)' } });
+      refreshSample();
+      renderMoreSample();
+    }
+
+    async function clearSampleData() {
+      const st = sampleStore();
+      if (!st) return;
+      if (!await appConfirm('The sample teachers, slips and reports are removed, and the sample items go back to how they were before (your other items are not touched).',
+        { title: 'Clear sample data?', ok: 'Clear sample', tone: 'danger', icon: 'ph-broom' })) return;
+      const us = { ...userState };
+      Object.entries((st.before && st.before.codes) || {}).forEach(([code, prev]) => { if (prev) us[code] = prev; else delete us[code]; });
+      saveSampleStore(null);
+      memberList = memberList.filter(x => !x.sample);
+      releaseList = releaseList.filter(x => !x.sample);
+      tReports = tReports.filter(x => !x.sample);
+      teachersSel = null; teachersClear = null; tvLastPerson = null;
+      applyData({ userState: us, schoolInfo: (st.before && st.before.school) || schoolInfo, customRawItems });
+      saveStateWith({ summary: { kind: 'system', text: 'Cleared sample data' } });
+      refreshSample();
+      renderMoreSample();
+      showToast('Sample data cleared', 'ph-broom');
+    }
+    function renderMoreSample() {
+      const on = !!sampleStore();
+      document.getElementById('moreSampleClear')?.classList.toggle('hidden', !on);
+      const load = document.getElementById('moreSampleLoad');
+      if (load) load.innerHTML = on ? '<i class="ph-bold ph-magic-wand text-slate-500"></i> Sample data loaded' : '<i class="ph-bold ph-magic-wand text-slate-500"></i> Load sample data';
     }
 
     // Summary of accountability: one page per person (all, or the one selected).
@@ -12390,7 +12618,7 @@
       if (pick === 'import') openImport();
       else if (pick === 'ics') openIcsScanner();
       else if (pick === 'catalog') switchMainView('CATALOG');
-      else if (pick === 'sample') loadSampleInventory();
+      else if (pick === 'sample') loadSampleData();
       else showToast('All set · add items any time from More', 'ph-check-circle');
     }
     function tourBack() { if (tourStep > 0) { tourStep -= 1; renderTour(); } }
@@ -12675,7 +12903,7 @@
 
     function notifFromReports(meta) {
       if (isCustodianDevice()) {
-        notifCheck('reports', tReports.map(x => ({
+        notifCheck('reports', tReports.filter(x => !x.sample).map(x => ({
           key: 'tr:' + x.id, sig: 'seen',
           make: prev => {
             if (prev !== undefined) return null;
@@ -12709,7 +12937,7 @@
     // ---- A teacher joined the school (custodian) ----
     function notifFromMembers(meta) {
       if (!isCustodianDevice() || !cloud.user) return;
-      notifCheck('members', memberList.filter(m => m.uid && m.uid !== cloud.user.uid).map(m => ({
+      notifCheck('members', memberList.filter(m => m.uid && !m.sample && m.uid !== cloud.user.uid).map(m => ({
         key: 'mb:' + m.uid, sig: 'joined',
         make: prev => prev !== undefined ? null : {
           title: `${m.name || 'A teacher'} joined your school`,
@@ -12949,7 +13177,7 @@
         if (!releasesLoaded || !tRepLoaded) return;
         const acked = id => tReports.some(x => x.kind === 'received' && x.releaseId === id);
         const members = new Set(memberList.map(m => m.uid));
-        due = releaseList.filter(r => needsReceipt(r) && r.teacherUid && members.has(r.teacherUid) && !acked(r.id)
+        due = releaseList.filter(r => !r.sample && needsReceipt(r) && r.teacherUid && members.has(r.teacherUid) && !acked(r.id)
           && age(r) >= REMIND_CUSTODIAN_DAYS && age(r) <= REMIND_MAX_DAYS && !st.seen['rm:' + r.id]);
         if (!due.length) return;
         due.forEach(r => { st.seen['rm:' + r.id] = 1; });
@@ -13354,7 +13582,8 @@
         'Property clearance: one tap shows what a teacher still holds, with Transfer all and Take back all, and prints a Certificate of No Property Accountability when nothing is left.',
         'Teachers help with the year-end count: on their phone they tap All present or mark what is missing or broken, and their items count for the RPCPPE / RPCSP. You see "Counted 2026: 8 of 10" for each person.',
         'Filters (Has items, To confirm, Open reports, Not counted yet, No account, Hasn’t joined), sorting, a Remind button for slips not yet confirmed, and "Same person as…" to merge a typed name into a teacher’s account.',
-        'Supply usage per teacher by quarter or school year, with a CSV for the APP-CSE. On a computer or a tablet held sideways, the list and the person sit side by side. Teachers can print their own list.'
+        'Supply usage per teacher by quarter or school year, with a CSV for the APP-CSE. On a computer or a tablet held sideways, the list and the person sit side by side. Teachers can print their own list.',
+        'To try it all, More → Load sample data now adds sample teachers with slips, a count and a problem report. Nothing about them is sent to your account, and More → Clear sample data removes them and puts your items back as they were.'
       ] },
       { id: '2026-11-tablet-sidebar', date: 'Nov 2026', title: 'The sidebar on tablets held sideways', points: [
         'Turn a tablet sideways (or use it with a keyboard like a laptop) and the tabs move to a sidebar, with Supply requests, Teachers and Forms one tap away. Turned upright, the tabs go back to the bottom.',
