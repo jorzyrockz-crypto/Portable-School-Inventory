@@ -5,6 +5,7 @@
   "scripts": {
     "build": "node scripts/build-assets.mjs",
     "icons": "node scripts/build-icons.mjs",
+    "check-notes": "node scripts/check-whats-new.mjs",
     "serve": "python3 -m http.server 8080 --bind 0.0.0.0"
   },
   "devDependencies": {

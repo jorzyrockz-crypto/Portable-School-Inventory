@@ -523,7 +523,7 @@ Chrome's title bar is used **for app updates only**, whenever there is one. Othe
 - **On a computer (title bar).** The window title starts with *Update ready ·*, so it shows on the Chrome tab and in the title bar of the installed app. When that installed app hides Chrome's title bar (the chevron next to the window buttons), CustodianPro draws its own navy title bar with an **Update ready · Restart** button. That is the whole notice, so there's no bell item and no toast. With a normal title bar, the **Restart** bar under the header is shown as well, because a window title can't be clicked.
 - **On a phone or tablet (no title bar).** A bar under the header (**Restart** or **Later**), an item in the bell (or a toast before sign-in), and a phone notification if those are on and the app is in the background.
 - **Everywhere.** An *Update* tag on **More → About & what's new**.
-- **Afterwards.** *Updated ·* with **What's new** appears once. **More → About & what's new** shows the version, a **Check for updates** button, the latest changes (`WHATS_NEW` in `index.html`; add an entry for each noticeable release) and **Share app link**.
+- **Afterwards.** *Updated ·* with **What's new** appears once. **More → About & what's new** shows the version, a **Check for updates** button, the latest changes (`WHATS_NEW` in `index.html`; **every release gets a new entry**, see below) and **Share app link**.
 
 - **While the app is closed.** On Android, once CustodianPro is installed and used now and then, Chrome lets it check about every 12 hours (Periodic Background Sync; no server needed). A new version is downloaded and announced once with a phone notification, *CustodianPro update ready*; tapping it opens About. **More → About** says whether this is on. Other browsers (iPhone, Firefox) check the next time the app opens.
 
@@ -552,8 +552,11 @@ The page is plain HTML + inline JavaScript. CSS is compiled Tailwind, so after e
 ```bash
 npm install
 npm run build   # -> assets/app.css, assets/fonts/*, sw.js (new cache version)
+npm run check-notes   # every update has its own What's new entry (build prints it too)
 npm run serve   # http://localhost:8080
 ```
+
+**Every release gets a What's new note.** Each deploy that changes the app gives people *Update ready · Restart*, so each one also says what changed: add a new entry at the top of `WHATS_NEW` in `index.html`, in plain words, even if it is only *Fixes: …*. It needs a new `id`, because *Updated ·* appears only when the newest id is one the phone hasn't seen. `npm run build` warns, and `npm run check-notes` and `tests/e2e/whats-new.mjs` fail, when the `sw.js` cache version differs from `main` but the newest entry doesn't.
 
 | File | Purpose |
 | --- | --- |
@@ -586,6 +589,7 @@ node sample-data.mjs                  # Load / Clear sample data: sample teacher
 node project-switch.mjs               # moving to another Firebase project keeps inventory, resets cloud links
 node notifications.mjs                # bell, phone notifications, shortcuts, install bar
 node app-updates.mjs                  # update notices (title bar), Restart, What's new (own server)
+node whats-new.mjs                    # this release has its own What's new entry (no browser)
 node login-theme.mjs                  # sign-in screen, teacher code / invite link, sign out, light/dark
 node coa-forms.mjs                    # welcome tour, poster, PAR, ITR/PTR transfers, RRSP, RPCPPE/IIRUP, background update check
 node phone-layout.mjs                 # 390 px phone: no sideways scroll, 32 px+ buttons, bottom sheets, toast placement

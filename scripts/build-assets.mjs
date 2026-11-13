@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import subsetFont from 'subset-font';
 import { buildSync } from 'esbuild';
 import { buildDarkCss } from './dark-theme.mjs';
+import { checkWhatsNew } from './check-whats-new.mjs';
 
 const require = createRequire(import.meta.url);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -238,3 +239,8 @@ console.log(`✓ icons: ${usedIcons.size - missing.size} glyphs across ${usedWei
 console.log(`✓ sw.js  cache version ${version}, ${urls.length} precached URLs`);
 console.log(`✓ assets/cloud/firebase.js  Firebase ${FIREBASE_VERSION} (${(fs.statSync(path.join(CLOUD_DIR, 'firebase.js')).size / 1024).toFixed(0)} KB, cached on first use)`);
 console.log(`✓ assets/ocr/tesseract-${OCR_VERSION} (${(listFiles(OCR).reduce((n, p) => n + fs.statSync(p).size, 0) / 1048576).toFixed(1)} MB, cached on first use)`);
+
+// Every update shows people "Update ready · Restart", so it needs a What's new note.
+const notes = checkWhatsNew();
+if (notes.ok) console.log(`✓ What's new: ${notes.skipped ? `latest "${notes.latest && notes.latest.title}" (${notes.skipped})` : notes.changed ? `new note "${notes.latest.title}"` : 'no update'}`);
+else notes.problems.forEach(p => console.warn(`⚠ What's new: ${p}`));
