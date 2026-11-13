@@ -184,7 +184,9 @@ Everything else moved out of the way:
 Teachers request supplies from their own phones; the custodian reviews each request, checks it against stock, approves it, and turns approved requests into a **Purchase Request (Appendix 60)**.
 
 **Teacher**
-1. Open the invite link (or scan the QR code) the custodian shared, or choose **Teacher** on the sign-in screen and paste the link or type the school code. Then type your name, position and grade/section once.
+1. Open the invite link (or scan the QR code) the custodian shared, or choose **Teacher** on the sign-in screen and paste the link or type the school code. The school's 6-digit DepEd **School ID** (e.g. `114656`) works too. Then type your name, position and grade/section once.
+
+   **School ID.** The ID comes from the school name in School info (`114656 - San Jose NHS`). When the custodian signs in or opens Invite, the app lists it under `schoolIds/114656`. Only an exact ID can be looked up, and each ID belongs to one school: the first to list it keeps it, and the Invite screen tells a second school that it's taken. School IDs are public, so anyone could find the school, but new teachers still wait for the custodian's **Approve**. After **New invite link**, the School ID alone no longer works and teachers need the new link or code.
 2. Tap **New supply request**, search for items (e.g. “bond paper”, “ballpen”) or type anything not in the catalog, set quantities, add a purpose and a needed-by date, and send.
 3. Follow the status on the same screen: *To review → Approved → Being purchased (PR No.) → Supplied*, or *Declined* with the custodian’s reason. A pending request can still be cancelled.
 
@@ -222,11 +224,11 @@ The app is connected to the Firebase project **russapps-custodianpro** (settings
 
 1. **Build → Authentication → Get started → Sign-in method**: turn on
    - **Google** (custodian, and teachers who want their requests on every phone). Pick a support email and save.
-   - **Anonymous** (teachers who just type their name).
+   - **Anonymous** (teachers who just type their name). If it's off, the join sheet can't load the school with just a name. It says so (no red error) and lets the teacher join with **Continue with Google** instead, then shows the school name and ID.
    - **Email/Password** (optional: custodians without a Google account).
 2. **Authentication → Settings → Authorized domains**: add `jorzyrockz-crypto.github.io`. Without it, Google sign-in shows “This website is not on the Firebase authorized domains list”.
 3. **Build → Firestore Database → Create database**: pick a location near you (e.g. `asia-southeast1`, Singapore) and start in **production mode**.
-4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school, and nothing can be deleted.
+4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school. Nothing can be deleted, except by the school's custodian through **Reset app** (below). **Publish again after updating the app** when `firestore.rules` changed (latest: custodian-only delete for Reset app, and the `schoolIds` lookup for joining by School ID).
 
 The config values are not secret; access is controlled by the published rules. To use a different project, replace the object in `firebase-config.js` (or set it to `null` to hide Supply requests).
 
@@ -427,12 +429,15 @@ On a teacher's phone the screen has two tabs: **My Items** and **Requests**.
 - **Accountable equipment · ICS:** every unit under the teacher's name, with its property number, serial, ICS no. and value. Returns are subtracted. Each unit has two actions:
   - **Report a problem:** needs repair, not working, lost or missing, or something else, plus a note.
   - **Return:** the item stays on the list, marked *Return requested*, until the custodian marks it received back.
-- **Supplies received · RIS:** every slip, newest first. *Report a problem* covers fewer than released, damaged, or wrong item.
+  - **Many items:** units of the same item make one row (*Monobloc chair × 20 · 20 units · ₱…*) with a count of any *reported / in repair / lost* units. Tap it to see each property number with its own **Report** and **Return**. With 6 units or fewer the rows start open. From 8 units, a search box finds an item, property number or slip.
+- **Supplies received · RIS:** this quarter's slips, newest first. Older slips fold under **Earlier · N slips**, grouped by quarter (*Jul–Sep 2026 · 3 slips*). *Report a problem* covers fewer than released, damaged, or wrong item.
 - Reports sent without signal are queued (*Sending…*) and go out when the phone reconnects.
 
 The custodian sees open reports at the top of the **Teachers** page under **To review**, labelled *Equipment report*, *Year-end count* or *Return* (and on that teacher's page). Home shows *Teachers · N to review*, and the Teachers tab, More → Released to teachers and the bell each show a count. **Supply requests** now counts only supply requests:
 
-- **Mark for repair / Mark unserviceable** sets the unit's condition in Inventory.
+- **Mark for repair** sets the unit to *For repair*. The teacher sees *In repair*. When it comes back, tap **Repaired · back in use** on the unit (the teacher's page under Teachers). It goes back to serviceable, and the teacher gets a notification.
+- **Mark unserviceable** also asks **Take it back now?** If yes, an RRSP is made, the unit leaves the teacher's list, and it waits in stock, still unserviceable, for the IIRUP / IIRUSP and disposal. Otherwise use **Take back** later.
+- **Start lost report** (lost or missing) flags the unit *Lost* and opens the RLSDDP / RLSDDSP with it ticked. The unit stays under the teacher's name, their accountability, until you tap **Found** or **Relieve** on it. **Relieve** asks for a reference (e.g. *RLSDDSP No. 2026-001*), takes the unit off the teacher's list, drops it from the inventory (quantity − 1) and keeps the reference in the history. The **Lost** filter on the Teachers page lists everyone with lost units, for the year-end count.
 - **Received back** clears the assignment. The unit is back in stock, and a return record is kept.
 - **Decline** asks for a reason. **Noted** closes a report without changes.
 - The teacher sees the answer on the item.
@@ -481,6 +486,12 @@ In Inventory, an item's sheet lists who has its units (*Ana Reyes · 1 unit · I
 On a computer or a tablet held sideways, the list stays on the left and the person picked opens on the right, with their equipment as a table. While nobody is picked, the right side shows **To review**: one card per item (*Wants to join*, *Year-end count*, *Equipment report*, *Return*, each with its colour) in a single row that scrolls sideways, with **‹ ›** arrows when they don't all fit. Each card has a category icon (a person for joins, a clipboard for counts, the reason the teacher picked for reports: wrench, x, question mark…). The cards size to the space: as many whole cards as fit plus a peek of the next, or, with fewer items, they share the row; on large monitors (1680 px and up) the page widens. The list's own scrollbar is hidden; a soft fade at its edge shows there is more. On a phone the row swipes, the next card peeks in, and *2 of 3* and dots show where you are; long notes are cut to two lines (tap to read). A person's own page keeps their reports stacked; a *To review* row at the top of the list brings it back, and a person's own open reports show on their page. On a phone, To review sits under the page title.
 
 > Publish the updated [`firestore.rules`](firestore.rules) again: they add member approval (`status` on `members`), invite links that can be replaced (`invites`, `inviteOnly`), **School stock** (`stock`, `stockHolds`) and requests of kind `took`. Until then, approvals, the stock list and “I took this” are refused.
+
+**Reset app.** More → *Reset app…* starts clean, after testing or before the school uses the app for real. Pick one option, optionally tap **Back up**, then type **RESET**:
+
+- **Only this device:** clears everything stored on this phone or computer: inventory, change history, forms, sample data, settings, notifications, sign-in and Firestore's offline copy. The page then reloads like a new install. The school in the cloud is kept, so signing in again brings it back.
+- **This device and the school in the cloud** (custodian, online): first marks the school as being erased, so teachers' phones can't add anything. Then it deletes every document of the school (inventory, catalog, settings, teachers, RIS / ICS / PAR and returns, reports, requests, PRs, stock, holds, invite links), its School ID entry and the school itself, and finally clears this device. Teachers' phones show *San Jose NHS was reset* with **Leave**, and they join again with the new link or School ID. The custodian's sign-in account stays: signing in again asks for the school name and makes a new, empty school. This needs the current `firestore.rules` published. With older rules Firebase refuses, and nothing is reset.
+- On a teacher's phone, **Reset** (next to Leave) clears only that phone. Their requests and reports stay with the custodian.
 
 **Sample data.** More → *Load sample data* adds sample counts plus six sample people (Ana Reyes, Ben Cruz, Carla Mendoza, Liza Ramos and the typed names Pedro Santos and “A. Reyes”), and Marco Villanueva waiting for approval, with ICS and RIS slips, a teacher count with one broken unit, an open problem report and a returned laptop. That way every filter, Remind, Clearance, the merge and Supply usage have something to show. The sample people, slips and reports live only on that device, in `custodian_sample_v1`. Writes about them are kept local and never reach Firestore, and they raise no notifications. *Clear sample data* removes them and restores the inventory snapshot taken before loading.
 
@@ -579,6 +590,7 @@ node login-theme.mjs                  # sign-in screen, teacher code / invite li
 node coa-forms.mjs                    # welcome tour, poster, PAR, ITR/PTR transfers, RRSP, RPCPPE/IIRUP, background update check
 node phone-layout.mjs                 # 390 px phone: no sideways scroll, 32 px+ buttons, bottom sheets, toast placement
 node members-stock.mjs                # approval, edit / remove / add back, new invite link, School stock, "I took this"
+node app-reset.mjs                    # Reset app: this device only / and the school in the cloud, teacher phones, rules
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

@@ -57,6 +57,7 @@ window.FirebaseSDK = (() => {
       const id = parts.pop();
       if (parts.join('/') !== path) return;
       pending = true;
+      if (kind === 'delete') { map.delete(id); return; }
       const before = map.get(id);
       map.set(id, { id, data: kind === 'set' || !before ? resolveTS(data) : { ...before.data, ...resolveTS(data) } });
     }));
@@ -82,7 +83,7 @@ window.FirebaseSDK = (() => {
     initializeApp: options => ({ options }),
     getAuth: () => auth,
     onAuthStateChanged: (a, f) => { a.listeners.push(f); setTimeout(() => f(a.currentUser), 0); return () => { a.listeners = a.listeners.filter(x => x !== f); }; },
-    signInAnonymously: async () => { const u = await rpc('anon', {}); setUser(u); return { user: u }; },
+    signInAnonymously: async () => { if (window.__anonOff) throw err('auth/operation-not-allowed'); const u = await rpc('anon', {}); setUser(u); return { user: u }; },
     createUserWithEmailAndPassword: async (a, email, pass) => { const u = await rpc('createUser', { email, pass }); setUser(u); return { user: u }; },
     signInWithEmailAndPassword: async (a, email, pass) => { const u = await rpc('signIn', { email, pass }); setUser(u); return { user: u }; },
     sendPasswordResetEmail: async () => {},
@@ -124,6 +125,7 @@ window.FirebaseSDK = (() => {
     },
     setDoc: (ref, data, opts) => write([[opts && opts.merge ? 'merge' : 'set', ref.path, data]]),
     updateDoc: (ref, data) => write([['update', ref.path, data]]),
+    deleteDoc: ref => write([['delete', ref.path, null]]),
     addDoc: async (c, data) => { const ref = docRef(c.path + '/' + autoId()); await write([['set', ref.path, data]]); return ref; },
     query: (c, ...filters) => ({ type: 'query', path: c.path, filters: filters.filter(f => f && f.field) }),
     where: (field, op, value) => ({ field, op, value }),
@@ -137,6 +139,7 @@ window.FirebaseSDK = (() => {
       return {
         set: (r, d, o) => { ops.push([o && o.merge ? 'merge' : 'set', r.path, d]); },
         update: (r, d) => { ops.push(['update', r.path, d]); },
+        delete: r => { ops.push(['delete', r.path, null]); },
         commit: () => write(ops)
       };
     },

@@ -203,6 +203,7 @@ try {
   await t.click('#gateJoinBtn');
   await until(t, () => !document.getElementById('joinModal').classList.contains('hidden') && /San Jose/.test(document.getElementById('joinSchool').textContent), 'join sheet for the school');
   check(await ev(t, () => /San Jose/.test(document.getElementById('joinSchool').textContent)), 'pasted invite link opens the join sheet');
+  check(await ev(t, () => document.getElementById('joinKicker').textContent) === 'Teacher · join your school', 'join sheet label: Teacher · join your school');
   check(await ev(t, () => +getComputedStyle(document.getElementById('joinModal')).zIndex > +getComputedStyle(document.getElementById('loginGate')).zIndex), 'join sheet sits above the sign-in screen');
   await ev(t, () => { joinName.value = 'Ana Reyes'; submitJoin(); });
   check(!(await gated(t)), 'joined → sign-in screen gone');
@@ -226,6 +227,84 @@ try {
   await until(j, () => !document.getElementById('joinModal').classList.contains('hidden'), 'join sheet');
   check(await gated(j) && await gateStepNow(j) === 'teacher', 'teacher step behind the join sheet');
   check(await ev(j, () => !document.getElementById('joinModal').classList.contains('hidden')), 'join sheet open straight away');
+
+  out('9b Anonymous sign-in turned off in Firebase → join with Google');
+  const g = await openPhone('google-only', backend);
+  await g.evaluateOnNewDocument(() => { window.__anonOff = true; window.__googleAccount = { email: 'mila.santos@gmail.com', name: 'Mila Santos' }; });
+  await g.goto(`${BASE_URL}#join=${schoolId}`, { waitUntil: 'networkidle0' });
+  await until(g, () => !document.getElementById('joinGoogleOnly').classList.contains('hidden'), 'google-only note', 8000);
+  check(await ev(g, () => !document.getElementById('joinGoogleOnly').classList.contains('hidden') && document.getElementById('joinError').classList.contains('hidden')), 'explains: use Continue with Google (no red error)');
+  check(await ev(g, () => document.getElementById('joinBtn').disabled && !document.getElementById('joinGoogleBtn').disabled), 'name-only Continue off, Google on');
+  check(await ev(g, () => document.getElementById('joinSchool').textContent) === 'Sign in with Google', 'heading: Sign in with Google');
+  check(await ev(g, () => document.getElementById('joinKicker').textContent) === 'Teacher · join your school', 'label above says what the sheet is for (not “Request supplies”)');
+  await g.screenshot({ path: `${SHOTS}/join-google-only.png` });
+  await g.click('#joinGoogleBtn');
+  await until(g, () => reqRole && reqRole.role === 'teacher', 'joined with Google', 8000);
+  check(await ev(g, () => reqRole && reqRole.role === 'teacher' && /San Jose/.test(reqRole.schoolName) && reqRole.email === 'mila.santos@gmail.com'), 'joined the school with Google');
+  check(await ev(g, () => reqRole.me.name) === 'Mila Santos', 'name taken from the Google account');
+  check(!(await gated(g)), 'sign-in screen gone');
+  await g.close();
+
+  out('9c teachers can type the DepEd School ID');
+  const c2 = await openPhone('custodian-id', backend);
+  await c2.goto(BASE_URL, { waitUntil: 'networkidle0' });
+  await ev(c2, () => gateGo('custodian'));
+  await until(c2, () => !!document.getElementById('rcEmail'), 'sign-in form');
+  await ev(c2, () => { rcSchool.value = '114656 - Rizal Elementary School'; rcEmail.value = 'ben@deped.gov.ph'; rcPass.value = 'secret12'; });
+  await c2.click('#rcCreate');
+  await until(c2, () => reqRole && reqRole.role === 'custodian' && !document.documentElement.classList.contains('gated'), 'custodian 2 signed in');
+  await ev(c2, () => closeInvite());
+  const sid2 = await ev(c2, () => reqRole.schoolId);
+  await until(c2, () => reqRole.schoolNoListed === '114656', 'School ID listed', 8000);
+  check(backend.store.get('schools/114656') === undefined && (backend.store.get('schoolIds/114656') || {}).schoolId === sid2, 'schoolIds/114656 → the school');
+  await ev(c2, () => openInvite());
+  check(await ev(c2, () => /School ID 114656 · teachers can also type this/.test(document.getElementById('inviteSchoolNo').textContent)), 'Invite screen: teachers can also type the School ID');
+  await ev(c2, () => closeInvite());
+
+  const k = await openPhone('teacher-id', backend);
+  await k.goto(BASE_URL, { waitUntil: 'networkidle0' });
+  await k.click('[data-gate-role="teacher"]');
+  check(await ev(k, () => /School ID/.test(document.getElementById('gatePanel').innerText)), 'teacher step says the School ID works');
+  await ev(k, () => { gateCode.value = '999999'; });
+  await k.click('#gateJoinBtn');
+  await until(k, () => !document.getElementById('joinError').classList.contains('hidden'), 'unknown id error', 6000);
+  check(await ev(k, () => /No school in CustodianPro uses School ID 999999/.test(document.getElementById('joinError').textContent)), 'unknown School ID is explained');
+  await ev(k, () => closeJoin());
+  await ev(k, () => { gateCode.value = 'School ID 114656'; });
+  await k.click('#gateJoinBtn');
+  await until(k, () => /Rizal/.test(document.getElementById('joinSchool').textContent) && !document.getElementById('joinBtn').disabled, 'join sheet by School ID', 8000);
+  check(await ev(k, () => /Rizal Elementary/.test(document.getElementById('joinSchool').textContent) && document.getElementById('joinSchoolNo').textContent === 'School ID 114656'), 'typing the School ID finds the school (name + School ID shown)');
+  await ev(k, () => { joinName.value = 'Carlo Dizon'; submitJoin(); });
+  await until(k, () => reqRole && reqRole.role === 'teacher', 'joined by id', 6000);
+  check(await ev(k, (sid) => reqRole.schoolId === sid && reqRole.schoolNo === '114656', sid2), 'joined the right school');
+  await sleep(600);
+  check(!!backend.store.get(`schools/${sid2}/members/${await ev(k, () => cloud.user.uid)}`), 'member card created (waits for Approve)');
+
+  // a second custodian whose name carries the same ID does not take it over
+  const c3 = await openPhone('custodian-dup', backend);
+  await c3.goto(BASE_URL, { waitUntil: 'networkidle0' });
+  await ev(c3, () => gateGo('custodian'));
+  await until(c3, () => !!document.getElementById('rcEmail'), 'sign-in form');
+  await ev(c3, () => { rcSchool.value = '114656 Copycat School'; rcEmail.value = 'eve@deped.gov.ph'; rcPass.value = 'secret12'; });
+  await c3.click('#rcCreate');
+  await until(c3, () => reqRole && reqRole.role === 'custodian' && !document.documentElement.classList.contains('gated'), 'custodian 3 signed in');
+  await ev(c3, () => closeInvite());
+  await until(c3, () => reqRole.schoolNoTaken === '114656', 'taken', 8000);
+  check((backend.store.get('schoolIds/114656') || {}).schoolId === sid2, 'the School ID stays with the first school');
+  check(await ev(c3, () => reqRole.schoolNoTaken === '114656' && !reqRole.schoolNoListed), 'second school is told it is taken');
+
+  // after "New invite link" the School ID alone no longer lets anyone join
+  await ev(c2, () => newInviteLink());
+  for (let i = 0; i < 60 && !(backend.store.get(`schools/${sid2}`) || {}).inviteOnly; i++) await sleep(100);
+  check((backend.store.get(`schools/${sid2}`) || {}).inviteOnly === true, 'New invite link → invite-only school');
+  check(c2.dialogs.some(d => /typing School ID 114656/.test(d)), 'the New invite link warning mentions the School ID');
+  await until(c2, () => /since the new invite link/.test(document.getElementById('inviteSchoolNo').textContent), 'invite note', 4000);
+  check(await ev(c2, () => /since the new invite link, teachers need the link or code/.test(document.getElementById('inviteSchoolNo').textContent)), 'Invite screen: School ID alone no longer works');
+  const k2 = await openPhone('teacher-id2', backend);
+  await k2.goto(BASE_URL + '#join=114656', { waitUntil: 'networkidle0' });
+  await until(k2, () => !document.getElementById('joinError').classList.contains('hidden'), 'invite-only error', 8000);
+  check(await ev(k2, () => /only accepts its invite link/.test(document.getElementById('joinError').textContent)), 'invite-only school: the School ID alone is not enough');
+  await Promise.all([c2.close(), c3.close(), k.close(), k2.close()]);
 
   out('10 big screens, dark phone');
   const d = await openPhone('desktop', backend, { width: 1280, height: 800 });

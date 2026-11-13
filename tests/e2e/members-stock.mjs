@@ -46,7 +46,8 @@ try {
   check(paper && paper.qty === 85 && paper.unit && !('price' in paper) && !docs(/\/stock\/43211507-DSK001$/).length, `supplies published: bond paper ${paper && paper.qty} ${paper && paper.unit}, no prices, no equipment`);
   await ev(a, () => openInvite());
   await sleep(300);
-  check(await ev(a, () => document.getElementById('inviteSchoolNo').textContent) === 'School ID 114656', 'invite sheet: School ID 114656');
+  await until(a, () => /^School ID 114656/.test(document.getElementById('inviteSchoolNo').textContent), 'school id line', 4000);
+  check(await ev(a, () => /^School ID 114656/.test(document.getElementById('inviteSchoolNo').textContent)), 'invite sheet: School ID 114656');
   await waitNode(() => backend.store.get(`schools/${sid}`).schoolNo === '114656', 'school no');
   await ev(a, () => closeInvite());
 
