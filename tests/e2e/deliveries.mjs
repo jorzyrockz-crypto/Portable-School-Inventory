@@ -33,7 +33,9 @@ try {
   out('1 custodian signs in with the sample inventory');
   const a = await openPhone('custodian', backend, { width: 420, height: 900 });
   await a.goto(BASE_URL, { waitUntil: 'networkidle0' });
+  check(await ev(a, () => numberingMode() === 'coa' && JSON.parse(localStorage.getItem(SCHOOL_KEY)).numbering === 'coa'), 'a new school starts with COA standard numbering');
   await ev(a, () => { loadSampleInventory(); schoolInfo.custodian = 'Rosa Villanueva'; });
+  check(await ev(a, () => numberingMode() === 'coa'), 'the sample inventory keeps it');
   await ev(a, () => { openRequestsView(); gateGo('custodian'); });
   await until(a, () => !!document.getElementById('rcEmail'), 'sign-in card');
   await ev(a, () => { rcSchool.value = 'San Jose National High School'; rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
@@ -357,6 +359,15 @@ try {
   check(await ev(a, () => /^OES-\d{4}-\d{4}$/.test(nextPropertyNumbers(1)[0])), 'one number per unit is still the default style');
 
   out('15 COA standard (automatic): by the cost of each unit');
+  {
+    // A school set up before this version (saved school info without `numbering`) keeps One per unit
+    const o = await openPhone('old-school', backend, { width: 420, height: 900 });
+    await o.goto(BASE_URL, { waitUntil: 'networkidle0' });
+    await ev(o, () => { localStorage.setItem(SCHOOL_KEY, JSON.stringify({ school: 'Old Elementary School', custodian: '', uacs: '', position: '' })); });
+    await o.reload({ waitUntil: 'networkidle0' });
+    check(await ev(o, () => numberingMode() === 'unit' && /^OES-\d{4}-\d{4}$/.test(nextPropertyNumbers(1)[0])), 'a school set up before keeps One per unit');
+    await o.browser().close().catch(() => {});
+  }
   const coa = await ev(a, () => {
     schoolInfo.numbering = 'coa';
     const n = (cost, qty = 3) => nextPropertyNumbers(qty, 'OES', { date: '2026-11-20', cost });

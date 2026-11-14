@@ -25,7 +25,7 @@ try {
   const a = await openPhone('custodian', backend);
   await a.goto(BASE_URL, { waitUntil: 'networkidle0' });
   const P = '45111609-MM-P01', D = '45121517-DO-C02', S = '12191601-AL-E04';
-  await ev(a, codes => { loadSampleInventory(); schoolInfo.custodian = 'Rosa Villanueva'; codes.forEach(c => { openUnitsModal(c); generateUnitTags(); closeUnitsModal(); }); }, [P, D]);
+  await ev(a, codes => { loadSampleInventory(); schoolInfo.numbering = 'unit'; /* a school set up before the COA default */ schoolInfo.custodian = 'Rosa Villanueva'; codes.forEach(c => { openUnitsModal(c); generateUnitTags(); closeUnitsModal(); }); }, [P, D]);
   const pedroUnit = await ev(a, c => { const u = getUnits(c)[3]; setUnitField(c, u.id, 'to', 'Pedro Santos'); setUnitField(c, u.id, 'serial', 'PJ-88213'); return { id: u.id, no: u.no }; }, P);
   await ev(a, () => { openMoreMenu(); });
   await sleep(150);

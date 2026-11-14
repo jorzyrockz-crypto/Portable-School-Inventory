@@ -97,6 +97,7 @@ try {
 
   out('3 set up: tagged equipment, one item of ₱50,000 or more, two teachers');
   const pick = await ev(a, () => {
+    schoolInfo.numbering = 'unit';   // a school set up before the COA default (§10d covers COA)
     const eq = items.filter(i => i.type === 'EQUIPMENT' && i.qty >= 2 && i.qty <= 5).slice(0, 2);
     eq.forEach(i => { openUnitsModal(i.code); generateUnitTags(); closeUnitsModal(); });
     const [ppe, se] = eq;
@@ -485,6 +486,7 @@ try {
   check(coaSum.includes(`ICS SPLV-${ym}-0001`) && coaSum.includes(`ICS SPHV-${ym}-0001`), `separate low- and high-valued ICS: “${coaSum}”`);
   await a.click('#relSaveBtn');
   await until(a, () => !!releaseDone, 'released (COA)');
+  await until(a, n => releaseList.some(r => r.no === n && !r.sending), 'COA ICS saved', 8000, `SPLV-${ym}-0001`);
   const coaRel = await ev(a, (lo, hi) => ({
     docs: releaseDone.docs.map(x => `${x.kind} ${x.no}`),
     lo: getUnits(lo).find(u => u.toUid), hi: getUnits(hi).find(u => u.toUid),

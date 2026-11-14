@@ -36,7 +36,7 @@ try {
   out('1 custodian with inventory; teachers join');
   const a = await openPhone('custodian', backend, { width: 1100, height: 900 });
   await a.goto(BASE_URL, { waitUntil: 'networkidle0' });
-  await ev(a, () => { loadSampleInventory(); schoolInfo.custodian = 'Rosa Villanueva'; schoolInfo.position = 'Property Custodian'; });
+  await ev(a, () => { loadSampleInventory(); schoolInfo.numbering = 'unit'; /* a school set up before the COA default */ schoolInfo.custodian = 'Rosa Villanueva'; schoolInfo.position = 'Property Custodian'; });
   await ev(a, () => { openRequestsView(); gateGo('custodian'); }); // signed out: the sign-in screen carries the form
   await until(a, () => !!document.getElementById('rcEmail'), 'sign-in card');
   await ev(a, () => { rcSchool.value = 'San Jose National High School'; rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });

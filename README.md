@@ -291,6 +291,9 @@ Equipment can be tracked **per unit** instead of only as a count:
    School · Quarter · Year · Month · Series form. Releases put low- and high-valued items on
    separate ICS slips (§4.14), numbered `SPLV-YYYY-MM-NNNN` and `SPHV-YYYY-MM-NNNN`, each with one
    serial series per year.
+
+   New schools start with *COA standard (automatic)*. Schools set up before it came keep their
+   setting (a saved school info without a numbering choice means *One per unit*).
 2. Per unit you can record the serial number, location, who it is assigned to, and its condition.
    Once an item has units, its Serviceable / Repair / Unserviceable counts come from the units.
 3. **Print QR labels** – 3 across on A4/Letter; cut them out, or print on sticker paper.
@@ -480,7 +483,7 @@ The custodian sees open reports at the top of the **Teachers** page under **To r
 
 - **Mark for repair** sets the unit to *For repair*. The teacher sees *In repair*. When it comes back, tap **Repaired · back in use** on the unit (the teacher's page under Teachers). It goes back to serviceable, and the teacher gets a notification.
 - **Mark unserviceable** also asks **Take it back now?** If yes, an RRSP is made, the unit leaves the teacher's list, and it waits in stock, still unserviceable, for the IIRUP / IIRUSP and disposal. Otherwise use **Take back** later.
-- **Start lost report** (lost or missing) flags the unit *Lost* and opens the RLSDDP / RLSDDSP with it ticked. The unit stays under the teacher's name, their accountability, until you tap **Found** or **Relieve** on it. **Relieve** asks for a reference (e.g. *RLSDDSP No. 2026-001*), takes the unit off the teacher's list, drops it from the inventory (quantity − 1) and keeps the reference in the history. The **Lost** filter on the Teachers page lists everyone with lost units, for the year-end count.
+- **Start lost report** (lost or missing) flags the unit *Lost* and opens the RLSDDP / RLSDDSP with it ticked. The unit stays under the teacher's name, their accountability, until you tap **Found** or **Relieve** on it. **Relieve** asks for a reference (e.g. *RLSDDSP No. 2026-001*), takes the unit off the teacher's list and **writes it off**: it is no longer counted (quantity − 1), but the item keeps it under *Written off* (in the units sheet) with its property number, ICS / PAR no., cost, who was relieved, the date and the reference, for the COA auditor. Written-off numbers are never given out again, and scanning a written-off sticker says so instead of *Not found*. The **Lost** filter on the Teachers page lists everyone with lost units, for the year-end count.
 - **Received back** clears the assignment. The unit is back in stock, and a return record is kept.
 - **Decline** asks for a reason. **Noted** closes a report without changes.
 - The teacher sees the answer on the item.

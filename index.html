@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="72ab2211f0ca">
+  <meta name="app-version" content="5f82ab3375d7">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -2989,6 +2989,11 @@
           schoolInfo = JSON.parse(savedSchool);
           updateSchoolHeader();
         } catch (e) {}
+      } else if (!Object.values(userState).some(st => st && (st.units || []).length)) {
+        // A new school starts with COA standard numbering. Schools set up before keep theirs:
+        // a saved school info without `numbering` (here or from the account) means One per unit.
+        schoolInfo.numbering = 'coa';
+        localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
       }
 
       const savedCustom = localStorage.getItem(CUSTOM_ITEMS_KEY);
@@ -3722,6 +3727,7 @@
 
       if (!schoolInfo.school) {
         schoolInfo = {
+          ...(schoolInfo.numbering ? { numbering: schoolInfo.numbering } : {}),   // a new school keeps COA numbering
           school: "San Jose National High School",
           uacs: "DepEd - Division Office",
           custodian: "Maria Santos",
@@ -4655,6 +4661,21 @@
       return s && Array.isArray(s.units) ? s.units : [];
     }
 
+    // Units written off after relief from accountability (lost, stolen, destroyed): no longer on
+    // hand or counted, but kept on the item with the reference, for audit. Their numbers are not reused.
+    function getWrittenOff(code) {
+      const s = userState[code];
+      return s && Array.isArray(s.writtenOff) ? s.writtenOff : [];
+    }
+    function findWrittenOffByNo(value) {
+      const no = normalizePropNo(value);
+      if (!no) return null;
+      for (const item of items) {
+        const rec = getWrittenOff(item.code).find(r => normalizePropNo(r.no) === no);
+        if (rec) return { item, rec };
+      }
+      return null;
+    }
     function allTaggedUnits() {
       const list = [];
       items.forEach(item => getUnits(item.code).forEach(unit => list.push({ item, unit })));
@@ -4733,7 +4754,7 @@
         const re = new RegExp(`^${escRe(prefix)}-(?:[1-4](?:ST|ND|RD|TH)Q)-${year}-\\d{1,2}-(\\d+)$`);
         let max = 0;
         // every stored unit, including items created a moment ago in the same save
-        Object.values(userState).forEach(st => (st && st.units || []).forEach(unit => { const m = normalizePropNo(unit.no).match(re); if (m) max = Math.max(max, parseInt(m[1], 10)); }));
+        Object.values(userState).forEach(st => [...(st && st.units || []), ...(st && st.writtenOff || [])].forEach(unit => { const m = normalizePropNo(unit.no).match(re); if (m) max = Math.max(max, parseInt(m[1], 10)); }));
         (opts.taken || []).forEach(no => { const m = normalizePropNo(no).match(re); if (m) max = Math.max(max, parseInt(m[1], 10)); });
         const no = i => `${prefix}-${QUARTER_TAG[Math.floor((month - 1) / 3)]}-${year}-${String(month).padStart(2, '0')}-${String(max + 1 + i).padStart(2, '0')}`;
         const shared = mode === 'line' || sharesLineNumber(count, Number(opts.cost) || 0, mode);
@@ -4741,8 +4762,8 @@
       }
       const base = `${prefix}-${new Date().getFullYear()}-`;
       let max = 0;
-      allTaggedUnits().forEach(({ unit }) => {
-        const rest = unit.no.startsWith(base) ? unit.no.slice(base.length) : '';
+      [...allTaggedUnits(), ...items.flatMap(item => getWrittenOff(item.code).map(unit => ({ unit })))].forEach(({ unit }) => {
+        const rest = String(unit.no || '').startsWith(base) ? unit.no.slice(base.length) : '';
         if (/^\d+$/.test(rest)) max = Math.max(max, parseInt(rest, 10));
       });
       return Array.from({ length: count }, (_, i) => base + String(max + 1 + i).padStart(4, '0'));
@@ -4834,16 +4855,34 @@
       document.getElementById('unitsToolbar').innerHTML = toolbar;
 
       const list = document.getElementById('unitsList');
-      list.innerHTML = units.length
+      list.innerHTML = (units.length
         ? units.map((u, idx) => unitCardHTML(item, u, idx, u.id === highlightId)).join('')
         : `
           <div class="py-10 text-center">
             <i class="ph-duotone ph-qr-code text-4xl text-slate-300 block mb-2"></i>
             <p class="text-sm font-bold text-slate-700">No units tagged yet</p>
             <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Give each unit its own property number, print QR labels, then scan them during the physical count.</p>
-          </div>`;
+          </div>`) + writtenOffHTML(item);
     }
 
+    // Written-off units (relief from accountability granted), newest first. Read-only, for audit.
+    function writtenOffHTML(item) {
+      const gone = getWrittenOff(item.code).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
+      if (!gone.length) return '';
+      return `
+        <details class="written-off rounded-xl border border-slate-200 bg-slate-50 p-3" ${gone.some(r => r.id === unitsWrittenOffOpen) ? 'open' : ''}>
+          <summary class="text-xs font-bold text-slate-700 cursor-pointer flex items-center gap-1.5"><i class="ph-bold ph-seal-check text-slate-500"></i> Written off (${gone.length}) <span class="font-medium text-slate-500">· not counted, kept for audit</span></summary>
+          <div class="mt-2 space-y-1.5">${gone.map(r => `
+            <div class="rounded-lg bg-white border border-slate-200 px-2.5 py-2 text-xs">
+              <div class="flex items-center gap-2"><span class="font-mono font-bold text-slate-800 break-all">${escapeHTML(r.no || '(no number)')}</span><span class="ml-auto shrink-0 text-slate-500">${r.at ? formatShortDate(r.at) : ''}</span></div>
+              <p class="text-slate-600 mt-0.5">Lost${r.from ? ` · ${escapeHTML(r.from)} relieved of accountability` : ' · relieved of accountability'}${r.ref ? ` · ${escapeHTML(r.ref)}` : ''}</p>
+              ${r.ics || r.cost ? `<p class="text-slate-500 mt-0.5">${[r.ics && `${escapeHTML(r.doc || 'ICS')} ${escapeHTML(r.ics)}`, r.cost > 0 && formatCurrency(r.cost), r.serial && `S/N ${escapeHTML(r.serial)}`].filter(Boolean).join(' · ')}</p>` : ''}
+            </div>`).join('')}
+          </div>
+        </details>`;
+    }
+
+    let unitsWrittenOffOpen = null;   // a written-off unit to show (scanned sticker)
     function unitCardHTML(item, u, idx, highlight) {
       const code = item.code;
       const field = (key, label, placeholder) => `
@@ -5355,7 +5394,8 @@
       const all = findUnitsByNo(text);
       const hit = all.find(x => !scanSession.has(x.unit.id)) || all[0] || null;
       if (!hit) {
-        scanShown = { missing: text };
+        const gone = findWrittenOffByNo(text);
+        scanShown = gone ? { gone: { no: gone.rec.no, name: gone.item.name, code: gone.item.code, id: gone.rec.id, at: gone.rec.at, ref: gone.rec.ref || '', from: gone.rec.from || '' } } : { missing: text };
         scanFeedback(false);
         renderScanResult();
         return;
@@ -5407,6 +5447,19 @@
             <div>
               <p class="text-sm font-bold text-slate-800">Ready to scan</p>
               <p class="text-xs text-slate-500">Point the camera at a CustodianPro QR label. Matches are marked as verified today.</p>
+            </div>
+          </div>`;
+        return;
+      }
+      if (scanShown.gone) {
+        const g = scanShown.gone;
+        box.innerHTML = `
+          <div class="flex items-start gap-3 rounded-2xl bg-amber-50 border border-amber-200 p-3">
+            <i class="ph-fill ph-seal-check text-2xl text-amber-600 mt-0.5"></i>
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-amber-900">Written off: <span class="font-mono break-all">${escapeHTML(g.no)}</span></p>
+              <p class="text-xs text-amber-800 mt-0.5">${escapeHTML(g.name)} · lost${g.from ? `, ${escapeHTML(g.from)} relieved` : ', relieved'}${g.at ? ` on ${formatShortDate(g.at)}` : ''}${g.ref ? ` · ${escapeHTML(g.ref)}` : ''}. It is not counted. If it turned up, tell your COA auditor before putting it back.</p>
+              <button onclick="unitsWrittenOffOpen='${escapeHTML(g.id || '')}'; closeScanner(); openUnitsModal('${escapeHTML(g.code)}')" class="mt-1.5 text-xs font-bold text-amber-900 underline">Open the item</button>
             </div>
           </div>`;
         return;
@@ -8397,6 +8450,8 @@
       const uses = [];
       const units = getUnits(code).length;
       if (units) uses.push(plural(units, 'property number'));
+      const gone = getWrittenOff(code).length;
+      if (gone) uses.push(plural(gone, 'written-off unit'));
       const slips = new Set([...releaseAll, ...releaseList].filter(r => (r.lines || []).some(l => l.code === code)).map(r => r.id || r.no)).size;
       if (slips) uses.push(plural(slips, 'slip'));
       const prs = prList.filter(p => (p.lines || []).some(l => l.code === code)).length;
@@ -13011,21 +13066,25 @@
       if (!found || !found.unit.lostMs) return;
       const { item, unit } = found;
       const holder = unitHolder(unit) || 'the teacher';
-      const ref = await appPrompt(`${unit.no || item.name} leaves ${holder}’s list and is dropped from the inventory (quantity ${item.qty} → ${Math.max(0, item.qty - 1)}).`, '',
+      const ref = await appPrompt(`${unit.no || item.name} leaves ${holder}’s list and is written off: no longer counted (quantity ${item.qty} → ${Math.max(0, item.qty - 1)}), but kept under Written off on the item with this reference.`, '',
         { title: `Relieve ${holder} of accountability?`, label: 'Reference (optional)', placeholder: 'e.g. RLSDDSP No. 2026-001 · relief granted 12 Nov 2026', ok: 'Relieve', tone: 'danger', icon: 'ph-seal-check' });
       if (ref === null) return;
       const why = ref.trim().slice(0, 200);
       if (unit.to || unit.toUid) takeBackPairs([found], `Relieved of accountability (lost)${why ? ` · ${why}` : ''}`, { no: '', source: 'lost', ref: why });
       const state = userState[item.code];
       state.units = getUnits(item.code).filter(u => u.id !== unitId);
+      const rec = cleanJSON({ ...unit, cause: 'lost', ref: why, from: holder === 'the teacher' ? '' : holder, at: Date.now() });
+      delete rec.toUid; delete rec.seen; delete rec.printed;
+      state.writtenOff = [...getWrittenOff(item.code), rec];
       item.qty = Math.max(0, (item.qty || 0) - 1);
       state.qty = item.qty;
       if (state.units.length) syncUnitCondition(item);
       else { delete state.units; clampCondition(item); }
-      saveStateWith({ summary: { kind: 'tag', code: item.code, text: `Dropped ${unit.no || item.name} (lost, ${holder} relieved of accountability${why ? `: ${why}` : ''}) · quantity ${item.qty + 1} → ${item.qty}` } });
+      saveStateWith({ summary: { kind: 'tag', code: item.code, text: `Written off ${unit.no || item.name} (lost, ${holder} relieved of accountability${why ? `: ${why}` : ''}) · quantity ${item.qty + 1} → ${item.qty}` } });
       tellTeacher(unitId, { relievedMs: Date.now(), reply: `Relieved of accountability${why ? ` · ${why}` : ''}` }, x => x.resolution === 'lost' && !x.foundMs && !x.relievedMs);
       if (activeMainView === 'TEACHERS') renderTeachersView();
-      showToast(`${holder.split(' ')[0]} relieved · ${unit.no || item.name} dropped from the inventory`, 'ph-seal-check');
+      if (unitsModalCode === item.code) renderUnitsModal();
+      showToast(`${holder.split(' ')[0]} relieved · ${unit.no || item.name} written off`, 'ph-seal-check');
     }
 
     async function declineTeacherReport(id) {
@@ -16372,6 +16431,11 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-written-off', date: 'Nov 2026', title: 'Written-off units kept for audit', points: [
+        'Relieved units are now written off, not deleted. When you tap Relieve for a lost unit, it stops being counted, but the item keeps it under Written off with its property number, ICS or PAR no., cost, who was relieved and the RLSDDSP reference. Your COA auditor can still see it.',
+        'Written-off numbers are never given out again, and scanning a written-off sticker shows when it was written off and why, instead of Not found.',
+        'New schools now start with COA standard (automatic) property numbers. Schools already set up keep their current setting, and you can change it any time in School info.'
+      ] },
       { id: '2026-11-coa-numbering', date: 'Nov 2026', title: 'Property numbers the COA way', points: [
         'New choice in School info → Property numbers: COA standard (automatic). The app numbers each item by its unit cost, following COA Circular 2022-004.',
         'Low-valued items (₱5,000 and below each): all the units on one ICS line share one number, like 9 file boxes with OES-4THQ-2026-11-31.',

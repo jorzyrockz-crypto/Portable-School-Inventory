@@ -200,6 +200,22 @@ try {
   await until(a, (c, id) => !getUnits(c).some(u => u.id === id), 'dropped', 8000, D, dUnit.id);
   check(await ev(a, c => items.find(i => i.code === c).qty, D) === qty0 - 1, `dropped from the inventory (quantity ${qty0} → ${qty0 - 1})`);
   check(await ev(a, () => changeHistory.some(e => /relieved of accountability: RLSDDSP No\. 2026-001/.test(e.x || ''))), 'history keeps the reference');
+  // Written off: kept on the item for audit, its number not reused, its sticker recognised
+  const wo = await ev(a, (c, id) => {
+    const rec = getWrittenOff(c).find(r => r.id === id);
+    openUnitsModal(c);
+    const box = document.querySelector('#unitsList details.written-off');
+    const html = box ? box.querySelector('summary').innerText + '\n' + box.textContent : '';
+    closeUnitsModal();
+    const takenNo = rec && nextPropertyNumbers(1)[0] !== rec.no;
+    scanShown = null; lookupScannedTag(rec.no, 'typed');
+    const scan = document.getElementById('scanResult') ? document.getElementById('scanResult').innerText : '';
+    return { rec, html, takenNo, shown: scanShown, scan, uses: customItemUses(c).join(', ') };
+  }, D, dUnit.id);
+  check(wo.rec && wo.rec.cause === 'lost' && wo.rec.ref === 'RLSDDSP No. 2026-001' && wo.rec.from === 'Juan Dela Cruz' && wo.rec.at > 0, `kept as written off (${wo.rec && wo.rec.no}, Juan relieved, RLSDDSP No. 2026-001)`);
+  check(/Written off \(1\)/i.test(wo.html) && wo.html.includes(wo.rec.no), 'the item lists it under Written off');
+  check(wo.takenNo && wo.shown && wo.shown.gone && wo.shown.gone.no === wo.rec.no, 'its number is not given out again; scanning its sticker says Written off');
+  check(/written-off unit/.test(wo.uses), `counts as a use of the item (${wo.uses})`);
   await until(j, () => !/DOCUMENT CAMERA/.test(document.getElementById('rqItemsPane').innerText), 'off Juan’s list', 8000);
   check(!/DOCUMENT CAMERA/.test(await paneText(j)), 'off Juan’s list (and no longer asks for Received)');
   await until(j, () => !!notifScope() && loadNotifs().items.some(n => n.title === 'Relieved of accountability' && /RLSDDSP No\. 2026-001/.test(n.body)), 'relieved notif', 8000);
@@ -208,7 +224,8 @@ try {
 
   out('9c many items: grouped by item, search, older RIS folded');
   const CH = '56101504-CM-B01', FAN = '40101604-EF-W01';
-  await ev(a, codes => codes.forEach(c => { openUnitsModal(c); generateUnitTags(); closeUnitsModal(); }), [CH, FAN]);
+  // one number per chair (One per unit), so a search by property no. can pick one out
+  await ev(a, codes => { schoolInfo.numbering = 'unit'; codes.forEach(c => { openUnitsModal(c); generateUnitTags(); closeUnitsModal(); }); }, [CH, FAN]);
   await release(a, juan, [{ code: CH, qty: 9 }, { code: FAN, qty: 1 }]);
   const old = new Date(); old.setMonth(old.getMonth() - 4);
   const oldISO = old.toISOString().slice(0, 10);
