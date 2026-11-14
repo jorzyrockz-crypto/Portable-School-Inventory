@@ -273,6 +273,16 @@ Equipment can be tracked **per unit** instead of only as a count:
    `SJNHS-2026-0001` (prefix = school initials, or set your own under *School Info*). Any number
    can be edited to match a sticker that is already on the item. The condition counts already
    recorded for the item carry over to the new units.
+
+   **One number per ICS line.** Many schools give one inventory item no. to a whole ICS line
+   (9 file boxes → one number). Under *School Info → Property numbers* choose *One number per ICS
+   line*: new numbers then look like `OES-4THQ-2026-11-31` (School · Quarter · Year · Month ·
+   Series), the series continuing through the year, and every unit of the line (or of one
+   delivery line, or of one *Tag N units*) shares it. A scanned ICS whose line has one number for
+   several units always shares it, whatever the setting. Slips, forms and the CSV list a shared
+   number once; renaming may give a unit the number of another unit of the same item (not of a
+   different item); and during a physical count each scan of the shared sticker counts the next
+   unit of the batch.
 2. Per unit you can record the serial number, location, who it is assigned to, and its condition.
    Once an item has units, its Serviceable / Repair / Unserviceable counts come from the units.
 3. **Print QR labels** – 3 across on A4/Letter; cut them out, or print on sticker paper.

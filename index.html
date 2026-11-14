@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="d8c4bffcad7d">
+  <meta name="app-version" content="a42292eb50b6">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -2190,6 +2190,14 @@
           <input type="text" id="infoPropPrefix" oninput="updatePrefixPreview()" placeholder="Auto: school initials" autocapitalize="characters" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-mono font-bold uppercase">
           <p class="text-[11px] text-slate-500 mt-1">New property numbers look like <strong id="infoPrefixPreview" class="font-mono text-slate-700">PROP-2026-0001</strong>. Existing numbers are not changed.</p>
         </div>
+        <div>
+          <label for="infoNumbering" class="block text-xs font-bold uppercase text-slate-500 mb-1">Property numbers</label>
+          <select id="infoNumbering" onchange="updatePrefixPreview()" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium bg-white">
+            <option value="unit">One per unit (OES-2026-0001)</option>
+            <option value="line">One per ICS line (OES-4THQ-2026-11-31)</option>
+          </select>
+          <p class="text-[11px] text-slate-500 mt-1">Per ICS line: School-Quarter-Year-Month-Series. All the units on one line (9 file boxes) share the number; the series continues through the year.</p>
+        </div>
       </div>
       <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
         <button onclick="closeSchoolModal()" class="h-10 px-4 rounded-xl bg-slate-100 text-xs font-bold text-slate-700">Cancel</button>
@@ -4277,6 +4285,7 @@
       document.getElementById('infoPosition').value = schoolInfo.position || '';
       document.getElementById('infoHead').value = schoolInfo.head || '';
       document.getElementById('infoPropPrefix').value = schoolInfo.propPrefix || '';
+      document.getElementById('infoNumbering').value = schoolInfo.numbering === 'line' ? 'line' : 'unit';
       updatePrefixPreview();
       document.getElementById('schoolModal').classList.remove('hidden');
     }
@@ -4294,10 +4303,11 @@
         custodian: document.getElementById('infoCustodian').value.trim(),
         position: document.getElementById('infoPosition').value.trim(),
         head: document.getElementById('infoHead').value.trim(),
-        propPrefix: cleanPrefix(document.getElementById('infoPropPrefix').value)
+        propPrefix: cleanPrefix(document.getElementById('infoPropPrefix').value),
+        numbering: document.getElementById('infoNumbering').value === 'line' ? 'line' : 'unit'
       };
       localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo)); scheduleInventorySync();
-      const labels = { school: 'school name', uacs: 'agency/division', custodian: 'custodian', position: 'position', head: 'school head', propPrefix: 'property number prefix' };
+      const labels = { school: 'school name', uacs: 'agency/division', custodian: 'custodian', position: 'position', head: 'school head', propPrefix: 'property number prefix', numbering: 'property numbering' };
       const changed = Object.keys(labels).filter(k => (before[k] || '') !== (schoolInfo[k] || ''));
       if (changed.length) logHistory('system', `School info updated: ${changed.map(k => labels[k]).join(', ')}`);
       markUnsavedChanges();
@@ -4310,7 +4320,8 @@
     function updatePrefixPreview() {
       const typed = cleanPrefix(document.getElementById('infoPropPrefix').value);
       const prefix = typed || schoolInitials(document.getElementById('infoSchool').value) || 'PROP';
-      document.getElementById('infoPrefixPreview').textContent = nextPropertyNumbers(1, prefix)[0];
+      const mode = document.getElementById('infoNumbering').value === 'line' ? 'line' : 'unit';
+      document.getElementById('infoPrefixPreview').textContent = nextPropertyNumbers(1, prefix, { mode })[0];
     }
 
     function updateSchoolHeader() {
@@ -4346,7 +4357,7 @@
         const safeNote = (item.note || 'Unassigned').replace(/"/g, '""');
         const c = getCondition(item);
         const cond = item.type === 'EQUIPMENT' ? [c.serv, c.repair, c.unserv] : ['', '', ''];
-        csv.push(`"${item.part}","${item.itemNo}","${item.code}","${safeName}","${item.type}","${item.category}","${item.unit}","${item.qty}","${cond[0]}","${cond[1]}","${cond[2]}","${item.minQty}","${status}","${item.price.toFixed(2)}","${total}","${safeNote}","${getUnits(item.code).map(u => u.no).join('; ').replace(/"/g, '""')}"`);
+        csv.push(`"${item.part}","${item.itemNo}","${item.code}","${safeName}","${item.type}","${item.category}","${item.unit}","${item.qty}","${cond[0]}","${cond[1]}","${cond[2]}","${item.minQty}","${status}","${item.price.toFixed(2)}","${total}","${safeNote}","${uniqNos(getUnits(item.code).map(u => u.no)).join('; ').replace(/"/g, '""')}"`);
       });
 
       const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -4657,6 +4668,14 @@
       return 'u' + Date.now().toString(36) + unitIdSeq.toString(36) + Math.random().toString(36).slice(2, 6);
     }
 
+    // Numbers as printed on a slip or form: a number shared by several units (one ICS line) once
+    function uniqNos(list) { return [...new Set((list || []).filter(Boolean).map(normalizePropNo))]; }
+    function nosText(units) { return uniqNos((units || []).map(u => u && u.no)).join(', '); }
+    function findUnitsByNo(value) {
+      const no = normalizePropNo(value);
+      return no ? allTaggedUnits().filter(({ unit }) => normalizePropNo(unit.no) === no) : [];
+    }
+
     function findUnitByNo(value, exceptId = null) {
       const no = normalizePropNo(value);
       if (!no) return null;
@@ -4686,7 +4705,22 @@
     }
 
     // PREFIX-YEAR-0001 style, continuing after the highest number already used this year.
-    function nextPropertyNumbers(count, prefix = propertyPrefix()) {
+    // Per ICS line (schoolInfo.numbering 'line'): one number for all `count` units, in the
+    // School-Quarter-Year-Month-Series form (OES-4THQ-2026-11-31); the series runs through the year.
+    const QUARTER_TAG = ['1STQ', '2NDQ', '3RDQ', '4THQ'];
+    function nextPropertyNumbers(count, prefix = propertyPrefix(), opts = {}) {
+      const mode = opts.mode || (schoolInfo.numbering === 'line' ? 'line' : 'unit');
+      if (mode === 'line') {
+        const d = /^\d{4}-\d{2}-\d{2}$/.test(opts.date || '') ? new Date(opts.date + 'T00:00:00') : new Date();
+        const year = d.getFullYear(), month = d.getMonth() + 1;
+        const re = new RegExp(`^${escRe(prefix)}-(?:[1-4](?:ST|ND|RD|TH)Q)-${year}-\\d{1,2}-(\\d+)$`);
+        let max = 0;
+        // every stored unit, including items created a moment ago in the same save
+        Object.values(userState).forEach(st => (st && st.units || []).forEach(unit => { const m = normalizePropNo(unit.no).match(re); if (m) max = Math.max(max, parseInt(m[1], 10)); }));
+        (opts.taken || []).forEach(no => { const m = normalizePropNo(no).match(re); if (m) max = Math.max(max, parseInt(m[1], 10)); });
+        const no = `${prefix}-${QUARTER_TAG[Math.floor((month - 1) / 3)]}-${year}-${String(month).padStart(2, '0')}-${String(max + 1).padStart(2, '0')}`;
+        return Array.from({ length: count }, () => no);
+      }
       const base = `${prefix}-${new Date().getFullYear()}-`;
       let max = 0;
       allTaggedUnits().forEach(({ unit }) => {
@@ -4754,7 +4788,9 @@
           <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div class="text-xs text-amber-900 min-w-0">
               <p class="font-bold">${headline}</p>
-              <p class="mt-0.5 text-amber-800">New numbers: <span class="font-mono font-bold">${escapeHTML(next[0])}</span>${untagged > 1 ? ` to <span class="font-mono font-bold">${escapeHTML(next[next.length - 1])}</span>` : ''}. You can edit any number afterwards to match an existing sticker.</p>
+              <p class="mt-0.5 text-amber-800">${next[0] === next[next.length - 1] && untagged > 1
+                ? `New number: <span class="font-mono font-bold">${escapeHTML(next[0])}</span>, shared by all ${untagged} (one ICS line).`
+                : `New numbers: <span class="font-mono font-bold">${escapeHTML(next[0])}</span>${untagged > 1 ? ` to <span class="font-mono font-bold">${escapeHTML(next[next.length - 1])}</span>` : ''}.`} You can edit any number afterwards to match an existing sticker.</p>
             </div>
             <button onclick="generateUnitTags()" class="shrink-0 h-10 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition">
               <i class="ph-bold ph-tag"></i> Tag ${plural(untagged, 'unit')}
@@ -4861,7 +4897,8 @@
       syncUnitCondition(item);
       saveState();
       renderUnitsModal();
-      showToast(`${plural(created.length, 'property number')} created – edit any to match existing stickers`, 'ph-tag');
+      const shared = created.length > 1 && created.every(u => u.no === created[0].no);
+      showToast(shared ? `${created[0].no} given to ${plural(created.length, 'unit')} – edit it to match the sticker` : `${plural(created.length, 'property number')} created – edit any to match existing stickers`, 'ph-tag');
     }
 
     function addUnitTag() {
@@ -4892,7 +4929,7 @@
         return;
       }
       const dup = findUnitByNo(no, id);
-      if (dup) {
+      if (dup && dup.item.code !== code) {   // the same item may share a number (one ICS line)
         input.value = unit.no;
         appAlert(`${no} is already used by another unit:\n${dup.item.name}`);
         return;
@@ -5296,7 +5333,9 @@
     }
 
     function lookupScannedTag(text, via = 'scan') {
-      const hit = findUnitByNo(text);
+      // A number shared by several units (one ICS line): each scan counts the next one
+      const all = findUnitsByNo(text);
+      const hit = all.find(x => !scanSession.has(x.unit.id)) || all[0] || null;
       if (!hit) {
         scanShown = { missing: text };
         scanFeedback(false);
@@ -6921,10 +6960,11 @@
       lines.forEach(l => {
         l.errors = [];
         if (st.opts.makeUnits) {
-          const nos = expandItemNos(l.itemNo, l.qty);
+          let nos = expandItemNos(l.itemNo, l.qty);
+          if (nos.length === 1 && l.qty > 1) nos = Array(l.qty).fill(nos[0]);   // one number for the whole line
           if (icsItemNoCut(l.itemNo)) l.errors.push(`Inventory item no. ${l.itemNo.trim()} looks cut off – type it in full, or clear it`);
           if (nos.length > l.qty) l.errors.push(`${nos.length} inventory item numbers for ${l.qty} ${l.qty === 1 ? 'unit' : 'units'}`);
-          nos.forEach(no => {
+          uniqNos(nos).forEach(no => {
             const dup = findUnitByNo(no);
             if (dup) l.errors.push(`${no} is already used by ${dup.item.name}`);
             if (usedNos.has(no)) l.errors.push(`${no} appears twice on this ICS`);
@@ -7079,8 +7119,9 @@
               </select>
             </label>
             ${st.opts.makeUnits && !off ? `<p class="text-[11px] text-slate-500 flex items-start gap-1.5"><i class="ph-bold ph-tag text-violet-500 mt-0.5"></i><span>${nos.length
-              ? `Property no. ${escapeHTML(nos[0])}${nos.length > 1 ? ` to ${escapeHTML(nos[nos.length - 1])}` : ''}${nos.length < l.qty ? ` + ${l.qty - nos.length} new number${l.qty - nos.length === 1 ? '' : 's'}` : ''}`
-              : `${plural(l.qty, 'new property number')} will be created`}</span></p>` : ''}
+              ? (nos.length > 1 && nos.every(n => n === nos[0]) ? `Property no. ${escapeHTML(nos[0])}, shared by all ${l.qty} units (one ICS line)`
+                : `Property no. ${escapeHTML(nos[0])}${nos.length > 1 ? ` to ${escapeHTML(nos[nos.length - 1])}` : ''}${nos.length < l.qty ? ` + ${l.qty - nos.length} new number${l.qty - nos.length === 1 ? '' : 's'}` : ''}`)
+              : schoolInfo.numbering === 'line' && l.qty > 1 ? `One new property number for all ${l.qty} units` : `${plural(l.qty, 'new property number')} will be created`}</span></p>` : ''}
             ${l.notes.map(n => `<p class="text-[11px] text-amber-700 flex items-start gap-1.5"><i class="ph-bold ph-info mt-0.5"></i><span>${escapeHTML(n)}</span></p>`).join('')}
             ${errs.map(e => `<p class="text-[11px] font-semibold text-rose-700 flex items-start gap-1.5"><i class="ph-bold ph-warning-circle mt-0.5"></i><span>${escapeHTML(e)}</span></p>`).join('')}
           </div>`;
@@ -7188,7 +7229,7 @@
           const missing = l.qty - Math.min(l.qty, (l.nos || []).length);
           const s = userState[l.code];
           if (missing > 0) {
-            s.units = [...getUnits(l.code), ...nextPropertyNumbers(missing).map(no => makeUnit(l, no))];
+            s.units = [...getUnits(l.code), ...nextPropertyNumbers(missing, undefined, { date: h.date }).map(no => makeUnit(l, no))];
             newUnits += missing;
           }
           if ((parseInt(s.qty, 10) || 0) < s.units.length) s.qty = s.units.length; // ICS assigns more than counted
@@ -7294,7 +7335,7 @@
       const type = resolveItemType({ ...item, price: cost || item.price }, s.typeOverride);
       if (meta.makeUnits && type === 'EQUIPMENT') {
         const now = Date.now();
-        const fresh = nextPropertyNumbers(qty).map(no => ({
+        const fresh = nextPropertyNumbers(qty, undefined, { date: meta.date }).map(no => ({
           id: newUnitId(), no, serial: '', loc: '', to: '', cond: 'S', seen: null, printed: null, added: now,
           acq: meta.date || localISODate(), ...(cost > 0 ? { cost } : {}), ...(meta.doc ? { src: meta.doc } : {})
         }));
@@ -11745,7 +11786,7 @@
         const ids = lines.flatMap(l => l.units.map(u => u.id)).sort();
         const nos = [...new Set(lines.flatMap(l => l.units.map(u => (findUnitAny(u.id) || {}).ics)).filter(Boolean))];
         batch.set(F.doc(relCol(), `link-${t.uid}-${hashText(ids.join(','))}`), cleanJSON(relBase(t, {
-          kind: 'ICS', source: 'existing', no: nos.join(', ').slice(0, 120), date: localISODate(), purpose: 'Items already assigned before the teacher joined',
+          kind: 'ICS', source: 'existing', no: uniqNos(nos).join(', ').slice(0, 120), date: localISODate(), purpose: 'Items already assigned before the teacher joined',
           lines, total: relTotal(lines), createdAt: F.serverTimestamp()
         })));
         changed += ids.length;
@@ -12183,7 +12224,7 @@
         const life = (l.units || []).map(u => (findUnitAny(u.id) || {}).life).find(Boolean) || '';   // only what the custodian wrote
         return `<tr><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td>
           <td>${e(l.desc)}${serials.length ? `<br><span style="font-size:8.5pt">S/N: ${e(serials.join(', '))}</span>` : ''}</td>
-          <td class="pr-sn">${e((l.units || []).map(u => u.no).join(', '))}</td><td class="c">${e(life)}</td></tr>`;
+          <td class="pr-sn">${e(nosText(l.units))}</td><td class="c">${e(life)}</td></tr>`;
       }).join('');
       const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 8 - r.lines.length));
       return `
@@ -12730,7 +12771,7 @@
     const rvActs = card => `class="flex flex-wrap items-center gap-2 pt-1 ${card ? 'mt-auto' : ''}"`;
 
     function teacherReportCardHTML(x, card = false) {
-            const units = (x.units || []).map(u => u.no).filter(Boolean).join(', ');
+            const units = nosText(x.units);
             const ret = x.kind === 'return';
             if (x.kind === 'count') return teacherCountInboxHTML(x, card);
             const kind = ret ? 'return' : 'problem';
@@ -12805,7 +12846,7 @@
           kind: 'RETURN', source: 'returned', no: nextReleaseNo('RETURN', localISODate()), date: localISODate(), purpose: x.note || 'Returned by the teacher', reportId: x.id,
           lines, total: 0, createdAt: F.serverTimestamp()
         })));
-        saveStateWith({ summary: { kind: 'release', text: `${x.name} returned ${lines.map(l => `${l.desc} (${l.units.map(u => u.no).join(', ')})`).join(', ')}`, track: true } });
+        saveStateWith({ summary: { kind: 'release', text: `${x.name} returned ${lines.map(l => `${l.desc} (${nosText(l.units)})`).join(', ')}`, track: true } });
       }
       batch.update(F.doc(tReportCol(), x.id), { status: 'done', resolution: 'returned', reply: 'Received back', resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '' });
       cloudWrite(batch.commit(), 'Saving the return');
@@ -12831,7 +12872,7 @@
           touched.push(found);
         });
         if (touched.length) saveStateWith({ summary: { kind: 'condition', code: touched[0].item.code,
-          text: `${touched.map(f => f.unit.no).join(', ')} reported lost by ${x.name}${x.note ? `: ${x.note}` : ''} · lost report started` } });
+          text: `${uniqNos(touched.map(f => f.unit.no)).join(', ')} reported lost by ${x.name}${x.note ? `: ${x.note}` : ''} · lost report started` } });
       }
       if (action === 'repair' || action === 'unserv') {
         (x.units || []).filter(u => x.kind !== 'count' || u.s === 'broken').forEach(({ id: uid }) => {
@@ -12843,7 +12884,7 @@
           touched.push(found);
         });
         if (touched.length) saveStateWith({ summary: { kind: 'condition', code: touched[0].item.code,
-          text: `${touched.map(f => f.unit.no).join(', ')} marked ${action === 'repair' ? 'for repair' : 'unserviceable'} (reported by ${x.name}${x.note ? `: ${x.note}` : ''})` } });
+          text: `${uniqNos(touched.map(f => f.unit.no)).join(', ')} marked ${action === 'repair' ? 'for repair' : 'unserviceable'} (reported by ${x.name}${x.note ? `: ${x.note}` : ''})` } });
       }
       const reply = action === 'repair' ? 'Marked for repair' : action === 'unserv' ? 'Marked unserviceable'
         : action === 'lost' ? 'Lost report started · it stays under your name until you are relieved of accountability' : 'Noted';
@@ -13393,7 +13434,7 @@
                   <span class="w-8 h-8 shrink-0 rounded-lg ${r.kind === 'RETURN' ? 'bg-slate-100 text-slate-500' : r.kind === 'RIS' ? 'bg-indigo-50 text-indigo-600' : 'bg-blue-50 text-blue-600'} flex items-center justify-center"><i class="ph-bold ${r.kind === 'RETURN' ? 'ph-arrow-u-down-left' : 'ph-hand-arrow-up'}"></i></span>
                   <span class="min-w-0 flex-1">
                     <span class="block text-xs font-bold text-slate-900">${escapeHTML(label(r))}${relDocName(r) ? ` · ${escapeHTML(relDocName(r))}` : ''}</span>
-                    <span class="block text-[11px] text-slate-600 line-clamp-2">${r.lines.map(l => `${l.qty} ${escapeHTML(l.desc)}${(l.units || []).length ? ` (${escapeHTML(l.units.map(u => u.no).join(', '))})` : ''}`).join(' · ')}</span>
+                    <span class="block text-[11px] text-slate-600 line-clamp-2">${r.lines.map(l => `${l.qty} ${escapeHTML(l.desc)}${(l.units || []).length ? ` (${escapeHTML(nosText(l.units))})` : ''}`).join(' · ')}</span>
                     ${r.purpose ? `<span class="block text-[11px] text-slate-500 truncate">${escapeHTML(r.purpose)}</span>` : ''}
                     ${r.mergedFrom ? `<span class="block text-[11px] text-slate-500 truncate">Was under “${escapeHTML(r.mergedFrom)}”</span>` : ''}
                   </span>
@@ -13513,7 +13554,7 @@
       const today = new Date().toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
       const who = [p.position, p.office].filter(Boolean).join(', ');
       const back = p.records.filter(r => r.kind === 'RETURN' && (r.lines || []).some(l => (l.units || []).length)).slice().reverse();
-      const rows = back.map(r => `<tr><td class="c" style="font-size:9pt">${e(fDate(r.date))}</td><td class="c" style="font-size:9pt">${e(relDocName(r))}</td><td style="font-size:9.5pt">${e(r.lines.map(l => `${l.desc} (${(l.units || []).map(u => u.no).filter(Boolean).join(', ') || l.qty})`).join('; '))}</td><td class="c" style="font-size:9pt">${e(r.source === 'returned' ? 'Returned' : r.source === 'taken-back' ? 'Taken back' : 'Transferred')}</td></tr>`).join('');
+      const rows = back.map(r => `<tr><td class="c" style="font-size:9pt">${e(fDate(r.date))}</td><td class="c" style="font-size:9pt">${e(relDocName(r))}</td><td style="font-size:9.5pt">${e(r.lines.map(l => `${l.desc} (${nosText(l.units) || l.qty})`).join('; '))}</td><td class="c" style="font-size:9pt">${e(r.source === 'returned' ? 'Returned' : r.source === 'taken-back' ? 'Taken back' : 'Transferred')}</td></tr>`).join('');
       return `
         <div class="pr-form acct-page">
           <h1 style="margin-bottom:2pt">CERTIFICATE OF NO PROPERTY ACCOUNTABILITY</h1>
@@ -13649,7 +13690,7 @@
             const uids = lines.flatMap(l => l.units.map(u => u.id)).sort();
             const nos = [...new Set(lines.flatMap(l => l.units.map(u => (findUnitAny(u.id) || {}).ics)).filter(Boolean))];
             batch.set(F.doc(relCol(), `link-${t.uid}-${hashText(uids.join(','))}`), cleanJSON(relBase(target, {
-              kind: 'ICS', source: 'existing', no: nos.join(', ').slice(0, 120), date: localISODate(), purpose: `Items assigned under “${p.name}”`, mergedFrom: p.name,
+              kind: 'ICS', source: 'existing', no: uniqNos(nos).join(', ').slice(0, 120), date: localISODate(), purpose: `Items assigned under “${p.name}”`, mergedFrom: p.name,
               lines, total: relTotal(lines), createdAt: F.serverTimestamp()
             })));
           }
@@ -14130,7 +14171,7 @@
         const serials = (l.units || []).map(u => u.serial).filter(Boolean);
         return `<tr><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td>
           <td>${e(l.desc)}${serials.length ? `<br><span style="font-size:8.5pt">S/N: ${e(serials.join(', '))}</span>` : ''}</td>
-          <td class="pr-sn">${e((l.units || []).map(u => u.no).join(', '))}</td><td class="c" style="font-size:9pt">${e(fDate((l.units || []).map(u => (findUnitAny(u.id) || {}).acq).find(Boolean) || r.date))}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td></tr>`;
+          <td class="pr-sn">${e(nosText(l.units))}</td><td class="c" style="font-size:9pt">${e(fDate((l.units || []).map(u => (findUnitAny(u.id) || {}).acq).find(Boolean) || r.date))}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td></tr>`;
       }).join('');
       const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 10 - r.lines.length));
       return `
@@ -14761,7 +14802,7 @@
     const msISO = ms => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
     const relCodeLines = (r, code) => (r.lines || []).filter(l => l.code === code);
     const lineQty = l => (l.units && l.units.length) || l.qty || 0;
-    const lineNos = l => (l.units || []).map(u => u.no).filter(Boolean).join(', ');
+    const lineNos = l => nosText(l.units);
     const officerOf = r => [r.teacherName, r.office || r.position].filter(Boolean).join(' · ');
 
     // Quantity changes of one item from the history log: [{ t, delta, ref }]
@@ -14845,7 +14886,7 @@
       let bal = opening - known;
       const rows = list.map(g => {
         bal += g.nos.length;
-        return { t: isoMs(g.d), ref: 'Received', receipt: g.nos.length, issue: '', office: '', nos: '', remarks: g.nos.filter(Boolean).join(', '), bal };
+        return { t: isoMs(g.d), ref: 'Received', receipt: g.nos.length, issue: '', office: '', nos: '', remarks: uniqNos(g.nos).join(', '), bal };
       });
       return { left: opening - known, rows };
     }
@@ -14854,7 +14895,7 @@
       const d = prDefaults();
       const ppe = isPPE(item);
       const price = item.price || 0;
-      const nos = getUnits(item.code).map(u => u.no).filter(Boolean);
+      const nos = uniqNos(getUnits(item.code).map(u => u.no));
       const { opening, rows: changes } = propCardData(item, from);
       // Units with a date acquired before the period open the card as receipts on that date;
       // only what is left over (units without a date) is "Balance forward".
@@ -15614,7 +15655,7 @@
           make: prev => {
             if (prev !== undefined) return null;
             const who = x.name || 'A teacher';
-            const units = (x.units || []).map(u => u.no).filter(Boolean).join(', ');
+            const units = nosText(x.units);
             if (x.kind === 'received') return { title: `${who} confirmed receipt`, body: [x.releaseNo, x.desc].filter(Boolean).join(' · '), icon: 'ph-check-circle', tone: 'emerald', go: 'teachers', person: x.uid || null };
             if (x.status !== 'open') return null;
             if (x.kind === 'return') return { title: `${who} wants to return an item`, body: [x.desc, units, x.note].filter(Boolean).join(' · '), icon: 'ph-arrow-u-down-left', tone: 'amber', go: 'teachers', person: x.uid || null };
@@ -15630,7 +15671,7 @@
           key: 'tr:' + x.id, sig: (x.status || 'open') + (x.repairedMs ? '+repaired' : x.foundMs ? '+found' : x.relievedMs ? '+relieved' : ''),
           make: prev => {
             if (!prev) return null;                // a report I just sent: nothing to announce
-            const what = [x.desc, (x.units || []).map(u => u.no).filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+            const what = [x.desc, nosText(x.units)].filter(Boolean).join(' · ');
             if (x.kind === 'problem' && x.repairedMs) return { title: 'Repaired · back in use', body: what || 'Your item is repaired', icon: 'ph-wrench', tone: 'emerald', go: 'teacher-items' };
             if (x.kind === 'problem' && x.foundMs) return { title: 'Lost item found', body: what ? `${what} is back on your list as usual` : 'It is back on your list as usual', icon: 'ph-check-circle', tone: 'emerald', go: 'teacher-items' };
             if (x.kind === 'problem' && x.relievedMs) return { title: 'Relieved of accountability', body: [what && `${what} is off your list`, x.reply].filter(Boolean).join(' · '), icon: 'ph-seal-check', tone: 'emerald', go: 'teacher-items' };
@@ -16299,6 +16340,7 @@
         'The scanner remembers: when you pick an item for a supplier’s wording, that wording is matched by itself next time. Reading mistakes like BOND PAPFR still find the item, and you get a warning when the paper says box but the item is counted by piece.',
         'Catalog editing: you can rename your own items and change their unit or category, hide items you never use (Show hidden brings them back) and delete unused ones. Items used on past slips are archived instead, and old slips keep the name and cost they were printed with. Every change shows in Change history.',
         'Scanning tuned on real DepEd forms (PO, IAR, ICS): when the reader drops a decimal point or misreads a digit, the amount is corrected from quantity × unit cost and checked against the total on the paper. An IAR is matched to its PO by stock no. “Received by” is read on either side of the ICS, and an inventory item no. that was only half read has to be fixed before saving.',
+        'One inventory item no. per ICS line: in School info → Property numbers, choose One number per ICS line. New numbers then follow School-Quarter-Year-Month-Series (like OES-4THQ-2026-11-31), and all the units on a line share one number. A scanned ICS with one number for 9 file boxes gives all 9 that number, and slips list it once.',
         'Fixes: the “Ready to work offline” message no longer hides an Undo button.'
       ] },
       { id: '2026-11-reports-reset', date: 'Nov 2026', title: 'Reports followed through, and a clean start', points: [

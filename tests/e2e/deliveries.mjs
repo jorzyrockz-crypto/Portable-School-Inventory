@@ -309,6 +309,52 @@ try {
   check(await ev(b, () => deliveries.some(d => d.poNo === '2026-11-0007' && d.status === 'received')), 'second device has the received PO');
   check(await ev(b, c => rememberedFor('BOND PAPFR, A4, 70gsm') === c, paper.code), 'second device knows the remembered wording');
   check(await ev(b, c => { const i = items.find(x => x.code === c); return i && i.hidden && i.archived; }, used), 'archived item is archived there too');
+
+  out('14 one inventory item no. per ICS line (School-Quarter-Year-Month-Series)');
+  await ev(a, () => { schoolInfo.propPrefix = 'OES'; schoolInfo.numbering = 'line'; });
+  const firstNo = await ev(a, () => nextPropertyNumbers(3, undefined, { date: '2026-11-06' }));
+  check(firstNo.length === 3 && firstNo.every(n => n === 'OES-4THQ-2026-11-01'), `one number for the whole line (${firstNo[0]})`);
+  check(await ev(a, () => nextPropertyNumbers(1, undefined, { date: '2026-02-10' })[0] === 'OES-1STQ-2026-02-01'), 'quarter and month from the date (OES-1STQ-2026-02-01)');
+  await ev(a, () => { openIcsScanner(); });
+  await ev(a, () => icsLoadText([
+    'INVENTORY CUSTODIAN SLIP', 'Entity Name: SAMPLE ELEMENTARY SCHOOL      ICS No: 2026-11-007',
+    'Quantity  Unit  Unit Cost  Total Cost  Description  Inventory Item No.  Estimated Useful Life',
+    '9   pc   195.00   1,755.00   Horizontal Filebox Long   OES-4THQ-2026-11-31   3 years',
+    '4   pcs  550.00   2,200.00   Megabox 50L      3 years',
+    'Received by:                         Received from:',
+    'MARIA B. SANTOS                      JUAN L. REYES',
+    'Signature Over Printed Name          Signature Over Printed Name',
+    'AO II School Property Custodian      Officer In-Charge',
+    'November 6, 2026                     November 6, 2026'
+  ].join('\n'), 'paste'));
+  await until(a, () => icsState && icsState.stage === 'review', 'ICS review');
+  const icsInfo = await ev(a, () => { icsState.lines.forEach(l => { l.target = 'NEW'; }); renderIcs(); return document.getElementById('icsModal').innerText; });
+  check(/shared by all 9 units/i.test(icsInfo), 'review says the number is shared by all 9 units');
+  check(/One new property number for all 4 units/i.test(icsInfo), 'a line without a number gets one new number for all its units');
+  await ev(a, () => saveIcs());
+  await until(a, () => items.some(i => /HORIZONTAL FILEBOX LONG/.test(i.name) && getUnits(i.code).length === 9), 'ICS saved', 8000);
+  const batch = await ev(a, () => {
+    const fb = items.find(i => /HORIZONTAL FILEBOX LONG/.test(i.name)), mb = items.find(i => /MEGABOX 50L/.test(i.name));
+    return { fb: getUnits(fb.code).map(u => u.no), mb: getUnits(mb.code).map(u => u.no), fbCode: fb.code, mbCode: mb.code, text: nosText(getUnits(fb.code)) };
+  });
+  check(batch.fb.length === 9 && batch.fb.every(n => n === 'OES-4THQ-2026-11-31'), '9 file boxes share OES-4THQ-2026-11-31');
+  check(batch.mb.length === 4 && batch.mb.every(n => n === 'OES-4THQ-2026-11-32'), `the next line continues the series: ${batch.mb[0]}`);
+  check(batch.text === 'OES-4THQ-2026-11-31', 'slips and forms list the number once');
+  // Renaming: the same item may share a number, another item's number is refused
+  const renamed2 = await ev(a, (fb, mb) => {
+    const u = getUnits(mb)[0]; const input = { value: 'OES-4THQ-2026-11-31' };
+    renameUnit(mb, u.id, input);
+    const refused = getUnits(mb)[0].no === 'OES-4THQ-2026-11-32';
+    const v = getUnits(fb)[1]; const inp2 = { value: getUnits(fb)[0].no };
+    renameUnit(fb, v.id, inp2);
+    return { refused, sameOk: getUnits(fb)[1].no === 'OES-4THQ-2026-11-31' };
+  }, batch.fbCode, batch.mbCode);
+  check(renamed2.refused && renamed2.sameOk, 'another item’s number is refused; the same item may share it');
+  // Physical count: each scan of the shared sticker counts the next file box
+  const counted = await ev(a, () => { scanSession = new Set(); lookupScannedTag('OES-4THQ-2026-11-31', 'typed'); lookupScannedTag('OES-4THQ-2026-11-31', 'typed'); lookupScannedTag('OES-4THQ-2026-11-31', 'typed'); return scanSession.size; });
+  check(counted === 3, `three scans of the shared sticker count three file boxes (${counted})`);
+  await ev(a, () => { schoolInfo.numbering = 'unit'; });
+  check(await ev(a, () => /^OES-\d{4}-\d{4}$/.test(nextPropertyNumbers(1)[0])), 'one number per unit is still the default style');
 } catch (e) {
   out('FAIL: exception', e && e.stack || e);
   process.exitCode = 1;
