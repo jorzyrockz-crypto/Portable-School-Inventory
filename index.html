@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="899553bc3848">
+  <meta name="app-version" content="d8c4bffcad7d">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -6298,7 +6298,7 @@
     const OCR_BASE = 'assets/ocr/tesseract-7.0.0/';
     const OCR_CACHE_NAME = 'custodianpro-ocr-7.0.0';
     const ICS_UNIT_WORDS = {
-      unit: 'unit', units: 'unit', u: 'unit', pc: 'pc', pcs: 'pcs', pes: 'pcs', pce: 'piece', piece: 'piece', pieces: 'piece',
+      unit: 'unit', units: 'unit', u: 'unit', uit: 'unit', unlt: 'unit', umit: 'unit', pc: 'pc', pe: 'pc', pcs: 'pcs', pes: 'pcs', pce: 'piece', piece: 'piece', pieces: 'piece',
       set: 'set', sets: 'set', lot: 'lot', lots: 'lot', box: 'box', boxes: 'box', pack: 'pack', packs: 'pack', pair: 'pair',
       pairs: 'pair', ream: 'ream', reams: 'ream', roll: 'roll', rolls: 'roll', bottle: 'bottle', bottles: 'bottle',
       gallon: 'gallon', gallons: 'gallon', can: 'can', cans: 'can', book: 'book', books: 'book', copy: 'copy', copies: 'copy',
@@ -6318,6 +6318,81 @@
       // last separator is the decimal point; the rest are thousands separators
       const n = Number(t.slice(0, -3).replace(/[,.]/g, '') + '.' + t.slice(-2));
       return Number.isFinite(n) ? n : null;
+    }
+
+    // OCR-tolerant amounts. The text reader often loses or adds a decimal point or a
+    // separator: "21500" for 215.00, "10.280.20" for 10,280.00, "5375.0)", "7.50000".
+    // Returns the readings to try (most likely first), or null for a non-number.
+    function moneyToken(token, preferCents = true) {
+      let t = String(token || '').replace(/^[₱P£$€]+/, '').replace(/[,;:|]+$/, '').replace(/[)\]]$/, '0');
+      if (/\d/.test(t)) t = t.replace(/[Oo]/g, '0');
+      if (!/^\d[\d.,]*$/.test(t)) return null;
+      const digits = t.replace(/[.,]/g, '');
+      const strict = icsMoney(t);
+      const sep = /[.,]/.test(t);
+      if (strict === null && digits.length < 3) return null;
+      const cands = [];
+      const add = v => { v = Math.round(v * 100) / 100; if (v > 0 && !cands.some(c => Math.abs(c - v) < 0.001)) cands.push(v); };
+      if (strict !== null) add(strict);
+      if (sep) add(Number(digits) / 100);
+      else if (preferCents) { add(Number(digits) / 100); add(Number(digits)); }
+      else { add(Number(digits)); add(Number(digits) / 100); }
+      return cands.length ? { token: String(token), digits, cands, clean: strict !== null, sep } : null;
+    }
+    function digitDistance(a, b) {   // edit distance between two digit strings
+      const m = a.length, n = b.length, d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+      for (let j = 1; j <= n; j++) d[0][j] = j;
+      for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      return d[m][n];
+    }
+    // Quantity × unit cost = amount, used to repair what the reader got wrong. Returns
+    // { qty, unitCost, amount, notes, alt } – alt is the other repair when two are possible.
+    function reconcileMoney(qty, cost, amt, label = 'amount') {
+      const peso = v => formatCurrency(v);
+      const cents = v => String(Math.round(v * 100));
+      const r = { qty, unitCost: cost ? cost.cands[0] : null, amount: amt ? amt.cands[0] : null, notes: [], alt: null };
+      const Label = label[0].toUpperCase() + label.slice(1);
+      const same = (a, b) => Math.abs(a - b) < 0.005;
+      if (cost && amt) {
+        // 1. read as printed (any reading of each) and they agree
+        if (qty) for (const c of cost.cands) for (const a of amt.cands) if (same(qty * c, a)) { r.unitCost = c; r.amount = a; return r; }
+        // 2. the quantity: both amounts clearly printed, or no quantity read
+        for (const c of cost.cands) for (const a of amt.cands) {
+          if (!(cost.clean && amt.clean) && qty) continue;
+          const q = a / c, whole = Math.round(q);
+          if (whole >= 1 && whole <= 99999 && whole !== qty && same(whole * c, a)) {
+            if (qty === null) r.notes.push(`Quantity worked out from ${label} ÷ unit cost`);
+            else r.notes.push(`Read quantity ${qty}, but ${label} ÷ unit cost = ${whole} – please check`);
+            r.qty = whole; r.unitCost = c; r.amount = a; return r;
+          }
+          if (cost.clean && amt.clean) break;
+        }
+      }
+      if (qty && cost && amt) {
+        // 3. one digit misread: trust the reading the other column agrees with
+        const fixAmt = [], fixCost = [];
+        cost.cands.forEach(c => { if (digitDistance(cents(qty * c), amt.digits) <= 1) fixAmt.push(c); });
+        amt.cands.forEach(a => { const c = Math.round(a / qty * 100) / 100; if (same(c * qty, a) && digitDistance(cents(c), cost.digits) <= 1) fixCost.push({ c, a }); });
+        const optA = fixAmt.length ? { unitCost: fixAmt[0], amount: Math.round(qty * fixAmt[0] * 100) / 100 } : null;
+        const optC = fixCost.length ? { unitCost: fixCost[0].c, amount: fixCost[0].a } : null;
+        let pick = optA || optC, other = optA && optC ? optC : null;
+        if (optA && optC && amt.clean && !cost.clean) { pick = optC; other = optA; }
+        if (pick) {
+          if (pick === optA) r.notes.push(`${Label} read as ${amt.token}, corrected to ${peso(pick.amount)} (${qty} × ${peso(pick.unitCost)}) – please check`);
+          else r.notes.push(`Unit cost read as ${cost.token}, corrected to ${peso(pick.unitCost)} (${label} ÷ ${qty}) – please check`);
+          r.unitCost = pick.unitCost; r.amount = pick.amount;
+          if (other && !same(other.unitCost, pick.unitCost)) r.alt = other;
+          return r;
+        }
+      }
+      if (!cost && amt && qty) { r.unitCost = Math.round(amt.cands[0] / qty * 100) / 100; r.amount = amt.cands[0]; return r; }
+      if (qty && r.unitCost) {
+        const product = Math.round(qty * r.unitCost * 100) / 100;
+        if (amt && !same(product, r.amount)) r.notes.push(`${Label} on the paper read as ${amt.token}, but ${qty} × ${peso(r.unitCost)} = ${peso(product)} – please check`);
+        r.amount = product;
+      }
+      if (cost && !cost.clean && !r.notes.length) r.notes.push(`Unit cost read as ${cost.token} – please check`);
+      return r;
     }
 
     function parseLooseDate(text) {
@@ -6342,7 +6417,10 @@
 
     // Property-number-like: letters/digits joined by - or /, with at least 3 digits.
     const ICS_ITEMNO_RE = /^(?=(?:.*\d){3})[A-Z0-9]{1,12}(?:[-\/][A-Z0-9]{1,12})+$/i;
-    const ICS_LIFE_RE = /(?:^|\s)([0-9Ss]{1,2}|[Oo]ne|[Tt]wo|[Tt]hree|[Ff]ive|[Ss]even|[Tt]en)\s*-?\s*(years?|yrs?|y)\.?$/;
+    const ICS_LIFE_RE = /(?:^|\s|-)([0-9Ss]{1,2}|[Oo]ne|[Tt]wo|[Tt]hree|[Ff]ive|[Ss]even|[Tt]en)\s*-?\s*(years?|yrs?|y)\.?$/;
+
+    // An inventory item no. only half read (it wrapped onto a second line in the cell)
+    const icsItemNoCut = no => { const t = String(no || '').trim(); return !!t && (/[-\/]$/.test(t) || (/\s/.test(t) && !/\s(?:to|thru|through|and)\s|,|;|\s[-–—]\s/i.test(t))); };
 
     function icsLife(text) {
       const m = String(text || '').trim().match(ICS_LIFE_RE);
@@ -6384,12 +6462,13 @@
       const header = { icsNo: '', entity: '', fund: '', date: '', receivedBy: '', position: '', receivedFrom: '' };
 
       const rawAll = rawLines.join('\n');
-      let m = all.match(/ICS\s*(?:No|Number|#)?\.?\s*[:.]?\s*([A-Z0-9][A-Z0-9\-\/.]*(?: ?- ?[A-Z0-9]+)*)/i);
+      let m = all.match(/ICS\s*(?:No|Number|#)?[\s.:;!|]*([A-Z0-9][A-Z0-9\-\/.]*(?: ?- ?[A-Z0-9]+)*)/i);
       if (m && /\d/.test(m[1])) header.icsNo = m[1].replace(/\s+/g, '').replace(/[.\-]+$/, '').toUpperCase();
       m = rawAll.match(/Entity\s*Name\s*[:.]?\s*(.+?)(?:\s{3,}|Fund\s*Cluster|\n|$)/i);
       if (m) header.entity = m[1].replace(/[|_]+/g, ' ').trim();
       m = rawAll.match(/Fund\s*Cluster\s*[:.]?\s*(.+?)(?:\s{3,}|ICS|\n|$)/i);
       if (m) header.fund = m[1].replace(/[|_]+/g, ' ').trim();
+      if (/[()\[\]{}<>~]/.test(header.fund)) header.fund = '';   // a misread, not a fund cluster
 
       // Table: below the column headings, above "Received from/by" or "nothing follows".
       let start = lines.findIndex(l => /quantity|description/i.test(l) && !/entity/i.test(l));
@@ -6401,11 +6480,24 @@
 
       const items = [];
       let cur = null;
+      const preferCents = lines.slice(start + 1, end).some(l => l.split(/\s+/).some(t => icsMoney(t) !== null));
       for (let i = start + 1; i < end; i++) {
         const line = lines[i];
         if (!line.trim()) continue;
         const tokens = line.trim().split(/\s+/);
         const moneyIdx = tokens.map((t, k) => icsMoney(t) !== null ? k : -1).filter(k => k >= 0);
+        // Amounts with a lost or extra decimal point ("21500", "7.50000") right after quantity · unit
+        {
+          let k0 = /^\d{1,5}$/.test(tokens[0]) ? 1 : 0;
+          if (ICS_UNIT_WORDS[String(tokens[k0] || '').toLowerCase().replace(/[^a-z]/g, '')]) k0++;
+          for (let k = k0; k < Math.min(tokens.length, k0 + 2); k++) {
+            if (moneyIdx.includes(k)) continue;
+            const mt = moneyToken(tokens[k], preferCents);
+            if (mt && (mt.sep || moneyIdx.includes(k + 1) || moneyIdx.includes(k - 1) || (k === k0 && moneyToken(tokens[k + 1], preferCents)))) moneyIdx.push(k);
+            else break;
+          }
+          moneyIdx.sort((a, b) => a - b);
+        }
         const leadQty = /^\d{1,5}$/.test(tokens[0]) ? parseInt(tokens[0], 10) : null;
         const unitAt = k => ICS_UNIT_WORDS[String(tokens[k] || '').toLowerCase().replace(/[^a-z]/g, '')];
         const isRow = moneyIdx.length > 0 || (leadQty !== null && unitAt(1));
@@ -6439,9 +6531,10 @@
           if (u) { cur.unit = u; k++; break; }
         }
         if (firstMoney >= 0) {
-          cur.unitCost = icsMoney(tokens[firstMoney]);
+          cur.costTok = moneyToken(tokens[firstMoney], preferCents);
+          cur.unitCost = cur.costTok ? cur.costTok.cands[0] : null;
           k = firstMoney + 1;
-          if (moneyIdx[1] === firstMoney + 1) { cur.totalCost = icsMoney(tokens[firstMoney + 1]); k = firstMoney + 2; }
+          if (moneyIdx[1] === firstMoney + 1) { cur.totalTok = moneyToken(tokens[firstMoney + 1], preferCents); cur.totalCost = cur.totalTok ? cur.totalTok.cands[0] : null; k = firstMoney + 2; }
         }
         // the rest: description, inventory item no., useful life (columns ≥3 spaces apart)
         const restStart = (() => {
@@ -6456,7 +6549,8 @@
         const segs = rest.split(/\s{3,}/).map(s => s.trim()).filter(Boolean);
         if (segs.length > 1) {
           const itemSegs = [];
-          while (segs.length > 1 && (ICS_ITEMNO_RE.test(segs[segs.length - 1].split(/\s+/)[0]) || /^(?:to|-)\s/i.test(segs[segs.length - 1]))) {
+          const looksNo = seg => ICS_ITEMNO_RE.test(seg.split(/\s+/)[0]) || /^(?:to|-)\s/i.test(seg) || (/(?:19|20)\d\d(?:\s*[-\/]|$)/.test(seg) && seg.split(/\s+/).length <= 3 && !/\s[a-z]{3,}/.test(seg));
+          while (segs.length > 1 && looksNo(segs[segs.length - 1])) {
             itemSegs.unshift(segs.pop());
           }
           cur.itemNo = itemSegs.join(' ');
@@ -6472,22 +6566,20 @@
 
       // Money cross-check: quantity = total ÷ unit cost when that is a whole number.
       items.forEach(it => {
-        if (it.unitCost && it.totalCost) {
-          const q = it.totalCost / it.unitCost;
-          const whole = Math.round(q);
-          if (whole >= 1 && Math.abs(q - whole) < 0.01) {
-            if (it.qty === null) { it.qty = whole; it.notes.push('Quantity worked out from total ÷ unit cost'); }
-            else if (it.qty !== whole) { it.notes.push(`Read quantity ${it.qty}, but total ÷ unit cost = ${whole} – please check`); it.qty = whole; }
-          }
-        } else if (it.qty && it.totalCost && !it.unitCost) {
-          it.unitCost = Math.round(it.totalCost / it.qty * 100) / 100;
-        } else if (it.qty && it.unitCost && !it.totalCost) {
-          it.totalCost = Math.round(it.qty * it.unitCost * 100) / 100;
+        if (it.costTok || it.totalTok) {
+          const r = reconcileMoney(it.qty, it.costTok, it.totalTok, 'total cost');
+          it.qty = r.qty; it.unitCost = r.unitCost; it.totalCost = r.amount; it.notes.push(...r.notes);
         }
+        delete it.costTok; delete it.totalTok;
         if (it.qty === null) { it.qty = 1; it.notes.push('Quantity not found – please check'); }
         it.desc = it.desc.replace(/\s{2,}/g, ' ').replace(/^[^A-Za-z0-9(]+/, '').trim()
           .replace(/([a-z][a-z.)]*)\s+[Il|]$/, '$1'); // table border misread as a letter
         it.itemNo = it.itemNo.replace(/\s{2,}/g, ' ').trim();
+        // A number that wrapped onto a second line in the cell is often only half read
+        if (icsItemNoCut(it.itemNo)) {
+          it.notes.push(`Inventory item no. looks cut off (${it.itemNo}) – type it from the paper, or clear it to number the units for you`);
+          it.itemNoCut = true;
+        }
       });
 
       // Signatures: "Received from" (left) and "Received by" (right) blocks.
@@ -6495,12 +6587,18 @@
       if (byIdx >= 0) {
         const headLine = lines[byIdx];
         const byCol = headLine.search(/received\s*by/i);
-        const twoCol = /received\s*from/i.test(headLine) && headLine.search(/received\s*from/i) < byCol;
-        const sameLine = headLine.slice(byCol).replace(/received\s*by\s*[:.]?/i, '').trim();
+        const fromCol = headLine.search(/received\s*from/i);
+        const twoCol = fromCol >= 0 && fromCol < byCol;
+        const byLeft = fromCol > byCol;          // "Received by" on the left, "Received from" on the right
+        const sameLine = (byLeft ? headLine.slice(byCol, fromCol) : headLine.slice(byCol)).replace(/received\s*by\s*[:.]?/i, '').trim();
         const pick = l => {
           const segs = [];
           l.replace(/\S+(?:\s{1,2}\S+)*/g, (seg, at) => { segs.push({ seg, at }); return seg; });
           if (!segs.length) return '';
+          if (byLeft) {
+            if (segs.length > 1) return segs[0].seg;
+            return segs[0].at < fromCol * 0.75 ? segs[0].seg : '';
+          }
           if (!twoCol) return segs.map(s => s.seg).join(' ');
           if (segs.length > 1) return segs[segs.length - 1].seg;
           return segs[0].at >= byCol * 0.6 ? segs[0].seg : '';
@@ -6824,6 +6922,7 @@
         l.errors = [];
         if (st.opts.makeUnits) {
           const nos = expandItemNos(l.itemNo, l.qty);
+          if (icsItemNoCut(l.itemNo)) l.errors.push(`Inventory item no. ${l.itemNo.trim()} looks cut off – type it in full, or clear it`);
           if (nos.length > l.qty) l.errors.push(`${nos.length} inventory item numbers for ${l.qty} ${l.qty === 1 ? 'unit' : 'units'}`);
           nos.forEach(no => {
             const dup = findUnitByNo(no);
@@ -7323,7 +7422,7 @@
     };
     const DOC_NO_FIELDS = ['poNo', 'prNo', 'iarNo', 'drNo', 'invoiceNo'];
     const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const docLabelRe = label => new RegExp('(?:^|[^A-Za-z])' + label.split(/[\s.]+/).filter(Boolean).map(escRe).join('[\\s.]*') + '[\\s.]*(?:\\/\\s*[A-Za-z]+\\.?)?[\\s.]*(?:[:#]|\\s)\\s*', 'i');
+    const docLabelRe = label => new RegExp('(?:^|[^A-Za-z])[|!Il1‘’\'\"“”(]?' + label.split(/[\s.]+/).filter(Boolean).map(escRe).join('[\\s.]*') + '[\\s.]*(?:\\/\\s*[A-Za-z]+\\.?)?[\\s.]*(?:[:#]|\\s)\\s*', 'i');
 
     function docField(rawLines, labels, kind, allLabels) {
       for (const label of labels) {
@@ -7331,6 +7430,7 @@
         for (const line of rawLines) {
           const m = line.match(re);
           if (!m) continue;
+          if (kind === 'text' && /signature|printed\s*name|conforme/i.test(line)) continue;
           let rest = line.slice(m.index + m[0].length).replace(/^[\s:#.]+/, '');
           if (kind === 'date') { const d = parseLooseDate(rest.slice(0, 30)); if (d) return d; continue; }
           if (kind === 'no') {
@@ -7348,31 +7448,44 @@
       return '';
     }
 
-    function parseDocRow(line) {
+    function parseDocRow(line, kind = 'po', preferCents = true) {
       const tokens = line.trim().split(/\s+/).filter(Boolean);
       const unitOf = t => ICS_UNIT_WORDS[String(t || '').toLowerCase().replace(/[^a-z]/g, '')] || '';
       const isInt = t => /^\d{1,5}$/.test(t);
-      const moneyIdx = tokens.map((t, k) => icsMoney(t) !== null ? k : -1).filter(k => k >= 0);
       const row = { qty: null, unit: '', unitCost: null, amount: null, stockNo: '', desc: '', notes: [] };
-      let pre = tokens.slice(), tail = [];
-      if (moneyIdx.length >= 2 && moneyIdx[moneyIdx.length - 1] === moneyIdx[moneyIdx.length - 2] + 1) {
-        const a = moneyIdx[moneyIdx.length - 2];
-        row.unitCost = icsMoney(tokens[a]); row.amount = icsMoney(tokens[a + 1]);
-        pre = tokens.slice(0, a); tail = tokens.slice(a + 2);
-      } else if (moneyIdx.length) {
-        const a = moneyIdx[moneyIdx.length - 1];
-        row.unitCost = icsMoney(tokens[a]);
-        pre = tokens.slice(0, a); tail = tokens.slice(a + 1);
-      }
-      // quantity right before the costs (PO, IAR), with the unit just before it (IAR) …
+      // The amounts: the last one or two numbers on the line (read loosely – see moneyToken)
+      let end = tokens.length;
+      while (end > 0 && !/[A-Za-z0-9]/.test(tokens[end - 1])) end--;
+      const mt = k => k >= 0 && k < end ? moneyToken(tokens[k], preferCents) : null;
+      let cost = null, amt = null, cut = end;
+      const a = mt(end - 1), b = mt(end - 2);
+      if (a && b && (a.sep || b.sep || (a.digits.length >= 3 && b.digits.length >= 3))) { cost = b; amt = a; cut = end - 2; }
+      else if (a && a.sep) { cost = a; cut = end - 1; }
+      const pre = tokens.slice(0, cut);
+      // quantity right before the costs (PO, IAR)
       if (pre.length > 1 && isInt(pre[pre.length - 1])) row.qty = parseInt(pre.pop(), 10);
-      if (row.qty !== null && pre.length > 1 && unitOf(pre[pre.length - 1])) row.unit = unitOf(pre.pop());
-      // … a stock / property no. in front (PO, IAR) …
-      if (pre.length > 1 && /\d/.test(pre[0]) && (/^[A-Z0-9]+(?:[-\/][A-Z0-9]+)+$/i.test(pre[0]) || (isInt(pre[0]) && row.qty !== null && pre[0].length <= 3))) row.stockNo = pre.shift();
+      // IAR whose quantity could not be read: \"3  Worx A4  pack  Kt)\" – a unit word near the end
+      if (row.qty === null && !cost && pre.length > 2 && isInt(pre[0])) {
+        const u = pre.length - 1 - [...pre].reverse().findIndex(t => unitOf(t));
+        if (u >= 2 && u < pre.length && pre.length - 1 - u <= 1 && pre.slice(u + 1).every(t => t.length <= 3)) {
+          pre.splice(u + 1); row.qtyUnread = true;
+        }
+      }
+      const laterUnit = pre.slice(2).some(t => unitOf(t));
+      // a stock / property no. in front (PO, IAR) …
+      if (pre.length > 1 && /\d/.test(pre[0]) && (/^[A-Z0-9]+(?:[-\/][A-Z0-9]+)+$/i.test(pre[0]) || (isInt(pre[0]) && pre[0].length <= 3 && (row.qty !== null || row.qtyUnread || (laterUnit && !unitOf(pre[1])))))) row.stockNo = pre.shift();
       // … or the quantity in front (delivery receipts: Qty | Unit | Description | Price | Amount)
-      if (row.qty === null && pre.length > 1 && isInt(pre[0])) row.qty = parseInt(pre.shift(), 10);
-      if (!row.unit && pre.length > 1 && unitOf(pre[0])) row.unit = unitOf(pre.shift());
-      row.desc = [...pre, ...tail.filter(t => /[A-Za-z]/.test(t))].join(' ');
+      if (row.qty === null && !row.qtyUnread && pre.length > 1 && isInt(pre[0])) row.qty = parseInt(pre.shift(), 10);
+      // the unit: before the description on a PO / DR, after it on an IAR
+      const lead = () => { if (pre.length > 1 && unitOf(pre[0])) { row.unit = unitOf(pre.shift()); return true; } return false; };
+      const trail = () => { if (pre.length > 1 && unitOf(pre[pre.length - 1])) { row.unit = unitOf(pre.pop()); return true; } return false; };
+      if (kind === 'po' || (row.stockNo === '' && row.qty !== null)) { if (!lead()) trail(); } else if (!trail()) lead();
+      row.desc = pre.join(' ');
+      if (cost || amt) {
+        const r = reconcileMoney(row.qty, cost, amt);
+        row.qty = r.qty; row.unitCost = r.unitCost; row.amount = r.amount; row.notes.push(...r.notes);
+        if (r.alt) row.alt = r.alt;
+      }
       return row;
     }
 
@@ -7396,35 +7509,59 @@
 
       const out = [];
       let cur = null;
+      const preferCents = lines.slice(start + 1, end).some(l => l.split(/\s+/).some(t => icsMoney(t) !== null));
+      const totalRe = /^\W*(?:[₱P]|(?:grand\s*|sub-?\s*)?total(?:\s*amount)?)\W*\s*([\d.,]+[)\]]?)\s*$/i;
+      let paperTotal = null;
       for (let i = start + 1; i < end; i++) {
         const line = lines[i];
         if (!line.trim()) continue;
+        const tm = line.trim().match(totalRe);
+        if (tm) { const t = moneyToken(tm[1], preferCents); if (t) paperTotal = t; continue; }
         const tokens = line.trim().split(/\s+/);
-        const hasMoney = tokens.some(t => icsMoney(t) !== null);
+        const loose = tokens.map(t => moneyToken(t, preferCents));
+        const n = tokens.length;
+        const hasMoney = loose.some(m => m && m.sep) || (n >= 3 && loose[n - 1] && loose[n - 2]);
         const words = tokens.filter(t => /[A-Za-z]{2}/.test(t)).length;
         const unitAt = k => ICS_UNIT_WORDS[String(tokens[k] || '').toLowerCase().replace(/[^a-z]/g, '')];
-        const isRow = hasMoney || (/^\d{1,5}$/.test(tokens[tokens.length - 1]) && words >= 2) || (/^\d{1,5}$/.test(tokens[0]) && unitAt(1) && words >= 2);
+        const isRow = hasMoney || (/^\d{1,5}$/.test(tokens[n - 1]) && words >= 2) || (/^\d{1,5}$/.test(tokens[0]) && unitAt(1) && words >= 2) ||
+          (/^\d{1,3}$/.test(tokens[0]) && tokens.slice(2).some((t, k) => unitAt(k + 2)) && words >= 2);
         if (!isRow) {
           if (cur && (line.match(/[A-Za-z]/g) || []).length >= 3) cur.desc = (cur.desc + ' ' + line.trim()).trim();
           continue;
         }
-        const row = parseDocRow(line);
+        const row = parseDocRow(line, kind, preferCents);
         if (!row.desc && !row.unitCost) continue;
         cur = { id: 'L' + (++icsLineSeq), ...row };
         out.push(cur);
       }
+      // The total printed just below the table ("P 55,841.00")
+      if (!paperTotal) {
+        for (let i = end; i < Math.min(lines.length, end + 4); i++) {
+          const tm = String(lines[i] || '').trim().match(totalRe) || String(lines[i] || '').match(/(?:^|\s)[₱P]\s+([\d.,]{4,}[)\]]?)\s*$/);
+          if (tm) { const t = moneyToken(tm[1], preferCents); if (t) { paperTotal = t; break; } }
+        }
+      }
 
       out.forEach(r => {
-        if (r.unitCost && r.amount) {
-          const q = r.amount / r.unitCost, whole = Math.round(q);
-          if (whole >= 1 && Math.abs(q - whole) < 0.01) {
-            if (r.qty === null) { r.qty = whole; r.notes.push('Quantity worked out from amount ÷ unit cost'); }
-            else if (r.qty !== whole) { r.notes.push(`Read quantity ${r.qty}, but amount ÷ unit cost = ${whole} – please check`); r.qty = whole; }
-          }
-        } else if (r.qty && r.amount && !r.unitCost) r.unitCost = round2(r.amount / r.qty);
-        if (r.qty === null) { r.qty = 1; r.notes.push('Quantity not found – please check'); }
+        if (r.qty === null) { r.qty = 1; r.notes.push(r.qtyUnread ? 'Quantity could not be read – please type it' : 'Quantity not found – please check'); }
         r.desc = r.desc.replace(/\s{2,}/g, ' ').replace(/^[^A-Za-z0-9(]+/, '').trim().replace(/([a-z][a-z.)]*)\s+[Il|]$/, '$1');
       });
+      // Lines against the printed total: it settles a line where two repairs were possible
+      if (paperTotal && out.length) {
+        const sum = () => round2(out.reduce((n, r) => n + (r.qty || 0) * (r.unitCost || 0), 0));
+        const ok = () => paperTotal.cands.some(c => Math.abs(c - sum()) < 0.01);
+        if (!ok()) {
+          for (const r of out.filter(x => x.alt)) {
+            const keep = { unitCost: r.unitCost, amount: r.amount };
+            Object.assign(r, r.alt);
+            if (ok()) { r.notes = r.notes.map(n => n.replace(/^.*please check$/, `Unit cost ${formatCurrency(r.unitCost)} matches the total on the paper – please check`)); break; }
+            Object.assign(r, keep);
+          }
+        }
+        header.total = paperTotal.cands.find(c => Math.abs(c - sum()) < 0.01) || paperTotal.cands[0];
+        header.totalMatches = ok();
+      }
+      out.forEach(r => { delete r.alt; });
       return { header, lines: out };
     }
 
@@ -7490,7 +7627,8 @@
         mode, fromId: null, source: fromScan ? fromScan.source : 'hand', text: fromScan ? fromScan.text : '',
         header: { supplier: h.supplier || '', date: h.date || localISODate(), poNo: h.poNo || '', prNo: h.prNo || '', iarNo: h.iarNo || '', drNo: h.drNo || '', invoiceNo: h.invoiceNo || '' },
         lines: fromScan ? fromScan.lines.map(r => newDlvLine({ desc: r.desc, stockNo: r.stockNo, unit: r.unit, qty: r.qty, unitCost: r.unitCost, notes: r.notes || [] })) : [newDlvLine({ finding: true })],
-        opts: { makeUnits: true }
+        opts: { makeUnits: true },
+        paperTotal: fromScan && h.total ? h.total : null
       };
       draft.lines.forEach(l => { if (!l.finding) dlvAutoTarget(l); });
       const st = { view: 'edit', kind, draft, photoUrl: dlvState && dlvState.photoUrl, previewUrl: dlvState && dlvState.previewUrl };
@@ -7508,11 +7646,19 @@
         lines: d.lines.map(pl => {
           const left = Math.max(0, pl.qty - (pl.received || 0));
           let qty = left;
+          const notes = [];
           if (scanned) {
-            const hit = scanned.lines.find(s => s.target === pl.code);
-            qty = hit ? hit.qty : 0;
+            // the same item, or the same stock no. as on the PO (IAR rows repeat the PO's numbering)
+            const hit = scanned.lines.find(s => !s.used && s.target === pl.code) ||
+              (pl.stockNo ? scanned.lines.find(s => !s.used && s.stockNo && normalizePropNo(s.stockNo) === normalizePropNo(pl.stockNo)) : null);
+            if (hit) {
+              hit.used = true; hit.target = pl.code;
+              if (hit.qtyUnread) { qty = left; notes.push(`Quantity on the paper could not be read – showing what is still to come (${left}) – please check`); }
+              else qty = hit.qty;
+              if (hit.qty > left && !hit.qtyUnread) notes.push(`The paper says ${hit.qty}, more than the ${left} still to come on the PO – please check`);
+            } else qty = 0;
           }
-          return newDlvLine({ lineId: pl.id, desc: pl.desc, stockNo: pl.stockNo || '', unit: pl.unit || '', qty, unitCost: pl.unitCost || null, target: pl.code, targetChosen: true, ordered: pl.qty, done: pl.received || 0, include: left > 0 || qty > 0 });
+          return newDlvLine({ lineId: pl.id, desc: pl.desc, stockNo: pl.stockNo || '', unit: pl.unit || '', qty, unitCost: pl.unitCost || null, target: pl.code, targetChosen: true, ordered: pl.qty, done: pl.received || 0, include: left > 0 || qty > 0, notes });
         }),
         opts: { makeUnits: true }
       };
@@ -7832,7 +7978,7 @@
       if (po && kind === 'iar') {
         scan.lines.forEach(l => { dlvAutoTarget(l); });
         startReceive(po.id, scan);
-        const extra = scan.lines.filter(s => !po.lines.some(pl => pl.code === s.target)).length;
+        const extra = scan.lines.filter(s => !s.used).length;
         dlvState.draft.linkedNote = `Matched to ${dlvLabel(po)}${st.forId ? '' : ` (PO No. on the ${parsed.header.drNo && !parsed.header.iarNo ? 'DR' : 'IAR'})`}. Check the quantities received.` +
           (extra ? ` ${plural(extra, 'line')} on the paper ${extra === 1 ? 'is' : 'are'} not on this PO – receive ${extra === 1 ? 'it' : 'them'} separately with Stock in.` : '');
         dlvState.photoUrl = st.photoUrl; dlvState.previewUrl = st.previewUrl; dlvState.file = st.file; dlvState.turns = st.turns;
@@ -7983,7 +8129,10 @@
           ${st.photoUrl ? `<img src="${st.previewUrl || st.photoUrl}" alt="" onclick="window.open(this.src)" class="w-14 h-14 rounded-lg object-cover border border-slate-200 cursor-zoom-in shrink-0">` : '<i class="ph-duotone ph-clipboard-text text-3xl text-slate-500"></i>'}
           <div class="min-w-0 flex-1">
             <p class="text-sm font-extrabold text-slate-800">${dr.lines.length ? `Found ${plural(dr.lines.length, 'line')}` : 'No item lines found'}</p>
-            <p class="text-[11px] text-slate-500">Check every field against the paper before saving.</p>
+            ${dr.paperTotal ? (Math.abs(dlvTotal(dr.lines.filter(l => l.include !== false)) - dr.paperTotal) < 0.01
+              ? `<p class="text-[11px] font-semibold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Lines add up to the total on the paper, ${formatCurrency(dr.paperTotal)}</p>`
+              : `<p class="text-[11px] font-semibold text-amber-800 flex items-start gap-1"><i class="ph-bold ph-warning mt-0.5"></i> Total on the paper ${formatCurrency(dr.paperTotal)}, lines add up to ${formatCurrency(dlvTotal(dr.lines.filter(l => l.include !== false)))} – check the lines</p>`)
+              : '<p class="text-[11px] text-slate-500">Check every field against the paper before saving.</p>'}
           </div>
           ${st.file ? `<button type="button" onclick="rotateDlvAndRetry()" class="h-8 px-2.5 shrink-0 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1"><i class="ph-bold ph-arrow-clockwise"></i> Rotate &amp; re-read</button>` : ''}
         </div>` : ''}
@@ -8331,8 +8480,10 @@
       const turned = quarterTurns % 2 === 1;
       const srcW = turned ? bmp.height : bmp.width;
       const srcH = turned ? bmp.width : bmp.height;
-      // ~2200 px across: enough for 9-10 pt print on an A4/Legal page, still fast on a phone
-      const scale = Math.min(3, 2200 / srcW);
+      // ~2200 px across: enough for 9-10 pt print on an A4/Legal page, still fast on a phone.
+      // Small screenshots (a form copied from Excel or a PDF, under 1000 px) go to ~2800 px:
+      // tested on real PO / ICS / IAR screenshots, the money columns read far better.
+      const scale = srcW < 1000 ? Math.min(4, 2800 / srcW) : Math.min(3, 2200 / srcW);
       const W = Math.round(srcW * scale), H = Math.round(srcH * scale);
 
       const draw = (angle) => {
@@ -8909,12 +9060,19 @@
       mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     }
 
-    function showToast(message, icon = 'ph-check-circle', action = null) {
+    function showToast(message, icon = 'ph-check-circle', action = null, opts = {}) {
       const toast = document.getElementById('appToast');
       if (!toast) return;
+      // A background message ("Ready to work offline…", cloud sync) must not wipe out an Undo button: it waits.
+      if (opts.background && !action && showToast._actionUntil > Date.now() && !toast.classList.contains('hidden')) {
+        clearTimeout(showToast._queued);
+        showToast._queued = setTimeout(() => showToast(message, icon, null, opts), showToast._actionUntil - Date.now() + 300);
+        return;
+      }
       const hide = () => {
         toast.classList.add('hidden');
         toast.classList.remove('flex');
+        showToast._actionUntil = 0;
       };
       watchToastPlacement();
       placeToast();
@@ -8928,6 +9086,7 @@
       toast.classList.add('flex');
       clearTimeout(showToast._timer);
       showToast._timer = setTimeout(hide, action ? 10000 : 4000);
+      showToast._actionUntil = action ? Date.now() + 10000 : 0;
     }
 
     function updateOnlineBadge() {
@@ -8965,7 +9124,7 @@
             if (worker.state !== 'activated') return;
             if (!hadWorker) {
               hadWorker = true;
-              const readyToast = () => showToast('Ready to work offline on this device', 'ph-wifi-slash');
+              const readyToast = () => showToast('Ready to work offline on this device', 'ph-wifi-slash', null, { background: true });
               if (!document.documentElement.classList.contains('gated')) readyToast();
               else { const wait = setInterval(() => { if (!document.documentElement.classList.contains('gated')) { clearInterval(wait); setTimeout(readyToast, 1500); } }, 1000); }
             } else {
@@ -9469,7 +9628,7 @@
         if (remoteInfo && !(schoolInfo && schoolInfo.school)) applyRemoteInventory([['s:info', remoteInfo]]);
         pushInventory(true);
         const n = Object.keys(userState).filter(c => (parseInt(userState[c].qty, 10) || 0) > 0).length;
-        if (n) showToast(`Inventory saved to your account · ${plural(n, 'item')}`, 'ph-cloud-check');
+        if (n) showToast(`Inventory saved to your account · ${plural(n, 'item')}`, 'ph-cloud-check', null, { background: true });
         return;
       }
       const localOnly = localItems.filter(k => !remote[k]);
@@ -9486,7 +9645,7 @@
       applyRemoteInventory([...apply, ...drop]);
       Object.entries(remote).forEach(([k, r]) => { invSync.synced[k] = r.body ? invHash(r.body) : null; });
       pushInventory(true);
-      showToast(keep ? `Combined with the school inventory · ${plural(meaningful.length, 'item')} added` : 'Loaded the school inventory from your account', 'ph-cloud-check');
+      showToast(keep ? `Combined with the school inventory · ${plural(meaningful.length, 'item')} added` : 'Loaded the school inventory from your account', 'ph-cloud-check', null, { background: true });
     }
 
     function applyRemoteInventory(list) {
@@ -16138,7 +16297,9 @@
         'Real costs: supplies keep an average cost across deliveries. Each equipment unit keeps its own cost, and that cost decides PAR (₱50,000 and up) or ICS. A PR marked delivered now uses the PR unit cost.',
         'Prices: every item has a price history (deliveries, corrections, the APP-CSE price), and PRs show what you last paid. The PS-DBM price is labelled PS-DBM price (APP-CSE 2027) and is for reference only. Items you already have keep their current price.',
         'The scanner remembers: when you pick an item for a supplier’s wording, that wording is matched by itself next time. Reading mistakes like BOND PAPFR still find the item, and you get a warning when the paper says box but the item is counted by piece.',
-        'Catalog editing: you can rename your own items and change their unit or category, hide items you never use (Show hidden brings them back) and delete unused ones. Items used on past slips are archived instead, and old slips keep the name and cost they were printed with. Every change shows in Change history.'
+        'Catalog editing: you can rename your own items and change their unit or category, hide items you never use (Show hidden brings them back) and delete unused ones. Items used on past slips are archived instead, and old slips keep the name and cost they were printed with. Every change shows in Change history.',
+        'Scanning tuned on real DepEd forms (PO, IAR, ICS): when the reader drops a decimal point or misreads a digit, the amount is corrected from quantity × unit cost and checked against the total on the paper. An IAR is matched to its PO by stock no. “Received by” is read on either side of the ICS, and an inventory item no. that was only half read has to be fixed before saving.',
+        'Fixes: the “Ready to work offline” message no longer hides an Undo button.'
       ] },
       { id: '2026-11-reports-reset', date: 'Nov 2026', title: 'Reports followed through, and a clean start', points: [
         'Needs repair: when it comes back, tap Repaired · back in use on the unit. The teacher sees it on their item and gets a notification.',

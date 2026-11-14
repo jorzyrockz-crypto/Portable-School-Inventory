@@ -68,6 +68,73 @@ try {
   const dr = await ev(a, () => parseDocText('DELIVERY RECEIPT   DR No. 004512\nQty  Unit  Particulars  Unit Price  Amount\n5  pcs  STAPLER, heavy duty  350.00  1,750.00\nReceived the above in good order', 'iar'));
   check(dr.header.drNo === '004512' && dr.lines.length === 1 && dr.lines[0].qty === 5 && dr.lines[0].unitCost === 350, 'delivery receipt: Qty | Unit | Particulars | Price | Amount');
 
+  out('2b real forms as the text reader saw them (DepEd PO / IAR / ICS screenshots)');
+  const OCR_PO = [
+    'PURCHA SE ORDER', 'DEPARTMENT OF EDUCATION',
+    'Supplier :                 EJ MARKETING               IPO. No.:                2026-11-15',
+    'Adress:                    G. Ramos St. Poblacion Kalibo, Aklan       Date:     11/06/2026',
+    'Stock Property         Unit           Description           Quantity  UnitCost        Amount',
+    '1                 ream             A4 Coupon bond          25            21500           £378.20',
+    '2                  set             Epson L120 ink (1 set   8             1285.00         10.280.90',
+    '3                 pack             WorxA4                  30            38.00           1,140.20',
+    '4                 unit             SMART TV 55             1             28,500.00       28,500.00',
+    '5                 unit             TV Stand                2             3200.00         6.400.020',
+    '6                 unit             laminating machine      1             3750.00         3.750.00',
+    '7                 set              alphabet letter set     2             158.00          396.00',
+    '                                                                                | P      5584100',
+    '"(Total Amount in Words)         Fifty Five Thousand Eight Hundred Forty One Pesos Only',
+    'Conforme:                                           Very truly yours,',
+    'Signature over Printed Name of Supplier             Signature over Printed Name of Authorized Official'
+  ].join('\n');
+  const rp = await ev(a, t => parseDocText(t, 'po'), OCR_PO);
+  check(rp.header.poNo === '2026-11-15' && rp.header.supplier === 'EJ MARKETING' && rp.header.date === '2026-11-06', `PO header despite “IPO. No.” and a signature line naming the supplier (${rp.header.supplier})`);
+  check(rp.lines.length === 7, `7 lines, the total row is not a line (${rp.lines.length})`);
+  const costs = rp.lines.map(l => l.unitCost).join(',');
+  check(costs === '215,1285,38,28500,3200,3750,198', `unit costs repaired: 21500 → 215, 158 → 198 by the total (${costs})`);
+  check(rp.lines.map(l => l.qty).join(',') === '25,8,30,1,2,1,2' && rp.lines.map(l => l.unit).join(',') === 'ream,set,pack,unit,unit,unit,set', 'quantities and units');
+  check(rp.lines[6].desc === 'alphabet letter set', `unit word at the end of a description stays (${rp.lines[6].desc})`);
+  check(rp.header.total === 55841 && rp.header.totalMatches, 'lines add up to the total on the paper (₱55,841.00)');
+  check(/corrected to ₱10,280\.00/.test(rp.lines[1].notes.join(' ')), 'a misread amount is corrected and says so');
+  const OCR_IAR = [
+    'INSPECTION AND ACCEPTANCE REPORT',
+    'Supplier:                EJ MARKETING              IAR No. :           2026-11-15',
+    'PO No./Date:             2026-11-15         11/06/2026 Date :          11/06/2026',
+    'Requisitioning Office/Dept. : Sample Elementary School   Invoice No. :  7001-7002',
+    'Property No.             Description              Unit          Quantity',
+    '1                        A4 Coupon bond           ream          25',
+    '2                        Epson L120 ink {1 set)    set           8',
+    '3                        Worx Ad                  pack          Kt)',
+    '7                        alphabet letter set      set           2',
+    'INSPECTION                                      ACCEPTANCE'
+  ].join('\n');
+  const ri = await ev(a, t => parseDocText(t, 'iar'), OCR_IAR);
+  check(ri.header.poNo === '2026-11-15' && ri.header.iarNo === '2026-11-15' && ri.header.invoiceNo === '7001-7002', `IAR header with “PO No./Date” (PO ${ri.header.poNo})`);
+  check(ri.lines.length === 4 && ri.lines[2].stockNo === '3' && ri.lines[2].unit === 'pack' && ri.lines[2].qtyUnread, 'an unreadable quantity keeps its row (stock no. 3, pack) and is marked');
+  check(ri.lines[3].stockNo === '7' && ri.lines[3].qty === 2 && ri.lines[3].desc === 'alphabet letter set', 'IAR row: stock no. · description · unit · quantity');
+  const OCR_ICS = [
+    'INVENTORY CUSTODIAN SLIP',
+    'Entity Name:        SAMPLE ELEMENTARY SCHOOL',
+    'Fund Cluster:                        (171                         ICS NO!              2026-11-007',
+    'Quantity   Unit     UnitCost Total Cost           Description            Inventory Item No.  Useful Life',
+    '1          unit        8,900.00 8,900.00             Water Dispenser            OSA 2026-      5 years',
+    '9        pC         10500 175500 Horizontal Filebox Long      Osama 2026-3 years',
+    '10 pe            12500 1,250.00              Arch File Folder             SES-4THQ-2026-11-32   2 years',
+    '1           pc 7.50000 7,500.00                 Steel Rack                 SES-4THQ-2026-11-34      5 years',
+    'Received by.                                                    Received from:',
+    'MARIA B. SANTOS                            JUAN L. REYES',
+    'Signature Over Printed Name                                   Signature Over Printed Name',
+    'AO II School Property Custodian                        Officer In-Charge/Teacher III',
+    'Position/Office                                                     Position/Office',
+    'November 6, 2026                                                     November 6, 2026'
+  ].join('\n');
+  const rs = await ev(a, t => parseIcsText(t), OCR_ICS);
+  check(rs.header.icsNo === '2026-11-007' && rs.header.fund === '', `ICS No. after “ICS NO!”; a misread fund cluster is dropped (${rs.header.icsNo})`);
+  check(rs.header.receivedBy === 'MARIA B. SANTOS' && rs.header.position === 'AO II School Property Custodian', `“Received by” on the left column (${rs.header.receivedBy} · ${rs.header.position})`);
+  check(rs.items.map(i => i.unitCost).join(',') === '8900,195,125,7500' && rs.items.map(i => i.qty).join(',') === '1,9,10,1', `ICS costs repaired (${rs.items.map(i => i.unitCost).join(',')})`);
+  check(rs.items[1].life === '3 years' && rs.items[1].desc === 'Horizontal Filebox Long', 'useful life after a cut-off item no.');
+  check(rs.items[0].itemNoCut && rs.items[1].itemNoCut && !rs.items[2].itemNoCut && rs.items[2].itemNo === 'SES-4THQ-2026-11-32', 'half-read item numbers are flagged, whole ones kept');
+  check(await ev(a, () => { const b = moneyToken('215'), c = moneyToken('5375'); return reconcileMoney(25, moneyToken('215', false), moneyToken('5375', false)).unitCost === 215 && b && c; }), 'whole pesos without decimals (pasted from Excel) still work');
+
   out('3 matching: OCR slips, units, remembered wordings');
   const paper = await ev(a, () => {
     const p = items.find(i => /^PAPER, MULTICOPY/.test(i.name) && /A4/.test(i.name)) || items.find(i => /^PAPER/.test(i.name));
