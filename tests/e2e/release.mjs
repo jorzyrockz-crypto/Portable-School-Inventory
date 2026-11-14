@@ -36,7 +36,7 @@ try {
   out('1 custodian with inventory; teachers join');
   const a = await openPhone('custodian', backend, { width: 1100, height: 900 });
   await a.goto(BASE_URL, { waitUntil: 'networkidle0' });
-  await ev(a, () => { loadSampleInventory(); schoolInfo.custodian = 'Rosa Villanueva'; schoolInfo.position = 'Property Custodian'; });
+  await ev(a, () => { loadSampleInventory(); schoolInfo.numbering = 'unit'; /* a school set up before the COA default */ schoolInfo.custodian = 'Rosa Villanueva'; schoolInfo.position = 'Property Custodian'; });
   await ev(a, () => { openRequestsView(); gateGo('custodian'); }); // signed out: the sign-in screen carries the form
   await until(a, () => !!document.getElementById('rcEmail'), 'sign-in card');
   await ev(a, () => { rcSchool.value = 'San Jose National High School'; rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
@@ -117,6 +117,21 @@ try {
   await until(a, id => reqList.some(r => r.id === id && r.status === 'released'), 'request released', 8000, reqId);
   const rq = reqs().find(d => d.path.endsWith(reqId));
   check(rq.status === 'released' && rq.releaseNos.join() === `RIS ${ym}-001,ICS ${ym}-001`, 'request marked Released with the slip numbers');
+  // Item history: the release shows under each item (supply and equipment), once
+  await until(a, () => releaseList.some(r => r.kind === 'RIS' && !r.sending) && releaseList.some(r => r.kind === 'ICS' && !r.sending), 'slips listed', 8000);
+  const hist = await ev(a, (s, e) => {
+    const view = code => { openHistory(code); setHistoryKind('release'); const t = document.getElementById('historyList').innerText; closeHistory(); return t; };
+    const sup = view(s), eq = view(e);
+    // as on another phone (or before this device's history began): only the account's slips
+    const keep = changeHistory; changeHistory = changeHistory.filter(x => x.k !== 'release');
+    const other = view(s); const otherEq = view(e);
+    changeHistory = keep;
+    return { sup, eq, other, otherEq };
+  }, pick.supply.code, pick.equip.code);
+  check(/Released to Ana Reyes/i.test(hist.sup) && (hist.sup.match(/Released/gi) || []).length === 1, `supply history (Releases) shows the release once: “${hist.sup.split('\n').find(l => /Released/i.test(l))}”`);
+  check(/Released to Ana Reyes/i.test(hist.eq), 'equipment history shows it too (units handed out, quantity unchanged)');
+  check(new RegExp(`Released 4 .* to Ana Reyes · RIS ${ym}-001 \\(request\\)`, 'i').test(hist.other) && /school account/i.test(hist.other), `made on another device: from the school account (“${hist.other.split('\n').find(l => /Released/i.test(l))}”)`);
+  check(new RegExp(`ICS ${ym}-001`).test(hist.otherEq), 'equipment: the ICS slip with its property number');
   await sleep(1500);
   check(invQty(pick.supply.code) === pick.supply.qty - 4, 'new stock count saved to the account');
 

@@ -33,7 +33,9 @@ try {
   out('1 custodian signs in with the sample inventory');
   const a = await openPhone('custodian', backend, { width: 420, height: 900 });
   await a.goto(BASE_URL, { waitUntil: 'networkidle0' });
+  check(await ev(a, () => numberingMode() === 'coa' && JSON.parse(localStorage.getItem(SCHOOL_KEY)).numbering === 'coa'), 'a new school starts with COA standard numbering');
   await ev(a, () => { loadSampleInventory(); schoolInfo.custodian = 'Rosa Villanueva'; });
+  check(await ev(a, () => numberingMode() === 'coa'), 'the sample inventory keeps it');
   await ev(a, () => { openRequestsView(); gateGo('custodian'); });
   await until(a, () => !!document.getElementById('rcEmail'), 'sign-in card');
   await ev(a, () => { rcSchool.value = 'San Jose National High School'; rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
@@ -309,6 +311,11 @@ try {
   check(await ev(b, () => deliveries.some(d => d.poNo === '2026-11-0007' && d.status === 'received')), 'second device has the received PO');
   check(await ev(b, c => rememberedFor('BOND PAPFR, A4, 70gsm') === c, paper.code), 'second device knows the remembered wording');
   check(await ev(b, c => { const i = items.find(x => x.code === c); return i && i.hidden && i.archived; }, used), 'archived item is archived there too');
+  // Change history on the second device: its own log is empty, the receipts come from the account
+  const bHist = await ev(b, c => { openHistory(c); setHistoryKind('delivery'); const t = document.getElementById('historyList').innerText; closeHistory(); return t; }, paper.code);
+  check(/Received 6 ream · IAR 2026-11-0012 \(ABC OFFICE/i.test(bHist) && /school account/i.test(bHist), `second device: the paper’s history shows the receipt (“${bHist.split('\n').find(l => /Received/i.test(l))}”)`);
+  const aHist = await ev(a, c => { openHistory(c); setHistoryKind('delivery'); const t = document.getElementById('historyList').innerText; closeHistory(); return t; }, paper.code);
+  check(/Received IAR 2026-11-0012/i.test(aHist) && !/school account/i.test(aHist) && /PO 2026-11-0007/.test(aHist), 'first device: its own entries (PO saved, IAR received), not doubled');
 
   out('14 one inventory item no. per ICS line (School-Quarter-Year-Month-Series)');
   await ev(a, () => { schoolInfo.propPrefix = 'OES'; schoolInfo.numbering = 'line'; });
@@ -357,6 +364,15 @@ try {
   check(await ev(a, () => /^OES-\d{4}-\d{4}$/.test(nextPropertyNumbers(1)[0])), 'one number per unit is still the default style');
 
   out('15 COA standard (automatic): by the cost of each unit');
+  {
+    // A school set up before this version (saved school info without `numbering`) keeps One per unit
+    const o = await openPhone('old-school', backend, { width: 420, height: 900 });
+    await o.goto(BASE_URL, { waitUntil: 'networkidle0' });
+    await ev(o, () => { localStorage.setItem(SCHOOL_KEY, JSON.stringify({ school: 'Old Elementary School', custodian: '', uacs: '', position: '' })); });
+    await o.reload({ waitUntil: 'networkidle0' });
+    check(await ev(o, () => numberingMode() === 'unit' && /^OES-\d{4}-\d{4}$/.test(nextPropertyNumbers(1)[0])), 'a school set up before keeps One per unit');
+    await o.browser().close().catch(() => {});
+  }
   const coa = await ev(a, () => {
     schoolInfo.numbering = 'coa';
     const n = (cost, qty = 3) => nextPropertyNumbers(qty, 'OES', { date: '2026-11-20', cost });
