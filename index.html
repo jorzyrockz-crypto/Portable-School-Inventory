@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="5f82ab3375d7">
+  <meta name="app-version" content="53b9285497e4">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -2439,7 +2439,7 @@
       </div>
       <div id="historyList" class="flex-1 min-h-0 overflow-y-auto px-5 pb-3"></div>
       <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-3">
-        <p class="text-[11px] text-slate-500">Stored on this device and included in backups (latest 3,000 changes).</p>
+        <p class="text-[11px] text-slate-500">Kept on this device and in backups (latest 3,000). Slips and deliveries also come from the school account.</p>
         <button onclick="exportHistoryCSV()" class="shrink-0 h-10 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
           <i class="ph-bold ph-file-csv text-emerald-600"></i> Export CSV
         </button>
@@ -5566,8 +5566,8 @@
       return extra ? Object.assign(e, extra) : e;
     }
 
-    function logHistory(kind, text, code = null) {
-      changeHistory.push(historyEntry(kind, text, code));
+    function logHistory(kind, text, code = null, extra = null) {
+      changeHistory.push(historyEntry(kind, text, code, extra));
       persistHistory();
     }
 
@@ -5580,11 +5580,12 @@
       const ctx = historyContext;
       if (ctx && ctx.summary) {
         const e = historyEntry(ctx.summary.kind, ctx.summary.text, ctx.summary.code || null);
+        // Every item the save touched (quantity, units handed out or taken back, notes…), so the
+        // entry shows in each item's history and in "Recently encoded". Bulk system actions
+        // (sample data, reset) stay one general entry.
+        const touched = Object.keys(userState).filter(code => JSON.stringify(historyBase[code] || null) !== JSON.stringify(userState[code] || null));
+        if (ctx.summary.kind !== 'system' && (touched.length > 1 || (touched.length && !e.c))) e.cs = touched.slice(0, 100);
         if (ctx.summary.track && !e.c) {
-          // Bulk saves (ICS, import) are one entry; keep the item codes for "Recently encoded".
-          const sig = st => st ? `${parseInt(st.qty, 10) || 0}|${(st.units || []).length}|${st.note || ''}` : '0|0|';
-          const touched = Object.keys(userState).filter(code => sig(historyBase[code]) !== sig(userState[code]));
-          if (touched.length) e.cs = touched.slice(0, 50);
           // …and how much each quantity changed, for the Stock Card and Property Cards
           const q = {};
           touched.forEach(code => {
@@ -5729,13 +5730,64 @@
       return item ? item.name : (code || '');
     }
 
+    // Does a history entry concern this item? Single-item entries carry `c`; bulk saves (releases,
+    // ICS, deliveries, returns, transfers) list their items in `cs` and quantity changes in `q`.
+    const historyCodes = e => [...new Set([e.c, ...(e.cs || []), ...Object.keys(e.q || {})].filter(Boolean))];
+    const historyHas = (e, code) => e.c === code || (e.cs || []).includes(code) || !!(e.q && e.q[code] !== undefined);
+
+    // The change log is kept per device. Releases, returns, transfers and deliveries are also saved
+    // to the school account (slips and delivery records), so the ones made on another phone (or
+    // before this device's history began) are added from there. Same-device ones are not doubled.
+    function syncedHistory(code = null) {
+      // already in this device's log: same slip number, or an entry for the same items saved within 2 minutes
+      const near = (t, no, codes, k) => changeHistory.some(e => (no && String(e.x || '').includes(no)) ||
+        (Math.abs((e.t || 0) - t) < 120000 && (e.k === k || (k === 'release' && /^Written off/.test(e.x || ''))) && historyCodes(e).some(c => codes.includes(c))));
+      const out = [];
+      const qtyText = l => `${l.qty} ${l.unit || ''}`.trim();
+      const lineText = r => {
+        const ls = (r.lines || []).filter(l => !code || l.code === code);
+        if (!ls.length) return '';
+        return code ? ls.map(l => `${qtyText(l)}${(l.units || []).length ? ` (${nosText(l.units)})` : ''}`).join(', ') : plural(ls.length, 'item');
+      };
+      releaseList.forEach(r => {
+        if (r.kind === 'RETURN' && r.source === 'transferred') return;   // the ITR / PTR says it
+        const what = lineText(r);
+        if (!what) return;
+        const t = r.createdMs || isoMs(r.date);
+        const no = r.no ? `${r.kind === 'RETURN' ? 'RRSP' : r.kind} ${r.no}` : '';
+        const codes = [...new Set((r.lines || []).map(l => l.code).filter(Boolean))];
+        if (!t || near(t, no, codes, 'release')) return;
+        const x = r.kind === 'RETURN'
+          ? (r.source === 'lost' ? `Written off ${what} · ${r.teacherName || 'holder'} relieved of accountability${r.ref ? ` · ${r.ref}` : ''}`
+            : r.source === 'returned' ? `${r.teacherName || 'Teacher'} returned ${what}${no ? ` · ${no}` : ''}`
+            : r.source === 'reassigned' ? `${what} no longer with ${r.teacherName || 'holder'}${r.purpose ? ` · ${r.purpose}` : ''}`
+            : `Took back ${what} from ${r.teacherName || 'holder'}${no ? ` · ${no}` : ''}`)
+          : r.kind === 'ITR' || r.kind === 'PTR'
+            ? (r.sameHolder ? `Moved ${what} to ${r.loc || 'a new location'} · ${no}` : `Transferred ${what} from ${r.fromName || '?'} to ${r.teacherName || '?'} · ${no}`)
+            : r.source === 'assigned' ? `Assigned ${what} to ${r.teacherName || '?'}${no ? ` · ${no}` : ''}`
+            : `Released ${what} to ${r.teacherName || '?'} · ${no}${r.requestId ? ' (request)' : ''}`;
+        out.push({ t, k: 'release', x, cs: codes, by: r.by || '', synced: true });
+      });
+      deliveries.forEach(d => (d.receipts || []).forEach(rc => {
+        const ls = (rc.lines || []).filter(l => !code || l.c === code);
+        const codes = [...new Set((rc.lines || []).map(l => l.c).filter(Boolean))];
+        if (!ls.length || !rc.at || near(rc.at, '', codes, 'delivery')) return;
+        const doc = receiptDoc(rc) || dlvLabel(d);
+        const unitOf = c => (items.find(i => i.code === c) || {}).unit || '';
+        const what = code ? ls.map(l => `${l.q} ${unitOf(l.c)}`.trim()).join(', ') : plural(ls.length, 'item');
+        out.push({ t: rc.at, k: 'delivery', x: `Received ${what} · ${doc}${d.supplier ? ` (${d.supplier})` : ''}`, cs: codes, synced: true });
+      }));
+      return out;
+    }
+
     function filteredHistory() {
       const q = document.getElementById('historySearch').value.toLowerCase().trim();
-      return changeHistory.filter(e =>
-        (!historyFilter.code || e.c === historyFilter.code) &&
+      const code = historyFilter.code;
+      return [...changeHistory, ...syncedHistory(code)].filter(e =>
+        (!code || historyHas(e, code)) &&
         (historyFilter.kind === 'ALL' || e.k === historyFilter.kind) &&
-        (!q || `${e.x} ${e.c || ''} ${historyItemName(e.c)} ${e.by || ''}`.toLowerCase().includes(q))
-      ).reverse();
+        (!q || `${e.x} ${historyCodes(e).slice(0, 20).map(c => `${c} ${historyItemName(c)}`).join(' ')} ${e.by || ''}`.toLowerCase().includes(q))
+      ).sort((a, b) => b.t - a.t);
     }
 
     function historyDayLabel(ts) {
@@ -5773,7 +5825,7 @@
           <div class="py-12 text-center">
             <i class="ph-duotone ph-clock-counter-clockwise text-4xl text-slate-300 block mb-2"></i>
             <p class="text-sm font-bold text-slate-700">${changeHistory.length ? 'No changes match this view' : 'Nothing recorded yet'}</p>
-            <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Counts, prices, locations, condition, property numbers and scans are recorded here as you work.</p>
+            <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Counts, prices, locations, condition, property numbers and scans are recorded here as you work. Releases, returns, transfers and deliveries from every device come from the school account.</p>
           </div>`;
         return;
       }
@@ -5788,15 +5840,18 @@
         }
         const kind = HISTORY_KINDS[e.k] || HISTORY_KINDS.edit;
         const time = new Date(e.t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
-        const itemLink = e.c && e.c !== historyFilter.code
-          ? ` · <button onclick="setHistoryItem('${escapeHTML(e.c)}')" class="text-brand-600 font-semibold hover:underline text-left">${escapeHTML(historyItemName(e.c))}</button>`
+        const codes = historyCodes(e);
+        const one = e.c || (codes.length === 1 ? codes[0] : null);
+        const itemLink = one && one !== historyFilter.code
+          ? ` · <button onclick="setHistoryItem('${escapeHTML(one)}')" class="text-brand-600 font-semibold hover:underline text-left">${escapeHTML(historyItemName(one))}</button>`
           : '';
+        const fromAccount = e.synced ? ` · <span class="inline-flex items-center gap-0.5" title="From the slips and delivery records saved in the school account"><i class="ph-bold ph-cloud-check"></i> school account</span>` : '';
         html += `
           <div class="flex items-start gap-3 py-2 border-b border-slate-50 last:border-0">
             <div class="w-8 h-8 shrink-0 rounded-lg ${kind.tone} flex items-center justify-center"><i class="ph-bold ${kind.icon}"></i></div>
             <div class="min-w-0 flex-1">
               <p class="text-sm font-semibold text-slate-800 leading-snug break-words">${historyTextHTML(e.x)}</p>
-              <p class="text-[11px] text-slate-500 mt-0.5">${time}${itemLink}${e.by ? ` · ${escapeHTML(e.by)}` : ''}</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">${time}${itemLink}${e.by ? ` · ${escapeHTML(e.by)}` : ''}${fromAccount}</p>
             </div>
           </div>`;
       });
@@ -5831,7 +5886,7 @@
         const d = new Date(e.t);
         csv.push([
           d.toLocaleDateString('en-PH'), d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }),
-          (HISTORY_KINDS[e.k] || HISTORY_KINDS.edit).label, e.c || '', e.c ? historyItemName(e.c) : '', e.x, e.by || ''
+          (HISTORY_KINDS[e.k] || HISTORY_KINDS.edit).label, historyCodes(e).join(' '), historyCodes(e).map(historyItemName).join('; '), e.x, e.by || (e.synced ? 'School account' : '')
         ].map(q).join(','));
       });
       const school = (schoolInfo.school || 'School').replace(/\s+/g, '_');
@@ -8314,7 +8369,8 @@
         deliveries.push(d);
         saveDeliveries();
         if (created) saveStateWith({ summary: { kind: 'edit', text: `Added ${plural(created, 'custom item')} from ${dlvLabel(d)}` } });
-        logHistory('delivery', `${dlvLabel(d)}${h.supplier ? ` from ${h.supplier}` : ''}: ${plural(d.lines.length, 'item')}, ${formatCurrency(dlvTotal(d.lines))} · expected delivery`);
+        const poCodes = [...new Set(d.lines.map(l => l.code).filter(Boolean))];
+        logHistory('delivery', `${dlvLabel(d)}${h.supplier ? ` from ${h.supplier}` : ''}: ${plural(d.lines.length, 'item')}, ${formatCurrency(dlvTotal(d.lines))} · expected delivery`, poCodes.length === 1 ? poCodes[0] : null, poCodes.length > 1 ? { cs: poCodes.slice(0, 100) } : null);
         closeDeliveries(true);
         showToast(`${dlvLabel(d)} saved · waiting for delivery${learned ? ` · ${plural(learned, 'wording')} remembered` : ''}`, 'ph-clipboard-text', { label: 'Receive', onClick: () => startReceive(d.id) });
         return;
@@ -16431,6 +16487,11 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-history-releases', date: 'Nov 2026', title: 'Item history shows every release', points: [
+        'Fixes: an item’s Change History (Releases) now lists its releases, including releases from teacher requests, returns, take-backs and transfers. Before, a release showed only in the full history, not under the item.',
+        'Releases, returns, transfers and deliveries made on another phone or laptop now show in Change History too, read from the slips and delivery records in the school account (marked School account). Counts, prices and other edits are still kept on the device where they were made.',
+        'Purchase Orders saved as expected deliveries now appear under each of their items, and Export CSV lists every item an entry touched.'
+      ] },
       { id: '2026-11-written-off', date: 'Nov 2026', title: 'Written-off units kept for audit', points: [
         'Relieved units are now written off, not deleted. When you tap Relieve for a lost unit, it stops being counted, but the item keeps it under Written off with its property number, ICS or PAR no., cost, who was relieved and the RLSDDSP reference. Your COA auditor can still see it.',
         'Written-off numbers are never given out again, and scanning a written-off sticker shows when it was written off and why, instead of Not found.',

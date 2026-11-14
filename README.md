@@ -322,6 +322,13 @@ Open it from **Change History** in *Quick Custodian Tools*, or from the clock bu
 editor / *History* in the property-number list to see one item. You can filter by type, search,
 and **Export CSV**. The latest 3,000 changes are kept on the device and included in backups.
 
+Bulk saves (releases, returns, take-backs, transfers, ICS scans, deliveries, Purchase Orders)
+are one entry that lists every item it touched, so they also show in each item's history.
+Releases, returns, transfers and deliveries are also read from the slips and delivery records in
+the school account, so those made on another device (or before this device's log began) appear
+too, marked *School account*. One made on this device is not listed twice. Counts, prices and
+other edits stay in the log of the device where they were made.
+
 ## Importing from Excel or CSV
 
 Already keep your inventory in a spreadsheet? Tap **Import** (in *Quick tools*, or

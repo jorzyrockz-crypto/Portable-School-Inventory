@@ -311,6 +311,11 @@ try {
   check(await ev(b, () => deliveries.some(d => d.poNo === '2026-11-0007' && d.status === 'received')), 'second device has the received PO');
   check(await ev(b, c => rememberedFor('BOND PAPFR, A4, 70gsm') === c, paper.code), 'second device knows the remembered wording');
   check(await ev(b, c => { const i = items.find(x => x.code === c); return i && i.hidden && i.archived; }, used), 'archived item is archived there too');
+  // Change history on the second device: its own log is empty, the receipts come from the account
+  const bHist = await ev(b, c => { openHistory(c); setHistoryKind('delivery'); const t = document.getElementById('historyList').innerText; closeHistory(); return t; }, paper.code);
+  check(/Received 6 ream · IAR 2026-11-0012 \(ABC OFFICE/i.test(bHist) && /school account/i.test(bHist), `second device: the paper’s history shows the receipt (“${bHist.split('\n').find(l => /Received/i.test(l))}”)`);
+  const aHist = await ev(a, c => { openHistory(c); setHistoryKind('delivery'); const t = document.getElementById('historyList').innerText; closeHistory(); return t; }, paper.code);
+  check(/Received IAR 2026-11-0012/i.test(aHist) && !/school account/i.test(aHist) && /PO 2026-11-0007/.test(aHist), 'first device: its own entries (PO saved, IAR received), not doubled');
 
   out('14 one inventory item no. per ICS line (School-Quarter-Year-Month-Series)');
   await ev(a, () => { schoolInfo.propPrefix = 'OES'; schoolInfo.numbering = 'line'; });
