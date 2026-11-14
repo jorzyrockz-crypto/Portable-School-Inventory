@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="b26e2c068b42">
+  <meta name="app-version" content="44d5d2d8e5a1">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -10145,7 +10145,7 @@
       { key: 'approved', n: 2, label: 'To purchase',       title: 'Approved · ready for a Purchase Request', icon: 'ph-check-circle', tone: 'emerald',
         hint: 'approved', how: 'Check each line against stock (asked, on hand, to buy), fix names, quantities and costs, then approve or decline.' },
       { key: 'prs',      n: 3, label: 'Purchase requests', title: 'Purchase Requests (Appendix 60)', icon: 'ph-file-text',   tone: 'brand',
-        hint: 'Appendix 60', how: 'Combine approved requests into one PR. Only what is not in stock is bought. Print or export to CSV.' },
+        hint: 'Appendix 60', how: 'Combine approved requests into one PR. Only what is not in stock is bought. Print, or save as Excel or CSV.' },
       { key: 'closed',   n: 4, label: 'Closed',            title: 'Supplied, declined or cancelled', icon: 'ph-archive',     tone: 'slate',
         hint: 'supplied · declined', how: 'Mark items delivered. Teachers see every status and your notes right away.' }
     ];
@@ -10280,8 +10280,9 @@
             <p class="shrink-0 text-sm font-extrabold font-mono text-slate-900">₱${peso2(pr.total)}</p>
           </div>
           <p class="mt-1 text-[11px] text-slate-500 line-clamp-2">${escapeHTML(pr.purpose || '')}</p>
-          <div class="mt-2 flex gap-2">
+          <div class="mt-2 flex flex-wrap gap-2">
             <button onclick="printPrById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print</button>
+            <button onclick="exportPrXlsxById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-file-xls text-emerald-700"></i> Excel</button>
             <button onclick="exportPrCSVById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-file-csv"></i> CSV</button>
             ${waiting ? `<button onclick="markPrDelivered('${pr.id}')" class="ml-auto h-9 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-xs font-bold text-white flex items-center gap-1.5"><i class="ph-bold ph-package"></i> Items delivered</button>`
               : delivered ? `<span class="ml-auto h-9 px-2 text-xs font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Delivered</span>` : ''}
@@ -11295,8 +11296,8 @@
     function prPrintHTML(pr) {
       const e = v => escapeHTML(v || '');
       const date = pr.date ? new Date(pr.date + 'T00:00:00').toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
-      const rows = (pr.lines || []).map(l => `
-        <tr><td class="pr-sn">${e(l.stockNo)}</td><td class="c">${e(l.unit)}</td><td>${e(l.desc)}</td><td class="c">${l.qty}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * l.unitCost)}</td></tr>`).join('');
+      const rows = (pr.lines || []).map((l, i) => `
+        <tr><td class="pr-sn c">${e(prStockNo(l, i))}</td><td class="c">${e(l.unit)}</td><td>${e(l.desc)}</td><td class="c">${l.qty}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * l.unitCost)}</td></tr>`).join('');
       const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 10 - (pr.lines || []).length));
       return `
         <div class="pr-form">
@@ -11338,7 +11339,7 @@
         ['Responsibility Center Code', pr.rcc],
         [],
         ['Stock/Property No.', 'Unit', 'Item Description', 'Quantity', 'Unit Cost', 'Total Cost'],
-        ...(pr.lines || []).map(l => [l.stockNo, l.unit, l.desc, l.qty, l.unitCost.toFixed(2), (l.qty * l.unitCost).toFixed(2)]),
+        ...(pr.lines || []).map((l, i) => [prStockNo(l, i), l.unit, l.desc, l.qty, l.unitCost.toFixed(2), (l.qty * l.unitCost).toFixed(2)]),
         ['', '', '', '', 'TOTAL', Number(pr.total || 0).toFixed(2)],
         [],
         ['Purpose', pr.purpose],
@@ -11348,6 +11349,163 @@
       downloadText('\ufeff' + rows.map(r => r.map(q).join(',')).join('\n'), `Purchase_Request_${String(pr.prNo).replace(/[^\w-]+/g, '_')}.csv`, 'text/csv;charset=utf-8;');
     }
     function exportPrCSVById(id) { const pr = prList.find(p => p.id === id); if (pr) exportPrCSV(pr); }
+
+    // Stock / Property No. on the PR: the catalog stock no., or the line number (1, 2, 3…) as many
+    // schools write it when the item has none (new purchases, custom items).
+    const prStockNo = (l, i) => (l.stockNo || '').trim() || String(i + 1);
+
+    // ---- Excel (.xlsx) writer -----------------------------------------------------------
+    // A small SpreadsheetML writer (zipped with fflate, already used to read .xlsx imports).
+    // sheet = { name, cols: [widths], rows: [{ h, cells: [{ v, f, st }] }], merges: ['A1:F1'],
+    //           landscape, fitWidth } — st = { b, i, u, sz, h: 'center'|'right'|'left', v: 'center'|'top',
+    //           wrap, border: true | { t, b, l, r }, num: '#,##0.00' }. Formulas keep their value for previews.
+    async function buildXlsx(sheet) {
+      if (typeof fflate === 'undefined') await loadScript('assets/vendor/fflate.js');
+      const x = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+        .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '');
+      const fonts = [], borders = [], xfs = [], fontKey = new Map(), borderKey = new Map(), xfKey = new Map();
+      const font = st => {
+        const k = [st.b, st.i, st.u, st.sz || 10].join('|');
+        if (!fontKey.has(k)) { fontKey.set(k, fonts.length); fonts.push(`<font>${st.b ? '<b/>' : ''}${st.i ? '<i/>' : ''}${st.u ? '<u/>' : ''}<sz val="${st.sz || 10}"/><name val="Arial"/><family val="2"/></font>`); }
+        return fontKey.get(k);
+      };
+      const border = st => {
+        const b = st.border === true ? { t: 1, b: 1, l: 1, r: 1 } : st.border || {};
+        const k = ['l', 'r', 't', 'b'].map(z => (b[z] ? 1 : 0)).join('');
+        if (!borderKey.has(k)) {
+          borderKey.set(k, borders.length);
+          const side = (tag, on) => (on ? `<${tag} style="thin"><color auto="1"/></${tag}>` : `<${tag}/>`);
+          borders.push(`<border>${side('left', b.l)}${side('right', b.r)}${side('top', b.t)}${side('bottom', b.b)}<diagonal/></border>`);
+        }
+        return borderKey.get(k);
+      };
+      const style = (st = {}) => {
+        const f = font(st), bd = border(st), num = st.num === '#,##0.00' ? 4 : st.num === '0' ? 1 : 0;
+        const k = [f, bd, num, st.h || '', st.v || '', st.wrap ? 1 : 0].join('|');
+        if (!xfKey.has(k)) {
+          xfKey.set(k, xfs.length);
+          const al = st.h || st.v || st.wrap ? `<alignment${st.h ? ` horizontal="${st.h}"` : ''} vertical="${st.v || 'center'}"${st.wrap ? ' wrapText="1"' : ''}/>` : '';
+          xfs.push(`<xf numFmtId="${num}" fontId="${f}" fillId="0" borderId="${bd}" xfId="0" applyFont="1" applyBorder="1"${num ? ' applyNumberFormat="1"' : ''}${al ? ' applyAlignment="1">' + al + '</xf>' : '/>'}`);
+        }
+        return xfKey.get(k);
+      };
+      style({});   // default cell format first
+      const colName = n => { let s = ''; for (n += 1; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s; return s; };
+      const rowsXml = sheet.rows.map((row, ri) => {
+        const r = ri + 1;
+        const cells = (row.cells || []).map((c, ci) => {
+          if (!c) return '';
+          const ref = colName(ci) + r, sid = style(c.st);
+          if (c.f) return `<c r="${ref}" s="${sid}"><f>${x(c.f)}</f>${typeof c.v === 'number' ? `<v>${c.v}</v>` : ''}</c>`;
+          if (typeof c.v === 'number' && isFinite(c.v)) return `<c r="${ref}" s="${sid}"><v>${c.v}</v></c>`;
+          if (c.v == null || c.v === '') return `<c r="${ref}" s="${sid}"/>`;
+          return `<c r="${ref}" s="${sid}" t="inlineStr"><is><t xml:space="preserve">${x(c.v)}</t></is></c>`;
+        }).join('');
+        return `<row r="${r}"${row.h ? ` ht="${row.h}" customHeight="1"` : ''}>${cells}</row>`;
+      }).join('');
+      const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews><sheetFormatPr defaultRowHeight="15"/>
+<cols>${sheet.cols.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>
+<sheetData>${rowsXml}</sheetData>
+${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.length}">${sheet.merges.map(m => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>` : ''}
+<printOptions horizontalCentered="1"/><pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>
+<pageSetup paperSize="9" orientation="${sheet.landscape ? 'landscape' : 'portrait'}" fitToWidth="1" fitToHeight="0"/>
+</worksheet>`;
+      const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="${fonts.length}">${fonts.join('')}</fonts>
+<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
+<borders count="${borders.length}">${borders.join('')}</borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+      const name = x(String(sheet.name || 'Sheet1').replace(/[\\/?*[\]:]/g, ' ').slice(0, 31));
+      const u = fflate.strToU8;
+      return fflate.zipSync({
+        '[Content_Types].xml': u(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`),
+        '_rels/.rels': u(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`),
+        'xl/workbook.xml': u(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${name}" sheetId="1" r:id="rId1"/></sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>`),
+        'xl/_rels/workbook.xml.rels': u(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`),
+        'xl/worksheets/sheet1.xml': u(sheetXml),
+        'xl/styles.xml': u(stylesXml)
+      }, { level: 6 });
+    }
+    function downloadBytes(bytes, filename, type) {
+      const url = URL.createObjectURL(new Blob([bytes], { type }));
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    }
+    const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+    // Purchase Request (Appendix 60) as an Excel sheet laid out like the printed form: A4 portrait,
+    // Total Cost = Quantity × Unit Cost and the total as live formulas, so lines can still be edited.
+    function prSheet(pr) {
+      const lines = pr.lines || [];
+      const B = true, sz = 10;
+      const date = pr.date ? `${pr.date.slice(5, 7)}/${pr.date.slice(8, 10)}/${pr.date.slice(0, 4)}` : '';
+      const rows = [], merges = [];
+      const row = (cells, h) => { rows.push({ cells, h }); return rows.length; };
+      row([null, null, null, null, null, { v: 'Appendix 60', st: { i: 1, h: 'right' } }]);
+      row([]);
+      const t = row([{ v: 'PURCHASE REQUEST', st: { b: 1, sz: 12, h: 'center' } }], 20); merges.push(`A${t}:F${t}`);
+      row([]);
+      const en = row([{ v: `Entity Name: ${pr.entity || ''}`, st: { b: 1 } }, null, null, null, { v: `Fund Cluster: ${pr.fund || ''}`, st: { b: 1 } }]);
+      merges.push(`A${en}:C${en}`, `E${en}:F${en}`);
+      const top = { t: 1, l: 1, r: 1 }, mid = { l: 1, r: 1 }, bot = { b: 1, l: 1, r: 1 };
+      const o1 = row([{ v: 'Office/Section :', st: { b: 1, h: 'center', border: top } }, { st: { border: top } },
+        { v: 'PR No.:', st: { b: 1, border: { t: 1, l: 1 } } }, { v: pr.prNo || '', st: { u: 1, border: { t: 1, r: 1 } } },
+        { v: 'Date:', st: { b: 1, h: 'right', border: { t: 1, l: 1 } } }, { v: date, st: { h: 'center', border: { t: 1, r: 1 } } }]);
+      merges.push(`A${o1}:B${o1}`);
+      const o2 = row([{ v: pr.office || '', st: { h: 'center', wrap: 1, border: bot } }, { st: { border: bot } },
+        { v: `Responsibility Center Code : ${pr.rcc || ''}`, st: { b: 1, wrap: 1, border: bot } }, { st: { border: bot } },
+        { st: { border: bot } }, { st: { border: bot } }], 30);
+      merges.push(`A${o2}:B${o2}`, `C${o2}:D${o2}`, `E${o2}:F${o2}`);
+      row(['Stock/ Property No.', 'Unit', 'Item Description', 'Quantity', 'Unit Cost', 'Total Cost'].map(v => ({ v, st: { b: 1, h: 'center', wrap: 1, border: B } })), 30);
+      const first = rows.length + 1;
+      lines.forEach((l, i) => {
+        const r = rows.length + 1;
+        row([{ v: prStockNo(l, i), st: { h: 'center', border: B } }, { v: l.unit || '', st: { h: 'center', border: B } },
+          { v: l.desc || '', st: { h: 'center', wrap: 1, border: B } }, { v: Number(l.qty) || 0, st: { h: 'center', border: B } },
+          { v: Number(l.unitCost) || 0, st: { num: '#,##0.00', border: B } },
+          { f: `D${r}*E${r}`, v: Math.round((Number(l.qty) || 0) * (Number(l.unitCost) || 0) * 100) / 100, st: { num: '#,##0.00', border: B } }]);
+      });
+      for (let i = lines.length; i < 15; i += 1) row([0, 1, 2, 3, 4, 5].map(() => ({ st: { border: B } })));
+      const last = rows.length;
+      row([0, 1, 2, 3, 4].map(() => ({ st: { border: B } })).concat([{ f: `SUM(F${first}:F${last})`, v: Number(pr.total) || 0, st: { b: 1, num: '#,##0.00', border: B } }]));
+      row([{ v: 'Purpose:', st: { border: { t: 1, l: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1, r: 1 } } }]);
+      const pt = row([{ v: pr.purpose || '', st: { h: 'center', wrap: 1, border: bot } }, ...[1, 2, 3, 4].map(() => ({ st: { border: { b: 1 } } })), { st: { border: { b: 1, r: 1 } } }], 32);
+      merges.push(`A${pt}:F${pt}`);
+      const L = { l: 1 }, R = { r: 1 };
+      const rb = row([{ st: { border: { t: 1, l: 1 } } }, { v: 'Requested by:', st: { h: 'center', border: { t: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1 } } }, { v: 'Approved by:', st: { h: 'center', border: { t: 1 } } }, { st: { border: { t: 1, r: 1 } } }]);
+      merges.push(`B${rb}:C${rb}`, `E${rb}:F${rb}`);
+      row([{ v: 'Signature :', st: { border: L } }, null, null, null, null, { st: { border: R } }], 24);
+      const pn = row([{ v: 'Printed Name :', st: { border: L } }, { v: String((pr.requestedBy && pr.requestedBy.name) || '').toUpperCase(), st: { b: 1, u: 1, h: 'center' } }, null, null,
+        { v: String((pr.approvedBy && pr.approvedBy.name) || '').toUpperCase(), st: { b: 1, u: 1, h: 'center' } }, { st: { border: R } }]);
+      merges.push(`B${pn}:C${pn}`, `E${pn}:F${pn}`);
+      const dg = row([{ v: 'Designation :', st: { border: { l: 1, b: 1 } } }, { v: (pr.requestedBy && pr.requestedBy.designation) || '', st: { h: 'center', border: { b: 1 } } }, { st: { border: { b: 1 } } }, { st: { border: { b: 1 } } },
+        { v: (pr.approvedBy && pr.approvedBy.designation) || '', st: { h: 'center', border: { b: 1 } } }, { st: { border: { b: 1, r: 1 } } }]);
+      merges.push(`B${dg}:C${dg}`, `E${dg}:F${dg}`);
+      return { name: `PR ${pr.prNo || ''}`.trim(), cols: [13, 8, 34, 10, 12, 14], rows, merges };
+    }
+    async function exportPrXlsx(pr) {
+      try {
+        const bytes = await buildXlsx(prSheet(pr));
+        downloadBytes(bytes, `Purchase_Request_${String(pr.prNo || 'draft').replace(/[^\w-]+/g, '_')}.xlsx`, XLSX_TYPE);
+        showToast(`PR ${pr.prNo || ''} saved as an Excel file`, 'ph-file-xls');
+      } catch (err) {
+        console.warn('xlsx', err);
+        appAlert('The Excel file could not be made. Try again, or use CSV.');
+      }
+    }
+    function exportPrXlsxById(id) { const pr = prList.find(p => p.id === id); if (pr) exportPrXlsx(pr); }
 
     // ---- Teachers & releases --------------------------------------------------------
     // Teachers who joined the school (members) and what the custodian handed to each one.
@@ -16519,6 +16677,11 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-pr-excel', date: 'Nov 2026', title: 'Purchase Requests as Excel files', points: [
+        'Each Purchase Request now has an Excel button. It saves an .xlsx file laid out like the printed Appendix 60 form, on A4, ready to print or edit in Excel or Google Sheets.',
+        'Total Cost (Quantity × Unit Cost) and the grand total are Excel formulas, so they update when you change a quantity or price in the file.',
+        'Lines with no stock number now show their line number (1, 2, 3…) in the Stock/Property No. column, on the printed PR, in Excel and in CSV.'
+      ] },
       { id: '2026-11-remove-written-off', date: 'Nov 2026', title: 'Removed units are kept for audit too', points: [
         'Remove unit (the trash button on a property number) now keeps the unit under Written off, with your reason, like a relieved unit. Use it for units disposed of, transferred to another school, lost, stolen or destroyed.',
         'Pick a reason from the list or type your own, for example with the IIRUSP number. Untick Keep it under Written off only when the unit was added by mistake.',

@@ -243,6 +243,24 @@ try {
   const prLines = await ev(a, () => prList[0].lines);
   check(prLines.find(l => l.code === lowItem.code).qty === 6, 'PR buys only what is not in stock (6)');
   await until(a, id => reqList.some(r => r.id === id && r.status === 'pr'), 'request on PR', 8000, req2);
+  // Save as Excel: Appendix 60 laid out like the printed form, with live formulas
+  await ev(a, () => setReqTab('prs'));
+  await until(a, id => !!document.querySelector(`button[onclick="exportPrXlsxById('${id}')"]`), 'Excel button', 5000, await ev(a, () => prList[0].id));
+  const xl = await ev(a, async () => {
+    const pr = prList[0];
+    const bytes = await buildXlsx(prSheet(pr));   // loads fflate
+    const files = fflate.unzipSync(bytes);
+    const sheet = fflate.strFromU8(files['xl/worksheets/sheet1.xml']);
+    const n = pr.lines.length, padIdx = pr.lines.findIndex(l => !l.stockNo);
+    return { parts: Object.keys(files).sort().join(','), sheet, n, prNo: pr.prNo, padIdx, office: pr.office, html: prPrintHTML(pr) };
+  });
+  check(xl.parts.includes('xl/workbook.xml') && xl.parts.includes('xl/styles.xml') && xl.parts.includes('[Content_Types].xml'), 'Excel file has a workbook, a sheet and styles');
+  check(/Appendix 60/.test(xl.sheet) && /PURCHASE REQUEST/.test(xl.sheet) && xl.sheet.includes(`>${xl.prNo}<`) && /paperSize="9"/.test(xl.sheet), 'laid out as Appendix 60 on A4, with the PR No.');
+  check(xl.sheet.includes('<f>D9*E9</f>') && xl.sheet.includes(`<f>SUM(F9:F${8 + Math.max(15, xl.n)})</f>`), 'Total Cost = Quantity × Unit Cost and the total are live formulas');
+  check(xl.padIdx < 0 || (xl.html.includes(`<td class="pr-sn c">${xl.padIdx + 1}</td>`) && xl.sheet.includes(`<t xml:space="preserve">${xl.padIdx + 1}</t>`)), 'a line with no stock no. shows its line number (print and Excel)');
+  await ev(a, id => exportPrXlsxById(id), await ev(a, () => prList[0].id));
+  await sleep(300);
+  check(/saved as an Excel file/.test(await ev(a, () => document.getElementById('appToastText').innerText)), 'Excel button saves the file');
   await ev(a, () => { setReqTab('prs'); markPrDelivered(prList[0].id); });
   await sleep(500);
   const stocked = await ev(a, c => ({ low: items.find(i => i.code === c).qty, pad: items.find(i => /RUBBER STAMP PAD/.test(i.name)) }), lowItem.code);

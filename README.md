@@ -226,7 +226,7 @@ Teachers kept asking *“Sir, meron pa ba nito?”*. The teacher's phone now has
 2. Tap **Invite** and send the link or QR code to your faculty group chat.
 3. **To review**: open a request to see *asked / on hand / to buy* for every line. Edit names, quantities, units and unit costs, link a line to an inventory item, add a note, then **Approve** or **Decline** (with a reason). You can also enter walk-in requests with **New**.
 4. **To purchase**: tick approved requests and tap **Prepare Purchase Request**. Only the quantity not in stock goes on the PR (asked minus on hand, editable). Identical items from several teachers are added together, and their names go in the Purpose.
-5. Check the PR header (entity, fund cluster, office, PR No., responsibility center code, date), the lines and the signatories, then **Save & print**. Saved PRs are listed under **Purchase requests**, where you can reprint them or export them to CSV. Mark a request **Supplied** once the items are handed over.
+5. Check the PR header (entity, fund cluster, office, PR No., responsibility center code, date), the lines and the signatories, then **Save & print**. Saved PRs are listed under **Purchase requests**, where you can reprint them or save them as **Excel** (.xlsx) or CSV. The Excel file is laid out like the printed Appendix 60 (A4 portrait), and Total Cost and the grand total are formulas, so it can still be edited. A line with no stock no. shows its line number (1, 2, 3…), as many schools write it. Mark a request **Supplied** once the items are handed over.
 
 ### Supply requests: Firebase setup
 

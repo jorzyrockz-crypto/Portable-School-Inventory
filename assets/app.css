@@ -86,6 +86,7 @@
 .ph-bold.ph-file-magnifying-glass:before { content: "\e238"; }
 .ph-bold.ph-file-plus:before { content: "\e236"; }
 .ph-bold.ph-file-text:before { content: "\e23a"; }
+.ph-bold.ph-file-xls:before { content: "\eb22"; }
 .ph-bold.ph-files:before { content: "\e710"; }
 .ph-bold.ph-flag-checkered:before { content: "\ea38"; }
 .ph-bold.ph-floppy-disk:before { content: "\e248"; }
@@ -255,6 +256,7 @@
 .ph-fill.ph-file-magnifying-glass:before { content: "\e238"; }
 .ph-fill.ph-file-plus:before { content: "\e236"; }
 .ph-fill.ph-file-text:before { content: "\e23a"; }
+.ph-fill.ph-file-xls:before { content: "\eb22"; }
 .ph-fill.ph-files:before { content: "\e710"; }
 .ph-fill.ph-flag-checkered:before { content: "\ea38"; }
 .ph-fill.ph-floppy-disk:before { content: "\e248"; }
@@ -472,6 +474,8 @@
 .ph-duotone.ph-file-plus:after { content: "\e237"; margin-left: -1em; }
 .ph-duotone.ph-file-text:before { content: "\e23a"; opacity: 0.2; }
 .ph-duotone.ph-file-text:after { content: "\e23b"; margin-left: -1em; }
+.ph-duotone.ph-file-xls:before { content: "\eb22"; opacity: 0.2; }
+.ph-duotone.ph-file-xls:after { content: "\eb23"; margin-left: -1em; }
 .ph-duotone.ph-files:before { content: "\e710"; opacity: 0.2; }
 .ph-duotone.ph-files:after { content: "\e711"; margin-left: -1em; }
 .ph-duotone.ph-flag-checkered:before { content: "\ea38"; opacity: 0.2; }
