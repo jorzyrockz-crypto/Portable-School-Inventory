@@ -102,10 +102,10 @@ CustodianPro is laid out for a 360–430 px phone first and widens on tablets an
 
 The custodian's list of everything the school has (quantity above 0). It was called *My Items*; the teacher's own *My Items* (what was released to them) keeps its name.
 
-- **Top:** *Inventory*, the saved-online chip, `N items · ₱ total` and **Add items** (opens the Catalog). Then a search box (name, code, room, property or serial number, teacher) and a sort menu: highest value, name, room, most / least quantity.
+- **Top:** *Inventory*, the saved-online chip, `N items · ₱ total`, **Stock in** (a delivery with its actual cost, see [Deliveries](#deliveries-and-actual-costs)) and **Add items** (opens the Catalog). Then a search box (name, code, room, property or serial number, teacher) and a sort menu: highest value, name, room, most / least quantity.
 - **Filter chips** wrap onto a second line instead of scrolling sideways, each with its count: *All · Equipment · Consumables · Low stock · Needs repair · With teachers*, plus *Not counted* during a physical count. Chips with nothing in them are hidden.
 - **One row per item:** type icon, name (2 lines at most), *room · code*, at most two status labels (repair / unserviceable, low stock, with a teacher, tagged; more show as *+N*), and on the right the quantity and total value. There are no +/− buttons on the rows, so a count can't change by accident while scrolling.
-- **Tap a row** for the **item sheet** (a bottom sheet on phones): on hand, unit cost and total value; a low-stock note; the quantity stepper; room, category, condition, property numbers and who has the units (each name opens that teacher's page); and **Release · Edit details · History** at the bottom.
+- **Tap a row** for the **item sheet** (a bottom sheet on phones): on hand, unit cost and total value; a low-stock note; the quantity stepper; room, category, condition, property numbers and who has the units (each name opens that teacher's page); a **Prices** row (average cost and last paid) and a **Catalog** row (rename, hide or delete); and **Release · Edit details · History** at the bottom.
 - **During a physical count** each row has a check button on the left (tap to mark counted without opening the item), and the sheet has **Mark as counted**, which returns to the list.
 - `tests/e2e/phone-layout.mjs` checks the rows, chips, sheet and count mode at 390 px; `release.mjs` and `teachers-overview.mjs` use the sheet for Release and the teacher links.
 
@@ -117,7 +117,7 @@ The full APP-CSE catalog (361 items plus custom ones), where quantities are ente
   - *Catalog*, with *N items · N in stock* (or *Showing X of N* while filtering) and a chip showing the chosen category (tap ✕ to clear it);
   - **Custom item** on the right, where Inventory has *Add items*;
   - a search box (name, code, room) and a **Category** drop-down with how many items each category has. That one control replaced a strip of 30 category pills that ran off the screen.
-- **Chips** below, which wrap like Inventory's: *All (count) · Part I (PS-DBM) · Part II (Other) · In stock (count)*.
+- **Chips** below, which wrap like Inventory's: *All (count) · Part I (PS-DBM) · Part II (Other) · In stock (count)*, plus *Show hidden (count)* once anything is hidden.
 - **Reset all quantities** is at the end of the list. It is rarely needed and asks for confirmation first.
 - **One row per item:**
   - the name (2 lines at most);
@@ -132,6 +132,16 @@ The full APP-CSE catalog (361 items plus custom ones), where quantities are ente
   - the categories are in the drop-down;
   - + and − update the row;
   - tapping a name opens the details.
+
+### Editing, hiding and deleting catalog items
+
+Open an item (item sheet → *Catalog*, or *Edit details* → *Catalog*):
+
+- **Your own (custom) items:** change the name, unit, category and classification. **Delete** is offered only when the item has quantity 0, no property numbers and isn't on any slip, PR or delivery; otherwise it is **archived** (hidden, but kept for past slips and reports). Deleted numbers are not reused.
+- **APP-CSE items:** name, unit and stock no. are locked (they come from the DBM list); you can set your own unit cost. They can't be deleted but can be **hidden**.
+- Items you still have (quantity above 0) can't be hidden or deleted.
+- Hidden items leave the Catalog, Home search and scan suggestions; **Show hidden** lists them with *Show again*.
+- Old slips keep the name and cost they were printed with. Every change is in Change history and syncs to the school account.
 
 ## Sharing and link previews
 
@@ -263,6 +273,24 @@ Equipment can be tracked **per unit** instead of only as a count:
    `SJNHS-2026-0001` (prefix = school initials, or set your own under *School Info*). Any number
    can be edited to match a sticker that is already on the item. The condition counts already
    recorded for the item carry over to the new units.
+
+   **One number per ICS line.** Many schools give one inventory item no. to a whole ICS line
+   (9 file boxes → one number). Under *School Info → Property numbers* choose *One number per ICS
+   line*: new numbers then look like `OES-4THQ-2026-11-31` (School · Quarter · Year · Month ·
+   Series), the series continuing through the year, and every unit of the line (or of one
+   delivery line, or of one *Tag N units*) shares it. A scanned ICS whose line has one number for
+   several units always shares it, whatever the setting. Slips, forms and the CSV list a shared
+   number once; renaming may give a unit the number of another unit of the same item (not of a
+   different item); and during a physical count each scan of the shared sticker counts the next
+   unit of the batch.
+
+   **COA standard (automatic).** The third choice decides by the cost of each unit, following
+   [COA Circular 2022-004](https://www.coa.gov.ph/) (semi-expendable property): low-valued items
+   (₱5,000 and below a unit, §4.8) share one number per line, while high-valued items (above
+   ₱5,000), PPE (₱50,000 and up) and units with no cost yet get one number each, in the same
+   School · Quarter · Year · Month · Series form. Releases put low- and high-valued items on
+   separate ICS slips (§4.14), numbered `SPLV-YYYY-MM-NNNN` and `SPHV-YYYY-MM-NNNN`, each with one
+   serial series per year.
 2. Per unit you can record the serial number, location, who it is assigned to, and its condition.
    Once an item has units, its Serviceable / Repair / Unserviceable counts come from the units.
 3. **Print QR labels** – 3 across on A4/Letter; cut them out, or print on sticker paper.
@@ -325,6 +353,20 @@ Tap **Start count** on the dashboard, give the count a name (e.g. "Year-end coun
 - **Finish** shows which items were missed and writes a summary into Change History.
 - The count survives closing the app and is included in JSON backups.
 
+## Deliveries and actual costs
+
+**Home → Deliveries** (also *More → Deliveries* and Inventory's **Stock in**) records what you actually paid.
+
+- **Stock in:** supplier, date received, IAR no., DR / invoice no., PO no., and per line the item, quantity, unit and unit cost. Stock goes up when you save, with **Undo** right after.
+- **Scan PO:** a photo (or pasted text) of a **Purchase Order** is read like the ICS scanner (PO no., date, supplier, PR no., stock no., unit, description, quantity, unit cost, amount; quantities cross-checked against the amounts). Saving makes an **expected delivery** and does **not** change stock.
+- **Received:** open the PO and tap *Received*. Enter what came, all of it or only part, with the IAR or DR no.; only then does stock go up. A partly received PO stays open for the rest. **Scan IAR / DR** reads an Inspection and Acceptance Report or delivery receipt; when it names a waiting PO it is linked to it.
+- **Costs:** supplies keep an **average cost** across deliveries. Each equipment unit gets its own property number and its **own cost**, and that unit cost decides PAR (₱50,000 and up) or ICS when it is released, transferred or reported lost. A PR marked delivered uses the PR unit cost.
+- **Price history:** every item has a *Prices* window: unit cost now, last paid, each delivery (cost, quantity, supplier, document) and corrections with a reason. The PS-DBM price shows as *PS-DBM price (APP-CSE 2027)*, for reference only. New PR lines show what you last paid. Items you already had keep their current price as the starting cost.
+- **Reading real forms:** tuned on DepEd PO (Appendix 61), IAR (Appendix 62) and ICS screenshots. Amounts that lost a decimal point or a digit (`21500`, `10.280.90`, `6.400.020`) are repaired from *quantity × unit cost = amount*, and a line where two repairs are possible is settled by the total printed under the table; the review says *Lines add up to the total on the paper* or shows the difference. An IAR names its PO (*PO No./Date*), and its rows are matched to the PO lines by stock no.; a quantity that can't be read shows what is still to come, with a note. Small screenshots (under 1000 px wide) are enlarged more before reading.
+- **Matching:** the scanner suggests catalog items, tolerates reading slips (*BOND PAPFR*), and **remembers** your pick for a supplier's wording, so the same wording is matched by itself next time. A warning shows when the paper's unit (box) differs from the item's (piece).
+- Deliveries are saved in Change history, in backups, and in the school account (`settings/dlv-…` and `settings/matches`), so every custodian device sees them.
+- `tests/e2e/deliveries.mjs` covers PO reading, the expected → partly received → received flow, average cost, price history, per-unit PPE, remembered matches, Undo, Catalog editing and the sync to a second device.
+
 ## Scanning a printed ICS
 
 Encode an approved **Inventory Custodian Slip** (COA Appendix 59) from a photo instead of
@@ -348,6 +390,7 @@ typing it. Tap **Scan ICS (Inventory Custodian Slip)** in *Quick tools* or in th
   no. (ranges like `SJNHS-2026-0101 to 0105` are expanded), the ICS No. and date, the
   useful life, and the person who received it. Units without an item no. get the next
   numbers in your series. Items on an ICS are marked ICS/PAR (equipment).
+- Amounts with a lost decimal point or a misread digit are repaired from quantity × unit cost = total cost (each repair is noted on the line). *Received by* is found whether it is the left or the right signature column. An inventory item no. that wrapped onto two lines in the cell and was only half read (`OES-4THQ-2026-`) is flagged and blocks saving until it is typed in full or cleared (cleared lines get the next numbers in your series).
 - Re-scanning an ICS No. that was already encoded shows a warning, and inventory item
   numbers that already exist block saving. One Change History entry is written, with
   **Undo** right after saving.
@@ -523,7 +566,7 @@ Chrome's title bar is used **for app updates only**, whenever there is one. Othe
 - **On a computer (title bar).** The window title starts with *Update ready ·*, so it shows on the Chrome tab and in the title bar of the installed app. When that installed app hides Chrome's title bar (the chevron next to the window buttons), CustodianPro draws its own navy title bar with an **Update ready · Restart** button. That is the whole notice, so there's no bell item and no toast. With a normal title bar, the **Restart** bar under the header is shown as well, because a window title can't be clicked.
 - **On a phone or tablet (no title bar).** A bar under the header (**Restart** or **Later**), an item in the bell (or a toast before sign-in), and a phone notification if those are on and the app is in the background.
 - **Everywhere.** An *Update* tag on **More → About & what's new**.
-- **Afterwards.** *Updated ·* with **What's new** appears once. **More → About & what's new** shows the version, a **Check for updates** button, the latest changes (`WHATS_NEW` in `index.html`; add an entry for each noticeable release) and **Share app link**.
+- **Afterwards.** *Updated ·* with **What's new** appears once. **More → About & what's new** shows the version, a **Check for updates** button, the latest changes (`WHATS_NEW` in `index.html`; **every release gets a new entry**, see below) and **Share app link**.
 
 - **While the app is closed.** On Android, once CustodianPro is installed and used now and then, Chrome lets it check about every 12 hours (Periodic Background Sync; no server needed). A new version is downloaded and announced once with a phone notification, *CustodianPro update ready*; tapping it opens About. **More → About** says whether this is on. Other browsers (iPhone, Firefox) check the next time the app opens.
 
@@ -552,8 +595,11 @@ The page is plain HTML + inline JavaScript. CSS is compiled Tailwind, so after e
 ```bash
 npm install
 npm run build   # -> assets/app.css, assets/fonts/*, sw.js (new cache version)
+npm run check-notes   # every update has its own What's new entry (build prints it too)
 npm run serve   # http://localhost:8080
 ```
+
+**Every release gets a What's new note.** Each deploy that changes the app gives people *Update ready · Restart*, so each one also says what changed: add a new entry at the top of `WHATS_NEW` in `index.html`, in plain words, even if it is only *Fixes: …*. It needs a new `id`, because *Updated ·* appears only when the newest id is one the phone hasn't seen. `npm run build` warns, and `npm run check-notes` and `tests/e2e/whats-new.mjs` fail, when the `sw.js` cache version differs from `main` but the newest entry doesn't.
 
 | File | Purpose |
 | --- | --- |
@@ -586,11 +632,13 @@ node sample-data.mjs                  # Load / Clear sample data: sample teacher
 node project-switch.mjs               # moving to another Firebase project keeps inventory, resets cloud links
 node notifications.mjs                # bell, phone notifications, shortcuts, install bar
 node app-updates.mjs                  # update notices (title bar), Restart, What's new (own server)
+node whats-new.mjs                    # this release has its own What's new entry (no browser)
 node login-theme.mjs                  # sign-in screen, teacher code / invite link, sign out, light/dark
 node coa-forms.mjs                    # welcome tour, poster, PAR, ITR/PTR transfers, RRSP, RPCPPE/IIRUP, background update check
 node phone-layout.mjs                 # 390 px phone: no sideways scroll, 32 px+ buttons, bottom sheets, toast placement
 node members-stock.mjs                # approval, edit / remove / add back, new invite link, School stock, "I took this"
 node app-reset.mjs                    # Reset app: this device only / and the school in the cloud, teacher phones, rules
+node deliveries.mjs                   # PO scan, expected / received deliveries, average cost, prices, Catalog editing
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

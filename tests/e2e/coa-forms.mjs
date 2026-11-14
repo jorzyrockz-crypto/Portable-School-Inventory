@@ -465,6 +465,38 @@ try {
   check(regLife.length && regLife.every(x => /^\d+(\.\d+)? years?$/.test(x)), `RegSPI useful life column filled (${[...new Set(regLife)].join(', ')})`);
   await ev(a, () => closeCoa());
 
+  out('10d COA standard numbering: low-valued share a number, high-valued one each, SPLV / SPHV ICS');
+  const coaPick = await ev(a, (skip) => {
+    schoolInfo.numbering = 'coa';
+    const eq = items.filter(i => i.type === 'EQUIPMENT' && i.qty >= 2 && i.qty <= 6 && !skip.includes(i.code) && !getUnits(i.code).length).slice(0, 2);
+    const [low, high] = eq;
+    low.price = 3500; userState[low.code].customPrice = 3500;
+    high.price = 12000; userState[high.code].customPrice = 12000;
+    [low, high].forEach(i => { openUnitsModal(i.code); generateUnitTags(); closeUnitsModal(); });
+    saveState();
+    return { low: low.code, high: high.code, lowNos: getUnits(low.code).map(u => u.no), highNos: getUnits(high.code).map(u => u.no) };
+  }, [pick.ppe.code, pick.se.code]);
+  check(coaPick.lowNos.length >= 2 && coaPick.lowNos.every(n => n === coaPick.lowNos[0]) && /-[1-4](ST|ND|RD|TH)Q-\d{4}-\d{2}-\d+$/.test(coaPick.lowNos[0]), `₱3,500 units share one number (${coaPick.lowNos[0]})`);
+  check(coaPick.highNos.length >= 2 && new Set(coaPick.highNos).size === coaPick.highNos.length, `₱12,000 units get one number each (${coaPick.highNos.join(', ')})`);
+  await ev(a, (uid, lo, hi) => openRelease({ teacherUid: uid, purpose: 'Classroom', lines: [{ code: lo, qty: 1 }, { code: hi, qty: 1 }] }), anaUid, coaPick.low, coaPick.high);
+  await until(a, () => !document.getElementById('releaseModal').classList.contains('hidden'), 'release sheet (COA)');
+  const yr = ym.slice(0, 4);
+  const coaSum = await ev(a, () => document.getElementById('relSummary').innerText);
+  check(coaSum.includes(`ICS SPLV-${ym}-0001`) && coaSum.includes(`ICS SPHV-${ym}-0001`), `separate low- and high-valued ICS: “${coaSum}”`);
+  await a.click('#relSaveBtn');
+  await until(a, () => !!releaseDone, 'released (COA)');
+  const coaRel = await ev(a, (lo, hi) => ({
+    docs: releaseDone.docs.map(x => `${x.kind} ${x.no}`),
+    lo: getUnits(lo).find(u => u.toUid), hi: getUnits(hi).find(u => u.toUid),
+    next: nextCoaIcsNo('SPLV', localISODate()), nextYear: nextCoaIcsNo('SPLV', `${Number(localISODate().slice(0, 4)) + 1}-01-05`)
+  }), coaPick.low, coaPick.high);
+  check(coaRel.docs.length === 2 && coaRel.lo && coaRel.lo.ics === `SPLV-${ym}-0001` && coaRel.hi && coaRel.hi.ics === `SPHV-${ym}-0001`, `units carry their ICS no. (${coaRel.docs.join(', ')})`);
+  check(coaRel.next === `SPLV-${ym}-0002` && coaRel.nextYear === `SPLV-${Number(yr) + 1}-01-0001`, `the series continues (${coaRel.next}) and starts over each year (${coaRel.nextYear})`);
+  await ev(a, () => closeRelease());
+  await ev(a, () => { openSchoolModal(); document.getElementById('infoNumbering').value = 'coa'; updatePrefixPreview(); });
+  check(await ev(a, () => /COA Circular 2022-004/.test(document.getElementById('infoNumberingHelp').innerText)), 'School info explains the COA option');
+  await ev(a, () => { closeSchoolModal(); schoolInfo.numbering = 'unit'; });
+
   out('11 dark mode: switches stand out, night art');
   await ev(a, () => { closeCoa(); setTheme('dark'); switchMainView('HOME'); });
   await sleep(300);

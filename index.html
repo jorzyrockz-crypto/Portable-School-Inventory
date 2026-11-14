@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="277fd635cff3">
+  <meta name="app-version" content="72ab2211f0ca">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -707,6 +707,22 @@
           <i class="ph-bold ph-plus"></i> Request
         </button>
       </div>
+      <!-- Deliveries: stock in with actual costs; Purchase Orders wait here until received -->
+      <div id="homeDlvCard" class="rounded-2xl bg-white border border-slate-200/90 shadow-sm p-3 flex items-center gap-3">
+        <button onclick="openDeliveries()" class="flex-1 min-w-0 flex items-center gap-3 text-left">
+          <span class="relative w-11 h-11 shrink-0 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+            <i class="ph-bold ph-truck text-2xl"></i>
+            <span id="homeDlvBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-amber-500 text-white text-[11px] font-extrabold items-center justify-center">0</span>
+          </span>
+          <span class="min-w-0">
+            <span class="block text-sm font-extrabold text-slate-800">Deliveries</span>
+            <span id="homeDlvSub" class="block text-[11px] text-slate-500 truncate">Stock in with actual costs · PO, IAR or DR</span>
+          </span>
+        </button>
+        <button onclick="startStockIn('receive')" class="shrink-0 h-10 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 transition">
+          <i class="ph-bold ph-package"></i> Stock in
+        </button>
+      </div>
       <!-- Teachers: equipment reports and people asking to join (shown only when there is something) -->
       <button id="homeTeachCard" onclick="openTeachersView(null)" class="hidden w-full rounded-2xl bg-white border border-rose-200 shadow-sm p-3 items-center gap-3 text-left hover:bg-rose-50/40">
         <span class="w-11 h-11 shrink-0 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center"><i class="ph-bold ph-chalkboard-teacher text-2xl"></i></span>
@@ -1020,9 +1036,14 @@
             </h3>
             <p id="invSummary" class="text-xs text-slate-600 mt-0.5">No items yet</p>
           </div>
-          <button onclick="switchMainView('CATALOG')" class="shrink-0 h-10 px-3 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold flex items-center gap-1.5">
-            <i class="ph-bold ph-plus"></i> Add items
-          </button>
+          <div class="shrink-0 flex items-center gap-1.5">
+            <button onclick="startStockIn('receive')" title="Stock in a delivery with its actual cost" class="h-10 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
+              <i class="ph-bold ph-truck"></i> Stock in
+            </button>
+            <button onclick="switchMainView('CATALOG')" class="h-10 px-3 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold flex items-center gap-1.5">
+              <i class="ph-bold ph-plus"></i> Add items
+            </button>
+          </div>
         </div>
         <div class="flex items-center gap-2">
           <div class="relative flex-1 min-w-0">
@@ -1115,6 +1136,7 @@
           <button onclick="setPartFilter('PART1')" id="tab-PART1" aria-pressed="false" class="part-tab ledger-tab" title="Part I: common-use supplies available at PS-DBM">Part I<span class="hidden sm:inline font-semibold opacity-75"> (PS-DBM)</span></button>
           <button onclick="setPartFilter('PART2')" id="tab-PART2" aria-pressed="false" class="part-tab ledger-tab" title="Part II: other items not available at PS-DBM">Part II<span class="hidden sm:inline font-semibold opacity-75"> (Other)</span></button>
           <button onclick="setPartFilter('SELECTED')" id="tab-SELECTED" aria-pressed="false" class="part-tab ledger-tab"><i class="ph-fill ph-check-circle text-emerald-600"></i> In stock <span id="count-SELECTED" class="ledger-n">0</span></button>
+          <button onclick="setPartFilter(filterPart === 'HIDDEN' ? 'ALL' : 'HIDDEN')" id="tab-HIDDEN" aria-pressed="false" class="part-tab ledger-tab hidden" title="Items you hid or archived"><i class="ph-bold ph-eye-slash"></i> Show hidden <span id="count-HIDDEN" class="ledger-n">0</span></button>
         </div>
       </div>
 
@@ -1385,6 +1407,7 @@
           <button onclick="closeMoreMenu(); openCustomItemModal()" class="more-item"><i class="ph-bold ph-plus-circle text-brand-600"></i> Add a custom item</button>
           <button onclick="closeMoreMenu(); openImport()" class="more-item"><i class="ph-bold ph-file-arrow-up text-sky-600"></i> Import Excel / CSV</button>
           <button onclick="closeMoreMenu(); openIcsScanner()" class="more-item"><i class="ph-bold ph-file-text text-violet-600"></i> Scan ICS</button>
+          <button onclick="closeMoreMenu(); openDeliveries()" class="more-item"><i class="ph-bold ph-truck text-emerald-700"></i> Deliveries · stock in, PO, IAR / DR</button>
           <button onclick="closeMoreMenu(); openScanner()" class="more-item"><i class="ph-bold ph-scan text-slate-600"></i> Scan a QR property tag</button>
         </div>
         <div>
@@ -1934,12 +1957,21 @@
             <input type="number" id="modalItemQty" min="0" oninput="updateModalConditionPreview()" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-mono font-bold text-base focus:border-brand-500 outline-none">
           </div>
           <div>
-            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Unit Price (₱)</label>
+            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Unit cost (₱)</label>
             <input type="number" id="modalItemPrice" step="0.01" min="0" oninput="refreshModalTypeUI()" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-mono font-bold text-base focus:border-brand-500 outline-none">
           </div>
           <div>
             <label class="block text-[11px] font-bold uppercase text-amber-700 mb-1">Min Alert Qty</label>
             <input type="number" id="modalItemMinQty" min="0" placeholder="5" class="w-full h-11 px-3 rounded-xl border border-amber-300 bg-amber-50/40 font-mono font-bold text-base focus:border-amber-500 outline-none">
+          </div>
+        </div>
+
+        <!-- Cost: average of what was received · last paid · APP-CSE reference -->
+        <div class="-mt-1.5 flex items-start justify-between gap-2">
+          <p id="modalPriceRef" class="text-[11px] text-slate-500 leading-snug"></p>
+          <div class="flex gap-1.5 shrink-0">
+            <button type="button" onclick="const c = activeModalCode; openPriceHistory(c)" class="h-8 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1"><i class="ph-bold ph-receipt"></i> Prices</button>
+            <button type="button" onclick="const c = activeModalCode; closeItemModal(); openItemEdit(c)" class="h-8 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1" title="Rename, hide or delete"><i class="ph-bold ph-sliders-horizontal"></i> Catalog</button>
           </div>
         </div>
 
@@ -2158,6 +2190,15 @@
           <input type="text" id="infoPropPrefix" oninput="updatePrefixPreview()" placeholder="Auto: school initials" autocapitalize="characters" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-mono font-bold uppercase">
           <p class="text-[11px] text-slate-500 mt-1">New property numbers look like <strong id="infoPrefixPreview" class="font-mono text-slate-700">PROP-2026-0001</strong>. Existing numbers are not changed.</p>
         </div>
+        <div>
+          <label for="infoNumbering" class="block text-xs font-bold uppercase text-slate-500 mb-1">Property numbers</label>
+          <select id="infoNumbering" onchange="updatePrefixPreview()" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium bg-white">
+            <option value="unit">One per unit (OES-2026-0001)</option>
+            <option value="line">One per ICS line (OES-4THQ-2026-11-31)</option>
+            <option value="coa">COA standard (automatic)</option>
+          </select>
+          <p id="infoNumberingHelp" class="text-[11px] text-slate-500 mt-1"></p>
+        </div>
       </div>
       <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
         <button onclick="closeSchoolModal()" class="h-10 px-4 rounded-xl bg-slate-100 text-xs font-bold text-slate-700">Cancel</button>
@@ -2270,6 +2311,109 @@
     </div>
   </div>
   <input type="file" id="icsPhotoInput" accept="image/*" class="hidden no-print" onchange="handleIcsPhoto(event)">
+
+  <!-- DELIVERIES: stock in with actual costs, Purchase Orders (expected), IAR / DR (received) -->
+  <div id="dlvModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 sheet-sm no-print" role="dialog" aria-modal="true" aria-labelledby="dlvTitle"
+    onkeydown="if (event.key === 'Escape') dlvBack()">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[96vh] flex flex-col shadow-2xl border border-slate-200">
+      <div class="p-5 pb-3 border-b border-slate-100 flex items-start justify-between gap-3">
+        <div class="min-w-0 flex items-start gap-2">
+          <button id="dlvBack" onclick="dlvBack()" class="hidden w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-600 items-center justify-center" aria-label="Back"><i class="ph-bold ph-arrow-left"></i></button>
+          <div class="min-w-0">
+            <h3 id="dlvTitle" class="font-extrabold text-base text-slate-900 flex items-center gap-2">Deliveries</h3>
+            <p id="dlvSub" class="text-xs text-slate-500 mt-0.5"></p>
+          </div>
+        </div>
+        <button aria-label="Close" onclick="closeDeliveries()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+      <div id="dlvBody" class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4"></div>
+      <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-3">
+        <p id="dlvFootNote" class="text-[11px] text-slate-500"></p>
+        <div class="flex gap-2 shrink-0">
+          <button id="dlvCancelBtn" onclick="dlvBack()" class="h-11 px-4 rounded-xl bg-slate-100 font-semibold text-xs text-slate-700">Close</button>
+          <button id="dlvSaveBtn" onclick="saveDelivery()" class="hidden h-11 px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 font-bold text-xs text-white shadow-md disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1.5">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <input type="file" id="dlvPhotoInput" accept="image/*" class="hidden no-print" onchange="handleDlvPhoto(event)">
+
+  <!-- PRICES & DELIVERIES of one item: average cost, last paid, APP-CSE reference, history -->
+  <div id="priceModal" class="fixed inset-0 z-[55] hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" role="dialog" aria-modal="true" aria-labelledby="pmName"
+    onclick="if (event.target === this) closePriceHistory()" onkeydown="if (event.key === 'Escape') closePriceHistory()">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col safe-bottom overflow-hidden">
+      <div class="flex items-start gap-3 p-5 pb-3">
+        <span class="w-12 h-12 shrink-0 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center"><i class="ph-duotone ph-receipt text-2xl"></i></span>
+        <div class="flex-1 min-w-0">
+          <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Prices &amp; deliveries</p>
+          <h3 id="pmName" class="font-extrabold text-base text-slate-900 leading-snug"></h3>
+          <p id="pmMeta" class="text-xs text-slate-600 mt-0.5"></p>
+        </div>
+        <button onclick="closePriceHistory()" class="w-10 h-10 shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div class="flex-1 min-h-0 overflow-y-auto px-5 pb-4 space-y-3">
+        <div id="pmCards" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+        <div id="pmList" class="divide-y divide-slate-100"></div>
+        <div class="rounded-2xl border border-slate-200 p-3 space-y-2">
+          <p class="text-xs font-bold text-slate-800">Correct the unit cost</p>
+          <p class="text-[11px] text-slate-500">For a wrong cost or an opening balance. Deliveries set it by themselves (average cost).</p>
+          <div class="flex gap-2">
+            <input id="pmCost" type="number" min="0" step="0.01" inputmode="decimal" placeholder="₱ 0.00" aria-label="New unit cost" class="w-28 h-10 px-2.5 rounded-lg border border-slate-300 font-mono font-bold text-sm outline-none focus:border-brand-500">
+            <input id="pmWhy" type="text" maxlength="120" placeholder="Reason (optional)" aria-label="Reason" class="flex-1 min-w-0 h-10 px-2.5 rounded-lg border border-slate-300 text-sm outline-none focus:border-brand-500">
+            <button onclick="savePriceCorrection()" class="h-10 px-3 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shrink-0">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT A CATALOG ITEM: rename custom items, hide, archive or delete -->
+  <div id="itemEditModal" class="fixed inset-0 z-[55] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sheet-sm no-print" role="dialog" aria-modal="true" aria-labelledby="ieTitle"
+    onkeydown="if (event.key === 'Escape') closeItemEdit()">
+    <div class="bg-white rounded-2xl max-w-md w-full max-h-[94vh] overflow-y-auto p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h3 id="ieTitle" class="font-extrabold text-base text-slate-900">Edit catalog item</h3>
+          <p class="text-xs text-slate-500 mt-0.5"><span id="ieCode" class="font-mono"></span> · past slips keep the name and cost they were printed with</p>
+        </div>
+        <button aria-label="Close" onclick="closeItemEdit()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <p id="ieLocked" class="hidden rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-600 flex gap-2"><i class="ph-bold ph-lock-simple text-base text-slate-500 shrink-0"></i><span>Name, unit and stock no. of APP-CSE items are locked: they must match the official list and your Purchase Requests. You can still set your own cost and hide the item.</span></p>
+      <label class="block">
+        <span class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Item name</span>
+        <textarea id="ieName" rows="2" maxlength="200" class="w-full p-2.5 rounded-xl border border-slate-300 text-sm font-semibold uppercase outline-none focus:border-brand-500 disabled:bg-slate-50 disabled:text-slate-600"></textarea>
+      </label>
+      <div class="grid grid-cols-2 gap-2.5">
+        <label class="block">
+          <span class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Unit</span>
+          <input id="ieUnit" list="ieUnits" maxlength="30" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-semibold outline-none focus:border-brand-500 disabled:bg-slate-50 disabled:text-slate-600">
+          <datalist id="ieUnits"><option value="piece"><option value="unit"><option value="set"><option value="box"><option value="pack"><option value="ream"><option value="bottle"><option value="roll"><option value="pair"></datalist>
+        </label>
+        <label class="block">
+          <span class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Classification</span>
+          <select id="ieType" class="w-full h-11 px-2 rounded-xl border border-slate-300 text-sm font-semibold outline-none focus:border-brand-500">
+            <option value="AUTO">Automatic</option>
+            <option value="EQUIPMENT">Equipment (ICS/PAR)</option>
+            <option value="CONSUMABLE">Consumable (RIS)</option>
+          </select>
+        </label>
+      </div>
+      <label class="block">
+        <span class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Category</span>
+        <select id="ieCat" class="w-full h-11 px-2 rounded-xl border border-slate-300 text-sm font-semibold outline-none focus:border-brand-500 disabled:bg-slate-50 disabled:text-slate-600"></select>
+      </label>
+      <div class="flex items-center justify-end gap-2">
+        <button onclick="closeItemEdit()" class="h-11 px-4 rounded-xl bg-slate-100 font-semibold text-xs text-slate-700">Cancel</button>
+        <button onclick="saveItemEdit()" class="h-11 px-5 rounded-xl bg-brand-600 font-bold text-xs text-white shadow-md">Save</button>
+      </div>
+      <div class="pt-3 border-t border-slate-100 space-y-2">
+        <p class="text-[11px] font-bold uppercase text-slate-500">Hide or delete</p>
+        <div id="ieActions" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL 6: CHANGE HISTORY (audit log, newest first) -->
   <div id="historyModal" class="fixed inset-0 z-[55] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sheet-sm no-print">
@@ -2817,6 +2961,11 @@
     let customRawItems = [];
     let userState = {}; // { [code]: { qty: 0, customPrice: null, note: "", minQty: 5, repair: 0, unserv: 0 } }
     let schoolInfo = { school: "", uacs: "", custodian: "", position: "" };
+    const DLV_KEY = 'custodian_deliveries_v1';
+    const MATCH_KEY = 'custodian_matches_v1';
+    let deliveries = [];          // stock in · Purchase Orders · IAR / DR (see DELIVERIES & ACTUAL COSTS)
+    let rememberedMatches = [];   // supplier wording → item, learned from your picks
+    const round2 = n => Math.round((Number(n) || 0) * 100) / 100;
 
     // View & Filter States
     let activeMainView = 'HOME'; // 'HOME' | 'ITEMS' | 'CATALOG' | 'REPORTS'
@@ -2847,6 +2996,7 @@
         try { customRawItems = JSON.parse(savedCustom); } catch (e) { customRawItems = []; }
       }
 
+      loadDeliveries();
       loadHistory();
       loadCountSession();
       rebuildCatalogList();
@@ -2885,15 +3035,18 @@
           note: savedItem.note || "",
           // Physical condition (equipment): serviceable = qty - repair - unserv
           repair: Math.max(0, parseInt(savedItem.repair, 10) || 0),
-          unserv: Math.max(0, parseInt(savedItem.unserv, 10) || 0)
+          unserv: Math.max(0, parseInt(savedItem.unserv, 10) || 0),
+          // Hidden from the Catalog and from matching (archived: a custom item kept for past slips)
+          hidden: !!savedItem.hidden,
+          archived: !!savedItem.archived
         };
       });
 
       // Items with per-unit records take their condition counts from the units.
       items.forEach(item => { if (getUnits(item.code).length) syncUnitCondition(item); });
 
-      document.getElementById('count-ALL').textContent = items.length;
-      document.getElementById('kpiTotalCatalogSkus').textContent = items.length;
+      document.getElementById('count-ALL').textContent = items.filter(i => !i.hidden).length;
+      document.getElementById('kpiTotalCatalogSkus').textContent = items.filter(i => !i.hidden).length;
     }
 
     // =========================================================================
@@ -3362,6 +3515,8 @@
       const code = sheetCode;
       if (!code) return;
       if (action === 'history') return openHistory(code); // shows on top of the sheet
+      if (action === 'prices') return openPriceHistory(code); // on top too
+      if (action === 'catalog') return openItemEdit(code);
       closeItemSheet();
       if (action === 'edit') openItemModal(code);
       else if (action === 'units') openUnitsModal(code);
@@ -3409,8 +3564,11 @@
         </${onclick ? 'button' : 'div'}>`;
       const rows = [
         line('ph-map-pin', 'Room', item.note ? escapeHTML(item.note) : '<span class="text-brand-700">Set a room</span>', "itemSheetGo('edit')"),
-        line('ph-folder', 'Category', escapeHTML(item.category))
+        line('ph-folder', 'Category', escapeHTML(item.category)),
+        line('ph-receipt', 'Prices', [`${formatCurrency(item.price)} average`, lastPaidText(item.code) ? escapeHTML(lastPaidText(item.code)) : '<span class="text-slate-500">no delivery recorded yet</span>',
+          item.part === 'PART1' && item.defaultPrice > 0 ? `<span class="text-slate-500">PS-DBM ${formatCurrency(item.defaultPrice)} (APP-CSE 2027)</span>` : ''].filter(Boolean).join('<br>'), "itemSheetGo('prices')")
       ];
+      if (isCustodianDevice() || !reqRole) rows.push(line('ph-sliders-horizontal', 'Catalog', /^CUSTOM-/.test(item.code) ? 'Rename, hide or delete' : 'Hide from the Catalog', "itemSheetGo('catalog')"));
       if (item.type === 'EQUIPMENT') {
         rows.push(line('ph-wrench', 'Condition', !c.repair && !c.unserv ? 'All serviceable'
           : [`${c.serv} serviceable`, c.repair ? `<span class="text-orange-700">${c.repair} for repair</span>` : '', c.unserv ? `<span class="text-rose-700">${c.unserv} unserviceable</span>` : ''].filter(Boolean).join(' · ')));
@@ -3586,7 +3744,7 @@
     function renderCategoryPills() {
       const sel = document.getElementById('catCategorySelect');
       if (sel) {
-        const counts = CATEGORIES.map((_, idx) => items.filter(i => i.catIdx === idx).length);
+        const counts = CATEGORIES.map((_, idx) => items.filter(i => i.catIdx === idx && !i.hidden).length);
         sel.innerHTML = `<option value="ALL">All categories</option>` + CATEGORIES.map((cat, idx) =>
           `<option value="${idx}">${escapeHTML(cat)} (${counts[idx]})</option>`).join('');
         sel.value = filterCategory === 'ALL' ? 'ALL' : String(filterCategory);
@@ -3607,6 +3765,7 @@
     function getFilteredItems() {
       const q = searchQuery.toLowerCase().trim();
       return items.filter(item => {
+        if (filterPart === 'HIDDEN' ? !item.hidden : item.hidden) return false;
         if (filterPart === 'PART1' && item.part !== 'PART1') return false;
         if (filterPart === 'PART2' && item.part !== 'PART2') return false;
         if (filterPart === 'SELECTED' && item.qty <= 0) return false;
@@ -3637,6 +3796,7 @@
     // opens the item details (room, price, minimum stock).
     function catalogFlagsHTML(item) {
       const out = [];
+      if (item.hidden) out.push(flagHTML(['slate', item.archived ? 'ph-archive' : 'ph-eye-slash', item.archived ? 'Archived' : 'Hidden']));
       if (item.qty > 0) out.push(`<span id="linetotal-${escapeHTML(item.code)}" class="inv-flag bg-emerald-50 text-emerald-700 font-mono">${formatCurrency(item.qty * item.price)}</span>`);
       if (item.note) out.push(flagHTML(['slate', 'ph-map-pin', item.note]));
       if (item.qty > 0) {
@@ -3681,10 +3841,12 @@
       const emptyState = document.getElementById('emptyState');
       const statusEl = document.getElementById('resultsStatus');
 
-      const inStock = items.filter(i => i.qty > 0).length;
-      statusEl.textContent = filtered.length === items.length
-        ? `${plural(items.length, 'item')} · ${inStock} in stock`
-        : `Showing ${filtered.length} of ${items.length}`;
+      const visible = items.filter(i => !i.hidden);
+      const inStock = visible.filter(i => i.qty > 0).length;
+      statusEl.textContent = filterPart === 'HIDDEN' ? `${plural(filtered.length, 'hidden item')} · tap one to show it again`
+        : filtered.length === visible.length
+        ? `${plural(visible.length, 'item')} · ${inStock} in stock`
+        : `Showing ${filtered.length} of ${visible.length}`;
       updateDockStats();
 
       if (filtered.length === 0) {
@@ -3761,7 +3923,13 @@
       });
 
       document.getElementById('count-SELECTED').textContent = activeCount;
-      document.getElementById('count-ALL').textContent = items.length;
+      const hiddenN = items.filter(i => i.hidden).length;
+      document.getElementById('count-ALL').textContent = items.length - hiddenN;
+      const hidTab = document.getElementById('tab-HIDDEN');
+      if (hidTab) {
+        hidTab.classList.toggle('hidden', !hiddenN && filterPart !== 'HIDDEN');
+        document.getElementById('count-HIDDEN').textContent = hiddenN;
+      }
       document.getElementById('navBadgeCount').textContent = activeCount;
     }
 
@@ -3850,6 +4018,7 @@
       document.getElementById('modalItemPrice').value = item.price;
       document.getElementById('modalItemMinQty').value = item.minQty;
       document.getElementById('modalItemNote').value = item.note || '';
+      document.getElementById('modalPriceRef').innerHTML = [lastPaidText(item.code), appCsePriceLabel(item)].filter(Boolean).map(escapeHTML).join('<br>') || 'Deliveries set the cost by themselves (average cost).';
 
       const c = getCondition(item);
       document.getElementById('modalItemRepair').value = c.repair;
@@ -3974,6 +4143,7 @@
       if (isEquipmentForm && !updateModalConditionPreview()) return;
       if (newQty < getUnits(item.code).length) { updateModalConditionPreview(); return; }
 
+      const priceChanged = Math.abs((item.price || 0) - newPrice) > 0.004;
       item.qty = newQty;
       item.repair = newRepair;
       item.unserv = newUnserv;
@@ -3995,6 +4165,7 @@
       };
       if (item.typeOverride) userState[item.code].typeOverride = item.typeOverride;
       else delete userState[item.code].typeOverride;
+      if (priceChanged) addPriceEntry(item.code, { d: localISODate(), k: 'manual', c: newPrice, why: 'Edited in item details' });
       syncUnitCondition(item);
       clampCondition(item);
       markCounted(item.code);
@@ -4032,8 +4203,7 @@
       const note = document.getElementById('customNote').value.trim();
       const typeChoice = document.getElementById('customType').value;
 
-      const customNo = 114 + customRawItems.length;
-      const code = `CUSTOM-P2-${String(customNo).padStart(3, '0')}`;
+      const { no: customNo, code } = nextCustomCode();   // numbers are never reused after a delete
       const newRaw = [customNo, code, name, unit, price, 24, "PART2"];
 
       customRawItems.push(newRaw);
@@ -4116,6 +4286,7 @@
       document.getElementById('infoPosition').value = schoolInfo.position || '';
       document.getElementById('infoHead').value = schoolInfo.head || '';
       document.getElementById('infoPropPrefix').value = schoolInfo.propPrefix || '';
+      document.getElementById('infoNumbering').value = numberingMode();
       updatePrefixPreview();
       document.getElementById('schoolModal').classList.remove('hidden');
     }
@@ -4133,10 +4304,11 @@
         custodian: document.getElementById('infoCustodian').value.trim(),
         position: document.getElementById('infoPosition').value.trim(),
         head: document.getElementById('infoHead').value.trim(),
-        propPrefix: cleanPrefix(document.getElementById('infoPropPrefix').value)
+        propPrefix: cleanPrefix(document.getElementById('infoPropPrefix').value),
+        numbering: numberingMode(document.getElementById('infoNumbering').value)
       };
       localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo)); scheduleInventorySync();
-      const labels = { school: 'school name', uacs: 'agency/division', custodian: 'custodian', position: 'position', head: 'school head', propPrefix: 'property number prefix' };
+      const labels = { school: 'school name', uacs: 'agency/division', custodian: 'custodian', position: 'position', head: 'school head', propPrefix: 'property number prefix', numbering: 'property numbering' };
       const changed = Object.keys(labels).filter(k => (before[k] || '') !== (schoolInfo[k] || ''));
       if (changed.length) logHistory('system', `School info updated: ${changed.map(k => labels[k]).join(', ')}`);
       markUnsavedChanges();
@@ -4149,7 +4321,13 @@
     function updatePrefixPreview() {
       const typed = cleanPrefix(document.getElementById('infoPropPrefix').value);
       const prefix = typed || schoolInitials(document.getElementById('infoSchool').value) || 'PROP';
-      document.getElementById('infoPrefixPreview').textContent = nextPropertyNumbers(1, prefix)[0];
+      const mode = numberingMode(document.getElementById('infoNumbering').value);
+      document.getElementById('infoPrefixPreview').textContent = nextPropertyNumbers(1, prefix, { mode })[0];
+      document.getElementById('infoNumberingHelp').textContent = {
+        unit: 'Every unit gets its own number: PREFIX-Year-Series.',
+        line: 'School-Quarter-Year-Month-Series. All the units on one ICS line (9 file boxes) share the number; the series continues through the year.',
+        coa: 'Follows COA Circular 2022-004, by the cost of each unit: ₱5,000 and below (low-valued) share one number per ICS line; above ₱5,000 (high-valued and PPE) get one number each. Same School-Quarter-Year-Month-Series form. Releases split the ICS into SPLV and SPHV series.'
+      }[mode];
     }
 
     function updateSchoolHeader() {
@@ -4185,7 +4363,7 @@
         const safeNote = (item.note || 'Unassigned').replace(/"/g, '""');
         const c = getCondition(item);
         const cond = item.type === 'EQUIPMENT' ? [c.serv, c.repair, c.unserv] : ['', '', ''];
-        csv.push(`"${item.part}","${item.itemNo}","${item.code}","${safeName}","${item.type}","${item.category}","${item.unit}","${item.qty}","${cond[0]}","${cond[1]}","${cond[2]}","${item.minQty}","${status}","${item.price.toFixed(2)}","${total}","${safeNote}","${getUnits(item.code).map(u => u.no).join('; ').replace(/"/g, '""')}"`);
+        csv.push(`"${item.part}","${item.itemNo}","${item.code}","${safeName}","${item.type}","${item.category}","${item.unit}","${item.qty}","${cond[0]}","${cond[1]}","${cond[2]}","${item.minQty}","${status}","${item.price.toFixed(2)}","${total}","${safeNote}","${uniqNos(getUnits(item.code).map(u => u.no)).join('; ').replace(/"/g, '""')}"`);
       });
 
       const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -4207,7 +4385,9 @@
         userState,
         customRawItems,
         history: changeHistory,
-        countSession
+        countSession,
+        deliveries,
+        matches: rememberedMatches
       };
       const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -4268,7 +4448,10 @@
           customRawItems: Array.isArray(data.customRawItems) ? data.customRawItems : [],
           // Older backups have no history: keep this device's log in that case.
           history: Array.isArray(data.history) ? data.history : safetyCopy.history,
-          countSession: data.countSession && typeof data.countSession === 'object' && data.countSession.counted ? data.countSession : null
+          countSession: data.countSession && typeof data.countSession === 'object' && data.countSession.counted ? data.countSession : null,
+          // Older backups have no deliveries: keep this device's in that case.
+          deliveries: Array.isArray(data.deliveries) ? data.deliveries : undefined,
+          matches: Array.isArray(data.matches) ? data.matches : undefined
         });
         logHistory('system', `Restored backup from ${savedOn}`);
         // The device now matches a backup file, so nothing is unsaved.
@@ -4309,11 +4492,16 @@
         customRawItems: JSON.parse(JSON.stringify(customRawItems)),
         history: changeHistory.slice(),
         countSession: countSession ? JSON.parse(JSON.stringify(countSession)) : null,
+        deliveries: JSON.parse(JSON.stringify(deliveries)),
+        matches: JSON.parse(JSON.stringify(rememberedMatches)),
         meta: getBackupMeta()
       };
     }
 
-    function applyData({ userState: us, schoolInfo: si, customRawItems: cri, history: hist, countSession: cs }) {
+    function applyData({ userState: us, schoolInfo: si, customRawItems: cri, history: hist, countSession: cs, deliveries: dl, matches: mt }) {
+      if (Array.isArray(dl)) deliveries = dl;
+      if (Array.isArray(mt)) rememberedMatches = mt;
+      if (Array.isArray(dl) || Array.isArray(mt)) saveDeliveries();
       userState = us || {};
       schoolInfo = si || { school: "", uacs: "", custodian: "", position: "" };
       customRawItems = cri || [];
@@ -4486,6 +4674,14 @@
       return 'u' + Date.now().toString(36) + unitIdSeq.toString(36) + Math.random().toString(36).slice(2, 6);
     }
 
+    // Numbers as printed on a slip or form: a number shared by several units (one ICS line) once
+    function uniqNos(list) { return [...new Set((list || []).filter(Boolean).map(normalizePropNo))]; }
+    function nosText(units) { return uniqNos((units || []).map(u => u && u.no)).join(', '); }
+    function findUnitsByNo(value) {
+      const no = normalizePropNo(value);
+      return no ? allTaggedUnits().filter(({ unit }) => normalizePropNo(unit.no) === no) : [];
+    }
+
     function findUnitByNo(value, exceptId = null) {
       const no = normalizePropNo(value);
       if (!no) return null;
@@ -4515,7 +4711,34 @@
     }
 
     // PREFIX-YEAR-0001 style, continuing after the highest number already used this year.
-    function nextPropertyNumbers(count, prefix = propertyPrefix()) {
+    // Per ICS line (schoolInfo.numbering 'line'): one number for all `count` units, in the
+    // School-Quarter-Year-Month-Series form (OES-4THQ-2026-11-31); the series runs through the year.
+    // COA standard ('coa'): the same form, decided by the unit cost (opts.cost) as in COA Circular
+    // 2022-004 §4.8: low-valued (₱5,000 and below) units share one number per line; high-valued,
+    // PPE and units with no known cost get one number each, since they are accounted for one by one.
+    const QUARTER_TAG = ['1STQ', '2NDQ', '3RDQ', '4THQ'];
+    const LOW_VALUE_MAX = 5000;
+    function numberingMode(v = schoolInfo.numbering) { return v === 'line' || v === 'coa' ? v : 'unit'; }
+    // Low-valued semi-expendable (₱5,000 and below a unit). A unit's own cost wins over the item's average.
+    const isLowValued = (item, unit) => { const c = Number(unit && unit.cost > 0 ? unit.cost : item && item.price) || 0; return c <= LOW_VALUE_MAX; };
+    // Do new units on one line share one number under the current setting?
+    function sharesLineNumber(count, cost, mode = numberingMode()) {
+      return count > 1 && (mode === 'line' || (mode === 'coa' && cost > 0 && cost <= LOW_VALUE_MAX));
+    }
+    function nextPropertyNumbers(count, prefix = propertyPrefix(), opts = {}) {
+      const mode = numberingMode(opts.mode || schoolInfo.numbering);
+      if (mode === 'line' || mode === 'coa') {
+        const d = /^\d{4}-\d{2}-\d{2}$/.test(opts.date || '') ? new Date(opts.date + 'T00:00:00') : new Date();
+        const year = d.getFullYear(), month = d.getMonth() + 1;
+        const re = new RegExp(`^${escRe(prefix)}-(?:[1-4](?:ST|ND|RD|TH)Q)-${year}-\\d{1,2}-(\\d+)$`);
+        let max = 0;
+        // every stored unit, including items created a moment ago in the same save
+        Object.values(userState).forEach(st => (st && st.units || []).forEach(unit => { const m = normalizePropNo(unit.no).match(re); if (m) max = Math.max(max, parseInt(m[1], 10)); }));
+        (opts.taken || []).forEach(no => { const m = normalizePropNo(no).match(re); if (m) max = Math.max(max, parseInt(m[1], 10)); });
+        const no = i => `${prefix}-${QUARTER_TAG[Math.floor((month - 1) / 3)]}-${year}-${String(month).padStart(2, '0')}-${String(max + 1 + i).padStart(2, '0')}`;
+        const shared = mode === 'line' || sharesLineNumber(count, Number(opts.cost) || 0, mode);
+        return Array.from({ length: count }, (_, i) => no(shared ? 0 : i));
+      }
       const base = `${prefix}-${new Date().getFullYear()}-`;
       let max = 0;
       allTaggedUnits().forEach(({ unit }) => {
@@ -4575,7 +4798,7 @@
 
       let toolbar = '';
       if (untagged > 0) {
-        const next = nextPropertyNumbers(untagged);
+        const next = nextPropertyNumbers(untagged, undefined, { cost: item.price });
         const headline = units.length === 0
           ? `${untagged === 1 ? 'The on-hand unit has' : `None of the ${untagged} on-hand units have`} a property number yet.`
           : `${untagged} new ${untagged === 1 ? 'unit has' : 'units have'} no property number yet.`;
@@ -4583,7 +4806,9 @@
           <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div class="text-xs text-amber-900 min-w-0">
               <p class="font-bold">${headline}</p>
-              <p class="mt-0.5 text-amber-800">New numbers: <span class="font-mono font-bold">${escapeHTML(next[0])}</span>${untagged > 1 ? ` to <span class="font-mono font-bold">${escapeHTML(next[next.length - 1])}</span>` : ''}. You can edit any number afterwards to match an existing sticker.</p>
+              <p class="mt-0.5 text-amber-800">${next[0] === next[next.length - 1] && untagged > 1
+                ? `New number: <span class="font-mono font-bold">${escapeHTML(next[0])}</span>, shared by all ${untagged} (one ICS line).`
+                : `New numbers: <span class="font-mono font-bold">${escapeHTML(next[0])}</span>${untagged > 1 ? ` to <span class="font-mono font-bold">${escapeHTML(next[next.length - 1])}</span>` : ''}.`} You can edit any number afterwards to match an existing sticker.</p>
             </div>
             <button onclick="generateUnitTags()" class="shrink-0 h-10 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition">
               <i class="ph-bold ph-tag"></i> Tag ${plural(untagged, 'unit')}
@@ -4680,7 +4905,7 @@
       let unserv = 0, repair = 0;
       if (!units.length) ({ unserv, repair } = getCondition(item));
       const now = Date.now();
-      const created = nextPropertyNumbers(untagged).map((no, i) => ({
+      const created = nextPropertyNumbers(untagged, undefined, { cost: item.price }).map((no, i) => ({
         id: newUnitId(), no, serial: '', loc: '', to: '',
         cond: i < unserv ? 'U' : i < unserv + repair ? 'R' : 'S',
         seen: null, printed: null, added: now
@@ -4690,7 +4915,8 @@
       syncUnitCondition(item);
       saveState();
       renderUnitsModal();
-      showToast(`${plural(created.length, 'property number')} created – edit any to match existing stickers`, 'ph-tag');
+      const shared = created.length > 1 && created.every(u => u.no === created[0].no);
+      showToast(shared ? `${created[0].no} given to ${plural(created.length, 'unit')} – edit it to match the sticker` : `${plural(created.length, 'property number')} created – edit any to match existing stickers`, 'ph-tag');
     }
 
     function addUnitTag() {
@@ -4721,7 +4947,7 @@
         return;
       }
       const dup = findUnitByNo(no, id);
-      if (dup) {
+      if (dup && dup.item.code !== code) {   // the same item may share a number (one ICS line)
         input.value = unit.no;
         appAlert(`${no} is already used by another unit:\n${dup.item.name}`);
         return;
@@ -5125,7 +5351,9 @@
     }
 
     function lookupScannedTag(text, via = 'scan') {
-      const hit = findUnitByNo(text);
+      // A number shared by several units (one ICS line): each scan counts the next one
+      const all = findUnitsByNo(text);
+      const hit = all.find(x => !scanSession.has(x.unit.id)) || all[0] || null;
       if (!hit) {
         scanShown = { missing: text };
         scanFeedback(false);
@@ -5244,6 +5472,7 @@
       tag: { label: 'Tags & scans', icon: 'ph-qr-code', tone: 'bg-violet-50 text-violet-600' },
       edit: { label: 'Details', icon: 'ph-pencil-simple', tone: 'bg-slate-100 text-slate-600' },
       release: { label: 'Releases', icon: 'ph-hand-arrow-up', tone: 'bg-teal-50 text-teal-600' },
+      delivery: { label: 'Deliveries', icon: 'ph-truck', tone: 'bg-emerald-50 text-emerald-700' },
       system: { label: 'System', icon: 'ph-gear-six', tone: 'bg-emerald-50 text-emerald-600' }
     };
     const TYPE_LABELS = { EQUIPMENT: 'Equipment (ICS/PAR)', CONSUMABLE: 'Consumable (RIS)' };
@@ -5357,7 +5586,11 @@
 
         const defPrice = item ? item.defaultPrice : 0;
         const pp = Number(p.customPrice ?? defPrice), cp = Number(c.customPrice ?? defPrice);
-        if (pp !== cp) add('edit', `Unit price ${formatCurrency(pp)} → ${formatCurrency(cp)}`);
+        if (pp !== cp) add('edit', `Unit cost ${formatCurrency(pp)} → ${formatCurrency(cp)}`);
+
+        if (!!p.hidden !== !!c.hidden || !!p.archived !== !!c.archived) {
+          add('edit', c.archived ? 'Archived (hidden from the Catalog, kept on past slips)' : c.hidden ? 'Hidden from the Catalog' : 'Shown in the Catalog again');
+        }
 
         const defMin = item && item.type === 'EQUIPMENT' ? 2 : 5;
         const pm = p.minQty ?? defMin, cm = c.minQty ?? defMin;
@@ -6122,7 +6355,7 @@
     const OCR_BASE = 'assets/ocr/tesseract-7.0.0/';
     const OCR_CACHE_NAME = 'custodianpro-ocr-7.0.0';
     const ICS_UNIT_WORDS = {
-      unit: 'unit', units: 'unit', u: 'unit', pc: 'pc', pcs: 'pcs', pes: 'pcs', pce: 'piece', piece: 'piece', pieces: 'piece',
+      unit: 'unit', units: 'unit', u: 'unit', uit: 'unit', unlt: 'unit', umit: 'unit', pc: 'pc', pe: 'pc', pcs: 'pcs', pes: 'pcs', pce: 'piece', piece: 'piece', pieces: 'piece',
       set: 'set', sets: 'set', lot: 'lot', lots: 'lot', box: 'box', boxes: 'box', pack: 'pack', packs: 'pack', pair: 'pair',
       pairs: 'pair', ream: 'ream', reams: 'ream', roll: 'roll', rolls: 'roll', bottle: 'bottle', bottles: 'bottle',
       gallon: 'gallon', gallons: 'gallon', can: 'can', cans: 'can', book: 'book', books: 'book', copy: 'copy', copies: 'copy',
@@ -6142,6 +6375,81 @@
       // last separator is the decimal point; the rest are thousands separators
       const n = Number(t.slice(0, -3).replace(/[,.]/g, '') + '.' + t.slice(-2));
       return Number.isFinite(n) ? n : null;
+    }
+
+    // OCR-tolerant amounts. The text reader often loses or adds a decimal point or a
+    // separator: "21500" for 215.00, "10.280.20" for 10,280.00, "5375.0)", "7.50000".
+    // Returns the readings to try (most likely first), or null for a non-number.
+    function moneyToken(token, preferCents = true) {
+      let t = String(token || '').replace(/^[₱P£$€]+/, '').replace(/[,;:|]+$/, '').replace(/[)\]]$/, '0');
+      if (/\d/.test(t)) t = t.replace(/[Oo]/g, '0');
+      if (!/^\d[\d.,]*$/.test(t)) return null;
+      const digits = t.replace(/[.,]/g, '');
+      const strict = icsMoney(t);
+      const sep = /[.,]/.test(t);
+      if (strict === null && digits.length < 3) return null;
+      const cands = [];
+      const add = v => { v = Math.round(v * 100) / 100; if (v > 0 && !cands.some(c => Math.abs(c - v) < 0.001)) cands.push(v); };
+      if (strict !== null) add(strict);
+      if (sep) add(Number(digits) / 100);
+      else if (preferCents) { add(Number(digits) / 100); add(Number(digits)); }
+      else { add(Number(digits)); add(Number(digits) / 100); }
+      return cands.length ? { token: String(token), digits, cands, clean: strict !== null, sep } : null;
+    }
+    function digitDistance(a, b) {   // edit distance between two digit strings
+      const m = a.length, n = b.length, d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+      for (let j = 1; j <= n; j++) d[0][j] = j;
+      for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      return d[m][n];
+    }
+    // Quantity × unit cost = amount, used to repair what the reader got wrong. Returns
+    // { qty, unitCost, amount, notes, alt } – alt is the other repair when two are possible.
+    function reconcileMoney(qty, cost, amt, label = 'amount') {
+      const peso = v => formatCurrency(v);
+      const cents = v => String(Math.round(v * 100));
+      const r = { qty, unitCost: cost ? cost.cands[0] : null, amount: amt ? amt.cands[0] : null, notes: [], alt: null };
+      const Label = label[0].toUpperCase() + label.slice(1);
+      const same = (a, b) => Math.abs(a - b) < 0.005;
+      if (cost && amt) {
+        // 1. read as printed (any reading of each) and they agree
+        if (qty) for (const c of cost.cands) for (const a of amt.cands) if (same(qty * c, a)) { r.unitCost = c; r.amount = a; return r; }
+        // 2. the quantity: both amounts clearly printed, or no quantity read
+        for (const c of cost.cands) for (const a of amt.cands) {
+          if (!(cost.clean && amt.clean) && qty) continue;
+          const q = a / c, whole = Math.round(q);
+          if (whole >= 1 && whole <= 99999 && whole !== qty && same(whole * c, a)) {
+            if (qty === null) r.notes.push(`Quantity worked out from ${label} ÷ unit cost`);
+            else r.notes.push(`Read quantity ${qty}, but ${label} ÷ unit cost = ${whole} – please check`);
+            r.qty = whole; r.unitCost = c; r.amount = a; return r;
+          }
+          if (cost.clean && amt.clean) break;
+        }
+      }
+      if (qty && cost && amt) {
+        // 3. one digit misread: trust the reading the other column agrees with
+        const fixAmt = [], fixCost = [];
+        cost.cands.forEach(c => { if (digitDistance(cents(qty * c), amt.digits) <= 1) fixAmt.push(c); });
+        amt.cands.forEach(a => { const c = Math.round(a / qty * 100) / 100; if (same(c * qty, a) && digitDistance(cents(c), cost.digits) <= 1) fixCost.push({ c, a }); });
+        const optA = fixAmt.length ? { unitCost: fixAmt[0], amount: Math.round(qty * fixAmt[0] * 100) / 100 } : null;
+        const optC = fixCost.length ? { unitCost: fixCost[0].c, amount: fixCost[0].a } : null;
+        let pick = optA || optC, other = optA && optC ? optC : null;
+        if (optA && optC && amt.clean && !cost.clean) { pick = optC; other = optA; }
+        if (pick) {
+          if (pick === optA) r.notes.push(`${Label} read as ${amt.token}, corrected to ${peso(pick.amount)} (${qty} × ${peso(pick.unitCost)}) – please check`);
+          else r.notes.push(`Unit cost read as ${cost.token}, corrected to ${peso(pick.unitCost)} (${label} ÷ ${qty}) – please check`);
+          r.unitCost = pick.unitCost; r.amount = pick.amount;
+          if (other && !same(other.unitCost, pick.unitCost)) r.alt = other;
+          return r;
+        }
+      }
+      if (!cost && amt && qty) { r.unitCost = Math.round(amt.cands[0] / qty * 100) / 100; r.amount = amt.cands[0]; return r; }
+      if (qty && r.unitCost) {
+        const product = Math.round(qty * r.unitCost * 100) / 100;
+        if (amt && !same(product, r.amount)) r.notes.push(`${Label} on the paper read as ${amt.token}, but ${qty} × ${peso(r.unitCost)} = ${peso(product)} – please check`);
+        r.amount = product;
+      }
+      if (cost && !cost.clean && !r.notes.length) r.notes.push(`Unit cost read as ${cost.token} – please check`);
+      return r;
     }
 
     function parseLooseDate(text) {
@@ -6166,7 +6474,10 @@
 
     // Property-number-like: letters/digits joined by - or /, with at least 3 digits.
     const ICS_ITEMNO_RE = /^(?=(?:.*\d){3})[A-Z0-9]{1,12}(?:[-\/][A-Z0-9]{1,12})+$/i;
-    const ICS_LIFE_RE = /(?:^|\s)([0-9Ss]{1,2}|[Oo]ne|[Tt]wo|[Tt]hree|[Ff]ive|[Ss]even|[Tt]en)\s*-?\s*(years?|yrs?|y)\.?$/;
+    const ICS_LIFE_RE = /(?:^|\s|-)([0-9Ss]{1,2}|[Oo]ne|[Tt]wo|[Tt]hree|[Ff]ive|[Ss]even|[Tt]en)\s*-?\s*(years?|yrs?|y)\.?$/;
+
+    // An inventory item no. only half read (it wrapped onto a second line in the cell)
+    const icsItemNoCut = no => { const t = String(no || '').trim(); return !!t && (/[-\/]$/.test(t) || (/\s/.test(t) && !/\s(?:to|thru|through|and)\s|,|;|\s[-–—]\s/i.test(t))); };
 
     function icsLife(text) {
       const m = String(text || '').trim().match(ICS_LIFE_RE);
@@ -6208,12 +6519,13 @@
       const header = { icsNo: '', entity: '', fund: '', date: '', receivedBy: '', position: '', receivedFrom: '' };
 
       const rawAll = rawLines.join('\n');
-      let m = all.match(/ICS\s*(?:No|Number|#)?\.?\s*[:.]?\s*([A-Z0-9][A-Z0-9\-\/.]*(?: ?- ?[A-Z0-9]+)*)/i);
+      let m = all.match(/ICS\s*(?:No|Number|#)?[\s.:;!|]*([A-Z0-9][A-Z0-9\-\/.]*(?: ?- ?[A-Z0-9]+)*)/i);
       if (m && /\d/.test(m[1])) header.icsNo = m[1].replace(/\s+/g, '').replace(/[.\-]+$/, '').toUpperCase();
       m = rawAll.match(/Entity\s*Name\s*[:.]?\s*(.+?)(?:\s{3,}|Fund\s*Cluster|\n|$)/i);
       if (m) header.entity = m[1].replace(/[|_]+/g, ' ').trim();
       m = rawAll.match(/Fund\s*Cluster\s*[:.]?\s*(.+?)(?:\s{3,}|ICS|\n|$)/i);
       if (m) header.fund = m[1].replace(/[|_]+/g, ' ').trim();
+      if (/[()\[\]{}<>~]/.test(header.fund)) header.fund = '';   // a misread, not a fund cluster
 
       // Table: below the column headings, above "Received from/by" or "nothing follows".
       let start = lines.findIndex(l => /quantity|description/i.test(l) && !/entity/i.test(l));
@@ -6225,11 +6537,24 @@
 
       const items = [];
       let cur = null;
+      const preferCents = lines.slice(start + 1, end).some(l => l.split(/\s+/).some(t => icsMoney(t) !== null));
       for (let i = start + 1; i < end; i++) {
         const line = lines[i];
         if (!line.trim()) continue;
         const tokens = line.trim().split(/\s+/);
         const moneyIdx = tokens.map((t, k) => icsMoney(t) !== null ? k : -1).filter(k => k >= 0);
+        // Amounts with a lost or extra decimal point ("21500", "7.50000") right after quantity · unit
+        {
+          let k0 = /^\d{1,5}$/.test(tokens[0]) ? 1 : 0;
+          if (ICS_UNIT_WORDS[String(tokens[k0] || '').toLowerCase().replace(/[^a-z]/g, '')]) k0++;
+          for (let k = k0; k < Math.min(tokens.length, k0 + 2); k++) {
+            if (moneyIdx.includes(k)) continue;
+            const mt = moneyToken(tokens[k], preferCents);
+            if (mt && (mt.sep || moneyIdx.includes(k + 1) || moneyIdx.includes(k - 1) || (k === k0 && moneyToken(tokens[k + 1], preferCents)))) moneyIdx.push(k);
+            else break;
+          }
+          moneyIdx.sort((a, b) => a - b);
+        }
         const leadQty = /^\d{1,5}$/.test(tokens[0]) ? parseInt(tokens[0], 10) : null;
         const unitAt = k => ICS_UNIT_WORDS[String(tokens[k] || '').toLowerCase().replace(/[^a-z]/g, '')];
         const isRow = moneyIdx.length > 0 || (leadQty !== null && unitAt(1));
@@ -6263,9 +6588,10 @@
           if (u) { cur.unit = u; k++; break; }
         }
         if (firstMoney >= 0) {
-          cur.unitCost = icsMoney(tokens[firstMoney]);
+          cur.costTok = moneyToken(tokens[firstMoney], preferCents);
+          cur.unitCost = cur.costTok ? cur.costTok.cands[0] : null;
           k = firstMoney + 1;
-          if (moneyIdx[1] === firstMoney + 1) { cur.totalCost = icsMoney(tokens[firstMoney + 1]); k = firstMoney + 2; }
+          if (moneyIdx[1] === firstMoney + 1) { cur.totalTok = moneyToken(tokens[firstMoney + 1], preferCents); cur.totalCost = cur.totalTok ? cur.totalTok.cands[0] : null; k = firstMoney + 2; }
         }
         // the rest: description, inventory item no., useful life (columns ≥3 spaces apart)
         const restStart = (() => {
@@ -6280,7 +6606,8 @@
         const segs = rest.split(/\s{3,}/).map(s => s.trim()).filter(Boolean);
         if (segs.length > 1) {
           const itemSegs = [];
-          while (segs.length > 1 && (ICS_ITEMNO_RE.test(segs[segs.length - 1].split(/\s+/)[0]) || /^(?:to|-)\s/i.test(segs[segs.length - 1]))) {
+          const looksNo = seg => ICS_ITEMNO_RE.test(seg.split(/\s+/)[0]) || /^(?:to|-)\s/i.test(seg) || (/(?:19|20)\d\d(?:\s*[-\/]|$)/.test(seg) && seg.split(/\s+/).length <= 3 && !/\s[a-z]{3,}/.test(seg));
+          while (segs.length > 1 && looksNo(segs[segs.length - 1])) {
             itemSegs.unshift(segs.pop());
           }
           cur.itemNo = itemSegs.join(' ');
@@ -6296,22 +6623,20 @@
 
       // Money cross-check: quantity = total ÷ unit cost when that is a whole number.
       items.forEach(it => {
-        if (it.unitCost && it.totalCost) {
-          const q = it.totalCost / it.unitCost;
-          const whole = Math.round(q);
-          if (whole >= 1 && Math.abs(q - whole) < 0.01) {
-            if (it.qty === null) { it.qty = whole; it.notes.push('Quantity worked out from total ÷ unit cost'); }
-            else if (it.qty !== whole) { it.notes.push(`Read quantity ${it.qty}, but total ÷ unit cost = ${whole} – please check`); it.qty = whole; }
-          }
-        } else if (it.qty && it.totalCost && !it.unitCost) {
-          it.unitCost = Math.round(it.totalCost / it.qty * 100) / 100;
-        } else if (it.qty && it.unitCost && !it.totalCost) {
-          it.totalCost = Math.round(it.qty * it.unitCost * 100) / 100;
+        if (it.costTok || it.totalTok) {
+          const r = reconcileMoney(it.qty, it.costTok, it.totalTok, 'total cost');
+          it.qty = r.qty; it.unitCost = r.unitCost; it.totalCost = r.amount; it.notes.push(...r.notes);
         }
+        delete it.costTok; delete it.totalTok;
         if (it.qty === null) { it.qty = 1; it.notes.push('Quantity not found – please check'); }
         it.desc = it.desc.replace(/\s{2,}/g, ' ').replace(/^[^A-Za-z0-9(]+/, '').trim()
           .replace(/([a-z][a-z.)]*)\s+[Il|]$/, '$1'); // table border misread as a letter
         it.itemNo = it.itemNo.replace(/\s{2,}/g, ' ').trim();
+        // A number that wrapped onto a second line in the cell is often only half read
+        if (icsItemNoCut(it.itemNo)) {
+          it.notes.push(`Inventory item no. looks cut off (${it.itemNo}) – type it from the paper, or clear it to number the units for you`);
+          it.itemNoCut = true;
+        }
       });
 
       // Signatures: "Received from" (left) and "Received by" (right) blocks.
@@ -6319,12 +6644,18 @@
       if (byIdx >= 0) {
         const headLine = lines[byIdx];
         const byCol = headLine.search(/received\s*by/i);
-        const twoCol = /received\s*from/i.test(headLine) && headLine.search(/received\s*from/i) < byCol;
-        const sameLine = headLine.slice(byCol).replace(/received\s*by\s*[:.]?/i, '').trim();
+        const fromCol = headLine.search(/received\s*from/i);
+        const twoCol = fromCol >= 0 && fromCol < byCol;
+        const byLeft = fromCol > byCol;          // "Received by" on the left, "Received from" on the right
+        const sameLine = (byLeft ? headLine.slice(byCol, fromCol) : headLine.slice(byCol)).replace(/received\s*by\s*[:.]?/i, '').trim();
         const pick = l => {
           const segs = [];
           l.replace(/\S+(?:\s{1,2}\S+)*/g, (seg, at) => { segs.push({ seg, at }); return seg; });
           if (!segs.length) return '';
+          if (byLeft) {
+            if (segs.length > 1) return segs[0].seg;
+            return segs[0].at < fromCol * 0.75 ? segs[0].seg : '';
+          }
           if (!twoCol) return segs.map(s => s.seg).join(' ');
           if (segs.length > 1) return segs[segs.length - 1].seg;
           return segs[0].at >= byCol * 0.6 ? segs[0].seg : '';
@@ -6369,16 +6700,21 @@
       const head = new Set(icsWords(d.split(',')[0]));
       const allWords = new Set(icsWords(d));
       const scored = [];
+      // The item you picked before for this exact wording comes first (remembered matches).
+      const mem = rememberedFor(d);
       items.forEach(item => {
+        if (item.code === mem) { scored.push({ item, score: 20, remembered: true }); return; }
+        if (item.hidden && !(item.qty > 0)) return;   // hidden / archived items are not suggested
         if (upper.includes(item.code.toUpperCase())) { scored.push({ item, score: 10 }); return; }
         if (normItemName(item.name) === normItemName(d)) { scored.push({ item, score: 9 }); return; }
         const itemHead = icsWords(item.name.split(',')[0]);
         const itemRest = icsWords(item.name.split(',').slice(1).join(' '));
         if (!itemHead.length) return;
-        const headHits = itemHead.filter(w => head.has(w) || allWords.has(w)).length;
+        // OCR slips are tolerated: "BOND PAPFR" still finds PAPER (counts a little less)
+        const headHits = itemHead.reduce((n, w) => n + Math.max(wordHit(w, head), wordHit(w, allWords)), 0);
         if (!headHits) return;
-        const headAll = itemHead.every(w => head.has(w));
-        const restHits = itemRest.filter(w => allWords.has(w)).length;
+        const headAll = itemHead.every(w => wordHit(w, head) > 0);
+        const restHits = itemRest.reduce((n, w) => n + wordHit(w, allWords), 0);
         let score = (headHits / itemHead.length) * 2 + (itemRest.length ? restHits / itemRest.length : 0.5) + (headAll ? 1 : 0);
         if (item.qty > 0) score += 0.15; // prefer what the school already has
         scored.push({ item, score });
@@ -6408,7 +6744,7 @@
             corePath: ocrAbsolute(OCR_BASE + (simd ? 'tesseract-core-simd-lstm.wasm.js' : 'tesseract-core-lstm.wasm.js')),
             langPath: ocrAbsolute(OCR_BASE).replace(/\/$/, ''),
             workerBlobURL: false,
-            logger: m => icsOcrLogger(m)
+            logger: m => { if (!dlvOcrLogger(m)) icsOcrLogger(m); }
           });
           await worker.setParameters({ tessedit_pageseg_mode: '6', preserve_interword_spaces: '1' });
           ocrWorker = worker;
@@ -6642,9 +6978,11 @@
       lines.forEach(l => {
         l.errors = [];
         if (st.opts.makeUnits) {
-          const nos = expandItemNos(l.itemNo, l.qty);
+          let nos = expandItemNos(l.itemNo, l.qty);
+          if (nos.length === 1 && l.qty > 1) nos = Array(l.qty).fill(nos[0]);   // one number for the whole line
+          if (icsItemNoCut(l.itemNo)) l.errors.push(`Inventory item no. ${l.itemNo.trim()} looks cut off – type it in full, or clear it`);
           if (nos.length > l.qty) l.errors.push(`${nos.length} inventory item numbers for ${l.qty} ${l.qty === 1 ? 'unit' : 'units'}`);
-          nos.forEach(no => {
+          uniqNos(nos).forEach(no => {
             const dup = findUnitByNo(no);
             if (dup) l.errors.push(`${no} is already used by ${dup.item.name}`);
             if (usedNos.has(no)) l.errors.push(`${no} appears twice on this ICS`);
@@ -6799,8 +7137,9 @@
               </select>
             </label>
             ${st.opts.makeUnits && !off ? `<p class="text-[11px] text-slate-500 flex items-start gap-1.5"><i class="ph-bold ph-tag text-violet-500 mt-0.5"></i><span>${nos.length
-              ? `Property no. ${escapeHTML(nos[0])}${nos.length > 1 ? ` to ${escapeHTML(nos[nos.length - 1])}` : ''}${nos.length < l.qty ? ` + ${l.qty - nos.length} new number${l.qty - nos.length === 1 ? '' : 's'}` : ''}`
-              : `${plural(l.qty, 'new property number')} will be created`}</span></p>` : ''}
+              ? (nos.length > 1 && nos.every(n => n === nos[0]) ? `Property no. ${escapeHTML(nos[0])}, shared by all ${l.qty} units (one ICS line)`
+                : `Property no. ${escapeHTML(nos[0])}${nos.length > 1 ? ` to ${escapeHTML(nos[nos.length - 1])}` : ''}${nos.length < l.qty ? ` + ${l.qty - nos.length} new number${l.qty - nos.length === 1 ? '' : 's'}` : ''}`)
+              : sharesLineNumber(l.qty, l.unitCost || 0) ? `One new property number for all ${l.qty} units${numberingMode() === 'coa' ? ' (low-valued, COA)' : ''}` : `${plural(l.qty, 'new property number')} will be created${numberingMode() === 'coa' && l.qty > 1 ? (l.unitCost > LOW_VALUE_MAX ? ' (over ₱5,000 each: one per unit, COA)' : ' (no unit cost yet: one per unit)') : ''}`}</span></p>` : ''}
             ${l.notes.map(n => `<p class="text-[11px] text-amber-700 flex items-start gap-1.5"><i class="ph-bold ph-info mt-0.5"></i><span>${escapeHTML(n)}</span></p>`).join('')}
             ${errs.map(e => `<p class="text-[11px] font-semibold text-rose-700 flex items-start gap-1.5"><i class="ph-bold ph-warning-circle mt-0.5"></i><span>${escapeHTML(e)}</span></p>`).join('')}
           </div>`;
@@ -6868,12 +7207,12 @@
         const name = (head.toUpperCase() + l.desc.slice(head.length)).replace(/\s+/g, ' ').trim().slice(0, 160);
         const existing = items.find(i => normItemName(i.name) === normItemName(name));
         if (existing) { l.code = existing.code; return; }
-        const customNo = 114 + customRawItems.length;
-        l.code = `CUSTOM-P2-${String(customNo).padStart(3, '0')}`;
-        customRawItems.push([customNo, l.code, name, (l.unit || 'unit').toLowerCase(), l.unitCost || 0, 24, 'PART2']);
+        l.code = createCustomRaw(name, l.unit || 'unit', l.unitCost || 0);
       });
       localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems)); scheduleInventorySync();
       rebuildCatalogList();
+      // the wording on this ICS is remembered for the next scan
+      if (plan.lines.filter(l => l.desc && rememberMatch(l.desc, l.code, '')).length) saveDeliveries();
 
       // 2. stock, cost, ICS/PAR classification, property records. Numbers printed on the
       //    ICS are placed first, so generated numbers continue after them, never clash.
@@ -6881,14 +7220,20 @@
       let newUnits = 0;
       const makeUnit = (l, no) => ({
         id: newUnitId(), no, serial: '', loc: '', to: h.receivedBy || '', cond: 'S',
-        seen: null, printed: null, added: now, ics: h.icsNo || '', icsDate: h.date || '', life: l.life || '', ...(h.date ? { acq: h.date } : {})
+        seen: null, printed: null, added: now, ics: h.icsNo || '', icsDate: h.date || '', life: l.life || '', ...(h.date ? { acq: h.date } : {}),
+        ...(l.unitCost ? { cost: round2(l.unitCost) } : {})   // each unit keeps the cost on its ICS
       });
       plan.lines.forEach(l => {
         const item = items.find(i => i.code === l.code);
         const s = userState[l.code] || (userState[l.code] = {});
         const before = parseInt(s.qty, 10) || 0;
         if (st.opts.addStock) s.qty = before + l.qty;
-        if (l.unitCost && item && Math.abs(item.price - l.unitCost) > 0.004) s.customPrice = l.unitCost;
+        if (l.unitCost && item) {
+          // New stock: average cost of what was there and what came. Assigning only: the ICS cost.
+          const avg = st.opts.addStock && before > 0 && item.price > 0 ? round2((before * item.price + l.qty * l.unitCost) / (before + l.qty)) : round2(l.unitCost);
+          if (Math.abs(item.price - avg) > 0.004) s.customPrice = avg;
+          if (st.opts.addStock) addPriceEntry(l.code, { d: h.date || localISODate(), k: 'ics', c: round2(l.unitCost), q: l.qty, doc: h.icsNo ? `ICS ${h.icsNo}` : 'ICS', avg });
+        }
         // Items issued on an ICS are semi-expendable property (ICS/PAR), not supplies.
         if (item && resolveItemType(item, s.typeOverride) !== 'EQUIPMENT') s.typeOverride = 'EQUIPMENT';
         if (st.opts.makeUnits) {
@@ -6902,7 +7247,7 @@
           const missing = l.qty - Math.min(l.qty, (l.nos || []).length);
           const s = userState[l.code];
           if (missing > 0) {
-            s.units = [...getUnits(l.code), ...nextPropertyNumbers(missing).map(no => makeUnit(l, no))];
+            s.units = [...getUnits(l.code), ...nextPropertyNumbers(missing, undefined, { date: h.date, cost: l.unitCost || 0 }).map(no => makeUnit(l, no))];
             newUnits += missing;
           }
           if ((parseInt(s.qty, 10) || 0) < s.units.length) s.qty = s.units.length; // ICS assigns more than counted
@@ -6929,6 +7274,1261 @@
       });
     }
 
+    // =========================================================================
+    // DELIVERIES & ACTUAL COSTS: stock in, Purchase Orders, IAR / DR, price history
+    // =========================================================================
+    // A Purchase Order is an *expected delivery*: nothing changes in stock until it is
+    // received (all of it or part) with the IAR / DR / invoice no. Every received line:
+    //   · raises the quantity and sets the unit cost to the AVERAGE cost
+    //     (value on hand + value received) ÷ (quantity on hand + quantity received);
+    //   · goes into the item's price history (userState[code].prices);
+    //   · equipment: each new unit keeps its own cost (unit.cost), which decides
+    //     PAR (₱50,000 and up) or ICS when it is released.
+    // Deliveries sync with the school account as settings/dlv-{id}; remembered supplier
+    // wordings as settings/matches (same rules as settings/info, custodian only).
+    //   delivery { id, kind: 'po' | 'stockin', poNo, prNo, date, supplier, status:
+    //              'expected' | 'partial' | 'received' | 'closed', createdMs,
+    //              lines: [{ id, desc, stockNo, unit, code, qty, unitCost, received }],
+    //              receipts: [{ id, at, date, iarNo, drNo, invoiceNo, lines: [{ l, c, q, uc }] }] }
+    //   price entry { t, d: date, k: 'delivery' | 'pr' | 'ics' | 'manual', c: cost, q, s: supplier, doc, avg, why }
+    const PRICE_HIST_MAX = 60;
+    const PRICE_KIND_LABEL = { delivery: 'Delivery', pr: 'PR delivered', ics: 'ICS', manual: 'Correction' };
+
+    function loadDeliveries() {
+      try { deliveries = JSON.parse(localStorage.getItem(DLV_KEY) || '[]'); } catch (e) { deliveries = []; }
+      if (!Array.isArray(deliveries)) deliveries = [];
+      try { rememberedMatches = JSON.parse(localStorage.getItem(MATCH_KEY) || '[]'); } catch (e) { rememberedMatches = []; }
+      if (!Array.isArray(rememberedMatches)) rememberedMatches = [];
+    }
+    function saveDeliveries() {
+      localStorage.setItem(DLV_KEY, JSON.stringify(deliveries));
+      localStorage.setItem(MATCH_KEY, JSON.stringify(rememberedMatches));
+      scheduleInventorySync();
+      renderHomeDeliveries();
+    }
+    function newDlvId() { return 'D' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+    // ---- Price history ----------------------------------------------------------------------
+    function priceHistory(code) {
+      const s = userState[code];
+      return s && Array.isArray(s.prices) ? s.prices : [];
+    }
+    function addPriceEntry(code, entry) {
+      const s = userState[code] || (userState[code] = {});
+      const list = Array.isArray(s.prices) ? s.prices.slice() : [];
+      list.push(cleanJSON({ t: Date.now(), ...entry }));
+      s.prices = list.slice(-PRICE_HIST_MAX);
+    }
+    function lastPaid(code) {
+      return priceHistory(code).filter(p => p.k !== 'manual' && p.c > 0).slice(-1)[0] || null;
+    }
+    function lastPaidText(code) {
+      const p = lastPaid(code);
+      if (!p) return '';
+      return `Last paid ${formatCurrency(p.c)}${p.d ? ` · ${formatShortDate(p.d + 'T00:00:00')}` : ''}${p.s ? ` · ${p.s}` : ''}`;
+    }
+    // The fixed price printed on the APP-CSE list (PS-DBM), shown as a reference only.
+    function appCsePriceLabel(item) {
+      return item && item.part === 'PART1' && item.defaultPrice > 0 ? `PS-DBM price (APP-CSE 2027): ${formatCurrency(item.defaultPrice)} · reference only` : '';
+    }
+
+    // One received line → stock, average cost, price history and (equipment) units with their cost.
+    function receiveIntoStock(code, qty, unitCost, meta = {}) {
+      const item = items.find(i => i.code === code);
+      qty = parseInt(qty, 10) || 0;
+      if (!item || qty <= 0) return { units: 0 };
+      const s = userState[code] || (userState[code] = {});
+      const before = parseInt(s.qty, 10) || 0;
+      const cost = round2(unitCost);
+      if (cost > 0) {
+        const avg = before > 0 && item.price > 0 ? round2((before * item.price + qty * cost) / (before + qty)) : cost;
+        s.customPrice = avg;
+        item.price = avg;
+        addPriceEntry(code, { d: meta.date || localISODate(), k: meta.kind || 'delivery', c: cost, q: qty, s: meta.supplier || '', doc: meta.doc || '', avg });
+      }
+      s.qty = before + qty;
+      item.qty = s.qty;
+      delete s.hidden; delete s.archived;   // something you received is never hidden
+      let units = 0;
+      const type = resolveItemType({ ...item, price: cost || item.price }, s.typeOverride);
+      if (meta.makeUnits && type === 'EQUIPMENT') {
+        const now = Date.now();
+        const fresh = nextPropertyNumbers(qty, undefined, { date: meta.date, cost: cost || item.price }).map(no => ({
+          id: newUnitId(), no, serial: '', loc: '', to: '', cond: 'S', seen: null, printed: null, added: now,
+          acq: meta.date || localISODate(), ...(cost > 0 ? { cost } : {}), ...(meta.doc ? { src: meta.doc } : {})
+        }));
+        s.units = [...getUnits(code), ...fresh];
+        units = fresh.length;
+      }
+      return { units };
+    }
+
+    // Custom items: numbers are never reused, not even after a delete (other phones may still have it).
+    function nextCustomCode() {
+      const used = new Set(customRawItems.map(r => r[1]));
+      Object.keys(invSync.synced || {}).forEach(k => { if (k.startsWith('c:')) used.add(k.slice(2)); });
+      let no = Math.max(113, ...[...used].map(c => parseInt(String(c).replace(/\D+/g, ' ').trim().split(' ').pop(), 10) || 0));
+      let code;
+      do { no += 1; code = `CUSTOM-P2-${String(no).padStart(3, '0')}`; } while (used.has(code));
+      return { no, code };
+    }
+    function createCustomRaw(name, unit, price, catIdx = 24) {
+      const { no, code } = nextCustomCode();
+      customRawItems.push([no, code, String(name).replace(/\s+/g, ' ').trim().slice(0, 200), String(unit || 'unit').toLowerCase().slice(0, 30), Math.max(0, round2(price)), catIdx, 'PART2']);
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems)); scheduleInventorySync();
+      return code;
+    }
+
+    // ---- Remembered matches and typo-tolerant matching ---------------------------------------
+    // "BOND PAPER SUBS 20 LONG" on a supplier's PO → the item you picked last time.
+    const MATCH_MAX = 500;
+    const matchKey = desc => icsWords(desc).join(' ');
+    function rememberedFor(desc) {
+      const k = matchKey(desc);
+      if (!k) return null;
+      const m = rememberedMatches.find(x => x.w === k);
+      return m && items.some(i => i.code === m.c) ? m.c : null;
+    }
+    function rememberMatch(desc, code, supplier = '') {
+      const k = matchKey(desc);
+      const item = items.find(i => i.code === code);
+      if (!k || !item || normItemName(desc) === normItemName(item.name)) return false;
+      const old = rememberedMatches.find(x => x.w === k);
+      if (old && old.c === code) { old.t = Date.now(); old.n = (old.n || 1) + 1; return false; }
+      rememberedMatches = rememberedMatches.filter(x => x.w !== k);
+      rememberedMatches.push(cleanJSON({ w: k, c: code, s: String(supplier || '').slice(0, 80) || undefined, t: Date.now(), n: 1 }));
+      if (rememberedMatches.length > MATCH_MAX) rememberedMatches = rememberedMatches.sort((a, b) => b.t - a.t).slice(0, MATCH_MAX);
+      return true;
+    }
+    function forgetMatch(w) {
+      rememberedMatches = rememberedMatches.filter(x => x.w !== w);
+      saveDeliveries();
+    }
+
+    // Edit distance with an early exit (only small distances matter).
+    function editDistance(a, b, max = 2) {
+      if (Math.abs(a.length - b.length) > max) return max + 1;
+      let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+      for (let i = 1; i <= a.length; i++) {
+        const cur = [i];
+        let best = i;
+        for (let j = 1; j <= b.length; j++) {
+          cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+          if (cur[j] < best) best = cur[j];
+        }
+        if (best > max) return max + 1;
+        prev = cur;
+      }
+      return prev[b.length];
+    }
+    // 1 = the word is there; 0.85 = there with an OCR slip ("PAPFR" for PAPER); 0 = not there.
+    function wordHit(word, set) {
+      if (set.has(word)) return 1;
+      if (word.length < 4 || /^\d+$/.test(word)) return 0;
+      const max = word.length >= 8 ? 2 : 1;
+      for (const w of set) {
+        if (w.length >= 4 && !/^\d+$/.test(w) && editDistance(word, w, max) <= max) return 0.85;
+      }
+      return 0;
+    }
+
+    // Units that mean the same count (no warning between them).
+    const UNIT_GROUPS = { pc: 'piece', pcs: 'piece', piece: 'piece', each: 'piece', unit: 'piece', ea: 'piece' };
+    function unitGroup(u) {
+      const k = String(u || '').toLowerCase().replace(/[^a-z]/g, '');
+      const w = ICS_UNIT_WORDS[k] || k;
+      return UNIT_GROUPS[w] || w;
+    }
+    function unitsDiffer(a, b) {
+      const ga = unitGroup(a), gb = unitGroup(b);
+      return !!(ga && gb && ga !== gb);
+    }
+
+    // ---- Reading a PO / IAR / DR -------------------------------------------------------------
+    // LAYOUT RULES: tune these to the school's actual forms. Each field lists the labels printed
+    // on the form (most specific first); add the exact wording of your supplier's documents.
+    // Columns are found by their content (money = unit cost / amount, a whole number next to
+    // them = quantity, a unit word = unit), so the column order may differ between forms.
+    const DOC_LAYOUTS = {
+      // Purchase Order (COA Appendix 61): Stock/Property No. | Unit | Description | Quantity | Unit Cost | Amount
+      po: {
+        name: 'Purchase Order',
+        fields: {
+          poNo: ['Purchase Order No', 'P.O. No', 'PO No', 'PO Number', 'PO #'],
+          prNo: ['Purchase Request No', 'P.R. No', 'PR No', 'PR Number'],
+          date: ['Date of PO', 'PO Date', 'Date'],
+          supplier: ['Name of Supplier', 'Supplier Name', 'Supplier']
+        },
+        tableStart: /stock|description|quantity|unit\s*cost|amount/i,
+        tableEnd: /total\s*amount|amount\s*in\s*words|in\s*case\s*of\s*failure|conforme|nothing\s*follows|grand\s*total|^\W*total\b|\(total/i
+      },
+      // Inspection and Acceptance Report (Appendix 62): Stock/Property No. | Description | Unit | Quantity
+      // Supplier's delivery receipt / sales invoice: Qty | Unit | Description | Unit Price | Amount
+      iar: {
+        name: 'IAR / DR',
+        fields: {
+          iarNo: ['Inspection and Acceptance Report No', 'I.A.R. No', 'IAR No', 'IAR Number'],
+          drNo: ['Delivery Receipt No', 'D.R. No', 'DR No', 'DR Number', 'DR #'],
+          invoiceNo: ['Sales Invoice No', 'Charge Invoice No', 'Invoice No', 'S.I. No', 'SI No', 'Official Receipt No', 'O.R. No'],
+          poNo: ['Purchase Order No', 'P.O. No', 'PO No', 'PO Number', 'PO #'],
+          prNo: ['P.R. No', 'PR No'],
+          date: ['Date Received', 'Date Inspected', 'Date Delivered', 'Invoice Date', 'Date'],
+          supplier: ['Name of Supplier', 'Supplier Name', 'Supplier']
+        },
+        tableStart: /stock|description|quantity|particulars|articles|unit\s*price|amount/i,
+        tableEnd: /inspection|acceptance|inspected|received\s*by|received\s*the\s*above|nothing\s*follows|grand\s*total|total\s*amount|^\W*total\b|amount\s*due/i
+      }
+    };
+    const DOC_NO_FIELDS = ['poNo', 'prNo', 'iarNo', 'drNo', 'invoiceNo'];
+    const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const docLabelRe = label => new RegExp('(?:^|[^A-Za-z])[|!Il1‘’\'\"“”(]?' + label.split(/[\s.]+/).filter(Boolean).map(escRe).join('[\\s.]*') + '[\\s.]*(?:\\/\\s*[A-Za-z]+\\.?)?[\\s.]*(?:[:#]|\\s)\\s*', 'i');
+
+    function docField(rawLines, labels, kind, allLabels) {
+      for (const label of labels) {
+        const re = docLabelRe(label);
+        for (const line of rawLines) {
+          const m = line.match(re);
+          if (!m) continue;
+          if (kind === 'text' && /signature|printed\s*name|conforme/i.test(line)) continue;
+          let rest = line.slice(m.index + m[0].length).replace(/^[\s:#.]+/, '');
+          if (kind === 'date') { const d = parseLooseDate(rest.slice(0, 30)); if (d) return d; continue; }
+          if (kind === 'no') {
+            const v = (rest.match(/^([A-Z0-9][A-Z0-9\-\/.]*)/i) || [])[1] || '';
+            if (/\d/.test(v)) return v.replace(/[.\-\/]+$/, '').toUpperCase();
+            continue;
+          }
+          // text: up to a wide gap or the next label on the same line
+          rest = rest.split(/\s{3,}|\t/)[0];
+          allLabels.forEach(other => { const mm = rest.match(docLabelRe(other)); if (mm && mm.index > 0) rest = rest.slice(0, mm.index); });
+          rest = rest.replace(/[|_]+/g, ' ').replace(/\s+/g, ' ').trim();
+          if (/[A-Za-z]{2}/.test(rest)) return rest.slice(0, 80);
+        }
+      }
+      return '';
+    }
+
+    function parseDocRow(line, kind = 'po', preferCents = true) {
+      const tokens = line.trim().split(/\s+/).filter(Boolean);
+      const unitOf = t => ICS_UNIT_WORDS[String(t || '').toLowerCase().replace(/[^a-z]/g, '')] || '';
+      const isInt = t => /^\d{1,5}$/.test(t);
+      const row = { qty: null, unit: '', unitCost: null, amount: null, stockNo: '', desc: '', notes: [] };
+      // The amounts: the last one or two numbers on the line (read loosely – see moneyToken)
+      let end = tokens.length;
+      while (end > 0 && !/[A-Za-z0-9]/.test(tokens[end - 1])) end--;
+      const mt = k => k >= 0 && k < end ? moneyToken(tokens[k], preferCents) : null;
+      let cost = null, amt = null, cut = end;
+      const a = mt(end - 1), b = mt(end - 2);
+      if (a && b && (a.sep || b.sep || (a.digits.length >= 3 && b.digits.length >= 3))) { cost = b; amt = a; cut = end - 2; }
+      else if (a && a.sep) { cost = a; cut = end - 1; }
+      const pre = tokens.slice(0, cut);
+      // quantity right before the costs (PO, IAR)
+      if (pre.length > 1 && isInt(pre[pre.length - 1])) row.qty = parseInt(pre.pop(), 10);
+      // IAR whose quantity could not be read: \"3  Worx A4  pack  Kt)\" – a unit word near the end
+      if (row.qty === null && !cost && pre.length > 2 && isInt(pre[0])) {
+        const u = pre.length - 1 - [...pre].reverse().findIndex(t => unitOf(t));
+        if (u >= 2 && u < pre.length && pre.length - 1 - u <= 1 && pre.slice(u + 1).every(t => t.length <= 3)) {
+          pre.splice(u + 1); row.qtyUnread = true;
+        }
+      }
+      const laterUnit = pre.slice(2).some(t => unitOf(t));
+      // a stock / property no. in front (PO, IAR) …
+      if (pre.length > 1 && /\d/.test(pre[0]) && (/^[A-Z0-9]+(?:[-\/][A-Z0-9]+)+$/i.test(pre[0]) || (isInt(pre[0]) && pre[0].length <= 3 && (row.qty !== null || row.qtyUnread || (laterUnit && !unitOf(pre[1])))))) row.stockNo = pre.shift();
+      // … or the quantity in front (delivery receipts: Qty | Unit | Description | Price | Amount)
+      if (row.qty === null && !row.qtyUnread && pre.length > 1 && isInt(pre[0])) row.qty = parseInt(pre.shift(), 10);
+      // the unit: before the description on a PO / DR, after it on an IAR
+      const lead = () => { if (pre.length > 1 && unitOf(pre[0])) { row.unit = unitOf(pre.shift()); return true; } return false; };
+      const trail = () => { if (pre.length > 1 && unitOf(pre[pre.length - 1])) { row.unit = unitOf(pre.pop()); return true; } return false; };
+      if (kind === 'po' || (row.stockNo === '' && row.qty !== null)) { if (!lead()) trail(); } else if (!trail()) lead();
+      row.desc = pre.join(' ');
+      if (cost || amt) {
+        const r = reconcileMoney(row.qty, cost, amt);
+        row.qty = r.qty; row.unitCost = r.unitCost; row.amount = r.amount; row.notes.push(...r.notes);
+        if (r.alt) row.alt = r.alt;
+      }
+      return row;
+    }
+
+    function parseDocText(text, kind) {
+      const layout = DOC_LAYOUTS[kind] || DOC_LAYOUTS.po;
+      const rawLines = String(text || '').replace(/\r/g, '').split('\n');
+      const lines = rawLines.map(cleanIcsLine);
+      const allLabels = Object.values(layout.fields).flat();
+      const header = {};
+      Object.entries(layout.fields).forEach(([key, labels]) => {
+        header[key] = docField(rawLines, labels, key === 'date' ? 'date' : DOC_NO_FIELDS.includes(key) ? 'no' : 'text', allLabels);
+      });
+
+      // Table: below the column headings, above the totals / signatures.
+      let start = lines.findIndex(l => (l.match(new RegExp(layout.tableStart.source, 'gi')) || []).length >= 2);
+      if (start < 0) start = lines.findIndex(l => layout.tableStart.test(l));
+      while (start >= 0 && start + 1 < lines.length && /unit\s*cost|amount|quantity|description|^\W*$/i.test(lines[start + 1]) &&
+             !lines[start + 1].split(/\s+/).some(t => icsMoney(t) !== null)) start++;
+      let end = lines.findIndex((l, i) => i > start && layout.tableEnd.test(l));
+      if (end < 0) end = lines.length;
+
+      const out = [];
+      let cur = null;
+      const preferCents = lines.slice(start + 1, end).some(l => l.split(/\s+/).some(t => icsMoney(t) !== null));
+      const totalRe = /^\W*(?:[₱P]|(?:grand\s*|sub-?\s*)?total(?:\s*amount)?)\W*\s*([\d.,]+[)\]]?)\s*$/i;
+      let paperTotal = null;
+      for (let i = start + 1; i < end; i++) {
+        const line = lines[i];
+        if (!line.trim()) continue;
+        const tm = line.trim().match(totalRe);
+        if (tm) { const t = moneyToken(tm[1], preferCents); if (t) paperTotal = t; continue; }
+        const tokens = line.trim().split(/\s+/);
+        const loose = tokens.map(t => moneyToken(t, preferCents));
+        const n = tokens.length;
+        const hasMoney = loose.some(m => m && m.sep) || (n >= 3 && loose[n - 1] && loose[n - 2]);
+        const words = tokens.filter(t => /[A-Za-z]{2}/.test(t)).length;
+        const unitAt = k => ICS_UNIT_WORDS[String(tokens[k] || '').toLowerCase().replace(/[^a-z]/g, '')];
+        const isRow = hasMoney || (/^\d{1,5}$/.test(tokens[n - 1]) && words >= 2) || (/^\d{1,5}$/.test(tokens[0]) && unitAt(1) && words >= 2) ||
+          (/^\d{1,3}$/.test(tokens[0]) && tokens.slice(2).some((t, k) => unitAt(k + 2)) && words >= 2);
+        if (!isRow) {
+          if (cur && (line.match(/[A-Za-z]/g) || []).length >= 3) cur.desc = (cur.desc + ' ' + line.trim()).trim();
+          continue;
+        }
+        const row = parseDocRow(line, kind, preferCents);
+        if (!row.desc && !row.unitCost) continue;
+        cur = { id: 'L' + (++icsLineSeq), ...row };
+        out.push(cur);
+      }
+      // The total printed just below the table ("P 55,841.00")
+      if (!paperTotal) {
+        for (let i = end; i < Math.min(lines.length, end + 4); i++) {
+          const tm = String(lines[i] || '').trim().match(totalRe) || String(lines[i] || '').match(/(?:^|\s)[₱P]\s+([\d.,]{4,}[)\]]?)\s*$/);
+          if (tm) { const t = moneyToken(tm[1], preferCents); if (t) { paperTotal = t; break; } }
+        }
+      }
+
+      out.forEach(r => {
+        if (r.qty === null) { r.qty = 1; r.notes.push(r.qtyUnread ? 'Quantity could not be read – please type it' : 'Quantity not found – please check'); }
+        r.desc = r.desc.replace(/\s{2,}/g, ' ').replace(/^[^A-Za-z0-9(]+/, '').trim().replace(/([a-z][a-z.)]*)\s+[Il|]$/, '$1');
+      });
+      // Lines against the printed total: it settles a line where two repairs were possible
+      if (paperTotal && out.length) {
+        const sum = () => round2(out.reduce((n, r) => n + (r.qty || 0) * (r.unitCost || 0), 0));
+        const ok = () => paperTotal.cands.some(c => Math.abs(c - sum()) < 0.01);
+        if (!ok()) {
+          for (const r of out.filter(x => x.alt)) {
+            const keep = { unitCost: r.unitCost, amount: r.amount };
+            Object.assign(r, r.alt);
+            if (ok()) { r.notes = r.notes.map(n => n.replace(/^.*please check$/, `Unit cost ${formatCurrency(r.unitCost)} matches the total on the paper – please check`)); break; }
+            Object.assign(r, keep);
+          }
+        }
+        header.total = paperTotal.cands.find(c => Math.abs(c - sum()) < 0.01) || paperTotal.cands[0];
+        header.totalMatches = ok();
+      }
+      out.forEach(r => { delete r.alt; });
+      return { header, lines: out };
+    }
+
+    // ---- The Deliveries window ---------------------------------------------------------------
+    let dlvState = null;   // { view: 'list' | 'detail' | 'scan' | 'reading' | 'edit', … }
+
+    function dlvTotal(lines, key = 'qty') { return round2(lines.reduce((n, l) => n + (l[key] || 0) * (l.unitCost || 0), 0)); }
+    function dlvLabel(d) {
+      if (d.kind === 'po') return `PO ${d.poNo || '(no number)'}`;
+      const r = (d.receipts || [])[0] || {};
+      return r.iarNo ? `IAR ${r.iarNo}` : r.drNo ? `DR ${r.drNo}` : r.invoiceNo ? `Invoice ${r.invoiceNo}` : d.prNo ? `PR ${d.prNo}` : 'Stock in';
+    }
+    function receiptDoc(r) {
+      return [r.iarNo && `IAR ${r.iarNo}`, r.drNo && `DR ${r.drNo}`, r.invoiceNo && `Invoice ${r.invoiceNo}`].filter(Boolean).join(' · ');
+    }
+    const expectedDeliveries = () => deliveries.filter(d => d.kind === 'po' && (d.status === 'expected' || d.status === 'partial'));
+
+    function renderHomeDeliveries() {
+      const sub = document.getElementById('homeDlvSub');
+      const badge = document.getElementById('homeDlvBadge');
+      if (!sub) return;
+      const exp = expectedDeliveries();
+      const last = deliveries.filter(d => (d.receipts || []).length).sort((a, b) => lastReceiptAt(b) - lastReceiptAt(a))[0];
+      sub.textContent = exp.length ? `${plural(exp.length, 'delivery')} expected · ${exp.map(d => d.supplier || dlvLabel(d)).slice(0, 2).join(', ')}`
+        : last ? `Last received ${formatTimeAgo(lastReceiptAt(last))} · ${last.supplier || dlvLabel(last)}` : 'Stock in with actual costs · PO, IAR or DR';
+      badge.textContent = exp.length;
+      badge.classList.toggle('hidden', !exp.length);
+      badge.classList.toggle('flex', !!exp.length);
+    }
+    const lastReceiptAt = d => Math.max(0, ...(d.receipts || []).map(r => r.at || 0));
+
+    function openDeliveries(view = 'list', extra = {}) {
+      dlvState = { view, ...extra };
+      document.getElementById('dlvModal').classList.remove('hidden');
+      renderDlv();
+    }
+    async function closeDeliveries(force = false) {
+      if (!force && dlvState && dlvState.view === 'edit' && dlvState.draft && dlvState.draft.lines.length &&
+          !await appConfirm('What you entered is lost.', { title: 'Close without saving?', ok: 'Close', cancel: 'Keep editing', tone: 'warn', focusCancel: true })) return;
+      if (dlvState && dlvState.photoUrl) URL.revokeObjectURL(dlvState.photoUrl);
+      dlvState = null;
+      document.getElementById('dlvModal').classList.add('hidden');
+      releaseOcrWorker();
+    }
+    async function dlvBack() {
+      if (!dlvState) return;
+      if (dlvState.view === 'list') return closeDeliveries();
+      if (dlvState.view === 'edit' && dlvState.draft && dlvState.draft.lines.length &&
+          !await appConfirm('What you entered is lost.', { title: 'Go back without saving?', ok: 'Go back', cancel: 'Keep editing', tone: 'warn', focusCancel: true })) return;
+      dlvState = { view: 'list' };
+      renderDlv();
+    }
+    function openDelivery(id) { if (dlvState) { dlvState = { view: 'detail', id }; renderDlv(); } else openDeliveries('detail', { id }); }
+
+    // Stock in by hand, or the review of a scanned PO / IAR / DR.
+    function newDlvLine(extra = {}) {
+      return { id: 'L' + (++icsLineSeq), desc: '', stockNo: '', unit: '', qty: 1, unitCost: null, target: null, targetChosen: false, notes: [], include: true, ...extra };
+    }
+    function startStockIn(mode = 'receive', fromScan = null) {
+      const kind = mode === 'po' ? 'po' : 'iar';
+      const h = fromScan ? fromScan.header : {};
+      const draft = {
+        mode, fromId: null, source: fromScan ? fromScan.source : 'hand', text: fromScan ? fromScan.text : '',
+        header: { supplier: h.supplier || '', date: h.date || localISODate(), poNo: h.poNo || '', prNo: h.prNo || '', iarNo: h.iarNo || '', drNo: h.drNo || '', invoiceNo: h.invoiceNo || '' },
+        lines: fromScan ? fromScan.lines.map(r => newDlvLine({ desc: r.desc, stockNo: r.stockNo, unit: r.unit, qty: r.qty, unitCost: r.unitCost, notes: r.notes || [] })) : [newDlvLine({ finding: true })],
+        opts: { makeUnits: true },
+        paperTotal: fromScan && h.total ? h.total : null
+      };
+      draft.lines.forEach(l => { if (!l.finding) dlvAutoTarget(l); });
+      const st = { view: 'edit', kind, draft, photoUrl: dlvState && dlvState.photoUrl, previewUrl: dlvState && dlvState.previewUrl };
+      if (dlvState) { dlvState = st; renderDlv(); } else openDeliveries('edit', st);
+      setTimeout(() => { const f = document.querySelector('[data-dlv$=":find"]'); if (f) f.focus(); }, 60);
+    }
+    // Receive an expected delivery (PO): every line with what is still to come.
+    function startReceive(id, scanned = null) {
+      const d = deliveries.find(x => x.id === id);
+      if (!d) return;
+      const h = scanned ? scanned.header : {};
+      const draft = {
+        mode: 'receive', fromId: id, source: scanned ? scanned.source : 'po', text: scanned ? scanned.text : '',
+        header: { supplier: d.supplier || h.supplier || '', date: h.date || localISODate(), poNo: d.poNo || '', prNo: d.prNo || '', iarNo: h.iarNo || '', drNo: h.drNo || '', invoiceNo: h.invoiceNo || '' },
+        lines: d.lines.map(pl => {
+          const left = Math.max(0, pl.qty - (pl.received || 0));
+          let qty = left;
+          const notes = [];
+          if (scanned) {
+            // the same item, or the same stock no. as on the PO (IAR rows repeat the PO's numbering)
+            const hit = scanned.lines.find(s => !s.used && s.target === pl.code) ||
+              (pl.stockNo ? scanned.lines.find(s => !s.used && s.stockNo && normalizePropNo(s.stockNo) === normalizePropNo(pl.stockNo)) : null);
+            if (hit) {
+              hit.used = true; hit.target = pl.code;
+              if (hit.qtyUnread) { qty = left; notes.push(`Quantity on the paper could not be read – showing what is still to come (${left}) – please check`); }
+              else qty = hit.qty;
+              if (hit.qty > left && !hit.qtyUnread) notes.push(`The paper says ${hit.qty}, more than the ${left} still to come on the PO – please check`);
+            } else qty = 0;
+          }
+          return newDlvLine({ lineId: pl.id, desc: pl.desc, stockNo: pl.stockNo || '', unit: pl.unit || '', qty, unitCost: pl.unitCost || null, target: pl.code, targetChosen: true, ordered: pl.qty, done: pl.received || 0, include: left > 0 || qty > 0, notes });
+        }),
+        opts: { makeUnits: true }
+      };
+      const st = { view: 'edit', kind: 'iar', draft };
+      if (dlvState) { dlvState = st; renderDlv(); } else openDeliveries('edit', st);
+    }
+
+    function dlvAutoTarget(l) {
+      l.remembered = false;
+      const mem = rememberedFor(l.desc);
+      if (mem) { l.target = mem; l.remembered = true; return; }
+      const byNo = l.stockNo && items.find(i => i.code.toUpperCase() === String(l.stockNo).toUpperCase());
+      if (byNo) { l.target = byNo.code; return; }
+      l.target = l.desc ? icsDefaultTarget(l) : null;
+    }
+
+    function setDlvHeader(key, value) {
+      if (!dlvState || !dlvState.draft) return;
+      const v = String(value || '').trim();
+      dlvState.draft.header[key] = DOC_NO_FIELDS.includes(key) ? v.toUpperCase() : v;
+      refreshDlv();
+    }
+    function setDlvOpt(key, value) { if (dlvState && dlvState.draft) { dlvState.draft.opts[key] = !!value; refreshDlv(); } }
+    function setDlvLine(id, key, value) {
+      const l = dlvState && dlvState.draft && dlvState.draft.lines.find(x => x.id === id);
+      if (!l) return;
+      if (key === 'qty') l.qty = Math.max(0, parseInt(value, 10) || 0);
+      else if (key === 'unitCost') l.unitCost = value === '' ? null : Math.max(0, round2(value));
+      else if (key === 'include') l.include = !!value;
+      else if (key === 'desc') { l.desc = String(value || '').trim(); if (!l.targetChosen) dlvAutoTarget(l); }
+      else if (key === 'target') {
+        if (value === 'FIND') { l.finding = true; l.findQ = ''; }
+        else {
+          l.target = value; l.targetChosen = true; l.finding = false; l.remembered = false;
+          const it = items.find(i => i.code === value);
+          if (it && !l.desc) { l.desc = it.name; l.unit = l.unit || it.unit; }
+        }
+      } else l[key] = String(value || '').trim();
+      refreshDlv();
+    }
+    function dlvFind(id, q) {
+      const l = dlvState && dlvState.draft && dlvState.draft.lines.find(x => x.id === id);
+      if (!l) return;
+      l.findQ = q;
+      const box = document.getElementById(`dlvFind-${id}`);
+      if (box) box.innerHTML = dlvFindResultsHTML(l);
+    }
+    function dlvFindResultsHTML(l) {
+      const q = String(l.findQ || '').trim();
+      if (!q) return '<p class="text-[11px] text-slate-500 px-1">Type a few letters of the item name or its stock no.</p>';
+      const { list } = homeSearchItems(q, 8);
+      return list.map(it => `
+        <button type="button" onclick="setDlvLine('${l.id}', 'target', '${escapeHTML(it.code)}')" class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-emerald-50 border border-transparent hover:border-emerald-200">
+          <span class="block text-xs font-bold text-slate-800 truncate">${escapeHTML(it.name)}</span>
+          <span class="block text-[11px] text-slate-500 truncate"><span class="font-mono">${escapeHTML(it.code)}</span> · ${escapeHTML(it.unit)} · ${it.qty} on hand</span>
+        </button>`).join('') + `
+        <button type="button" onclick="dlvNewFromFind('${l.id}')" class="w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold text-sky-700 hover:bg-sky-50"><i class="ph-bold ph-plus-circle"></i> New custom item “${escapeHTML(q.slice(0, 50))}”</button>`;
+    }
+    function dlvNewFromFind(id) {
+      const l = dlvState && dlvState.draft && dlvState.draft.lines.find(x => x.id === id);
+      if (!l) return;
+      if (!l.desc) l.desc = String(l.findQ || '').trim().toUpperCase();
+      l.target = 'NEW'; l.targetChosen = true; l.finding = false;
+      refreshDlv();
+    }
+    function addDlvLine() {
+      if (!dlvState || !dlvState.draft) return;
+      dlvState.draft.lines.push(newDlvLine({ finding: true }));
+      renderDlv();
+      setTimeout(() => { const all = document.querySelectorAll('[data-dlv$=":find"]'); const f = all[all.length - 1]; if (f) { f.focus(); f.scrollIntoView({ block: 'center' }); } }, 30);
+    }
+    function removeDlvLine(id) {
+      if (!dlvState || !dlvState.draft) return;
+      dlvState.draft.lines = dlvState.draft.lines.filter(l => l.id !== id);
+      refreshDlv();
+    }
+    // Re-render without losing the cursor (same as the ICS review).
+    function refreshDlv() {
+      setTimeout(() => {
+        if (!dlvState) return;
+        const body = document.getElementById('dlvBody');
+        const a = document.activeElement;
+        const key = a && a.dataset ? a.dataset.dlv : null;
+        let sel = null;
+        try { if (key && typeof a.selectionStart === 'number') sel = [a.selectionStart, a.selectionEnd]; } catch (e) { sel = null; }
+        const top = body.scrollTop;
+        renderDlv();
+        body.scrollTop = top;
+        const el = key && body.querySelector(`[data-dlv="${key}"]`);
+        if (el) {
+          el.focus({ preventScroll: true });
+          if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch (e) { /* number inputs */ }
+        }
+      }, 0);
+    }
+
+    function dlvPlan() {
+      const dr = dlvState.draft;
+      const lines = dr.lines.filter(l => l.include && l.qty > 0 && l.target && l.target !== 'SKIP' && !l.finding && (l.target !== 'NEW' || l.desc));
+      const problems = [];
+      if (dr.mode === 'receive') lines.forEach(l => { if (l.ordered !== undefined && l.qty > l.ordered - l.done) l.over = true; else l.over = false; });
+      const units = lines.reduce((n, l) => n + l.qty, 0);
+      const value = dlvTotal(lines);
+      const noCost = lines.filter(l => !l.unitCost).length;
+      return { lines, units, value, problems, noCost };
+    }
+
+    function renderDlv() {
+      const st = dlvState;
+      if (!st) return;
+      const body = document.getElementById('dlvBody');
+      const title = document.getElementById('dlvTitle');
+      const sub = document.getElementById('dlvSub');
+      const save = document.getElementById('dlvSaveBtn');
+      const note = document.getElementById('dlvFootNote');
+      const back = document.getElementById('dlvBack');
+      const cancel = document.getElementById('dlvCancelBtn');
+      back.classList.toggle('hidden', st.view === 'list');
+      back.classList.toggle('flex', st.view !== 'list');
+      save.classList.add('hidden');
+      cancel.textContent = st.view === 'list' ? 'Close' : st.view === 'edit' ? 'Cancel' : 'Back';
+      note.textContent = '';
+      if (st.view === 'list') {
+        title.innerHTML = '<i class="ph-bold ph-truck text-emerald-700"></i> Deliveries';
+        sub.textContent = 'Stock in with actual costs · Purchase Orders wait here until received';
+        const exp = expectedDeliveries();
+        const done = deliveries.filter(d => (d.receipts || []).length || d.status === 'closed').sort((a, b) => (lastReceiptAt(b) || b.createdMs || 0) - (lastReceiptAt(a) || a.createdMs || 0)).slice(0, 40);
+        const card = d => {
+          const val = d.kind === 'po' ? dlvTotal(d.lines) : dlvTotal(d.lines, 'received');
+          const recv = d.lines.reduce((n, l) => n + (l.received || 0), 0), ord = d.lines.reduce((n, l) => n + (l.qty || 0), 0);
+          const chip = d.status === 'expected' ? ['bg-amber-50 text-amber-800 border-amber-200', 'Expected']
+            : d.status === 'partial' ? ['bg-sky-50 text-sky-800 border-sky-200', `Partly received · ${recv} of ${ord}`]
+            : d.status === 'closed' ? ['bg-slate-100 text-slate-600 border-slate-200', 'Closed'] : ['bg-emerald-50 text-emerald-800 border-emerald-200', 'Received'];
+          const when = d.kind === 'po' && d.status !== 'received' ? (d.date ? `ordered ${formatShortDate(d.date + 'T00:00:00')}` : '') : lastReceiptAt(d) ? `received ${formatShortDate(lastReceiptAt(d))}` : '';
+          return `
+            <button type="button" onclick="openDelivery('${d.id}')" data-dlv-card="${d.id}" class="w-full text-left rounded-xl border border-slate-200 hover:bg-slate-50 p-3 flex items-start gap-3">
+              <span class="w-10 h-10 shrink-0 rounded-xl ${d.kind === 'po' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'} flex items-center justify-center"><i class="ph-bold ${d.kind === 'po' ? 'ph-clipboard-text' : 'ph-truck'} text-xl"></i></span>
+              <span class="flex-1 min-w-0">
+                <span class="flex items-center gap-2 flex-wrap"><span class="text-sm font-extrabold text-slate-800">${escapeHTML(dlvLabel(d))}</span><span class="text-[11px] font-bold px-1.5 py-0.5 rounded border ${chip[0]}">${chip[1]}</span></span>
+                <span class="block text-xs text-slate-600 truncate mt-0.5">${escapeHTML(d.supplier || 'No supplier')} · ${plural(d.lines.length, 'item')} · ${formatCurrency(val)}</span>
+                ${when ? `<span class="block text-[11px] text-slate-500">${escapeHTML(when)}</span>` : ''}
+              </span>
+              <i class="ph-bold ph-caret-right text-slate-400 mt-3"></i>
+            </button>`;
+        };
+        const tile = (fn, icon, tone, label, hint) => `
+          <button type="button" onclick="${fn}" class="rounded-2xl border border-slate-200 hover:bg-slate-50 p-3 flex flex-col items-center text-center gap-1 active:scale-95 transition">
+            <span class="w-10 h-10 rounded-xl ${tone} flex items-center justify-center"><i class="ph-bold ${icon} text-xl"></i></span>
+            <span class="text-xs font-extrabold text-slate-800">${label}</span>
+            <span class="text-[11px] text-slate-500 leading-tight">${hint}</span>
+          </button>`;
+        body.innerHTML = `
+          <div class="grid grid-cols-3 gap-2">
+            ${tile("dlvScan('po')", 'ph-clipboard-text', 'bg-amber-50 text-amber-700', 'Scan PO', 'Expected delivery')}
+            ${tile("dlvScan('iar')", 'ph-file-magnifying-glass', 'bg-emerald-50 text-emerald-700', 'Scan IAR / DR', 'Received items')}
+            ${tile("startStockIn('receive')", 'ph-pencil-simple-line', 'bg-slate-100 text-slate-700', 'Stock in', 'Type it in')}
+          </div>
+          <div>
+            <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Expected · ${exp.length}</h4>
+            <div class="space-y-2">${exp.map(card).join('') || '<p class="rounded-xl border border-dashed border-slate-300 p-4 text-center text-xs text-slate-500">No Purchase Orders waiting. Scan a PO to see it here until the items arrive.</p>'}</div>
+          </div>
+          <div>
+            <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Received</h4>
+            <div class="space-y-2">${done.filter(d => !exp.includes(d)).map(card).join('') || '<p class="rounded-xl border border-dashed border-slate-300 p-4 text-center text-xs text-slate-500">Nothing received here yet.</p>'}</div>
+          </div>
+          ${rememberedMatches.length ? `
+          <details class="rounded-xl border border-slate-200">
+            <summary class="px-3.5 py-2.5 text-xs font-bold text-slate-600 cursor-pointer">Remembered supplier wordings · ${rememberedMatches.length}</summary>
+            <div class="px-3.5 pb-3 space-y-1.5">
+              ${rememberedMatches.slice().sort((a, b) => b.t - a.t).slice(0, 80).map(m => {
+                const it = items.find(i => i.code === m.c);
+                return `<div class="flex items-center gap-2 text-[11px]"><span class="flex-1 min-w-0"><span class="block font-mono text-slate-700 truncate">${escapeHTML(m.w)}</span><span class="block text-slate-500 truncate">is ${escapeHTML(it ? it.name : m.c)}</span></span>
+                  <button type="button" onclick="forgetMatch('${escapeHTML(m.w).replace(/'/g, '&#39;')}'); renderDlv()" class="shrink-0 h-8 px-2 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 font-bold">Forget</button></div>`;
+              }).join('')}
+            </div>
+          </details>` : ''}`;
+        note.textContent = 'Stock goes up only when items are received.';
+        return;
+      }
+      if (st.view === 'detail') return renderDlvDetail(st, body, title, sub);
+      if (st.view === 'scan' || st.view === 'reading') return renderDlvScan(st, body, title, sub, note);
+      return renderDlvEdit(st, body, title, sub, save, note);
+    }
+
+    function renderDlvDetail(st, body, title, sub) {
+      const d = deliveries.find(x => x.id === st.id);
+      if (!d) { dlvState = { view: 'list' }; return renderDlv(); }
+      title.innerHTML = `<i class="ph-bold ${d.kind === 'po' ? 'ph-clipboard-text text-amber-700' : 'ph-truck text-emerald-700'}"></i> ${escapeHTML(dlvLabel(d))}`;
+      sub.textContent = [d.supplier, d.date && (d.kind === 'po' ? `PO date ${formatShortDate(d.date + 'T00:00:00')}` : ''), d.prNo && `PR ${d.prNo}`].filter(Boolean).join(' · ');
+      const open = d.kind === 'po' && (d.status === 'expected' || d.status === 'partial');
+      body.innerHTML = `
+        <div class="rounded-xl border border-slate-200 divide-y divide-slate-100">
+          ${d.lines.map(l => {
+            const it = items.find(i => i.code === l.code);
+            const left = Math.max(0, l.qty - (l.received || 0));
+            return `<div class="p-3 flex items-start gap-3">
+              <span class="flex-1 min-w-0">
+                <span class="block text-sm font-bold text-slate-800">${escapeHTML(it ? it.name : l.desc)}</span>
+                ${it && normItemName(it.name) !== normItemName(l.desc) ? `<span class="block text-[11px] text-slate-500 truncate">On the ${d.kind === 'po' ? 'PO' : 'document'}: ${escapeHTML(l.desc)}</span>` : ''}
+                <span class="block text-xs text-slate-600 mt-0.5">${d.kind === 'po' ? `Ordered ${l.qty} · received ${l.received || 0}${left ? ` · <strong class="text-amber-700">${left} to come</strong>` : ''}` : `${l.received || l.qty} received`} ${escapeHTML(l.unit || (it ? it.unit : ''))} · ${formatCurrency(l.unitCost || 0)} each</span>
+              </span>
+              <span class="font-mono text-xs font-bold text-slate-700 shrink-0">${formatCurrency((l.qty || 0) * (l.unitCost || 0))}</span>
+            </div>`;
+          }).join('')}
+        </div>
+        ${(d.receipts || []).length ? `
+        <div>
+          <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Received</h4>
+          <div class="space-y-1.5">${d.receipts.map(r => `
+            <div class="rounded-xl bg-emerald-50/60 border border-emerald-200 px-3 py-2 text-xs text-emerald-900">
+              <span class="font-bold">${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : formatShortDate(r.at))}</span>${receiptDoc(r) ? ` · ${escapeHTML(receiptDoc(r))}` : ''} · ${plural(r.lines.reduce((n, x) => n + x.q, 0), 'item')} · ${formatCurrency(r.lines.reduce((n, x) => n + x.q * (x.uc || 0), 0))}
+            </div>`).join('')}</div>
+        </div>` : ''}
+        <div class="flex flex-wrap gap-2">
+          ${open ? `<button type="button" onclick="startReceive('${d.id}')" class="h-11 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5"><i class="ph-bold ph-package"></i> Receive items</button>
+          <button type="button" onclick="dlvScan('iar', '${d.id}')" class="h-11 px-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-xs font-bold flex items-center gap-1.5"><i class="ph-bold ph-camera"></i> Scan its IAR / DR</button>
+          <button type="button" onclick="closePo('${d.id}')" class="h-11 px-4 rounded-xl bg-white border border-slate-200 hover:bg-rose-50 text-rose-700 text-xs font-bold flex items-center gap-1.5"><i class="ph-bold ph-x-circle"></i> ${(d.receipts || []).length ? 'Close (no more coming)' : 'Cancel PO'}</button>` : ''}
+        </div>`;
+    }
+
+    async function closePo(id) {
+      const d = deliveries.find(x => x.id === id);
+      if (!d) return;
+      const any = (d.receipts || []).length > 0;
+      if (!await appConfirm(any ? 'The rest of this PO will not be delivered. What was received stays in stock.' : 'Nothing was received on this PO. It is removed from the list.',
+        { title: any ? `Close ${dlvLabel(d)}?` : `Cancel ${dlvLabel(d)}?`, ok: any ? 'Close PO' : 'Cancel PO', cancel: 'Keep', tone: 'warn' })) return;
+      if (any) d.status = 'closed';
+      else deliveries = deliveries.filter(x => x.id !== id);
+      saveDeliveries();
+      logHistory('delivery', any ? `Closed ${dlvLabel(d)} (${d.supplier || 'no supplier'}): the rest will not be delivered` : `Cancelled ${dlvLabel(d)} (${d.supplier || 'no supplier'})`);
+      dlvState = { view: 'list' };
+      renderDlv();
+    }
+
+    // ---- Scan: photo or pasted text → review ------------------------------------------------
+    function dlvScan(kind, forId = null) {
+      dlvState = { view: 'scan', kind, forId, turns: 0, showPaste: false, offlineReady: null };
+      renderDlv();
+      isOcrDownloaded().then(ok => { if (dlvState && dlvState.view === 'scan') { dlvState.offlineReady = ok; renderDlv(); } });
+    }
+    function pickDlvPhoto(useCamera) {
+      const input = document.getElementById('dlvPhotoInput');
+      if (useCamera) input.setAttribute('capture', 'environment'); else input.removeAttribute('capture');
+      input.value = '';
+      input.click();
+    }
+    function handleDlvPhoto(event) {
+      const file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      if (!file || !dlvState) return;
+      if (!/^image\//.test(file.type) && !/\.(jpe?g|png|webp|heic|heif|bmp)$/i.test(file.name)) {
+        appAlert('Please choose a photo (JPG or PNG) of the form. For a PDF, take a screenshot of the page first.');
+        return;
+      }
+      if (dlvState.photoUrl) URL.revokeObjectURL(dlvState.photoUrl);
+      dlvState.file = file;
+      dlvState.photoUrl = URL.createObjectURL(file);
+      dlvState.turns = 0;
+      runDlvOcr();
+    }
+    function rotateDlvAndRetry() {
+      if (!dlvState || !dlvState.file) return;
+      dlvState.turns = (dlvState.turns + 1) % 4;
+      dlvState.view = 'scan';
+      runDlvOcr();
+    }
+    function dlvOcrLogger(m) {
+      if (!dlvState || dlvState.view !== 'reading') return false;
+      const labels = { 'loading tesseract core': 'Loading the text reader…', 'initializing tesseract': 'Starting the text reader…', 'loading language traineddata': 'Loading English text model…', 'initializing api': 'Starting the text reader…', 'recognizing text': 'Reading the form…' };
+      if (!labels[m.status]) return true;
+      dlvState.status = labels[m.status];
+      dlvState.progress = m.status === 'recognizing text' ? 0.3 + 0.7 * (m.progress || 0) : 0.05 + 0.25 * (m.progress || 0);
+      const bar = document.getElementById('dlvProgressBar'), label = document.getElementById('dlvProgressLabel');
+      if (bar) bar.style.width = `${Math.round(dlvState.progress * 100)}%`;
+      if (label) label.textContent = dlvState.status;
+      return true;
+    }
+    async function runDlvOcr() {
+      const st = dlvState;
+      st.view = 'reading'; st.progress = 0.02; st.status = 'Cleaning up the photo…'; st.error = '';
+      renderDlv();
+      try {
+        const workerReady = getOcrWorker();
+        await new Promise(r => setTimeout(r, 30));
+        const { canvas } = await prepareIcsImage(st.file, st.turns);
+        if (dlvState !== st) return;
+        if (!navigator.onLine && !ocrWorker && !(await isOcrDownloaded())) throw new Error('offline-first-use');
+        const worker = await workerReady;
+        if (dlvState !== st) return;
+        const { data } = await worker.recognize(canvas);
+        if (dlvState !== st) return;
+        st.previewUrl = canvas.toDataURL('image/jpeg', 0.6);
+        dlvLoadText(data.text, 'photo');
+      } catch (err) {
+        if (dlvState !== st) return;
+        console.error('Delivery OCR failed', err);
+        st.view = 'scan';
+        st.error = String(err && err.message) === 'offline-first-use' || !navigator.onLine
+          ? 'The text reader has not been downloaded yet. Connect to the internet once (about 7 MB), then scanning works offline.'
+          : 'Could not read the photo on this device. Try again, or use “Paste text” below.';
+        renderDlv();
+      }
+    }
+    function readPastedDlvText() {
+      const el = document.getElementById('dlvPasteText');
+      if (!el || !el.value.trim()) return;
+      dlvLoadText(el.value, 'paste');
+    }
+    function dlvLoadText(text, source) {
+      const st = dlvState;
+      const kind = st.kind === 'po' ? 'po' : 'iar';
+      const parsed = parseDocText(text, kind);
+      const scan = { header: parsed.header, lines: parsed.lines, text, source };
+      // An IAR / DR for a PO that is waiting: receive against it.
+      const po = st.forId ? deliveries.find(d => d.id === st.forId)
+        : kind === 'iar' && parsed.header.poNo ? expectedDeliveries().find(d => normalizePropNo(d.poNo) === normalizePropNo(parsed.header.poNo)) : null;
+      if (po && kind === 'iar') {
+        scan.lines.forEach(l => { dlvAutoTarget(l); });
+        startReceive(po.id, scan);
+        const extra = scan.lines.filter(s => !s.used).length;
+        dlvState.draft.linkedNote = `Matched to ${dlvLabel(po)}${st.forId ? '' : ` (PO No. on the ${parsed.header.drNo && !parsed.header.iarNo ? 'DR' : 'IAR'})`}. Check the quantities received.` +
+          (extra ? ` ${plural(extra, 'line')} on the paper ${extra === 1 ? 'is' : 'are'} not on this PO – receive ${extra === 1 ? 'it' : 'them'} separately with Stock in.` : '');
+        dlvState.photoUrl = st.photoUrl; dlvState.previewUrl = st.previewUrl; dlvState.file = st.file; dlvState.turns = st.turns;
+        dlvState.draft.text = text; dlvState.draft.source = source;
+        renderDlv();
+        return;
+      }
+      startStockIn(kind === 'po' ? 'po' : 'receive', scan);
+      dlvState.file = st.file; dlvState.turns = st.turns;
+      renderDlv();
+    }
+
+    function renderDlvScan(st, body, title, sub, note) {
+      const po = st.kind === 'po';
+      title.innerHTML = `<i class="ph-bold ${po ? 'ph-clipboard-text text-amber-700' : 'ph-file-magnifying-glass text-emerald-700'}"></i> ${po ? 'Scan a Purchase Order' : 'Scan an IAR or delivery receipt'}`;
+      sub.textContent = po ? 'The PO becomes an expected delivery · stock goes up when it is received' : 'Inspection and Acceptance Report, delivery receipt or sales invoice · stock goes up';
+      note.textContent = 'Photos are read on this device and are not uploaded.';
+      if (st.view === 'reading') {
+        body.innerHTML = `
+          <div class="flex flex-col items-center text-center py-6 gap-4">
+            ${st.photoUrl ? `<img src="${st.photoUrl}" alt="" class="max-h-56 rounded-xl border border-slate-200 shadow-sm object-contain" style="transform: rotate(${st.turns * 90}deg)">` : ''}
+            <div class="w-full max-w-sm">
+              <div class="h-2.5 rounded-full bg-slate-100 overflow-hidden"><div id="dlvProgressBar" class="h-full bg-emerald-600 rounded-full transition-all duration-300" style="width:${Math.round((st.progress || 0) * 100)}%"></div></div>
+              <p id="dlvProgressLabel" class="text-xs font-semibold text-slate-600 mt-2">${escapeHTML(st.status || '')}</p>
+              <p class="text-[11px] text-slate-500 mt-1">This takes 5–20 seconds on a phone.</p>
+            </div>
+          </div>`;
+        return;
+      }
+      const sample = po
+        ? 'P.O. No.: 2026-11-0007   Date: November 5, 2026&#10;Supplier: ABC OFFICE SUPPLIES   PR No.: 2026-10-003&#10;Stock No.  Unit  Description  Quantity  Unit Cost  Amount&#10;1  ream  BOND PAPER, A4, 70gsm  10  220.00  2,200.00&#10;Total Amount  2,200.00'
+        : 'IAR No.: 2026-11-0012   Date Received: 11/12/2026&#10;Supplier: ABC OFFICE SUPPLIES   PO No.: 2026-11-0007&#10;Stock No.  Description  Unit  Quantity&#10;1  BOND PAPER, A4, 70gsm  ream  10&#10;Inspected by:';
+      body.innerHTML = `
+        ${st.error ? `<div class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex gap-2"><i class="ph-bold ph-warning-circle text-base shrink-0"></i><span>${escapeHTML(st.error)}</span></div>` : ''}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button type="button" onclick="pickDlvPhoto(true)" class="rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/60 hover:bg-emerald-50 p-6 text-center transition active:scale-[0.99]">
+            <i class="ph-duotone ph-camera text-5xl text-emerald-700 block mb-2"></i>
+            <span class="block text-sm font-extrabold text-slate-800">Take photo of the ${po ? 'PO' : 'IAR / DR'}</span>
+            <span class="block text-xs text-slate-500 mt-1">Opens the camera</span>
+          </button>
+          <button type="button" onclick="pickDlvPhoto(false)" class="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 hover:bg-slate-50 p-6 text-center transition active:scale-[0.99]">
+            <i class="ph-duotone ph-image text-5xl text-slate-500 block mb-2"></i>
+            <span class="block text-sm font-extrabold text-slate-800">Choose a photo</span>
+            <span class="block text-xs text-slate-500 mt-1">From the gallery, a scan, or a screenshot</span>
+          </button>
+        </div>
+        <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5 text-xs text-slate-600 space-y-1.5">
+          <p>&bull; Lay the page flat in good light and fill the screen with it. One page at a time.</p>
+          <p>&bull; Every line is matched to your Catalog. Your picks are remembered, so the same supplier wording is matched by itself next time.</p>
+          <p class="flex items-center gap-1.5 pt-1 ${st.offlineReady ? 'text-emerald-700' : 'text-slate-500'}"><i class="ph-bold ${st.offlineReady ? 'ph-check-circle' : 'ph-download-simple'}"></i>
+            ${st.offlineReady ? 'Text reader downloaded – scanning works offline.' : 'The first scan downloads the text reader (about 7 MB). After that it works offline.'}</p>
+        </div>
+        <div class="rounded-xl border border-slate-200">
+          <button type="button" onclick="dlvState.showPaste = !dlvState.showPaste; renderDlv()" class="w-full px-3.5 py-3 flex items-center justify-between text-xs font-bold text-slate-700">
+            <span class="flex items-center gap-2"><i class="ph-bold ph-clipboard-text text-slate-500"></i> Paste text instead</span>
+            <i class="ph-bold ${st.showPaste ? 'ph-caret-up' : 'ph-caret-down'}"></i>
+          </button>
+          ${st.showPaste ? `
+          <div class="px-3.5 pb-3.5 space-y-2">
+            <p class="text-[11px] text-slate-500">Copy the text with Google Lens or Samsung <em>Extract text</em>, or copy the cells from the Excel file, then paste here.</p>
+            <textarea id="dlvPasteText" rows="7" class="w-full p-2.5 rounded-lg border border-slate-300 text-xs font-mono focus:border-brand-500 outline-none" placeholder="${sample}"></textarea>
+            <button type="button" onclick="readPastedDlvText()" class="h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition"><i class="ph-bold ph-text-aa"></i> Read text</button>
+          </div>` : ''}
+        </div>`;
+    }
+
+    // ---- Review / stock in ----------------------------------------------------------------------
+    function renderDlvEdit(st, body, title, sub, save, note) {
+      const dr = st.draft;
+      const po = dr.mode === 'po';
+      const from = dr.fromId ? deliveries.find(d => d.id === dr.fromId) : null;
+      title.innerHTML = po ? '<i class="ph-bold ph-clipboard-text text-amber-700"></i> Purchase Order · expected delivery'
+        : from ? `<i class="ph-bold ph-package text-emerald-700"></i> Receive ${escapeHTML(dlvLabel(from))}` : '<i class="ph-bold ph-truck text-emerald-700"></i> Stock in';
+      sub.textContent = po ? 'Check every line · saving does not change your stock yet'
+        : 'Actual cost from the supplier · stock goes up when you save';
+      const h = dr.header;
+      const plan = dlvPlan();
+      const input = (label, key, value, extra = '') => `
+        <label class="block min-w-0">
+          <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">${label}</span>
+          <input ${extra} data-dlv="h:${key}" value="${escapeHTML(value || '')}" onchange="setDlvHeader('${key}', this.value)" class="w-full h-10 px-2.5 rounded-lg border border-slate-300 text-sm font-semibold text-slate-800 focus:border-brand-500 outline-none disabled:bg-slate-50 disabled:text-slate-500">
+        </label>`;
+      const pr = h.prNo ? prList.find(p => normalizePropNo(p.prNo) === normalizePropNo(h.prNo)) : null;
+      const lineCard = (l, idx) => {
+        const item = l.target && !['NEW', 'SKIP'].includes(l.target) ? items.find(i => i.code === l.target) : null;
+        const off = !l.include || l.target === 'SKIP';
+        const lf = (label, key, value, cls = '', type = 'text', extra = '') => `
+          <label class="block min-w-0 ${cls}">
+            <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">${label}</span>
+            <input type="${type}" ${extra} data-dlv="${l.id}:${key}" value="${escapeHTML(value ?? '')}" onchange="setDlvLine('${l.id}', '${key}', this.value)" class="w-full h-9 px-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-800 focus:border-brand-500 outline-none">
+          </label>`;
+        const notes = [...(l.notes || [])];
+        if (item && l.unit && unitsDiffer(l.unit, item.unit)) notes.push(`The ${po ? 'PO' : 'document'} says “${l.unit}” but ${item.name.split(',')[0]} is counted per ${item.unit}. Enter the quantity in ${item.unit}s, or pick the right item.`);
+        if (l.over) notes.push(`More than the ${l.ordered - l.done} still to come on the PO.`);
+        const lp = item ? lastPaid(item.code) : null;
+        if (item && lp && l.unitCost && Math.abs(l.unitCost - lp.c) / lp.c > 0.3) notes.push(`${formatCurrency(l.unitCost)} is far from the last price paid (${formatCurrency(lp.c)}) – check the unit cost.`);
+        let target;
+        if (l.finding || !l.target) {
+          target = `
+            <div class="rounded-lg border border-brand-300 bg-brand-50/40 p-2 space-y-1.5">
+              <input data-dlv="${l.id}:find" value="${escapeHTML(l.findQ || '')}" oninput="dlvFind('${l.id}', this.value)" placeholder="Find the item: name or stock no." autocomplete="off" spellcheck="false" class="w-full h-9 px-2.5 rounded-lg border border-slate-300 text-sm font-semibold bg-white outline-none focus:border-brand-500">
+              <div id="dlvFind-${l.id}" class="space-y-0.5 max-h-56 overflow-y-auto">${dlvFindResultsHTML(l)}</div>
+            </div>`;
+        } else {
+          const sugg = l.desc ? suggestIcsMatches(l.desc, 5) : [];
+          if (item && !sugg.some(s => s.item.code === item.code)) sugg.unshift({ item, score: 0 });
+          const opts = sugg.map(s => `<option value="${escapeHTML(s.item.code)}" ${l.target === s.item.code ? 'selected' : ''}>${escapeHTML(s.item.name.slice(0, 70))}${s.item.qty ? ` (have ${s.item.qty})` : ''}</option>`).join('');
+          target = `
+            <select data-dlv="${l.id}:target" onchange="setDlvLine('${l.id}', 'target', this.value)" ${dr.fromId && l.lineId ? 'disabled' : ''} class="w-full h-9 px-2 rounded-lg border ${l.target === 'NEW' ? 'border-sky-300 bg-sky-50' : l.target === 'SKIP' ? 'border-slate-200' : 'border-emerald-300 bg-emerald-50'} text-xs font-semibold text-slate-800 outline-none">
+              ${opts ? `<optgroup label="Catalog / your items">${opts}</optgroup>` : ''}
+              <option value="FIND">Search the Catalog…</option>
+              <option value="NEW" ${l.target === 'NEW' ? 'selected' : ''}>+ New custom item (use this description)</option>
+              <option value="SKIP" ${l.target === 'SKIP' ? 'selected' : ''}>Don't save this line</option>
+            </select>
+            ${l.remembered ? '<p class="text-[11px] font-semibold text-emerald-700 flex items-center gap-1 mt-1"><i class="ph-bold ph-brain"></i> Matched from your earlier pick for this wording</p>' : ''}
+            ${item ? `<p class="text-[11px] text-slate-500 mt-1">${escapeHTML([`${item.qty} ${item.unit} on hand · average ${formatCurrency(item.price)}`, lastPaidText(item.code)].filter(Boolean).join(' · '))}</p>` : ''}`;
+        }
+        return `
+          <div class="dlv-line rounded-xl border p-3 space-y-2 ${off ? 'border-slate-200 bg-slate-50 opacity-60' : 'border-slate-200 bg-white'}" data-line="${l.id}">
+            <div class="flex items-center gap-2">
+              <input type="checkbox" ${l.include ? 'checked' : ''} onchange="setDlvLine('${l.id}', 'include', this.checked)" class="w-4 h-4 accent-emerald-600 shrink-0" aria-label="Include line">
+              <span class="text-[11px] font-bold text-slate-500">Line ${idx + 1}${l.ordered !== undefined ? ` · ordered ${l.ordered}${l.done ? `, received ${l.done}` : ''}` : ''}</span>
+              <span class="flex-1"></span>
+              ${l.unitCost ? `<span class="font-mono text-xs font-bold text-slate-700">${formatCurrency(l.qty * l.unitCost)}</span>` : ''}
+              ${l.lineId ? '' : `<button type="button" aria-label="Remove line" onclick="removeDlvLine('${l.id}')" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center"><i class="ph-bold ph-trash"></i></button>`}
+            </div>
+            ${l.lineId ? `<p class="text-xs font-bold text-slate-800">${escapeHTML(item ? item.name : l.desc)}</p>` : `
+            <label class="block">
+              <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">Description${dr.source === 'hand' ? '' : ' on the form'}</span>
+              <textarea rows="${dr.source === 'hand' ? 1 : 2}" data-dlv="${l.id}:desc" onchange="setDlvLine('${l.id}', 'desc', this.value)" placeholder="${dr.source === 'hand' ? 'Optional · the supplier’s wording' : ''}" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-800 focus:border-brand-500 outline-none">${escapeHTML(l.desc)}</textarea>
+            </label>
+            <div>
+              <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">Save to</span>
+              ${target}
+            </div>`}
+            <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              ${lf(po ? 'Qty ordered' : 'Qty received', 'qty', l.qty, '', 'number', 'min="0" inputmode="numeric"')}
+              ${lf('Unit', 'unit', l.unit || (item ? item.unit : ''), '')}
+              ${lf('Unit cost (₱)', 'unitCost', l.unitCost === null ? '' : l.unitCost, '', 'number', 'min="0" step="0.01" inputmode="decimal" placeholder="0.00"')}
+              ${lf('Stock no.', 'stockNo', l.stockNo, 'hidden sm:block', 'text', 'autocapitalize="characters" spellcheck="false"')}
+            </div>
+            ${notes.map(n => `<p class="text-[11px] font-semibold text-amber-800 flex items-start gap-1.5"><i class="ph-bold ph-warning mt-0.5"></i><span>${escapeHTML(n)}</span></p>`).join('')}
+          </div>`;
+      };
+      body.innerHTML = `
+        ${dr.source === 'photo' || dr.source === 'paste' ? `
+        <div class="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+          ${st.photoUrl ? `<img src="${st.previewUrl || st.photoUrl}" alt="" onclick="window.open(this.src)" class="w-14 h-14 rounded-lg object-cover border border-slate-200 cursor-zoom-in shrink-0">` : '<i class="ph-duotone ph-clipboard-text text-3xl text-slate-500"></i>'}
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-extrabold text-slate-800">${dr.lines.length ? `Found ${plural(dr.lines.length, 'line')}` : 'No item lines found'}</p>
+            ${dr.paperTotal ? (Math.abs(dlvTotal(dr.lines.filter(l => l.include !== false)) - dr.paperTotal) < 0.01
+              ? `<p class="text-[11px] font-semibold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Lines add up to the total on the paper, ${formatCurrency(dr.paperTotal)}</p>`
+              : `<p class="text-[11px] font-semibold text-amber-800 flex items-start gap-1"><i class="ph-bold ph-warning mt-0.5"></i> Total on the paper ${formatCurrency(dr.paperTotal)}, lines add up to ${formatCurrency(dlvTotal(dr.lines.filter(l => l.include !== false)))} – check the lines</p>`)
+              : '<p class="text-[11px] text-slate-500">Check every field against the paper before saving.</p>'}
+          </div>
+          ${st.file ? `<button type="button" onclick="rotateDlvAndRetry()" class="h-8 px-2.5 shrink-0 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1"><i class="ph-bold ph-arrow-clockwise"></i> Rotate &amp; re-read</button>` : ''}
+        </div>` : ''}
+        ${dr.linkedNote ? `<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900 flex gap-2"><i class="ph-bold ph-link text-base shrink-0"></i><span>${escapeHTML(dr.linkedNote)}</span></div>` : ''}
+        <div class="grid grid-cols-2 gap-2.5">
+          ${input('Supplier', 'supplier', h.supplier, `placeholder="Name of supplier" ${dr.fromId ? 'disabled' : ''}`)}
+          ${input(po ? 'PO date' : 'Date received', 'date', h.date, 'type="date"')}
+          ${po ? input('PO No.', 'poNo', h.poNo, 'autocapitalize="characters" spellcheck="false" placeholder="e.g. 2026-11-0007"') : input('IAR No.', 'iarNo', h.iarNo, 'autocapitalize="characters" spellcheck="false" placeholder="Inspection & Acceptance"')}
+          ${po ? input('PR No.', 'prNo', h.prNo, 'autocapitalize="characters" spellcheck="false" placeholder="Optional"') : input('DR / invoice No.', 'drNo', h.drNo || h.invoiceNo, 'autocapitalize="characters" spellcheck="false" placeholder="Optional"')}
+          ${!po && !dr.fromId ? input('PO No.', 'poNo', h.poNo, 'autocapitalize="characters" spellcheck="false" placeholder="Optional"') : ''}
+        </div>
+        ${pr ? `<p class="text-[11px] text-slate-600 -mt-1 flex items-center gap-1.5"><i class="ph-bold ph-link text-brand-600"></i> For Purchase Request ${escapeHTML(pr.prNo)}${pr.deliveredMs ? ' (already marked delivered)' : ' · it is marked delivered when everything is received'}</p>` : ''}
+        ${!po ? `
+        <label class="flex items-start gap-2.5 rounded-xl border border-slate-200 p-3 cursor-pointer">
+          <input type="checkbox" ${dr.opts.makeUnits ? 'checked' : ''} onchange="setDlvOpt('makeUnits', this.checked)" class="mt-0.5 w-4 h-4 accent-emerald-600">
+          <span class="text-xs"><span class="block font-bold text-slate-800">Give equipment property numbers now</span><span class="text-slate-500">One per unit, each with its own cost (₱50,000 and up goes on a PAR when released).</span></span>
+        </label>` : ''}
+        <div class="space-y-2.5">
+          ${dr.lines.map(lineCard).join('') || '<div class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-xs text-slate-500">No item rows were recognised. Retake the photo closer and flatter, or add the lines by hand.</div>'}
+          ${dr.fromId ? '' : '<button type="button" onclick="addDlvLine()" class="w-full h-10 rounded-xl border border-dashed border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1.5"><i class="ph-bold ph-plus"></i> Add a line</button>'}
+        </div>
+        ${dr.text ? `
+        <details class="rounded-xl border border-slate-200">
+          <summary class="px-3.5 py-2.5 text-xs font-bold text-slate-600 cursor-pointer">Text read from the ${dr.source === 'paste' ? 'pasted text' : 'photo'}</summary>
+          <pre class="px-3.5 pb-3 text-[11px] leading-snug text-slate-600 whitespace-pre-wrap break-words font-mono max-h-64 overflow-y-auto">${escapeHTML(dr.text)}</pre>
+        </details>` : ''}`;
+      save.classList.remove('hidden');
+      save.disabled = !plan.lines.length;
+      save.innerHTML = po ? `<i class="ph-bold ph-floppy-disk"></i> Save PO`
+        : `<i class="ph-bold ph-package"></i> Receive ${plan.lines.length ? plural(plan.units, 'item') : ''}`;
+      note.textContent = plan.lines.length ? `${plural(plan.lines.length, 'line')} · ${formatCurrency(plan.value)}${plan.noCost ? ` · ${plan.noCost} without a unit cost` : ''}` : 'Pick the item for each line.';
+    }
+
+    async function saveDelivery() {
+      if (!dlvState || dlvState.view !== 'edit') return;
+      const st = dlvState, dr = st.draft, h = dr.header;
+      const plan = dlvPlan();
+      if (!plan.lines.length) return;
+      const po = dr.mode === 'po';
+      if (po && h.poNo && deliveries.some(d => d.kind === 'po' && normalizePropNo(d.poNo) === normalizePropNo(h.poNo)) &&
+          !await appConfirm(`PO No. ${h.poNo} is already in Deliveries. Save it again?`, { title: 'PO already saved', ok: 'Save again', tone: 'warn' })) return;
+      if (!po && h.iarNo && deliveries.some(d => (d.receipts || []).some(r => normalizePropNo(r.iarNo) === normalizePropNo(h.iarNo))) &&
+          !await appConfirm(`IAR No. ${h.iarNo} was already received. Receiving it again adds the items twice.`, { title: 'Already received', ok: 'Receive again', tone: 'warn' })) return;
+      if (plan.noCost && !await appConfirm(`${plural(plan.noCost, 'line')} ${plan.noCost === 1 ? 'has' : 'have'} no unit cost. ${po ? 'The PO total will be incomplete.' : 'Those items keep their current cost.'}`, { title: 'Missing unit cost', ok: 'Save anyway', cancel: 'Add costs', tone: 'warn' })) return;
+      if (dlvState !== st) return;
+      const safety = snapshotData();
+
+      // New custom items first, and learn the supplier's wording for next time
+      let created = 0, learned = 0;
+      plan.lines.forEach(l => {
+        if (l.target === 'NEW') {
+          const name = l.desc.toUpperCase().replace(/\s+/g, ' ').trim().slice(0, 160);
+          const existing = items.find(i => normItemName(i.name) === normItemName(name));
+          l.code = existing ? existing.code : createCustomRaw(name, l.unit || 'unit', l.unitCost || 0);
+          if (!existing) { created += 1; userState[l.code] = { ...(userState[l.code] || {}), minQty: 2 }; }
+        } else l.code = l.target;
+      });
+      if (created) rebuildCatalogList();
+      plan.lines.forEach(l => { if (l.desc && rememberMatch(l.desc, l.code, h.supplier)) learned += 1; });
+
+      if (po) {
+        const d = cleanJSON({
+          id: newDlvId(), kind: 'po', poNo: h.poNo, prNo: h.prNo, date: h.date, supplier: h.supplier, status: 'expected', createdMs: Date.now(),
+          lines: plan.lines.map(l => ({ id: l.id, desc: l.desc || (items.find(i => i.code === l.code) || {}).name || '', stockNo: l.stockNo || '', unit: l.unit || (items.find(i => i.code === l.code) || {}).unit || '', code: l.code, qty: l.qty, unitCost: l.unitCost || 0, received: 0 })),
+          receipts: []
+        });
+        deliveries.push(d);
+        saveDeliveries();
+        if (created) saveStateWith({ summary: { kind: 'edit', text: `Added ${plural(created, 'custom item')} from ${dlvLabel(d)}` } });
+        logHistory('delivery', `${dlvLabel(d)}${h.supplier ? ` from ${h.supplier}` : ''}: ${plural(d.lines.length, 'item')}, ${formatCurrency(dlvTotal(d.lines))} · expected delivery`);
+        closeDeliveries(true);
+        showToast(`${dlvLabel(d)} saved · waiting for delivery${learned ? ` · ${plural(learned, 'wording')} remembered` : ''}`, 'ph-clipboard-text', { label: 'Receive', onClick: () => startReceive(d.id) });
+        return;
+      }
+
+      // Receive: stock, average cost, price history, units
+      const doc = receiptDoc(h) || (h.poNo ? `PO ${h.poNo}` : '');
+      let newUnits = 0;
+      const receipt = { id: newDlvId(), at: Date.now(), date: h.date, iarNo: h.iarNo, drNo: h.drNo, invoiceNo: h.invoiceNo, lines: [] };
+      plan.lines.forEach(l => {
+        const r = receiveIntoStock(l.code, l.qty, l.unitCost, { date: h.date, supplier: h.supplier, doc, kind: 'delivery', makeUnits: dr.opts.makeUnits });
+        newUnits += r.units;
+        receipt.lines.push({ l: l.lineId || l.id, c: l.code, q: l.qty, uc: l.unitCost || 0 });
+      });
+      let d = dr.fromId ? deliveries.find(x => x.id === dr.fromId) : null;
+      if (d) {
+        plan.lines.forEach(l => { const pl = d.lines.find(x => x.id === l.lineId); if (pl) { pl.received = (pl.received || 0) + l.qty; if (l.unitCost) pl.unitCost = l.unitCost; } });
+        d.receipts = [...(d.receipts || []), cleanJSON(receipt)];
+        d.status = d.lines.every(x => (x.received || 0) >= x.qty) ? 'received' : 'partial';
+      } else {
+        d = cleanJSON({
+          id: newDlvId(), kind: 'stockin', poNo: h.poNo, prNo: h.prNo, date: h.date, supplier: h.supplier, status: 'received', createdMs: Date.now(),
+          lines: plan.lines.map(l => ({ id: l.id, desc: l.desc || (items.find(i => i.code === l.code) || {}).name || '', stockNo: l.stockNo || '', unit: l.unit || (items.find(i => i.code === l.code) || {}).unit || '', code: l.code, qty: l.qty, unitCost: l.unitCost || 0, received: l.qty })),
+          receipts: [receipt]
+        });
+        deliveries.push(d);
+      }
+      rebuildCatalogList();
+      saveDeliveries();
+      const label = receiptDoc(h) || dlvLabel(d);
+      saveStateWith({ summary: { kind: 'delivery', track: true, code: plan.lines.length === 1 ? plan.lines[0].code : null,
+        text: `Received ${label}${h.supplier ? ` (${h.supplier})` : ''}: ${plural(plan.lines.length, 'line')}, ${plural(plan.units, 'item')}, ${formatCurrency(plan.value)}` +
+          `${dr.fromId ? ` · ${dlvLabel(d)} ${d.status === 'received' ? 'complete' : 'partly received'}` : ''}${newUnits ? ` · ${plural(newUnits, 'property record')}` : ''}${created ? ` · ${created} new` : ''}` } });
+      renderItems();
+      renderDashboard();
+      const prDone = d.status === 'received' && d.prNo ? closePrAfterDelivery(d.prNo) : '';
+      closeDeliveries(true);
+      showToast(`Received ${plural(plan.units, 'item')}${prDone ? ` · PR ${prDone} delivered` : ''}${learned ? ` · ${plural(learned, 'wording')} remembered` : ''}`, 'ph-package', {
+        label: 'Undo',
+        onClick: () => {
+          applyData(safety);
+          restoreBackupMeta(safety.meta);
+          logHistory('system', `Undid receiving ${label}`);
+          showToast('Receiving undone', 'ph-arrow-counter-clockwise');
+        }
+      });
+    }
+
+    // A PO that came from a Purchase Request: when all of it is received, the PR is delivered
+    // (its requests show "Ready" to the teachers). Stock was already added by the receipt.
+    function closePrAfterDelivery(prNo) {
+      const pr = prList.find(p => normalizePropNo(p.prNo) === normalizePropNo(prNo) && !p.deliveredMs);
+      if (!pr || !cloud.db || !reqRole) return '';
+      const open = reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr');
+      const F = cloud.sdk;
+      const batch = F.writeBatch(cloud.db);
+      batch.update(F.doc(prCol(), pr.id), { deliveredMs: Date.now(), updatedAt: F.serverTimestamp() });
+      open.forEach(r => batch.update(F.doc(reqCol(), r.id), { status: 'closed', suppliedAtMs: Date.now(), updatedAt: F.serverTimestamp() }));
+      cloudWrite(batch.commit(), 'Updating');
+      pr.deliveredMs = Date.now();
+      return pr.prNo;
+    }
+
+    // ---- Prices & deliveries of one item ---------------------------------------------------
+    let priceCode = null;
+    function openPriceHistory(code) {
+      if (!items.some(i => i.code === code)) return;
+      priceCode = code;
+      renderPriceHistory();
+      document.getElementById('priceModal').classList.remove('hidden');
+    }
+    function closePriceHistory() { priceCode = null; document.getElementById('priceModal').classList.add('hidden'); }
+    function renderPriceHistory() {
+      const item = items.find(i => i.code === priceCode);
+      if (!item) return closePriceHistory();
+      document.getElementById('pmName').textContent = item.name;
+      document.getElementById('pmMeta').innerHTML = `<span class="font-mono">${escapeHTML(item.code)}</span> · per ${escapeHTML(item.unit)}`;
+      const lp = lastPaid(item.code);
+      const card = (k, v, hint, tone = 'text-slate-900') => `
+        <div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 min-w-0">
+          <p class="text-[11px] font-bold uppercase tracking-wide text-slate-600">${k}</p>
+          <p class="font-mono font-extrabold text-[13px] ${tone} mt-0.5">${v}</p>
+          ${hint ? `<p class="text-[11px] text-slate-500 truncate">${hint}</p>` : ''}
+        </div>`;
+      document.getElementById('pmCards').innerHTML = [
+        card('Unit cost now', formatCurrency(item.price), 'Average of what you have'),
+        card('Last paid', lp ? formatCurrency(lp.c) : '—', lp ? escapeHTML([lp.d && formatShortDate(lp.d + 'T00:00:00'), lp.s].filter(Boolean).join(' · ')) : 'No delivery yet'),
+        item.part === 'PART1' ? card('PS-DBM price', formatCurrency(item.defaultPrice), 'APP-CSE 2027 · reference only', 'text-slate-600') : ''
+      ].join('');
+      const list = priceHistory(item.code).slice().reverse();
+      const dl = deliveries.filter(d => d.kind === 'po' && (d.status === 'expected' || d.status === 'partial') && d.lines.some(l => l.code === item.code));
+      document.getElementById('pmList').innerHTML = (dl.length ? dl.map(d => {
+        const l = d.lines.find(x => x.code === item.code);
+        return `<div class="flex items-start gap-3 py-2.5">
+          <span class="w-8 h-8 shrink-0 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center"><i class="ph-bold ph-clipboard-text"></i></span>
+          <span class="flex-1 min-w-0 text-xs"><span class="block font-bold text-slate-800">Expected · ${escapeHTML(dlvLabel(d))}</span>
+          <span class="block text-slate-600">${l.qty - (l.received || 0)} to come × ${formatCurrency(l.unitCost || 0)}${d.supplier ? ` · ${escapeHTML(d.supplier)}` : ''}</span></span></div>`;
+      }).join('') : '') + (list.map(p => `
+        <div class="flex items-start gap-3 py-2.5">
+          <span class="w-8 h-8 shrink-0 rounded-lg ${p.k === 'manual' ? 'bg-slate-100 text-slate-600' : 'bg-emerald-50 text-emerald-700'} flex items-center justify-center"><i class="ph-bold ${p.k === 'manual' ? 'ph-pencil-simple' : p.k === 'ics' ? 'ph-file-text' : 'ph-truck'}"></i></span>
+          <span class="flex-1 min-w-0 text-xs">
+            <span class="block font-bold text-slate-800">${escapeHTML(PRICE_KIND_LABEL[p.k] || 'Price')} · ${escapeHTML(p.d ? formatShortDate(p.d + 'T00:00:00') : formatShortDate(p.t))}</span>
+            <span class="block text-slate-600">${p.k === 'manual' ? `Unit cost set to ${formatCurrency(p.c)}${p.why ? ` · ${escapeHTML(p.why)}` : ''}` : `${p.q || ''} × ${formatCurrency(p.c)}${p.s ? ` · ${escapeHTML(p.s)}` : ''}${p.doc ? ` · ${escapeHTML(p.doc)}` : ''}`}</span>
+            ${p.k !== 'manual' && p.avg !== undefined ? `<span class="block text-[11px] text-slate-500">Average after: ${formatCurrency(p.avg)}</span>` : ''}
+          </span>
+          <span class="font-mono text-xs font-bold text-slate-700 shrink-0">${formatCurrency(p.c)}</span>
+        </div>`).join('') || (dl.length ? '' : '<p class="py-6 text-center text-xs text-slate-500">No deliveries recorded yet. Use Deliveries → Stock in, or scan a PO / IAR, to keep the actual costs here.</p>'));
+      document.getElementById('pmCost').value = '';
+      document.getElementById('pmWhy').value = '';
+    }
+    function savePriceCorrection() {
+      const item = items.find(i => i.code === priceCode);
+      if (!item) return;
+      const raw = document.getElementById('pmCost').value;
+      if (raw === '') { document.getElementById('pmCost').focus(); return; }
+      const cost = Math.max(0, round2(raw));
+      const why = document.getElementById('pmWhy').value.trim().slice(0, 120);
+      const s = userState[item.code] || (userState[item.code] = {});
+      s.customPrice = cost;
+      addPriceEntry(item.code, { d: localISODate(), k: 'manual', c: cost, why: why || undefined });
+      rebuildCatalogList();
+      saveState();
+      renderItems();
+      renderPriceHistory();
+      if (sheetCode) renderItemSheet();
+      showToast(`Unit cost set to ${formatCurrency(cost)}`, 'ph-pencil-simple');
+    }
+
+    // ---- Catalog editing: rename (custom items), hide, archive, delete --------------------------
+    let itemEditCode = null;
+    // Where a custom item is used: then it is archived instead of deleted (past slips keep it).
+    function customItemUses(code) {
+      const uses = [];
+      const units = getUnits(code).length;
+      if (units) uses.push(plural(units, 'property number'));
+      const slips = new Set([...releaseAll, ...releaseList].filter(r => (r.lines || []).some(l => l.code === code)).map(r => r.id || r.no)).size;
+      if (slips) uses.push(plural(slips, 'slip'));
+      const prs = prList.filter(p => (p.lines || []).some(l => l.code === code)).length;
+      if (prs) uses.push(plural(prs, 'Purchase Request'));
+      const reqs = reqList.filter(r => (r.lines || []).some(l => l.code === code)).length;
+      if (reqs) uses.push(plural(reqs, 'request'));
+      const dl = deliveries.filter(d => d.lines.some(l => l.code === code)).length;
+      if (dl) uses.push(plural(dl, 'delivery'));
+      const moves = changeHistory.filter(e => (e.c === code && e.k === 'count') || (e.q && e.q[code])).length;
+      if (moves) uses.push('stock card entries');
+      return uses;
+    }
+    function openItemEdit(code) {
+      const item = items.find(i => i.code === code);
+      if (!item) return;
+      itemEditCode = code;
+      const custom = /^CUSTOM-/.test(code);
+      document.getElementById('ieName').value = item.name;
+      document.getElementById('ieUnit').value = item.unit;
+      const cat = document.getElementById('ieCat');
+      cat.innerHTML = CATEGORIES.map((c, i) => `<option value="${i}">${escapeHTML(c)}</option>`).join('');
+      cat.value = String(item.catIdx);
+      document.getElementById('ieType').value = item.typeOverride || 'AUTO';
+      ['ieName', 'ieUnit', 'ieCat'].forEach(id => { document.getElementById(id).disabled = !custom; });
+      document.getElementById('ieLocked').classList.toggle('hidden', custom);
+      document.getElementById('ieCode').textContent = code;
+      renderItemEditActions();
+      document.getElementById('itemEditModal').classList.remove('hidden');
+    }
+    function closeItemEdit() { itemEditCode = null; document.getElementById('itemEditModal').classList.add('hidden'); }
+    function renderItemEditActions() {
+      const item = items.find(i => i.code === itemEditCode);
+      if (!item) return;
+      const custom = /^CUSTOM-/.test(item.code);
+      const has = item.qty > 0 || getUnits(item.code).length > 0;
+      const uses = custom ? customItemUses(item.code) : [];
+      const btn = (fn, icon, label, tone, dis = false) => `<button type="button" ${dis ? 'disabled' : ''} onclick="${fn}" class="h-11 px-4 rounded-xl ${tone} text-xs font-bold flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"><i class="ph-bold ${icon}"></i> ${label}</button>`;
+      let html = '';
+      if (item.hidden) {
+        html = `<p class="text-xs text-slate-600">${item.archived ? 'Archived: hidden from the Catalog and from matching, kept on past slips and reports.' : 'Hidden from the Catalog and from matching.'}</p>
+          ${btn('unhideItem()', 'ph-eye', 'Show in the Catalog again', 'bg-brand-50 hover:bg-brand-100 text-brand-700')}`;
+      } else if (has) {
+        html = `<p class="text-xs text-slate-600">You have ${item.qty} ${escapeHTML(item.unit)} of this item. Items in your inventory can't be hidden or ${custom ? 'deleted' : 'removed'} – release or count them to 0 first.</p>`;
+      } else if (!custom) {
+        html = `<p class="text-xs text-slate-600">APP-CSE items can't be deleted (they are on the official list), but you can hide the ones your school never uses. <strong>Show hidden</strong> in the Catalog brings them back.</p>
+          ${btn('hideItem(false)', 'ph-eye-slash', 'Hide from the Catalog', 'bg-slate-100 hover:bg-slate-200 text-slate-800')}`;
+      } else if (uses.length) {
+        html = `<p class="text-xs text-slate-600">Used on ${escapeHTML(listJoin(uses))}, so it can't be deleted. Archive it instead: it leaves the Catalog and matching, and stays on past slips and reports.</p>
+          <div class="flex flex-wrap gap-2">${btn('hideItem(true)', 'ph-archive', 'Archive', 'bg-amber-50 hover:bg-amber-100 text-amber-800')}${btn('hideItem(false)', 'ph-eye-slash', 'Just hide', 'bg-slate-100 hover:bg-slate-200 text-slate-800')}</div>`;
+      } else {
+        html = `<p class="text-xs text-slate-600">Not used anywhere yet, so it can be deleted for good.</p>
+          <div class="flex flex-wrap gap-2">${btn('deleteCustomItem()', 'ph-trash', 'Delete item', 'bg-rose-50 hover:bg-rose-100 text-rose-700')}${btn('hideItem(false)', 'ph-eye-slash', 'Hide instead', 'bg-slate-100 hover:bg-slate-200 text-slate-800')}</div>`;
+      }
+      document.getElementById('ieActions').innerHTML = html;
+    }
+    function saveItemEdit() {
+      const item = items.find(i => i.code === itemEditCode);
+      if (!item) return;
+      const custom = /^CUSTOM-/.test(item.code);
+      const changes = [];
+      if (custom) {
+        const raw = customRawItems.find(r => r[1] === item.code);
+        const name = document.getElementById('ieName').value.replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 200);
+        const unit = document.getElementById('ieUnit').value.trim().toLowerCase().slice(0, 30) || 'unit';
+        const catIdx = Number(document.getElementById('ieCat').value);
+        if (!name) { appAlert('Please enter the item name.'); return; }
+        const dup = items.find(i => i.code !== item.code && normItemName(i.name) === normItemName(name));
+        if (dup) { appAlert(`“${dup.name}” is already in the Catalog (${dup.code}). Use a different name.`); return; }
+        if (raw && raw[2] !== name) { changes.push(`Renamed “${raw[2]}” → “${name}”`); raw[2] = name; }
+        if (raw && raw[3] !== unit) { changes.push(`Unit ${raw[3]} → ${unit}`); raw[3] = unit; }
+        if (raw && raw[5] !== catIdx && CATEGORIES[catIdx]) { changes.push(`Category ${CATEGORIES[raw[5]]} → ${CATEGORIES[catIdx]}`); raw[5] = catIdx; }
+        if (changes.length) { localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems)); scheduleInventorySync(); }
+      }
+      const type = document.getElementById('ieType').value;
+      const s = userState[item.code] || (userState[item.code] = {});
+      if (type === 'EQUIPMENT' || type === 'CONSUMABLE') s.typeOverride = type; else delete s.typeOverride;
+      changes.forEach(text => logHistory('edit', text, item.code));
+      rebuildCatalogList();
+      saveState();
+      renderItems();
+      renderCategoryPills();
+      closeItemEdit();
+      if (sheetCode) renderItemSheet();
+      showToast(changes.length ? 'Item updated · past slips keep their printed name' : 'Saved', 'ph-check-circle');
+    }
+    function hideItem(archive) {
+      const item = items.find(i => i.code === itemEditCode);
+      if (!item || item.qty > 0) return;
+      const s = userState[item.code] || (userState[item.code] = {});
+      s.hidden = true;
+      if (archive) s.archived = true; else delete s.archived;
+      rebuildCatalogList();
+      saveState();
+      renderItems();
+      renderCategoryPills();
+      closeItemEdit();
+      if (sheetCode === item.code) closeItemSheet();
+      showToast(`${archive ? 'Archived' : 'Hidden'} · Show hidden in the Catalog brings it back`, archive ? 'ph-archive' : 'ph-eye-slash', {
+        label: 'Undo', onClick: () => { delete s.hidden; delete s.archived; rebuildCatalogList(); saveState(); renderItems(); renderCategoryPills(); }
+      });
+    }
+    function unhideItem() {
+      const item = items.find(i => i.code === itemEditCode);
+      if (!item) return;
+      const s = userState[item.code] || (userState[item.code] = {});
+      delete s.hidden; delete s.archived;
+      rebuildCatalogList();
+      saveState();
+      renderItems();
+      renderCategoryPills();
+      renderItemEditActions();
+      showToast('Back in the Catalog', 'ph-eye');
+    }
+    async function deleteCustomItem() {
+      const item = items.find(i => i.code === itemEditCode);
+      if (!item || !/^CUSTOM-/.test(item.code) || item.qty > 0 || customItemUses(item.code).length) return;
+      if (!await appConfirm(`“${item.name}” is removed from the Catalog on every device.`, { title: 'Delete this item?', ok: 'Delete', tone: 'danger', focusCancel: true })) return;
+      const safety = snapshotData();
+      customRawItems = customRawItems.filter(r => r[1] !== item.code);
+      delete userState[item.code];
+      rememberedMatches = rememberedMatches.filter(m => m.c !== item.code);
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
+      saveDeliveries();
+      rebuildCatalogList();
+      saveStateWith({ summary: { kind: 'edit', text: `Deleted custom item “${item.name}” (${item.code})` } });
+      renderItems();
+      renderCategoryPills();
+      closeItemEdit();
+      if (sheetCode === item.code) closeItemSheet();
+      showToast('Item deleted', 'ph-trash', { label: 'Undo', onClick: () => { applyData(safety); restoreBackupMeta(safety.meta); logHistory('system', `Undid deleting “${item.name}”`); } });
+    }
+
     // ---- Photo clean-up before text recognition ------------------------------
     // Phone photos of a form: uneven light, a slight tilt and table borders that confuse
     // the reader (it drops short cells like "2" or "unit" next to a border). So:
@@ -6939,8 +8539,10 @@
       const turned = quarterTurns % 2 === 1;
       const srcW = turned ? bmp.height : bmp.width;
       const srcH = turned ? bmp.width : bmp.height;
-      // ~2200 px across: enough for 9-10 pt print on an A4/Legal page, still fast on a phone
-      const scale = Math.min(3, 2200 / srcW);
+      // ~2200 px across: enough for 9-10 pt print on an A4/Legal page, still fast on a phone.
+      // Small screenshots (a form copied from Excel or a PDF, under 1000 px) go to ~2800 px:
+      // tested on real PO / ICS / IAR screenshots, the money columns read far better.
+      const scale = srcW < 1000 ? Math.min(4, 2800 / srcW) : Math.min(3, 2200 / srcW);
       const W = Math.round(srcW * scale), H = Math.round(srcH * scale);
 
       const draw = (angle) => {
@@ -7072,6 +8674,7 @@
       const q = words.join(' ');
       const hits = [];
       items.forEach(item => {
+        if (item.hidden && !(item.qty > 0)) return;
         const name = item.name.toUpperCase();
         const hay = `${name} ${item.code.toUpperCase()} ${(item.note || '').toUpperCase()}`;
         if (!words.every(w => hay.includes(w))) return;
@@ -7157,6 +8760,7 @@
         barWrap.classList.add('hidden');
       }
 
+      renderHomeDeliveries();
       const recent = recentEncodedItems();
       document.getElementById('homeRecentWrap').classList.toggle('hidden', !recent.length);
       document.getElementById('homeRecent').innerHTML = recent.map(({ item, t }) =>
@@ -7515,12 +9119,19 @@
       mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     }
 
-    function showToast(message, icon = 'ph-check-circle', action = null) {
+    function showToast(message, icon = 'ph-check-circle', action = null, opts = {}) {
       const toast = document.getElementById('appToast');
       if (!toast) return;
+      // A background message ("Ready to work offline…", cloud sync) must not wipe out an Undo button: it waits.
+      if (opts.background && !action && showToast._actionUntil > Date.now() && !toast.classList.contains('hidden')) {
+        clearTimeout(showToast._queued);
+        showToast._queued = setTimeout(() => showToast(message, icon, null, opts), showToast._actionUntil - Date.now() + 300);
+        return;
+      }
       const hide = () => {
         toast.classList.add('hidden');
         toast.classList.remove('flex');
+        showToast._actionUntil = 0;
       };
       watchToastPlacement();
       placeToast();
@@ -7534,6 +9145,7 @@
       toast.classList.add('flex');
       clearTimeout(showToast._timer);
       showToast._timer = setTimeout(hide, action ? 10000 : 4000);
+      showToast._actionUntil = action ? Date.now() + 10000 : 0;
     }
 
     function updateOnlineBadge() {
@@ -7571,7 +9183,7 @@
             if (worker.state !== 'activated') return;
             if (!hadWorker) {
               hadWorker = true;
-              const readyToast = () => showToast('Ready to work offline on this device', 'ph-wifi-slash');
+              const readyToast = () => showToast('Ready to work offline on this device', 'ph-wifi-slash', null, { background: true });
               if (!document.documentElement.classList.contains('gated')) readyToast();
               else { const wait = setInterval(() => { if (!document.documentElement.classList.contains('gated')) { clearInterval(wait); setTimeout(readyToast, 1500); } }, 1000); }
             } else {
@@ -7827,6 +9439,8 @@
     //   schools/{id}/inventory/{code}  { code, state, deleted, updatedMs, by }
     //   schools/{id}/catalog/{code}    { code, raw, deleted, updatedMs, by }   (custom items)
     //   schools/{id}/settings/info     { info, updatedMs, by }
+    //   schools/{id}/settings/dlv-{id} { id, dlv, deleted, updatedMs, by }   (deliveries: PO / stock in)
+    //   schools/{id}/settings/matches  { matches: [{ w, c, t }], updatedMs, by }   (remembered wordings)
     const INV_SYNC_KEY = 'custodian_inventory_sync_v1';
     let invSync = { schoolId: null, synced: {}, lastAt: 0 };
     let invUnsubs = [];
@@ -7862,10 +9476,13 @@
     const invDocId = code => String(code).replace(/\//g, '∕').slice(0, 400);
     const cleanJSON = v => JSON.parse(JSON.stringify(v)); // drops undefined (Firestore refuses it)
 
+    const INV_META_KEYS = new Set(['s:info', 'm:matches']);   // settings, not inventory items
     function invTarget(key) {
       const code = key.slice(2);
       if (key.startsWith('i:')) return { col: 'inventory', id: invDocId(code), code };
       if (key.startsWith('c:')) return { col: 'catalog', id: invDocId(code), code };
+      if (key.startsWith('d:')) return { col: 'settings', id: 'dlv-' + invDocId(code), code };
+      if (key === 'm:matches') return { col: 'settings', id: 'matches' };
       return { col: 'settings', id: 'info' };
     }
 
@@ -7874,6 +9491,8 @@
       Object.keys(userState).forEach(code => { if (userState[code]) docs['i:' + code] = { code, state: cleanJSON(userState[code]) }; });
       customRawItems.forEach(raw => { if (raw && raw[1]) docs['c:' + raw[1]] = { code: raw[1], raw: cleanJSON(raw) }; });
       docs['s:info'] = { info: cleanJSON(schoolInfo || {}) };
+      deliveries.forEach(d => { if (d && d.id) docs['d:' + d.id] = { id: d.id, dlv: cleanJSON(d) }; });
+      if (rememberedMatches.length) docs['m:matches'] = { matches: cleanJSON(rememberedMatches) };
       return docs;
     }
 
@@ -7884,6 +9503,10 @@
       Object.values(invRemote.catalog || {}).forEach(d => { if (d.code) add('c:' + d.code, d, { code: d.code, raw: d.raw || [] }); });
       const info = (invRemote.settings || {}).info;
       if (info) add('s:info', info, { info: info.info || {} });
+      Object.entries(invRemote.settings || {}).forEach(([id, d]) => {
+        if (id.startsWith('dlv-') && d.id) add('d:' + d.id, d, { id: d.id, dlv: d.dlv || {} });
+        else if (id === 'matches') add('m:matches', d, { matches: d.matches || [] });
+      });
       return docs;
     }
 
@@ -8047,8 +9670,8 @@
       invSync.synced = {};
       resolveCustomCollisions(remoteInvDocs());
       const local = localInvDocs(), remote = remoteInvDocs();
-      const remoteItems = Object.keys(remote).filter(k => k !== 's:info' && remote[k].body);
-      const localItems = Object.keys(local).filter(k => k !== 's:info');
+      const remoteItems = Object.keys(remote).filter(k => !INV_META_KEYS.has(k) && remote[k].body);
+      const localItems = Object.keys(local).filter(k => !INV_META_KEYS.has(k));
       if (keepAnswer === undefined && remoteItems.length) {
         const extra = localItems.filter(k => !remote[k]).filter(k => !k.startsWith('i:') || (parseInt(local[k].state.qty, 10) || 0) > 0 || (local[k].state.units || []).length);
         if (extra.length) {
@@ -8064,7 +9687,7 @@
         if (remoteInfo && !(schoolInfo && schoolInfo.school)) applyRemoteInventory([['s:info', remoteInfo]]);
         pushInventory(true);
         const n = Object.keys(userState).filter(c => (parseInt(userState[c].qty, 10) || 0) > 0).length;
-        if (n) showToast(`Inventory saved to your account · ${plural(n, 'item')}`, 'ph-cloud-check');
+        if (n) showToast(`Inventory saved to your account · ${plural(n, 'item')}`, 'ph-cloud-check', null, { background: true });
         return;
       }
       const localOnly = localItems.filter(k => !remote[k]);
@@ -8081,7 +9704,7 @@
       applyRemoteInventory([...apply, ...drop]);
       Object.entries(remote).forEach(([k, r]) => { invSync.synced[k] = r.body ? invHash(r.body) : null; });
       pushInventory(true);
-      showToast(keep ? `Combined with the school inventory · ${plural(meaningful.length, 'item')} added` : 'Loaded the school inventory from your account', 'ph-cloud-check');
+      showToast(keep ? `Combined with the school inventory · ${plural(meaningful.length, 'item')} added` : 'Loaded the school inventory from your account', 'ph-cloud-check', null, { background: true });
     }
 
     function applyRemoteInventory(list) {
@@ -8096,6 +9719,13 @@
             const at = customRawItems.findIndex(raw => raw && raw[1] === code);
             if (body) { if (at >= 0) customRawItems[at] = body.raw; else customRawItems.push(body.raw); }
             else if (at >= 0) customRawItems.splice(at, 1);
+          } else if (key.startsWith('d:')) {
+            const id = key.slice(2);
+            const at = deliveries.findIndex(d => d && d.id === id);
+            if (body && body.dlv) { if (at >= 0) deliveries[at] = body.dlv; else deliveries.push(body.dlv); }
+            else if (!body && at >= 0) deliveries.splice(at, 1);
+          } else if (key === 'm:matches') {
+            if (body) rememberedMatches = Array.isArray(body.matches) ? body.matches : [];
           } else if (body) {
             schoolInfo = Object.assign({ school: '', uacs: '', custodian: '', position: '' }, body.info || {});
           }
@@ -8103,9 +9733,13 @@
         localStorage.setItem(STORAGE_KEY,  JSON.stringify(userState));
         localStorage.setItem(CUSTOM_ITEMS_KEY,  JSON.stringify(customRawItems));
         localStorage.setItem(SCHOOL_KEY,  JSON.stringify(schoolInfo));
+        localStorage.setItem(DLV_KEY, JSON.stringify(deliveries));
+        localStorage.setItem(MATCH_KEY, JSON.stringify(rememberedMatches));
         updateSchoolHeader();
         rebuildCatalogList();
         resetHistoryBase();
+        renderHomeDeliveries();
+        if (dlvState && (dlvState.view === 'list' || dlvState.view === 'detail')) renderDlv();
         updateDockStats();
         renderItems();
         renderDashboard();
@@ -8133,7 +9767,7 @@
         if (invSync.synced[key] !== h) writes.push([key, { ...body, deleted: false }, h]);
       }
       for (const key of Object.keys(invSync.synced)) {
-        if (!local[key] && invSync.synced[key] !== null && key !== 's:info') {
+        if (!local[key] && invSync.synced[key] !== null && !INV_META_KEYS.has(key)) {
           const t = invTarget(key);
           writes.push([key, { code: t.code, deleted: true }, null]);
         }
@@ -9456,6 +11090,7 @@
             <label class="col-span-2 sm:col-span-2 text-[11px] font-bold uppercase text-slate-500">Unit cost<input type="number" min="0" step="0.01" value="${l.unitCost || ''}" placeholder="0.00" oninput="setPrLine('${l.id}', 'unitCost', this.value)" class="mt-0.5 w-full h-8 px-1.5 rounded-lg border ${l.unitCost ? 'border-slate-200' : 'border-amber-300 bg-amber-50/50'} font-mono font-normal text-slate-800 text-xs"></label>
             <span id="prl-tot-${l.id}" class="col-span-2 sm:col-span-2 h-8 flex items-center justify-end font-mono font-bold text-slate-700">${peso2(l.qty * l.unitCost)}</span>
           </div>
+          ${l.code && lastPaid(l.code) ? `<p class="pl-6 text-[11px] text-slate-500 flex items-center gap-1"><i class="ph-bold ph-receipt"></i> ${escapeHTML(lastPaidText(l.code))}</p>` : ''}
         </div>`).join('') || '<p class="text-xs text-slate-500">No items left on this PR.</p>';
       updatePrTotal();
     }
@@ -9589,7 +11224,8 @@
     // Capitalization threshold (COA Circular 2022-004): ₱50,000 and up is PPE (PAR, PTR,
     // RPCPPE, IIRUP); below that it is semi-expendable property (ICS, ITR, RPCSP, IIRUSP).
     const PPE_MIN = 50000;
-    const isPPE = item => Number(item && item.price) >= PPE_MIN;
+    // A unit with its own cost (from a delivery or its ICS) is judged by that cost.
+    const isPPE = (item, unit) => Number(unit && unit.cost > 0 ? unit.cost : item && item.price) >= PPE_MIN;
     const ISSUE_KINDS = ['ICS', 'PAR', 'ITR', 'PTR'];          // documents that put a unit with someone
     const isIssueKind = k => ISSUE_KINDS.includes(k);
     const unitDocKind = u => (u && u.doc) || 'ICS';
@@ -9643,9 +11279,19 @@
         .filter(no => no.startsWith(ym + '-')).map(no => parseInt(no.slice(ym.length + 1), 10) || 0);
       return `${ym}-${String(Math.max(0, ...used) + 1).padStart(3, '0')}`;
     }
+    // COA Circular 2022-004 §4.14 / ICS instructions: separate ICS series for low-valued (SPLV) and
+    // high-valued (SPHV) items, SPLV-YYYY-MM-NNNN, one serial series for each year.
+    function nextCoaIcsNo(cls, date) {
+      const iso = date || localISODate(), year = iso.slice(0, 4);
+      const re = new RegExp(`^${cls}-${year}-\\d{2}-(\\d+)$`);
+      const used = [...releaseAll, ...releaseList].filter(r => r.kind === 'ICS').map(r => String(r.no || '').match(re)).filter(Boolean).map(m => parseInt(m[1], 10) || 0);
+      return `${cls}-${year}-${iso.slice(5, 7)}-${String(Math.max(0, ...used) + 1).padStart(4, '0')}`;
+    }
+    // Unit cost on the slip: the units' own costs when every unit has one, else the item's average cost.
     const relLine = (item, qty, units = []) => ({
-      code: item.code, desc: item.name, unit: item.unit, qty, unitCost: Math.round((item.price || 0) * 100) / 100,
-      units: units.map(u => ({ id: u.id, no: u.no || '', serial: u.serial || '', cond: u.cond || 'S', doc: unitDocLabel(u), docDate: u.icsDate || '', loc: u.loc || '', ...(u.acq ? { acq: u.acq } : {}) }))
+      code: item.code, desc: item.name, unit: item.unit, qty,
+      unitCost: units.length && units.every(u => u.cost > 0) ? round2(units.reduce((n, u) => n + u.cost, 0) / units.length) : round2(item.price || 0),
+      units: units.map(u => ({ id: u.id, no: u.no || '', serial: u.serial || '', cond: u.cond || 'S', doc: unitDocLabel(u), docDate: u.icsDate || '', loc: u.loc || '', ...(u.acq ? { acq: u.acq } : {}), ...(u.cost > 0 ? { cost: u.cost } : {}) }))
     });
     const relTotal = lines => Math.round(lines.reduce((n, l) => n + l.qty * (l.unitCost || 0), 0) * 100) / 100;
     function relBase(t, extra) {
@@ -10166,7 +11812,7 @@
         const ids = lines.flatMap(l => l.units.map(u => u.id)).sort();
         const nos = [...new Set(lines.flatMap(l => l.units.map(u => (findUnitAny(u.id) || {}).ics)).filter(Boolean))];
         batch.set(F.doc(relCol(), `link-${t.uid}-${hashText(ids.join(','))}`), cleanJSON(relBase(t, {
-          kind: 'ICS', source: 'existing', no: nos.join(', ').slice(0, 120), date: localISODate(), purpose: 'Items already assigned before the teacher joined',
+          kind: 'ICS', source: 'existing', no: uniqNos(nos).join(', ').slice(0, 120), date: localISODate(), purpose: 'Items already assigned before the teacher joined',
           lines, total: relTotal(lines), createdAt: F.serverTimestamp()
         })));
         changed += ids.length;
@@ -10430,8 +12076,13 @@
       const ppeLine = l => isPPE(items.find(i => i.code === l.code));
       const ris = d.lines.filter(l => !l.equip && relQty(l) > 0), eq = d.lines.filter(l => l.equip && relQty(l) > 0);
       const ics = eq.filter(l => !ppeLine(l)), par = eq.filter(ppeLine);
+      const coaIcs = numberingMode() === 'coa';
+      const lowLine = l => isLowValued(items.find(i => i.code === l.code));
+      const icsDocs = coaIcs
+        ? [[ics.filter(lowLine), 'SPLV', 'low-valued'], [ics.filter(l => !lowLine(l)), 'SPHV', 'high-valued']].map(([ls, cls, what]) => ls.length && `ICS ${nextCoaIcsNo(cls, d.date)} · ${plural(ls.length, `${what} item`)}`)
+        : [ics.length && `ICS ${nextReleaseNo('ICS', d.date)} · ${plural(ics.length, 'equipment item')}`];
       const docs = [ris.length && `RIS ${nextReleaseNo('RIS', d.date)} · ${ris.length} ${ris.length === 1 ? 'supply' : 'supplies'}`,
-        ics.length && `ICS ${nextReleaseNo('ICS', d.date)} · ${plural(ics.length, 'equipment item')}`,
+        ...icsDocs,
         par.length && `PAR ${nextReleaseNo('PAR', d.date)} · ${plural(par.length, 'item')} of ₱50,000 or more`].filter(Boolean);
       document.getElementById('relSummary').innerHTML = docs.length ? `Creates ${docs.map(x => `<b>${escapeHTML(x)}</b>`).join(' and ')}` : 'Nothing to release yet';
       foot.innerHTML = `
@@ -10494,6 +12145,10 @@
       const now = Date.now();
       const risNo = nextReleaseNo('RIS', d.date), icsNo = nextReleaseNo('ICS', d.date), parNo = nextReleaseNo('PAR', d.date);
       const ris = [], ics = [], par = [];
+      // COA standard: low- and high-valued semi-expendable items go on separate ICS series
+      const coaIcs = numberingMode() === 'coa';
+      const icsNos = { ICS: icsNo, SPLV: coaIcs ? nextCoaIcsNo('SPLV', d.date) : '', SPHV: coaIcs ? nextCoaIcsNo('SPHV', d.date) : '' };
+      const icsOut = { ICS: ics, SPLV: [], SPHV: [] };
       lines.forEach(l => {
         const item = items.find(i => i.code === l.code);
         const state = userState[item.code] || (userState[item.code] = { qty: item.qty });
@@ -10505,24 +12160,32 @@
           return;
         }
         const chosen = getUnits(item.code).filter(u => l.unitIds.includes(u.id));
-        const fresh = l.newUnits ? nextPropertyNumbers(l.newUnits).map(no => ({ id: newUnitId(), no, serial: '', loc: '', to: '', cond: 'S', seen: null, printed: null, added: now })) : [];
+        const fresh = l.newUnits ? nextPropertyNumbers(l.newUnits, undefined, { date: d.date, cost: item.price }).map(no => ({ id: newUnitId(), no, serial: '', loc: '', to: '', cond: 'S', seen: null, printed: null, added: now })) : [];
         state.units = [...getUnits(item.code), ...fresh];
-        const ppe = isPPE(item);
-        [...chosen, ...fresh].forEach(u => {
-          u.to = t.name;
-          if (t.uid) u.toUid = t.uid; else delete u.toUid;
-          u.ics = ppe ? parNo : icsNo;
-          if (ppe) u.doc = 'PAR'; else delete u.doc;
-          u.icsDate = d.date;
-          u.released = now;
+        // Each unit by its own cost: ₱50,000 and up on the PAR, the rest on the ICS
+        // (COA standard: ₱5,000 and below on the SPLV ICS, above on the SPHV ICS)
+        const all = [...chosen, ...fresh];
+        const se = all.filter(u => !isPPE(item, u));
+        const groups = [[all.filter(u => isPPE(item, u)), 'PAR'],
+          ...(coaIcs ? [[se.filter(u => isLowValued(item, u)), 'SPLV'], [se.filter(u => !isLowValued(item, u)), 'SPHV']] : [[se, 'ICS']])];
+        groups.forEach(([list, k]) => {
+          const ppe = k === 'PAR';
+          list.forEach(u => {
+            u.to = t.name;
+            if (t.uid) u.toUid = t.uid; else delete u.toUid;
+            u.ics = ppe ? parNo : icsNos[k];
+            if (ppe) u.doc = 'PAR'; else delete u.doc;
+            u.icsDate = d.date;
+            u.released = now;
+          });
+          if (list.length) (ppe ? par : icsOut[k]).push(relLine(item, list.length, list));
         });
         syncUnitCondition(item);
-        (ppe ? par : ics).push(relLine(item, chosen.length + fresh.length, [...chosen, ...fresh]));
       });
       const docs = [];
       const base = relBase(t, { date: d.date, purpose: d.purpose, requestId: d.requestId || null, source: 'release' });
       if (ris.length) docs.push({ ...base, kind: 'RIS', no: risNo, lines: ris, total: relTotal(ris) });
-      if (ics.length) docs.push({ ...base, kind: 'ICS', no: icsNo, lines: ics, total: relTotal(ics) });
+      ['ICS', 'SPLV', 'SPHV'].forEach(k => { const ls = icsOut[k]; if (ls.length) docs.push({ ...base, kind: 'ICS', no: icsNos[k], lines: ls, total: relTotal(ls) }); });
       if (par.length) docs.push({ ...base, kind: 'PAR', no: parNo, lines: par, total: relTotal(par) });
       saveStateWith({ summary: { kind: 'release', text: `Released to ${t.name}: ${docs.map(x => `${x.kind} ${x.no} (${plural(x.lines.length, 'item')})`).join(', ')}`, track: true } });
 
@@ -10601,7 +12264,7 @@
         const life = (l.units || []).map(u => (findUnitAny(u.id) || {}).life).find(Boolean) || '';   // only what the custodian wrote
         return `<tr><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td>
           <td>${e(l.desc)}${serials.length ? `<br><span style="font-size:8.5pt">S/N: ${e(serials.join(', '))}</span>` : ''}</td>
-          <td class="pr-sn">${e((l.units || []).map(u => u.no).join(', '))}</td><td class="c">${e(life)}</td></tr>`;
+          <td class="pr-sn">${e(nosText(l.units))}</td><td class="c">${e(life)}</td></tr>`;
       }).join('');
       const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 8 - r.lines.length));
       return `
@@ -11148,7 +12811,7 @@
     const rvActs = card => `class="flex flex-wrap items-center gap-2 pt-1 ${card ? 'mt-auto' : ''}"`;
 
     function teacherReportCardHTML(x, card = false) {
-            const units = (x.units || []).map(u => u.no).filter(Boolean).join(', ');
+            const units = nosText(x.units);
             const ret = x.kind === 'return';
             if (x.kind === 'count') return teacherCountInboxHTML(x, card);
             const kind = ret ? 'return' : 'problem';
@@ -11223,7 +12886,7 @@
           kind: 'RETURN', source: 'returned', no: nextReleaseNo('RETURN', localISODate()), date: localISODate(), purpose: x.note || 'Returned by the teacher', reportId: x.id,
           lines, total: 0, createdAt: F.serverTimestamp()
         })));
-        saveStateWith({ summary: { kind: 'release', text: `${x.name} returned ${lines.map(l => `${l.desc} (${l.units.map(u => u.no).join(', ')})`).join(', ')}`, track: true } });
+        saveStateWith({ summary: { kind: 'release', text: `${x.name} returned ${lines.map(l => `${l.desc} (${nosText(l.units)})`).join(', ')}`, track: true } });
       }
       batch.update(F.doc(tReportCol(), x.id), { status: 'done', resolution: 'returned', reply: 'Received back', resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '' });
       cloudWrite(batch.commit(), 'Saving the return');
@@ -11249,7 +12912,7 @@
           touched.push(found);
         });
         if (touched.length) saveStateWith({ summary: { kind: 'condition', code: touched[0].item.code,
-          text: `${touched.map(f => f.unit.no).join(', ')} reported lost by ${x.name}${x.note ? `: ${x.note}` : ''} · lost report started` } });
+          text: `${uniqNos(touched.map(f => f.unit.no)).join(', ')} reported lost by ${x.name}${x.note ? `: ${x.note}` : ''} · lost report started` } });
       }
       if (action === 'repair' || action === 'unserv') {
         (x.units || []).filter(u => x.kind !== 'count' || u.s === 'broken').forEach(({ id: uid }) => {
@@ -11261,7 +12924,7 @@
           touched.push(found);
         });
         if (touched.length) saveStateWith({ summary: { kind: 'condition', code: touched[0].item.code,
-          text: `${touched.map(f => f.unit.no).join(', ')} marked ${action === 'repair' ? 'for repair' : 'unserviceable'} (reported by ${x.name}${x.note ? `: ${x.note}` : ''})` } });
+          text: `${uniqNos(touched.map(f => f.unit.no)).join(', ')} marked ${action === 'repair' ? 'for repair' : 'unserviceable'} (reported by ${x.name}${x.note ? `: ${x.note}` : ''})` } });
       }
       const reply = action === 'repair' ? 'Marked for repair' : action === 'unserv' ? 'Marked unserviceable'
         : action === 'lost' ? 'Lost report started · it stays under your name until you are relieved of accountability' : 'Noted';
@@ -11811,7 +13474,7 @@
                   <span class="w-8 h-8 shrink-0 rounded-lg ${r.kind === 'RETURN' ? 'bg-slate-100 text-slate-500' : r.kind === 'RIS' ? 'bg-indigo-50 text-indigo-600' : 'bg-blue-50 text-blue-600'} flex items-center justify-center"><i class="ph-bold ${r.kind === 'RETURN' ? 'ph-arrow-u-down-left' : 'ph-hand-arrow-up'}"></i></span>
                   <span class="min-w-0 flex-1">
                     <span class="block text-xs font-bold text-slate-900">${escapeHTML(label(r))}${relDocName(r) ? ` · ${escapeHTML(relDocName(r))}` : ''}</span>
-                    <span class="block text-[11px] text-slate-600 line-clamp-2">${r.lines.map(l => `${l.qty} ${escapeHTML(l.desc)}${(l.units || []).length ? ` (${escapeHTML(l.units.map(u => u.no).join(', '))})` : ''}`).join(' · ')}</span>
+                    <span class="block text-[11px] text-slate-600 line-clamp-2">${r.lines.map(l => `${l.qty} ${escapeHTML(l.desc)}${(l.units || []).length ? ` (${escapeHTML(nosText(l.units))})` : ''}`).join(' · ')}</span>
                     ${r.purpose ? `<span class="block text-[11px] text-slate-500 truncate">${escapeHTML(r.purpose)}</span>` : ''}
                     ${r.mergedFrom ? `<span class="block text-[11px] text-slate-500 truncate">Was under “${escapeHTML(r.mergedFrom)}”</span>` : ''}
                   </span>
@@ -11931,7 +13594,7 @@
       const today = new Date().toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
       const who = [p.position, p.office].filter(Boolean).join(', ');
       const back = p.records.filter(r => r.kind === 'RETURN' && (r.lines || []).some(l => (l.units || []).length)).slice().reverse();
-      const rows = back.map(r => `<tr><td class="c" style="font-size:9pt">${e(fDate(r.date))}</td><td class="c" style="font-size:9pt">${e(relDocName(r))}</td><td style="font-size:9.5pt">${e(r.lines.map(l => `${l.desc} (${(l.units || []).map(u => u.no).filter(Boolean).join(', ') || l.qty})`).join('; '))}</td><td class="c" style="font-size:9pt">${e(r.source === 'returned' ? 'Returned' : r.source === 'taken-back' ? 'Taken back' : 'Transferred')}</td></tr>`).join('');
+      const rows = back.map(r => `<tr><td class="c" style="font-size:9pt">${e(fDate(r.date))}</td><td class="c" style="font-size:9pt">${e(relDocName(r))}</td><td style="font-size:9.5pt">${e(r.lines.map(l => `${l.desc} (${nosText(l.units) || l.qty})`).join('; '))}</td><td class="c" style="font-size:9pt">${e(r.source === 'returned' ? 'Returned' : r.source === 'taken-back' ? 'Taken back' : 'Transferred')}</td></tr>`).join('');
       return `
         <div class="pr-form acct-page">
           <h1 style="margin-bottom:2pt">CERTIFICATE OF NO PROPERTY ACCOUNTABILITY</h1>
@@ -12067,7 +13730,7 @@
             const uids = lines.flatMap(l => l.units.map(u => u.id)).sort();
             const nos = [...new Set(lines.flatMap(l => l.units.map(u => (findUnitAny(u.id) || {}).ics)).filter(Boolean))];
             batch.set(F.doc(relCol(), `link-${t.uid}-${hashText(uids.join(','))}`), cleanJSON(relBase(target, {
-              kind: 'ICS', source: 'existing', no: nos.join(', ').slice(0, 120), date: localISODate(), purpose: `Items assigned under “${p.name}”`, mergedFrom: p.name,
+              kind: 'ICS', source: 'existing', no: uniqNos(nos).join(', ').slice(0, 120), date: localISODate(), purpose: `Items assigned under “${p.name}”`, mergedFrom: p.name,
               lines, total: relTotal(lines), createdAt: F.serverTimestamp()
             })));
           }
@@ -12338,7 +14001,7 @@
         const state = userState[code] || (userState[code] = { qty: it.qty });
         state.units = [];
         const { unserv, repair } = getCondition(it);
-        state.units = nextPropertyNumbers(it.qty).map((no, i) => ({
+        state.units = nextPropertyNumbers(it.qty, undefined, { cost: it.price }).map((no, i) => ({
           id: newUnitId(), no, serial: '', loc: '', to: '', cond: i < unserv ? 'U' : i < unserv + repair ? 'R' : 'S', seen: null, printed: null, added: now
         }));
         units[code] = state.units;
@@ -12548,7 +14211,7 @@
         const serials = (l.units || []).map(u => u.serial).filter(Boolean);
         return `<tr><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td>
           <td>${e(l.desc)}${serials.length ? `<br><span style="font-size:8.5pt">S/N: ${e(serials.join(', '))}</span>` : ''}</td>
-          <td class="pr-sn">${e((l.units || []).map(u => u.no).join(', '))}</td><td class="c" style="font-size:9pt">${e(fDate((l.units || []).map(u => (findUnitAny(u.id) || {}).acq).find(Boolean) || r.date))}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td></tr>`;
+          <td class="pr-sn">${e(nosText(l.units))}</td><td class="c" style="font-size:9pt">${e(fDate((l.units || []).map(u => (findUnitAny(u.id) || {}).acq).find(Boolean) || r.date))}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td></tr>`;
       }).join('');
       const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 10 - r.lines.length));
       return `
@@ -12712,7 +14375,7 @@
       const chosen = from ? from.equipment.filter(x => xfer.unitIds.has(x.unit.id)) : [];
       const locs = [...new Set(allTaggedUnits().map(x => x.unit.loc).concat(items.map(i => i.note)).filter(Boolean))].sort();
       const target = xferTarget(from);
-      const ppeN = chosen.filter(x => isPPE(x.item)).length, seN = chosen.length - ppeN;
+      const ppeN = chosen.filter(x => isPPE(x.item, x.unit)).length, seN = chosen.length - ppeN;
       const summary = [seN && `ITR ${nextReleaseNo('ITR', xfer.date)} · ${plural(seN, 'item')}`, ppeN && `PTR ${nextReleaseNo('PTR', xfer.date)} · ${plural(ppeN, 'item')} of ₱50,000 or more`].filter(Boolean);
       const ready = chosen.length && target && (!target.same || xfer.loc.trim());
       body.innerHTML = `
@@ -12734,8 +14397,8 @@
               return `<button type="button" onclick="xferToggle('${unit.id}')" data-xunit="${unit.id}" aria-pressed="${on}" class="w-full text-left px-3 py-2 flex items-center gap-3 ${on ? 'bg-brand-50/60' : ''}">
                 <span class="w-5 h-5 shrink-0 rounded-md border-2 flex items-center justify-center ${on ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300'}">${on ? '<i class="ph-bold ph-check text-xs"></i>' : ''}</span>
                 <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900 truncate">${escapeHTML(item.name)}</span>
-                  <span class="block text-[11px] text-slate-500"><span class="font-mono">${escapeHTML(unit.no || '—')}</span>${unit.loc ? ` · ${escapeHTML(unit.loc)}` : ''} · ${isPPE(item) ? 'PTR' : 'ITR'}</span></span>
-                <span class="shrink-0 text-[11px] font-mono text-slate-600">₱${peso2(item.price)}</span>
+                  <span class="block text-[11px] text-slate-500"><span class="font-mono">${escapeHTML(unit.no || '—')}</span>${unit.loc ? ` · ${escapeHTML(unit.loc)}` : ''} · ${isPPE(item, unit) ? 'PTR' : 'ITR'}</span></span>
+                <span class="shrink-0 text-[11px] font-mono text-slate-600">₱${peso2(unit.cost > 0 ? unit.cost : item.price)}</span>
               </button>`;
             }).join('')}
           </div>
@@ -12788,7 +14451,7 @@
       const date = xfer.date || localISODate();
       const now = Date.now();
       const docs = [];
-      [['ITR', chosen.filter(x => !isPPE(x.item))], ['PTR', chosen.filter(x => isPPE(x.item))]].forEach(([kind, list]) => {
+      [['ITR', chosen.filter(x => !isPPE(x.item, x.unit))], ['PTR', chosen.filter(x => isPPE(x.item, x.unit))]].forEach(([kind, list]) => {
         if (!list.length) return;
         const no = nextReleaseNo(kind, date);
         const byItem = new Map();
@@ -13179,7 +14842,7 @@
     const msISO = ms => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
     const relCodeLines = (r, code) => (r.lines || []).filter(l => l.code === code);
     const lineQty = l => (l.units && l.units.length) || l.qty || 0;
-    const lineNos = l => (l.units || []).map(u => u.no).filter(Boolean).join(', ');
+    const lineNos = l => nosText(l.units);
     const officerOf = r => [r.teacherName, r.office || r.position].filter(Boolean).join(' · ');
 
     // Quantity changes of one item from the history log: [{ t, delta, ref }]
@@ -13263,7 +14926,7 @@
       let bal = opening - known;
       const rows = list.map(g => {
         bal += g.nos.length;
-        return { t: isoMs(g.d), ref: 'Received', receipt: g.nos.length, issue: '', office: '', nos: '', remarks: g.nos.filter(Boolean).join(', '), bal };
+        return { t: isoMs(g.d), ref: 'Received', receipt: g.nos.length, issue: '', office: '', nos: '', remarks: uniqNos(g.nos).join(', '), bal };
       });
       return { left: opening - known, rows };
     }
@@ -13272,7 +14935,7 @@
       const d = prDefaults();
       const ppe = isPPE(item);
       const price = item.price || 0;
-      const nos = getUnits(item.code).map(u => u.no).filter(Boolean);
+      const nos = uniqNos(getUnits(item.code).map(u => u.no));
       const { opening, rows: changes } = propCardData(item, from);
       // Units with a date acquired before the period open the card as receipts on that date;
       // only what is left over (units without a date) is "Balance forward".
@@ -13406,7 +15069,7 @@
       const lost = new Map();
       tReports.filter(x => (x.kind === 'problem' && x.reason === 'lost') || x.kind === 'count')
         .forEach(x => (x.units || []).forEach(u => { if (x.kind !== 'count' || u.s === 'missing') lost.set(u.id, x.name || 'a teacher'); }));
-      return allTaggedUnits().filter(x => relIsEquip(x.item) && isPPE(x.item) === ppe)
+      return allTaggedUnits().filter(x => relIsEquip(x.item) && isPPE(x.item, x.unit) === ppe)
         .map(x => ({ ...x, reportedBy: lost.get(x.unit.id) || (x.unit.lostMs ? unitHolder(x.unit) || 'the custodian' : '') }))
         .sort((a, b) => (b.reportedBy ? 1 : 0) - (a.reportedBy ? 1 : 0) || String(a.unit.no).localeCompare(String(b.unit.no), undefined, { numeric: true }));
     }
@@ -13858,30 +15521,38 @@
       });
     }
     function addCustomItemSilently({ name, unit, price, qty }) {
-      const used = new Set(customRawItems.map(r => r[1]));
-      let no = Math.max(113, ...customRawItems.map(r => parseInt(r[0], 10) || 0));
-      let code;
-      do { no += 1; code = `CUSTOM-P2-${String(no).padStart(3, '0')}`; } while (used.has(code));
+      const { no, code } = nextCustomCode();
       customRawItems.push([no, code, String(name).toUpperCase().slice(0, 200), unit || 'unit', Math.max(0, price || 0), 24, 'PART2']);
       localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems)); scheduleInventorySync();
       userState[code] = { qty, customPrice: Math.max(0, price || 0), minQty: 2, note: '' };
       return code;
     }
+    // The PR unit cost is what was paid: it goes into the average cost and the price history,
+    // and the delivery is listed under Deliveries.
     function stockInPr(pr) {
       const plan = prStockInPlan(pr);
       let added = 0, created = 0;
-      plan.forEach(({ line, item }) => {
-        if (item) {
-          item.qty = (item.qty || 0) + line.qty;
-          (userState[item.code] || (userState[item.code] = {})).qty = item.qty;
-        } else {
-          addCustomItemSilently({ name: line.desc, unit: line.unit, price: line.unitCost, qty: line.qty });
-          created += 1;
-        }
-        added += 1;
+      plan.forEach(p => {
+        if (p.item) p.code = p.item.code;
+        else { p.code = addCustomItemSilently({ name: p.line.desc, unit: p.line.unit, price: 0, qty: 0 }); created += 1; }
       });
       if (created) rebuildCatalogList();
-      if (added) saveStateWith({ summary: { kind: 'edit', text: `Delivered PR ${pr.prNo}: added ${plural(added, 'item')} to stock${created ? ` (${created} new)` : ''}`, track: true } });
+      const date = localISODate();
+      plan.forEach(({ line, code }) => {
+        receiveIntoStock(code, line.qty, line.unitCost || 0, { date, kind: 'pr', doc: `PR ${pr.prNo}` });
+        added += 1;
+      });
+      if (added) {
+        const now = Date.now();
+        deliveries.push(cleanJSON({
+          id: newDlvId(), kind: 'stockin', prNo: pr.prNo, date, supplier: '', status: 'received', createdMs: now,
+          lines: plan.map(({ line, code }, i) => ({ id: 'P' + i, desc: line.desc, stockNo: line.stockNo || '', unit: line.unit || '', code, qty: line.qty, unitCost: line.unitCost || 0, received: line.qty })),
+          receipts: [{ id: newDlvId(), at: now, date, lines: plan.map(({ line, code }, i) => ({ l: 'P' + i, c: code, q: line.qty, uc: line.unitCost || 0 })) }]
+        }));
+        rebuildCatalogList();
+        saveDeliveries();
+      }
+      if (added) saveStateWith({ summary: { kind: 'delivery', text: `Delivered PR ${pr.prNo}: added ${plural(added, 'item')} to stock${created ? ` (${created} new)` : ''}`, track: true } });
       renderDashboard();
       return { added, created };
     }
@@ -14024,7 +15695,7 @@
           make: prev => {
             if (prev !== undefined) return null;
             const who = x.name || 'A teacher';
-            const units = (x.units || []).map(u => u.no).filter(Boolean).join(', ');
+            const units = nosText(x.units);
             if (x.kind === 'received') return { title: `${who} confirmed receipt`, body: [x.releaseNo, x.desc].filter(Boolean).join(' · '), icon: 'ph-check-circle', tone: 'emerald', go: 'teachers', person: x.uid || null };
             if (x.status !== 'open') return null;
             if (x.kind === 'return') return { title: `${who} wants to return an item`, body: [x.desc, units, x.note].filter(Boolean).join(' · '), icon: 'ph-arrow-u-down-left', tone: 'amber', go: 'teachers', person: x.uid || null };
@@ -14040,7 +15711,7 @@
           key: 'tr:' + x.id, sig: (x.status || 'open') + (x.repairedMs ? '+repaired' : x.foundMs ? '+found' : x.relievedMs ? '+relieved' : ''),
           make: prev => {
             if (!prev) return null;                // a report I just sent: nothing to announce
-            const what = [x.desc, (x.units || []).map(u => u.no).filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+            const what = [x.desc, nosText(x.units)].filter(Boolean).join(' · ');
             if (x.kind === 'problem' && x.repairedMs) return { title: 'Repaired · back in use', body: what || 'Your item is repaired', icon: 'ph-wrench', tone: 'emerald', go: 'teacher-items' };
             if (x.kind === 'problem' && x.foundMs) return { title: 'Lost item found', body: what ? `${what} is back on your list as usual` : 'It is back on your list as usual', icon: 'ph-check-circle', tone: 'emerald', go: 'teacher-items' };
             if (x.kind === 'problem' && x.relievedMs) return { title: 'Relieved of accountability', body: [what && `${what} is off your list`, x.reply].filter(Boolean).join(' · '), icon: 'ph-seal-check', tone: 'emerald', go: 'teacher-items' };
@@ -14701,6 +16372,38 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-coa-numbering', date: 'Nov 2026', title: 'Property numbers the COA way', points: [
+        'New choice in School info → Property numbers: COA standard (automatic). The app numbers each item by its unit cost, following COA Circular 2022-004.',
+        'Low-valued items (₱5,000 and below each): all the units on one ICS line share one number, like 9 file boxes with OES-4THQ-2026-11-31.',
+        'High-valued items (above ₱5,000) and PPE (₱50,000 and up): every unit gets its own number, because each one is accounted for until it is returned. Units with no cost yet also get one each.',
+        'Releases: low- and high-valued items go on separate ICS slips, numbered SPLV-2026-11-0001 and SPHV-2026-11-0001. Each series starts over every year.',
+        'Your current setting and the numbers you already have stay the same until you choose the new option.'
+      ] },
+      { id: '2026-11-deliveries-costs', date: 'Nov 2026', title: 'Deliveries, real costs and Catalog editing', points: [
+        'Deliveries: Home has a new Deliveries card. Tap Stock in to receive items with what you actually paid, plus the supplier, date and invoice, DR or IAR number. Inventory has a Stock in button too.',
+        'Purchase Orders: scan or photograph a PO and it waits as an expected delivery. Your stock does not change until you tap Received and enter what came, all of it or only part, with the IAR or DR number. You can also scan an IAR or delivery receipt directly.',
+        'Real costs: supplies keep an average cost across deliveries. Each equipment unit keeps its own cost, and that cost decides PAR (₱50,000 and up) or ICS. A PR marked delivered now uses the PR unit cost.',
+        'Prices: every item has a price history (deliveries, corrections, the APP-CSE price), and PRs show what you last paid. The PS-DBM price is labelled PS-DBM price (APP-CSE 2027) and is for reference only. Items you already have keep their current price.',
+        'The scanner remembers: when you pick an item for a supplier’s wording, that wording is matched by itself next time. Reading mistakes like BOND PAPFR still find the item, and you get a warning when the paper says box but the item is counted by piece.',
+        'Catalog editing: you can rename your own items and change their unit or category, hide items you never use (Show hidden brings them back) and delete unused ones. Items used on past slips are archived instead, and old slips keep the name and cost they were printed with. Every change shows in Change history.',
+        'Scanning tuned on real DepEd forms (PO, IAR, ICS): when the reader drops a decimal point or misreads a digit, the amount is corrected from quantity × unit cost and checked against the total on the paper. An IAR is matched to its PO by stock no. “Received by” is read on either side of the ICS, and an inventory item no. that was only half read has to be fixed before saving.',
+        'One inventory item no. per ICS line: in School info → Property numbers, choose One number per ICS line. New numbers then follow School-Quarter-Year-Month-Series (like OES-4THQ-2026-11-31), and all the units on a line share one number. A scanned ICS with one number for 9 file boxes gives all 9 that number, and slips list it once.',
+        'Fixes: the “Ready to work offline” message no longer hides an Undo button.'
+      ] },
+      { id: '2026-11-reports-reset', date: 'Nov 2026', title: 'Reports followed through, and a clean start', points: [
+        'Needs repair: when it comes back, tap Repaired · back in use on the unit. The teacher sees it on their item and gets a notification.',
+        'Beyond repair: Mark unserviceable now offers Take it back now. An RRSP is made, and the unit leaves the teacher’s list and waits in stock for the IIRUP / IIRUSP.',
+        'Lost: Start lost report opens the RLSDDP / RLSDDSP with the unit ticked. It stays under the teacher’s name, marked Lost, until you tap Found or Relieve (with the RLSDDSP no.). The Teachers page has a new Lost filter for the year-end count.',
+        'Teachers with many items: the same items make one row (Monobloc chair × 20) that opens to each property number, a search box appears from 8 items, and older RIS slips fold under Earlier, by quarter.',
+        'More → Reset app: clear only this device, or this device and the school in the cloud, for a clean start after testing. Type RESET to confirm; a Back up button is right there.',
+        'Teachers can join by typing your 6-digit DepEd School ID (start the school name with it, e.g. 114656 - San Jose NHS). New teachers still wait for your Approve.'
+      ] },
+      { id: '2026-11-to-review-cards', date: 'Nov 2026', title: 'To review as cards, and explore without an account', points: [
+        'To review on the Teachers page is now a row of cards (joins, counts, reports, returns), each with its own colour and icon. Swipe on a phone; on a computer it sits beside the list, with arrows to scroll.',
+        'Reports about supplies are labelled Supply report. A teacher’s own page keeps their reports in a short list.',
+        'Explore without an account: a button on the sign-in screen opens the app with sample data, no account and nothing sent anywhere. Sign in puts the phone back as it was.',
+        'A typed name with nothing left (a test or a typo) can be removed from the Teachers list. Its slips are marked Cancelled, and supplies go back to stock.'
+      ] },
       { id: '2026-11-stock-members', date: 'Nov 2026', title: 'Teachers see what’s left, and you decide who joins', points: [
         'No more “Sir, meron pa ba nito?”: teachers get a Stock tab with the exact number of each supply left (no equipment, no prices), with a Request button on every line.',
         '“I took this”: a teacher who took supplies from the office records it, and the number drops for everyone at once. You see “Took it” and tap Confirm · RIS, or Decline to put it back. Supplies only; equipment still needs an ICS or PAR.',
