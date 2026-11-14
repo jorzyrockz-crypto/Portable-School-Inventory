@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="a06ef4bcb2bf">
+  <meta name="app-version" content="94089282a093">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -573,6 +573,9 @@
         </div>
       </button>
       <div class="flex items-center gap-2 shrink-0">
+      <button onclick="openAppearPanel()" id="appearBtn" class="hidden w-10 h-10 shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition items-center justify-center text-slate-700" aria-label="Appearance" title="Appearance">
+        <i id="appearIcon" class="ph-bold ph-circle-half text-lg"></i>
+      </button>
       <button onclick="openNotifPanel()" id="notifBtn" class="hidden relative w-10 h-10 shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition items-center justify-center text-slate-700" aria-label="Notifications">
         <i class="ph-bold ph-bell text-lg"></i>
         <span id="notifCount" class="hidden absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-600 text-white text-[11px] font-extrabold flex items-center justify-center ring-2 ring-white"></span>
@@ -1234,11 +1237,6 @@
       <div id="rqList" class="space-y-2"></div>
     </div>
     </div>
-    <div>
-      <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Appearance</h2>
-      <div id="rqTheme" data-theme-switch></div>
-      <div id="rqArt" data-art-switch class="mt-2"></div>
-    </div>
     <div id="rqAccount" class="text-[11px] -mb-2"></div>
     <div class="flex items-center justify-between gap-3 text-xs pb-6">
       <button onclick="editMyDetails()" class="min-h-10 px-1 font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-user-circle"></i> Change my name or office</button>
@@ -1455,6 +1453,26 @@
   </div>
   <input type="file" id="restoreFileInput" accept=".json,application/json" class="hidden no-print" onchange="importBackupJSON(event)">
 
+
+  <!-- Appearance (teacher's phone: the header button next to the bell; custodians have it in More) -->
+  <div id="appearPanel" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-start sm:justify-end no-print" onclick="if (event.target === this) closeAppearPanel()" onkeydown="if (event.key === 'Escape') closeAppearPanel()">
+    <div role="dialog" aria-labelledby="appearTitle" class="bg-white w-full sm:w-80 sm:mt-16 sm:mr-4 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 max-h-[88vh] flex flex-col safe-bottom">
+      <div class="px-5 pt-4 pb-3 flex items-center justify-between gap-2 border-b border-slate-100">
+        <h3 id="appearTitle" class="font-extrabold text-base text-slate-900 flex items-center gap-2"><i class="ph-bold ph-palette text-brand-600"></i> Appearance</h3>
+        <button onclick="closeAppearPanel()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div class="p-4 pb-5 space-y-4 overflow-y-auto">
+        <div>
+          <p class="px-1 pb-1.5 text-xs font-semibold text-slate-600">Theme</p>
+          <div id="rqTheme" data-theme-switch></div>
+        </div>
+        <div>
+          <p class="px-1 pb-1.5 text-xs font-semibold text-slate-600">Background</p>
+          <div id="rqArt" data-art-switch></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Notifications -->
   <div id="notifPanel" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-start sm:justify-end no-print" onclick="if (event.target === this) closeNotifPanel()">
@@ -3159,6 +3177,10 @@
       document.getElementById('tabBar').classList.toggle('hidden', viewName === 'REQUESTER');
       document.documentElement.classList.toggle('no-tabs', viewName === 'REQUESTER');
       document.getElementById('moreMenuBtn').classList.toggle('hidden', viewName === 'REQUESTER');
+      const ab = document.getElementById('appearBtn'); // a teacher has no More menu: Appearance gets its own button
+      ab.classList.toggle('hidden', viewName !== 'REQUESTER');
+      ab.classList.toggle('flex', viewName === 'REQUESTER');
+      if (viewName !== 'REQUESTER') closeAppearPanel();
       activeMainView = viewName;
       if (coaIsPage()) closeCoa(); // leaving the Forms page (computer sidebar)
       Object.entries(MAIN_VIEWS).forEach(([key, id]) =>
@@ -17567,6 +17589,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     function openNotifPanel() {
       closeMoreMenu();
+      closeAppearPanel();
       document.getElementById('notifPanel').classList.remove('hidden');
       renderNotifPanel();
     }
@@ -17841,6 +17864,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-teacher-appearance', date: 'Nov 2026', title: 'Appearance button for teachers', points: [
+        'On a teacher\u2019s phone, Appearance (System, Light or Dark, and the background picture) now has its own button at the top, next to the bell.',
+        'The button shows the theme in use: half circle for System, sun for Light, moon for Dark. It is no longer at the bottom of the page.'
+      ] },
       { id: '2026-11-iar-po-link', date: 'Nov 2026', title: 'Scanned POs and inspections work together', points: [
         'If you scanned the PO under Deliveries, Inspect delivery on its Purchase Request finds it and fills in the PO No., PO date, supplier and the PO prices.',
         'Accepting the inspection receives that PO too (Partly received or Received), so it leaves the Expected list and the items are never added to stock twice.',
@@ -18221,9 +18248,23 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       else localStorage.removeItem(THEME_KEY);
       applyTheme();
     }
+    function openAppearPanel() {
+      if (typeof closeNotifPanel === 'function') closeNotifPanel();
+      renderThemeSwitches();
+      renderArtSwitches();
+      const el = document.getElementById('appearPanel');
+      el.classList.remove('hidden');
+      setTimeout(() => { const on = el.querySelector('[data-theme-opt][aria-checked="true"]'); if (on) on.focus({ preventScroll: true }); }, 50);
+    }
+    function closeAppearPanel() {
+      const el = document.getElementById('appearPanel');
+      if (el) el.classList.add('hidden');
+    }
     function renderThemeSwitches() {
       const pref = themePref();
       const opts = [['system', 'ph-circle-half', 'System'], ['light', 'ph-sun', 'Light'], ['dark', 'ph-moon', 'Dark']];
+      const icon = document.getElementById('appearIcon');
+      if (icon) icon.className = `ph-bold ${(opts.find(o => o[0] === pref) || opts[0])[1]} text-lg`;
       document.querySelectorAll('[data-theme-switch]').forEach(el => {
         el.innerHTML = `<div role="radiogroup" aria-label="Appearance" class="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100">${opts.map(([key, icon, label]) => `
           <button type="button" role="radio" aria-checked="${pref === key}" data-theme-opt="${key}" onclick="setTheme('${key}')"

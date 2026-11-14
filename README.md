@@ -58,8 +58,8 @@ In code, use `appAlert(message, opts)`, `await appConfirm(message, opts)` and `a
 
 ## Light and dark
 
-The app follows the phone's light or dark setting. **More → Appearance** (teachers: at the
-bottom of their screen) switches between **System**, **Light** and **Dark**. The choice is
+The app follows the phone's light or dark setting. **More → Appearance** (teachers: the
+**Appearance** button at the top, next to the bell, showing the theme in use) switches between **System**, **Light** and **Dark**. The choice is
 applied before the first paint, so there is no white flash when opening the app at night.
 Printed forms always use the light look. In dark mode the sign-in screen and the strip behind Home use a night version of the school picture, and the selected option of every switch (System/Light/Dark, My Items/Requests, transfer type…) is a lighter raised pill.
 
