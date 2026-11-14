@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="a42292eb50b6">
+  <meta name="app-version" content="72ab2211f0ca">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -2195,8 +2195,9 @@
           <select id="infoNumbering" onchange="updatePrefixPreview()" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-sm font-medium bg-white">
             <option value="unit">One per unit (OES-2026-0001)</option>
             <option value="line">One per ICS line (OES-4THQ-2026-11-31)</option>
+            <option value="coa">COA standard (automatic)</option>
           </select>
-          <p class="text-[11px] text-slate-500 mt-1">Per ICS line: School-Quarter-Year-Month-Series. All the units on one line (9 file boxes) share the number; the series continues through the year.</p>
+          <p id="infoNumberingHelp" class="text-[11px] text-slate-500 mt-1"></p>
         </div>
       </div>
       <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
@@ -4285,7 +4286,7 @@
       document.getElementById('infoPosition').value = schoolInfo.position || '';
       document.getElementById('infoHead').value = schoolInfo.head || '';
       document.getElementById('infoPropPrefix').value = schoolInfo.propPrefix || '';
-      document.getElementById('infoNumbering').value = schoolInfo.numbering === 'line' ? 'line' : 'unit';
+      document.getElementById('infoNumbering').value = numberingMode();
       updatePrefixPreview();
       document.getElementById('schoolModal').classList.remove('hidden');
     }
@@ -4304,7 +4305,7 @@
         position: document.getElementById('infoPosition').value.trim(),
         head: document.getElementById('infoHead').value.trim(),
         propPrefix: cleanPrefix(document.getElementById('infoPropPrefix').value),
-        numbering: document.getElementById('infoNumbering').value === 'line' ? 'line' : 'unit'
+        numbering: numberingMode(document.getElementById('infoNumbering').value)
       };
       localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo)); scheduleInventorySync();
       const labels = { school: 'school name', uacs: 'agency/division', custodian: 'custodian', position: 'position', head: 'school head', propPrefix: 'property number prefix', numbering: 'property numbering' };
@@ -4320,8 +4321,13 @@
     function updatePrefixPreview() {
       const typed = cleanPrefix(document.getElementById('infoPropPrefix').value);
       const prefix = typed || schoolInitials(document.getElementById('infoSchool').value) || 'PROP';
-      const mode = document.getElementById('infoNumbering').value === 'line' ? 'line' : 'unit';
+      const mode = numberingMode(document.getElementById('infoNumbering').value);
       document.getElementById('infoPrefixPreview').textContent = nextPropertyNumbers(1, prefix, { mode })[0];
+      document.getElementById('infoNumberingHelp').textContent = {
+        unit: 'Every unit gets its own number: PREFIX-Year-Series.',
+        line: 'School-Quarter-Year-Month-Series. All the units on one ICS line (9 file boxes) share the number; the series continues through the year.',
+        coa: 'Follows COA Circular 2022-004, by the cost of each unit: ₱5,000 and below (low-valued) share one number per ICS line; above ₱5,000 (high-valued and PPE) get one number each. Same School-Quarter-Year-Month-Series form. Releases split the ICS into SPLV and SPHV series.'
+      }[mode];
     }
 
     function updateSchoolHeader() {
@@ -4707,10 +4713,21 @@
     // PREFIX-YEAR-0001 style, continuing after the highest number already used this year.
     // Per ICS line (schoolInfo.numbering 'line'): one number for all `count` units, in the
     // School-Quarter-Year-Month-Series form (OES-4THQ-2026-11-31); the series runs through the year.
+    // COA standard ('coa'): the same form, decided by the unit cost (opts.cost) as in COA Circular
+    // 2022-004 §4.8: low-valued (₱5,000 and below) units share one number per line; high-valued,
+    // PPE and units with no known cost get one number each, since they are accounted for one by one.
     const QUARTER_TAG = ['1STQ', '2NDQ', '3RDQ', '4THQ'];
+    const LOW_VALUE_MAX = 5000;
+    function numberingMode(v = schoolInfo.numbering) { return v === 'line' || v === 'coa' ? v : 'unit'; }
+    // Low-valued semi-expendable (₱5,000 and below a unit). A unit's own cost wins over the item's average.
+    const isLowValued = (item, unit) => { const c = Number(unit && unit.cost > 0 ? unit.cost : item && item.price) || 0; return c <= LOW_VALUE_MAX; };
+    // Do new units on one line share one number under the current setting?
+    function sharesLineNumber(count, cost, mode = numberingMode()) {
+      return count > 1 && (mode === 'line' || (mode === 'coa' && cost > 0 && cost <= LOW_VALUE_MAX));
+    }
     function nextPropertyNumbers(count, prefix = propertyPrefix(), opts = {}) {
-      const mode = opts.mode || (schoolInfo.numbering === 'line' ? 'line' : 'unit');
-      if (mode === 'line') {
+      const mode = numberingMode(opts.mode || schoolInfo.numbering);
+      if (mode === 'line' || mode === 'coa') {
         const d = /^\d{4}-\d{2}-\d{2}$/.test(opts.date || '') ? new Date(opts.date + 'T00:00:00') : new Date();
         const year = d.getFullYear(), month = d.getMonth() + 1;
         const re = new RegExp(`^${escRe(prefix)}-(?:[1-4](?:ST|ND|RD|TH)Q)-${year}-\\d{1,2}-(\\d+)$`);
@@ -4718,8 +4735,9 @@
         // every stored unit, including items created a moment ago in the same save
         Object.values(userState).forEach(st => (st && st.units || []).forEach(unit => { const m = normalizePropNo(unit.no).match(re); if (m) max = Math.max(max, parseInt(m[1], 10)); }));
         (opts.taken || []).forEach(no => { const m = normalizePropNo(no).match(re); if (m) max = Math.max(max, parseInt(m[1], 10)); });
-        const no = `${prefix}-${QUARTER_TAG[Math.floor((month - 1) / 3)]}-${year}-${String(month).padStart(2, '0')}-${String(max + 1).padStart(2, '0')}`;
-        return Array.from({ length: count }, () => no);
+        const no = i => `${prefix}-${QUARTER_TAG[Math.floor((month - 1) / 3)]}-${year}-${String(month).padStart(2, '0')}-${String(max + 1 + i).padStart(2, '0')}`;
+        const shared = mode === 'line' || sharesLineNumber(count, Number(opts.cost) || 0, mode);
+        return Array.from({ length: count }, (_, i) => no(shared ? 0 : i));
       }
       const base = `${prefix}-${new Date().getFullYear()}-`;
       let max = 0;
@@ -4780,7 +4798,7 @@
 
       let toolbar = '';
       if (untagged > 0) {
-        const next = nextPropertyNumbers(untagged);
+        const next = nextPropertyNumbers(untagged, undefined, { cost: item.price });
         const headline = units.length === 0
           ? `${untagged === 1 ? 'The on-hand unit has' : `None of the ${untagged} on-hand units have`} a property number yet.`
           : `${untagged} new ${untagged === 1 ? 'unit has' : 'units have'} no property number yet.`;
@@ -4887,7 +4905,7 @@
       let unserv = 0, repair = 0;
       if (!units.length) ({ unserv, repair } = getCondition(item));
       const now = Date.now();
-      const created = nextPropertyNumbers(untagged).map((no, i) => ({
+      const created = nextPropertyNumbers(untagged, undefined, { cost: item.price }).map((no, i) => ({
         id: newUnitId(), no, serial: '', loc: '', to: '',
         cond: i < unserv ? 'U' : i < unserv + repair ? 'R' : 'S',
         seen: null, printed: null, added: now
@@ -7121,7 +7139,7 @@
             ${st.opts.makeUnits && !off ? `<p class="text-[11px] text-slate-500 flex items-start gap-1.5"><i class="ph-bold ph-tag text-violet-500 mt-0.5"></i><span>${nos.length
               ? (nos.length > 1 && nos.every(n => n === nos[0]) ? `Property no. ${escapeHTML(nos[0])}, shared by all ${l.qty} units (one ICS line)`
                 : `Property no. ${escapeHTML(nos[0])}${nos.length > 1 ? ` to ${escapeHTML(nos[nos.length - 1])}` : ''}${nos.length < l.qty ? ` + ${l.qty - nos.length} new number${l.qty - nos.length === 1 ? '' : 's'}` : ''}`)
-              : schoolInfo.numbering === 'line' && l.qty > 1 ? `One new property number for all ${l.qty} units` : `${plural(l.qty, 'new property number')} will be created`}</span></p>` : ''}
+              : sharesLineNumber(l.qty, l.unitCost || 0) ? `One new property number for all ${l.qty} units${numberingMode() === 'coa' ? ' (low-valued, COA)' : ''}` : `${plural(l.qty, 'new property number')} will be created${numberingMode() === 'coa' && l.qty > 1 ? (l.unitCost > LOW_VALUE_MAX ? ' (over ₱5,000 each: one per unit, COA)' : ' (no unit cost yet: one per unit)') : ''}`}</span></p>` : ''}
             ${l.notes.map(n => `<p class="text-[11px] text-amber-700 flex items-start gap-1.5"><i class="ph-bold ph-info mt-0.5"></i><span>${escapeHTML(n)}</span></p>`).join('')}
             ${errs.map(e => `<p class="text-[11px] font-semibold text-rose-700 flex items-start gap-1.5"><i class="ph-bold ph-warning-circle mt-0.5"></i><span>${escapeHTML(e)}</span></p>`).join('')}
           </div>`;
@@ -7229,7 +7247,7 @@
           const missing = l.qty - Math.min(l.qty, (l.nos || []).length);
           const s = userState[l.code];
           if (missing > 0) {
-            s.units = [...getUnits(l.code), ...nextPropertyNumbers(missing, undefined, { date: h.date }).map(no => makeUnit(l, no))];
+            s.units = [...getUnits(l.code), ...nextPropertyNumbers(missing, undefined, { date: h.date, cost: l.unitCost || 0 }).map(no => makeUnit(l, no))];
             newUnits += missing;
           }
           if ((parseInt(s.qty, 10) || 0) < s.units.length) s.qty = s.units.length; // ICS assigns more than counted
@@ -7335,7 +7353,7 @@
       const type = resolveItemType({ ...item, price: cost || item.price }, s.typeOverride);
       if (meta.makeUnits && type === 'EQUIPMENT') {
         const now = Date.now();
-        const fresh = nextPropertyNumbers(qty, undefined, { date: meta.date }).map(no => ({
+        const fresh = nextPropertyNumbers(qty, undefined, { date: meta.date, cost: cost || item.price }).map(no => ({
           id: newUnitId(), no, serial: '', loc: '', to: '', cond: 'S', seen: null, printed: null, added: now,
           acq: meta.date || localISODate(), ...(cost > 0 ? { cost } : {}), ...(meta.doc ? { src: meta.doc } : {})
         }));
@@ -11261,6 +11279,14 @@
         .filter(no => no.startsWith(ym + '-')).map(no => parseInt(no.slice(ym.length + 1), 10) || 0);
       return `${ym}-${String(Math.max(0, ...used) + 1).padStart(3, '0')}`;
     }
+    // COA Circular 2022-004 §4.14 / ICS instructions: separate ICS series for low-valued (SPLV) and
+    // high-valued (SPHV) items, SPLV-YYYY-MM-NNNN, one serial series for each year.
+    function nextCoaIcsNo(cls, date) {
+      const iso = date || localISODate(), year = iso.slice(0, 4);
+      const re = new RegExp(`^${cls}-${year}-\\d{2}-(\\d+)$`);
+      const used = [...releaseAll, ...releaseList].filter(r => r.kind === 'ICS').map(r => String(r.no || '').match(re)).filter(Boolean).map(m => parseInt(m[1], 10) || 0);
+      return `${cls}-${year}-${iso.slice(5, 7)}-${String(Math.max(0, ...used) + 1).padStart(4, '0')}`;
+    }
     // Unit cost on the slip: the units' own costs when every unit has one, else the item's average cost.
     const relLine = (item, qty, units = []) => ({
       code: item.code, desc: item.name, unit: item.unit, qty,
@@ -12050,8 +12076,13 @@
       const ppeLine = l => isPPE(items.find(i => i.code === l.code));
       const ris = d.lines.filter(l => !l.equip && relQty(l) > 0), eq = d.lines.filter(l => l.equip && relQty(l) > 0);
       const ics = eq.filter(l => !ppeLine(l)), par = eq.filter(ppeLine);
+      const coaIcs = numberingMode() === 'coa';
+      const lowLine = l => isLowValued(items.find(i => i.code === l.code));
+      const icsDocs = coaIcs
+        ? [[ics.filter(lowLine), 'SPLV', 'low-valued'], [ics.filter(l => !lowLine(l)), 'SPHV', 'high-valued']].map(([ls, cls, what]) => ls.length && `ICS ${nextCoaIcsNo(cls, d.date)} · ${plural(ls.length, `${what} item`)}`)
+        : [ics.length && `ICS ${nextReleaseNo('ICS', d.date)} · ${plural(ics.length, 'equipment item')}`];
       const docs = [ris.length && `RIS ${nextReleaseNo('RIS', d.date)} · ${ris.length} ${ris.length === 1 ? 'supply' : 'supplies'}`,
-        ics.length && `ICS ${nextReleaseNo('ICS', d.date)} · ${plural(ics.length, 'equipment item')}`,
+        ...icsDocs,
         par.length && `PAR ${nextReleaseNo('PAR', d.date)} · ${plural(par.length, 'item')} of ₱50,000 or more`].filter(Boolean);
       document.getElementById('relSummary').innerHTML = docs.length ? `Creates ${docs.map(x => `<b>${escapeHTML(x)}</b>`).join(' and ')}` : 'Nothing to release yet';
       foot.innerHTML = `
@@ -12114,6 +12145,10 @@
       const now = Date.now();
       const risNo = nextReleaseNo('RIS', d.date), icsNo = nextReleaseNo('ICS', d.date), parNo = nextReleaseNo('PAR', d.date);
       const ris = [], ics = [], par = [];
+      // COA standard: low- and high-valued semi-expendable items go on separate ICS series
+      const coaIcs = numberingMode() === 'coa';
+      const icsNos = { ICS: icsNo, SPLV: coaIcs ? nextCoaIcsNo('SPLV', d.date) : '', SPHV: coaIcs ? nextCoaIcsNo('SPHV', d.date) : '' };
+      const icsOut = { ICS: ics, SPLV: [], SPHV: [] };
       lines.forEach(l => {
         const item = items.find(i => i.code === l.code);
         const state = userState[item.code] || (userState[item.code] = { qty: item.qty });
@@ -12125,27 +12160,32 @@
           return;
         }
         const chosen = getUnits(item.code).filter(u => l.unitIds.includes(u.id));
-        const fresh = l.newUnits ? nextPropertyNumbers(l.newUnits).map(no => ({ id: newUnitId(), no, serial: '', loc: '', to: '', cond: 'S', seen: null, printed: null, added: now })) : [];
+        const fresh = l.newUnits ? nextPropertyNumbers(l.newUnits, undefined, { date: d.date, cost: item.price }).map(no => ({ id: newUnitId(), no, serial: '', loc: '', to: '', cond: 'S', seen: null, printed: null, added: now })) : [];
         state.units = [...getUnits(item.code), ...fresh];
         // Each unit by its own cost: ₱50,000 and up on the PAR, the rest on the ICS
+        // (COA standard: ₱5,000 and below on the SPLV ICS, above on the SPHV ICS)
         const all = [...chosen, ...fresh];
-        [[all.filter(u => isPPE(item, u)), true], [all.filter(u => !isPPE(item, u)), false]].forEach(([list, ppe]) => {
+        const se = all.filter(u => !isPPE(item, u));
+        const groups = [[all.filter(u => isPPE(item, u)), 'PAR'],
+          ...(coaIcs ? [[se.filter(u => isLowValued(item, u)), 'SPLV'], [se.filter(u => !isLowValued(item, u)), 'SPHV']] : [[se, 'ICS']])];
+        groups.forEach(([list, k]) => {
+          const ppe = k === 'PAR';
           list.forEach(u => {
             u.to = t.name;
             if (t.uid) u.toUid = t.uid; else delete u.toUid;
-            u.ics = ppe ? parNo : icsNo;
+            u.ics = ppe ? parNo : icsNos[k];
             if (ppe) u.doc = 'PAR'; else delete u.doc;
             u.icsDate = d.date;
             u.released = now;
           });
-          if (list.length) (ppe ? par : ics).push(relLine(item, list.length, list));
+          if (list.length) (ppe ? par : icsOut[k]).push(relLine(item, list.length, list));
         });
         syncUnitCondition(item);
       });
       const docs = [];
       const base = relBase(t, { date: d.date, purpose: d.purpose, requestId: d.requestId || null, source: 'release' });
       if (ris.length) docs.push({ ...base, kind: 'RIS', no: risNo, lines: ris, total: relTotal(ris) });
-      if (ics.length) docs.push({ ...base, kind: 'ICS', no: icsNo, lines: ics, total: relTotal(ics) });
+      ['ICS', 'SPLV', 'SPHV'].forEach(k => { const ls = icsOut[k]; if (ls.length) docs.push({ ...base, kind: 'ICS', no: icsNos[k], lines: ls, total: relTotal(ls) }); });
       if (par.length) docs.push({ ...base, kind: 'PAR', no: parNo, lines: par, total: relTotal(par) });
       saveStateWith({ summary: { kind: 'release', text: `Released to ${t.name}: ${docs.map(x => `${x.kind} ${x.no} (${plural(x.lines.length, 'item')})`).join(', ')}`, track: true } });
 
@@ -13961,7 +14001,7 @@
         const state = userState[code] || (userState[code] = { qty: it.qty });
         state.units = [];
         const { unserv, repair } = getCondition(it);
-        state.units = nextPropertyNumbers(it.qty).map((no, i) => ({
+        state.units = nextPropertyNumbers(it.qty, undefined, { cost: it.price }).map((no, i) => ({
           id: newUnitId(), no, serial: '', loc: '', to: '', cond: i < unserv ? 'U' : i < unserv + repair ? 'R' : 'S', seen: null, printed: null, added: now
         }));
         units[code] = state.units;
@@ -16332,6 +16372,13 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-coa-numbering', date: 'Nov 2026', title: 'Property numbers the COA way', points: [
+        'New choice in School info → Property numbers: COA standard (automatic). The app numbers each item by its unit cost, following COA Circular 2022-004.',
+        'Low-valued items (₱5,000 and below each): all the units on one ICS line share one number, like 9 file boxes with OES-4THQ-2026-11-31.',
+        'High-valued items (above ₱5,000) and PPE (₱50,000 and up): every unit gets its own number, because each one is accounted for until it is returned. Units with no cost yet also get one each.',
+        'Releases: low- and high-valued items go on separate ICS slips, numbered SPLV-2026-11-0001 and SPHV-2026-11-0001. Each series starts over every year.',
+        'Your current setting and the numbers you already have stay the same until you choose the new option.'
+      ] },
       { id: '2026-11-deliveries-costs', date: 'Nov 2026', title: 'Deliveries, real costs and Catalog editing', points: [
         'Deliveries: Home has a new Deliveries card. Tap Stock in to receive items with what you actually paid, plus the supplier, date and invoice, DR or IAR number. Inventory has a Stock in button too.',
         'Purchase Orders: scan or photograph a PO and it waits as an expected delivery. Your stock does not change until you tap Received and enter what came, all of it or only part, with the IAR or DR number. You can also scan an IAR or delivery receipt directly.',

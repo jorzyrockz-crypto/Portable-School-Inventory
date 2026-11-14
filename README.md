@@ -283,6 +283,14 @@ Equipment can be tracked **per unit** instead of only as a count:
    number once; renaming may give a unit the number of another unit of the same item (not of a
    different item); and during a physical count each scan of the shared sticker counts the next
    unit of the batch.
+
+   **COA standard (automatic).** The third choice decides by the cost of each unit, following
+   [COA Circular 2022-004](https://www.coa.gov.ph/) (semi-expendable property): low-valued items
+   (₱5,000 and below a unit, §4.8) share one number per line, while high-valued items (above
+   ₱5,000), PPE (₱50,000 and up) and units with no cost yet get one number each, in the same
+   School · Quarter · Year · Month · Series form. Releases put low- and high-valued items on
+   separate ICS slips (§4.14), numbered `SPLV-YYYY-MM-NNNN` and `SPHV-YYYY-MM-NNNN`, each with one
+   serial series per year.
 2. Per unit you can record the serial number, location, who it is assigned to, and its condition.
    Once an item has units, its Serviceable / Repair / Unserviceable counts come from the units.
 3. **Print QR labels** – 3 across on A4/Letter; cut them out, or print on sticker paper.

@@ -355,6 +355,22 @@ try {
   check(counted === 3, `three scans of the shared sticker count three file boxes (${counted})`);
   await ev(a, () => { schoolInfo.numbering = 'unit'; });
   check(await ev(a, () => /^OES-\d{4}-\d{4}$/.test(nextPropertyNumbers(1)[0])), 'one number per unit is still the default style');
+
+  out('15 COA standard (automatic): by the cost of each unit');
+  const coa = await ev(a, () => {
+    schoolInfo.numbering = 'coa';
+    const n = (cost, qty = 3) => nextPropertyNumbers(qty, 'OES', { date: '2026-11-20', cost });
+    return { low: n(250), edge: n(5000), high: n(12000), ppe: n(65000), none: n(0), one: n(250, 1), line: nextPropertyNumbers(3, 'OES', { mode: 'line', date: '2026-11-20', cost: 65000 }),
+      shareLow: sharesLineNumber(9, 250), shareHigh: sharesLineNumber(9, 5000.01) };
+  });
+  const same = a => a.every(x => x === a[0]), distinct = a => new Set(a).size === a.length;
+  check(same(coa.low) && same(coa.edge) && /^OES-4THQ-2026-11-\d+$/.test(coa.low[0]), `₱5,000 and below share one number per line (${coa.low[0]})`);
+  check(distinct(coa.high) && distinct(coa.ppe) && distinct(coa.none), `above ₱5,000, PPE and no cost: one number each (${coa.high.join(', ')})`);
+  const s1 = parseInt(coa.high[0].split('-').pop(), 10);
+  check(coa.high.every((x, i) => parseInt(x.split('-').pop(), 10) === s1 + i), 'one-per-unit numbers run on in the same series');
+  check(coa.one.length === 1 && same(coa.line), 'single units and the “per ICS line” option are unchanged');
+  check(coa.shareLow && !coa.shareHigh, 'the ₱5,000 line is drawn per unit cost (₱5,000.01 is high-valued)');
+  await ev(a, () => { schoolInfo.numbering = 'unit'; });
 } catch (e) {
   out('FAIL: exception', e && e.stack || e);
   process.exitCode = 1;
