@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="2f059f13c64c">
+  <meta name="app-version" content="ed2eae100896">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -9649,7 +9649,7 @@
       return t ? { uid: t.uid, name: t.name, desig: t.position || '' } : null;
     }
 
-    function iarLineHTML(l, i, editable) {
+    function iarLineHTML(l, i, editable, extra = '') {
       const done = iarLineDone(l);
       const full = done && Number(l.received) >= Number(l.qty);
       const tone = !done ? 'border-slate-200 bg-white' : full ? 'border-emerald-300 bg-emerald-50/60' : 'border-amber-300 bg-amber-50/60';
@@ -9661,6 +9661,7 @@
             <span class="shrink-0 text-xs font-mono font-bold ${full ? 'text-emerald-700' : 'text-amber-700'}">${done ? `${Number(l.received)} of ${qtyText}` : qtyText}</span>
           </div>
           ${l.note ? `<p class="mt-0.5 text-[11px] text-slate-600"><i class="ph-bold ph-note-pencil"></i> ${escapeHTML(l.note)}</p>` : ''}
+          ${extra}
         </div>`;
       return `
         <div data-iar-line="${i}" class="rounded-xl border ${tone} p-3 space-y-2">
@@ -9798,12 +9799,14 @@
       }
       if (d.stage === 'accept') {
         const complete = iarIsComplete(x.lines || []);
+        if (!d.po) d.po = (x.lines || []).map(l => iarPoDefault(pr, l));
         title.textContent = 'Accept delivery';
         sub.textContent = `PO No. ${x.poNo || x.prNo} · inspected by ${x.inspectorName}`;
         body.innerHTML = `
           ${iarHeadHTML(x)}
           <p class="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-800 flex items-center gap-2"><i class="ph-bold ph-signature text-lg"></i><span><b>${escapeHTML(x.inspectorName)}</b> signed ${escapeHTML(iarStamp(x.inspectedMs))}${x.inspectedVia === 'own-phone' ? ' on their phone' : ''}: inspected, verified and found in order as to quantity and specifications.</span></p>
-          <div class="space-y-2">${(x.lines || []).map((l, i) => iarLineHTML(l, i, false)).join('')}</div>
+          <div class="space-y-2">${(x.lines || []).map((l, i) => iarLineHTML(l, i, false, Number(l.received) > 0 ? iarPoRowHTML(pr, l, i) : '')).join('')}</div>
+          <div id="iarPoSum"></div>
           <div id="iarKind" class="rounded-xl border ${complete ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-amber-300 bg-amber-50 text-amber-800'} px-3 py-2 text-xs font-bold flex items-center gap-2">
             <i class="ph-bold ${complete ? 'ph-check-circle' : 'ph-warning'} text-lg"></i>
             ${complete ? 'Complete' : `Partial · what is still short stays open on PR No. ${escapeHTML(x.prNo)} for the next delivery`}
@@ -9812,6 +9815,7 @@
           <p class="text-[11px] text-slate-500">Accepting adds what came to your inventory${(x.lines || []).some(l => Number(l.received) > 0) ? '' : ' (nothing came)'}. Equipment gets property numbers and the school’s ICS (received from ${escapeHTML(headName() || 'the school head')}).</p>`;
         foot.innerHTML = `<button onclick="iarReinspect()" class="${btn}"><i class="ph-bold ph-arrow-counter-clockwise"></i> Re-check</button>
           <button id="iarAccept" onclick="iarAccept()" class="${primary}"><i class="ph-bold ph-package text-lg"></i> Accept · add to stock</button>`;
+        iarRenderPoSum();
         return;
       }
       // done: the papers
@@ -9828,6 +9832,7 @@
         <div class="space-y-2">
           <button onclick="printIarById('${x.id}')" class="w-full h-12 rounded-xl border border-slate-200 bg-white hover:border-brand-300 px-3 text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph-bold ph-printer text-lg text-slate-600"></i> Print IAR <span class="ml-auto text-[11px] font-semibold text-slate-500">Appendix 62</span></button>
           <button onclick="exportIarXlsxById('${x.id}')" class="w-full h-12 rounded-xl border border-slate-200 bg-white hover:border-brand-300 px-3 text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph-bold ph-file-xls text-lg text-emerald-700"></i> IAR as Excel</button>
+          ${pr ? `<button onclick="exportPrWorkbookById('${pr.id}')" class="w-full h-12 rounded-xl border border-emerald-200 bg-emerald-50 hover:border-emerald-400 px-3 text-sm font-bold text-emerald-900 flex items-center gap-2"><i class="ph-bold ph-file-xls text-lg text-emerald-700"></i> All papers in 1 Excel file <span class="ml-auto text-[11px] font-semibold text-emerald-800">a tab each</span></button>` : ''}
           ${ics.map((s, i) => `<button onclick="printSchoolIcs('${x.id}', ${i})" class="w-full h-12 rounded-xl border border-slate-200 bg-white hover:border-brand-300 px-3 text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph-bold ph-printer text-lg text-slate-600"></i> School ICS ${escapeHTML(s.no)} <span class="ml-auto text-[11px] font-semibold text-slate-500">from ${escapeHTML(headName() ? headName().split(' ')[0] : 'the head')}</span></button>`).join('')}
           ${pr ? `<button onclick="printDistributionById('${pr.id}')" class="w-full h-12 rounded-xl border border-slate-200 bg-white hover:border-brand-300 px-3 text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph-bold ph-users-three text-lg text-slate-600"></i> Distribution list <span class="ml-auto text-[11px] font-semibold text-slate-500">fills in as you release</span></button>` : ''}
         </div>
@@ -9837,6 +9842,65 @@
         </div>` : ''}`;
       foot.innerHTML = `<button onclick="closeIar()" class="${primary.replace('emerald-700', 'brand-600').replace('emerald-800', 'brand-700')}">Done</button>`;
     }
+    // ---- PO prices: what the school pays (the PR has the estimate) ------------------------
+    // The custodian types the PO unit cost when accepting (prefilled with the PR's, or the PO
+    // cost already used for that line on an earlier delivery). Stock, the average cost and the
+    // ICS amounts use the PO cost. A PO cost above the PR is flagged: the PR estimate is
+    // normally the ceiling.
+    const iarPrLine = (pr, l) => (pr && (pr.lines || []).find((p, i) => prLineKey(p, i) === l.id)) || null;
+    const iarPrCost = (pr, l) => Number((iarPrLine(pr, l) || {}).unitCost) || 0;
+    function iarPoDefault(pr, l) {
+      const prev = pr && pr.poCosts && pr.poCosts[l.id];
+      return prev > 0 ? Number(prev) : (Number(l.unitCost) > 0 ? Number(l.unitCost) : iarPrCost(pr, l));
+    }
+    function iarPoDiffHTML(prCost, po) {
+      const diff = round2(po - prCost);
+      if (!(prCost > 0)) return '<span class="text-slate-500">no PR price</span>';
+      if (Math.abs(diff) < 0.005) return `<span class="text-slate-500">same as the PR</span>`;
+      return diff < 0 ? `<span class="text-emerald-700">PR ₱${peso2(prCost)} · ₱${peso2(-diff)} less</span>`
+        : `<span class="font-bold text-rose-700"><i class="ph-bold ph-warning"></i> PR ₱${peso2(prCost)} · ₱${peso2(diff)} more</span>`;
+    }
+    function iarPoRowHTML(pr, l, i) {
+      const po = iarDraft.po[i];
+      return `<div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+        <label class="flex items-center gap-1.5 font-bold text-slate-600">PO unit cost ₱<input data-iar-po="${i}" type="number" inputmode="decimal" step="0.01" min="0" value="${po > 0 ? po : ''}" oninput="iarSetPo(${i}, this.value)" class="pr-in mt-0 h-9 text-right font-mono" style="width:7.5rem"></label>
+        <span data-iar-podiff="${i}">${iarPoDiffHTML(iarPrCost(pr, l), po)}</span>
+      </div>`;
+    }
+    function iarSetPo(i, v) {
+      const d = iarDraft, x = iarInsp();
+      if (!d || !x) return;
+      d.po[i] = Math.max(0, round2(parseFloat(v) || 0));
+      const pr = prList.find(p => p.id === x.prId);
+      const el = document.querySelector(`[data-iar-podiff="${i}"]`);
+      if (el) el.innerHTML = iarPoDiffHTML(iarPrCost(pr, x.lines[i]), d.po[i]);
+      iarRenderPoSum();
+    }
+    // Totals for what came: PR estimate vs PO
+    function iarPoTotals(x, pr, po) {
+      let prT = 0, poT = 0, higher = 0;
+      (x.lines || []).forEach((l, i) => {
+        const q = Number(l.received) || 0;
+        if (!q) return;
+        const a = iarPrCost(pr, l), b = Number(po[i]) || 0;
+        prT += q * a; poT += q * b;
+        if (a > 0 && b - a > 0.004) higher += 1;
+      });
+      return { prT: round2(prT), poT: round2(poT), higher };
+    }
+    function iarRenderPoSum() {
+      const el = document.getElementById('iarPoSum');
+      const d = iarDraft, x = iarInsp();
+      if (!el || !d || !x || !d.po) return;
+      const pr = prList.find(p => p.id === x.prId);
+      const t = iarPoTotals(x, pr, d.po);
+      if (!t.poT && !t.prT) { el.innerHTML = ''; return; }
+      const diff = round2(t.prT - t.poT);
+      el.innerHTML = t.higher
+        ? `<p class="rounded-xl bg-rose-50 border border-rose-200 px-3 py-2 text-[11px] text-rose-800 flex gap-2"><i class="ph-bold ph-warning text-base"></i><span><b>${plural(t.higher, 'item')} cost${t.higher === 1 ? 's' : ''} more on the PO than on the PR.</b> The PR estimate is normally the ceiling. Check the PO before accepting. PO ₱${peso2(t.poT)} · PR ₱${peso2(t.prT)}.</span></p>`
+        : `<p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[11px] text-slate-700">For what came: PO <b class="font-mono">₱${peso2(t.poT)}</b> · PR <b class="font-mono">₱${peso2(t.prT)}</b>${diff > 0.004 ? ` · <b class="text-emerald-700">₱${peso2(diff)} less than the PR</b>` : ''}. Inventory and the ICS use the PO price.</p>`;
+    }
+
     function iarAllComplete() {
       iarDraft.lines.forEach(l => { l.short = false; l.received = l.qty; });
       renderIar();
@@ -9948,14 +10012,18 @@
       const got = (x.lines || []).filter(l => Number(l.received) > 0);
       const codes = { ...(pr.codes || {}) };
       let created = 0;
+      const po = d.po || (x.lines || []).map(l => iarPoDefault(pr, l));
+      const poCosts = { ...(pr.poCosts || {}) };
+      (x.lines || []).forEach((l, i) => { if (Number(l.received) > 0 && po[i] > 0) poCosts[l.id] = po[i]; });
+      const totals = iarPoTotals(x, pr, po);
       const plan = got.map(l => {
-        const prLine = (pr.lines || []).find((p, i) => prLineKey(p, i) === l.id) || l;
+        const idx = (x.lines || []).indexOf(l);
         const item = (codes[l.id] && items.find(i => i.code === codes[l.id])) || (l.code && items.find(i => i.code === l.code)) || (l.stockNo && items.find(i => i.code === l.stockNo))
           || items.find(i => normItemName(i.name) === normItemName(l.desc)) || null;
         let code = item && item.code;
         if (!code) { code = addCustomItemSilently({ name: l.desc, unit: l.unit, price: 0, qty: 0 }); created += 1; }
         codes[l.id] = code;
-        return { l, code, unitCost: Number(prLine.unitCost) || 0 };
+        return { l, code, unitCost: Number(po[idx]) > 0 ? Number(po[idx]) : iarPrCost(pr, l) };
       });
       if (created) rebuildCatalogList();
       const docRef = `IAR ${x.iarNo || x.poNo}`;
@@ -9990,18 +10058,21 @@
       (x.lines || []).forEach(l => { received[l.id] = prGot(pr, l.id) + (Number(l.received) || 0); });
       const prAfter = { ...pr, received };
       const allIn = !prLeftLines(prAfter).length;
-      const text = `Accepted delivery ${docRef} (PO ${x.poNo || x.prNo}, PR ${pr.prNo}): ${complete ? 'complete' : 'partial'}, ${plural(plan.length, 'item')} added to stock${created ? ` (${created} new)` : ''}${schoolIcs.length ? ` · school ICS ${schoolIcs.map(s => s.no).join(', ')}` : ''}`;
+      const priceNote = totals.poT ? ` · PO ₱${peso2(totals.poT)}${totals.prT - totals.poT > 0.004 ? ` (₱${peso2(totals.prT - totals.poT)} below the PR)` : totals.higher ? ` (above the PR on ${plural(totals.higher, 'item')})` : ''}` : '';
+      const text = `Accepted delivery ${docRef} (PO ${x.poNo || x.prNo}, PR ${pr.prNo}): ${complete ? 'complete' : 'partial'}, ${plural(plan.length, 'item')} added to stock${created ? ` (${created} new)` : ''}${priceNote}${schoolIcs.length ? ` · school ICS ${schoolIcs.map(s => s.no).join(', ')}` : ''}`;
       saveStateWith({ summary: { kind: 'delivery', text, track: true } });
       const open = allIn ? reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr') : [];
       const receivedBy = { name: schoolInfo.custodian || '', designation: schoolInfo.position || 'Property Custodian' };
-      const upd = { status: 'accepted', dateReceived: date, acceptedMs: now, complete, receivedBy, schoolIcs: cleanJSON(schoolIcs), updatedAt: F.serverTimestamp() };
+      const pricedLines = (x.lines || []).map((l, i) => (Number(l.received) > 0 ? { ...l, unitCost: Number(po[i]) || 0, prCost: iarPrCost(pr, l) } : l));
+      const upd = { status: 'accepted', dateReceived: date, acceptedMs: now, complete, receivedBy, schoolIcs: cleanJSON(schoolIcs),
+        lines: cleanJSON(pricedLines), poTotal: totals.poT, prTotal: totals.prT, updatedAt: F.serverTimestamp() };
       Object.assign(x, upd, { updatedAt: null });
       const batch = F.writeBatch(cloud.db);
       batch.update(F.doc(inspCol(), x.id), upd);
-      batch.update(F.doc(prCol(), pr.id), { received, codes, ...(allIn ? { deliveredMs: now } : {}), updatedAt: F.serverTimestamp() });
+      batch.update(F.doc(prCol(), pr.id), { received, codes, poCosts, ...(allIn ? { deliveredMs: now } : {}), updatedAt: F.serverTimestamp() });
       open.forEach(r => batch.update(F.doc(reqCol(), r.id), { status: 'closed', suppliedAtMs: now, updatedAt: F.serverTimestamp() }));
       cloudWrite(batch.commit(), 'Accepting the delivery');
-      Object.assign(pr, { received, codes }, allIn ? { deliveredMs: now } : {});
+      Object.assign(pr, { received, codes, poCosts }, allIn ? { deliveredMs: now } : {});
       d.stage = 'done';
       renderIar();
       renderDashboard();
@@ -10207,6 +10278,104 @@
       }
     }
 
+    // The ICS (Appendix 59) as a sheet: the school's own receipt (head → custodian).
+    function icsSheet(r) {
+      const B = true, rows = [], merges = [];
+      const row = (cells, h) => { rows.push({ cells, h }); return rows.length; };
+      const dd = prDefaults();
+      row([null, null, null, null, null, null, { v: 'Appendix 59', st: { i: 1, h: 'right' } }]);
+      const t = row([{ v: 'INVENTORY CUSTODIAN SLIP', st: { b: 1, sz: 12, h: 'center' } }], 20); merges.push(`A${t}:G${t}`);
+      row([]);
+      const en = row([{ v: `Entity Name: ${dd.entity || schoolInfo.school || ''}`, st: { b: 1 } }, null, null, null, null, { v: `ICS No.: ${r.no || ''}`, st: { b: 1 } }]); merges.push(`A${en}:D${en}`, `F${en}:G${en}`);
+      const fc = row([{ v: `Fund Cluster: ${dd.fund || ''}`, st: { b: 1 } }, null, null, null, null, { v: `Date: ${longDate(r.date)}`, st: { b: 1 } }]); merges.push(`A${fc}:D${fc}`, `F${fc}:G${fc}`);
+      const h1 = row(['Quantity', 'Unit', 'Amount', null, 'Description', 'Inventory Item No.', 'Estimated Useful Life'].map(v => ({ v, st: { b: 1, h: 'center', wrap: 1, border: B } })), 18);
+      const h2 = row([null, null, 'Unit Cost', 'Total Cost', null, null, null].map(v => ({ v, st: { b: 1, h: 'center', wrap: 1, border: B } })), 18);
+      merges.push(`A${h1}:A${h2}`, `B${h1}:B${h2}`, `C${h1}:D${h1}`, `E${h1}:E${h2}`, `F${h1}:F${h2}`, `G${h1}:G${h2}`);
+      const first = rows.length + 1;
+      (r.lines || []).forEach(l => {
+        const rr = rows.length + 1;
+        row([{ v: Number(l.qty) || 0, st: { h: 'center', border: B } }, { v: l.unit || '', st: { h: 'center', border: B } },
+          { v: Number(l.unitCost) || 0, st: { num: '#,##0.00', border: B } },
+          { f: `A${rr}*C${rr}`, v: round2((Number(l.qty) || 0) * (Number(l.unitCost) || 0)), st: { num: '#,##0.00', border: B } },
+          { v: l.desc || '', st: { wrap: 1, border: B } }, { v: nosText(l.units), st: { wrap: 1, h: 'center', border: B } }, { st: { border: B } }]);
+      });
+      for (let i = (r.lines || []).length; i < 8; i += 1) row([0, 1, 2, 3, 4, 5, 6].map(() => ({ st: { border: B } })));
+      const last = rows.length;
+      const tt = row([{ v: 'TOTAL', st: { b: 1, h: 'right', border: B } }, { st: { border: B } }, { st: { border: B } },
+        { f: `SUM(D${first}:D${last})`, v: Number(r.total) || 0, st: { b: 1, num: '#,##0.00', border: B } }, { st: { border: B } }, { st: { border: B } }, { st: { border: B } }]);
+      merges.push(`A${tt}:C${tt}`);
+      const from = r.from || { name: schoolInfo.custodian || '', designation: schoolInfo.position || 'Property Custodian' };
+      const pairRow = (a, b, st = {}, h) => { const rr = row([{ v: a, st: { ...st, border: { l: 1 } } }, null, null, { st: { border: { r: 1 } } }, { v: b, st: { ...st, border: { l: 1 } } }, null, { st: { border: { r: 1 } } }], h); merges.push(`A${rr}:C${rr}`, `E${rr}:F${rr}`); };
+      pairRow('Received from:', 'Received by:', { i: 1 });
+      pairRow('', '', {}, 26);
+      pairRow(String(from.name || '').toUpperCase(), String(r.teacherName || '').toUpperCase(), { b: 1, u: 1, h: 'center' });
+      pairRow(from.designation || '', [r.position, r.office].filter(Boolean).join(', '), { h: 'center' });
+      const ld = row([{ v: longDate(r.date), st: { h: 'center', border: { l: 1, b: 1 } } }, { st: { border: { b: 1 } } }, { st: { border: { b: 1 } } }, { st: { border: { r: 1, b: 1 } } },
+        { v: r.from ? longDate(r.date) : '', st: { h: 'center', border: { l: 1, b: 1 } } }, { st: { border: { b: 1 } } }, { st: { border: { r: 1, b: 1 } } }]);
+      merges.push(`A${ld}:C${ld}`, `E${ld}:F${ld}`);
+      return { name: `ICS ${r.no || ''}`.trim(), cols: [9, 8, 12, 13, 34, 24, 11], rows, merges };
+    }
+    // PR estimate vs PO price, for everything received on the PR (live formulas).
+    function prPoSheet(pr) {
+      const acc = prInspections(pr).filter(x => x.status === 'accepted');
+      const by = new Map();
+      acc.forEach(x => (x.lines || []).forEach(l => {
+        if (!(Number(l.received) > 0)) return;
+        const cur = by.get(l.id) || { desc: l.desc, unit: l.unit, qty: 0, pr: Number(l.prCost) || iarPrCost(pr, l), po: 0 };
+        cur.qty += Number(l.received); cur.po = Number(l.unitCost) || cur.po || cur.pr;
+        by.set(l.id, cur);
+      }));
+      if (!by.size) return null;
+      const B = true, rows = [], merges = [];
+      const row = (cells, h) => { rows.push({ cells, h }); return rows.length; };
+      const t = row([{ v: 'PR ESTIMATE vs PO PRICE', st: { b: 1, sz: 12, h: 'center' } }], 20); merges.push(`A${t}:I${t}`);
+      row([{ v: `PR No.: ${pr.prNo}  ·  P.O. No.: ${(acc[0] && acc[0].poNo) || ''}  ·  ${acc.map(x => `IAR ${x.iarNo || x.poNo}`).join(', ')}`, st: { b: 1 } }]);
+      row(['Item Description', 'Unit', 'Qty received', 'PR unit cost', 'PO unit cost', 'Difference / unit', 'PR amount', 'PO amount', 'Less than PR'].map(v => ({ v, st: { b: 1, h: 'center', wrap: 1, border: B } })), 30);
+      const first = rows.length + 1;
+      [...by.values()].forEach(v => {
+        const r = rows.length + 1;
+        row([{ v: v.desc, st: { wrap: 1, border: B } }, { v: v.unit || '', st: { h: 'center', border: B } }, { v: v.qty, st: { h: 'center', border: B } },
+          { v: v.pr, st: { num: '#,##0.00', border: B } }, { v: v.po, st: { num: '#,##0.00', border: B } },
+          { f: `D${r}-E${r}`, v: round2(v.pr - v.po), st: { num: '#,##0.00', border: B } },
+          { f: `C${r}*D${r}`, v: round2(v.qty * v.pr), st: { num: '#,##0.00', border: B } },
+          { f: `C${r}*E${r}`, v: round2(v.qty * v.po), st: { num: '#,##0.00', border: B } },
+          { f: `G${r}-H${r}`, v: round2(v.qty * (v.pr - v.po)), st: { num: '#,##0.00', border: B } }]);
+      });
+      const last = rows.length;
+      const vals = [...by.values()];
+      const sum = (c, fn) => ({ f: `SUM(${c}${first}:${c}${last})`, v: round2(vals.reduce((n, v) => n + fn(v), 0)), st: { b: 1, num: '#,##0.00', border: B } });
+      const tr = row([{ v: 'TOTAL', st: { b: 1, h: 'right', border: B } }, { st: { border: B } }, { st: { border: B } }, { st: { border: B } }, { st: { border: B } }, { st: { border: B } },
+        sum('G', v => v.qty * v.pr), sum('H', v => v.qty * v.po), sum('I', v => v.qty * (v.pr - v.po))]);
+      merges.push(`A${tr}:F${tr}`);
+      row([{ v: 'A negative “Less than PR” means the PO price is higher than the PR estimate.', st: { i: 1 } }]);
+      return { name: 'PR vs PO', cols: [34, 8, 10, 13, 13, 13, 14, 14, 14], rows, merges, landscape: true };
+    }
+    // Every paper of a PR in one workbook: PR, each IAR, the school's ICS, the Distribution List
+    // and the PR-vs-PO prices, a tab each.
+    function prWorkbookSheets(pr) {
+      const acc = prInspections(pr).filter(x => x.status === 'accepted');
+      const sheets = [prSheet(pr)];
+      acc.forEach(x => sheets.push(iarSheet(x)));
+      acc.forEach(x => (x.schoolIcs || []).forEach((_, i) => sheets.push(icsSheet(schoolIcsRecord(x, i)))));
+      if (acc.length) sheets.push(dlSheet(pr));
+      const prices = acc.length ? prPoSheet(pr) : null;
+      if (prices) sheets.push(prices);
+      return sheets;
+    }
+    async function exportPrWorkbookById(prId) {
+      const pr = prList.find(p => p.id === prId);
+      if (!pr) return;
+      try {
+        const sheets = prWorkbookSheets(pr);
+        const bytes = await buildXlsx(sheets);
+        downloadBytes(bytes, `PR_${String(pr.prNo || 'draft').replace(/[^\w-]+/g, '_')}_all_papers.xlsx`, XLSX_TYPE);
+        showToast(`PR ${pr.prNo}: ${sheets.length} forms saved in 1 Excel file`, 'ph-file-xls');
+      } catch (err) {
+        console.warn('xlsx', err);
+        appAlert('The Excel file could not be made. Try again.');
+      }
+    }
+
     // On the PR card: the inspection's state and its papers.
     function prInspectHTML(pr) {
       const small = 'h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5';
@@ -10216,7 +10385,7 @@
       const parts = [];
       done.forEach(x => parts.push(`
         <div data-iar-row="${x.id}" class="flex flex-wrap items-center gap-2 rounded-xl bg-emerald-50/70 border border-emerald-200 px-2.5 py-2">
-          <span class="min-w-0 flex-1 text-[11px] text-emerald-900"><b>IAR ${escapeHTML(x.iarNo || x.poNo || '')}</b> · ${x.complete ? 'Complete' : 'Partial'} · ${escapeHTML(x.dateReceived ? formatShortDate(x.dateReceived + 'T00:00:00') : '')}${(x.schoolIcs || []).length ? ` · ICS ${escapeHTML(x.schoolIcs.map(s => s.no).join(', '))}` : ''}</span>
+          <span class="min-w-0 flex-1 text-[11px] text-emerald-900"><b>IAR ${escapeHTML(x.iarNo || x.poNo || '')}</b> · ${x.complete ? 'Complete' : 'Partial'} · ${escapeHTML(x.dateReceived ? formatShortDate(x.dateReceived + 'T00:00:00') : '')}${x.poTotal ? ` · PO ₱${peso2(x.poTotal)}${x.prTotal - x.poTotal > 0.004 ? ` <span class="text-emerald-700">(₱${peso2(x.prTotal - x.poTotal)} below PR)</span>` : x.poTotal - x.prTotal > 0.004 && x.prTotal ? ` <span class="font-bold text-rose-700">(above the PR)</span>` : ''}` : ''}${(x.schoolIcs || []).length ? ` · ICS ${escapeHTML(x.schoolIcs.map(s => s.no).join(', '))}` : ''}</span>
           <button onclick="openInspection('${x.id}')" class="h-8 px-2.5 rounded-lg bg-white border border-emerald-200 text-[11px] font-bold text-emerald-800 flex items-center gap-1"><i class="ph-bold ph-files"></i> Papers</button>
         </div>`));
       if (open && open.status === 'assigned') parts.push(`
@@ -10233,6 +10402,7 @@
       if (done.length) parts.push(`<div class="flex flex-wrap gap-2">
           <button onclick="printDistributionById('${pr.id}')" class="${small}"><i class="ph-bold ph-users-three"></i> Distribution list</button>
           <button onclick="exportDistributionXlsxById('${pr.id}')" class="${small}" aria-label="Distribution list as Excel"><i class="ph-bold ph-file-xls text-emerald-700"></i> DL Excel</button>
+          <button data-pr-workbook="${pr.id}" onclick="exportPrWorkbookById('${pr.id}')" class="h-9 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-xs font-bold text-emerald-800 flex items-center gap-1.5"><i class="ph-bold ph-file-xls"></i> All papers · 1 Excel</button>
         </div>`);
       return parts.length ? `<div class="mt-2 space-y-2">${parts.join('')}</div>` : '';
     }
@@ -12238,7 +12408,9 @@
     // sheet = { name, cols: [widths], rows: [{ h, cells: [{ v, f, st }] }], merges: ['A1:F1'],
     //           landscape, fitWidth } — st = { b, i, u, sz, h: 'center'|'right'|'left', v: 'center'|'top',
     //           wrap, border: true | { t, b, l, r }, num: '#,##0.00' }. Formulas keep their value for previews.
-    async function buildXlsx(sheet) {
+    // Several sheets (an array) make one workbook with a tab each.
+    async function buildXlsx(sheetOrSheets) {
+      const sheets = Array.isArray(sheetOrSheets) ? sheetOrSheets : [sheetOrSheets];
       if (typeof fflate === 'undefined') await loadScript('assets/vendor/fflate.js');
       const x = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
         .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '');
@@ -12270,6 +12442,7 @@
       };
       style({});   // default cell format first
       const colName = n => { let s = ''; for (n += 1; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s; return s; };
+      const sheetXmlOf = sheet => {
       const rowsXml = sheet.rows.map((row, ri) => {
         const r = ri + 1;
         const cells = (row.cells || []).map((c, ci) => {
@@ -12282,7 +12455,7 @@
         }).join('');
         return `<row r="${r}"${row.h ? ` ht="${row.h}" customHeight="1"` : ''}>${cells}</row>`;
       }).join('');
-      const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
 <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews><sheetFormatPr defaultRowHeight="15"/>
 <cols>${sheet.cols.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>
@@ -12291,6 +12464,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 <printOptions horizontalCentered="1"/><pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>
 <pageSetup paperSize="9" orientation="${sheet.landscape ? 'landscape' : 'portrait'}" fitToWidth="1" fitToHeight="0"/>
 </worksheet>`;
+      };
+      const sheetXmls = sheets.map(sheetXmlOf);   // (styles are collected while the sheets are written)
       const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <fonts count="${fonts.length}">${fonts.join('')}</fonts>
@@ -12300,18 +12475,27 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 <cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
-      const name = x(String(sheet.name || 'Sheet1').replace(/[\\/?*[\]:]/g, ' ').slice(0, 31));
+      const used = new Set();
+      const names = sheets.map((sh, i) => {
+        const base = String(sh.name || `Sheet${i + 1}`).replace(/[\\/?*[\]:]/g, ' ').trim().slice(0, 31) || `Sheet${i + 1}`;
+        let n = base, k = 2;
+        while (used.has(n.toLowerCase())) { const sfx = ` (${k++})`; n = base.slice(0, 31 - sfx.length) + sfx; }
+        used.add(n.toLowerCase());
+        return x(n);
+      });
+      const nums = sheets.map((_, i) => i + 1);
       const u = fflate.strToU8;
+      const sheetFiles = Object.fromEntries(sheetXmls.map((xml, i) => [`xl/worksheets/sheet${i + 1}.xml`, u(xml)]));
       return fflate.zipSync({
         '[Content_Types].xml': u(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`),
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${nums.map(n => `<Override PartName="/xl/worksheets/sheet${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`),
         '_rels/.rels': u(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`),
         'xl/workbook.xml': u(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${name}" sheetId="1" r:id="rId1"/></sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>`),
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${nums.map(n => `<sheet name="${names[n - 1]}" sheetId="${n}" r:id="rId${n}"/>`).join('')}</sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>`),
         'xl/_rels/workbook.xml.rels': u(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`),
-        'xl/worksheets/sheet1.xml': u(sheetXml),
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${nums.map(n => `<Relationship Id="rId${n}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${n}.xml"/>`).join('')}<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`),
+        ...sheetFiles,
         'xl/styles.xml': u(stylesXml)
       }, { level: 6 });
     }
@@ -17578,6 +17762,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-iar-workbook', date: 'Nov 2026', title: 'All papers in one Excel file, and PO prices', points: [
+        'All papers · 1 Excel on a Purchase Request saves one workbook with a tab for each form: the PR, every IAR, the school’s ICS, the Distribution List and a PR vs PO price sheet.',
+        'When you accept a delivery, type the PO unit cost of each item. It starts at the PR price, and later deliveries on the same PR remember it.',
+        'Inventory costs, the price history and the ICS amounts now use the PO price, not the PR estimate. The PR card and Change History show how much the PO came below the PR.',
+        'If an item costs more on the PO than on the PR, the app warns you before you accept, since the PR estimate is normally the ceiling.'
+      ] },
       { id: '2026-11-iar', date: 'Nov 2026', title: 'Inspect deliveries: IAR, school ICS and Distribution List', points: [
         'Inspect delivery on a Purchase Request opens a checklist: tap Complete for each item, or Short and type how many came, with an optional note. Add the PO No., Invoice/DR No. and supplier. The IAR No. starts as the PO No.',
         'The inspection officer signs by tapping (name, date and time are recorded). Do it on your phone with them, or send it to a teacher’s own phone to check and sign there. The app remembers the inspector.',

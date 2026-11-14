@@ -114,6 +114,21 @@ try {
   check(await ev(a, () => loadNotifs().items.some(n => /inspected PO No\. 2026-11-15/.test(n.title))), 'custodian is notified when the inspector signs');
   await ev(a, () => openInspection(document.querySelector('[data-iar-accept]').dataset.iarAccept));
   check(await ev(a, () => iarDraft.stage === 'accept' && /Partial/.test(document.getElementById('iarKind').textContent)), 'Accept screen: Partial from the quantities');
+  // PO prices: prefilled with the PR's; the dispenser came cheaper, the rack dearer
+  const po0 = await ev(a, () => {
+    const at = re => iarInsp().lines.findIndex(l => re.test(l.desc));
+    const before = { d: iarDraft.po[at(/dispenser/i)], r: iarDraft.po[at(/rack/i)], inputs: document.querySelectorAll('[data-iar-po]').length, sum: document.getElementById('iarPoSum').textContent };
+    iarSetPo(at(/dispenser/i), '8500');
+    const cheaper = { diff: document.querySelector(`[data-iar-podiff="${at(/dispenser/i)}"]`).textContent, sum: document.getElementById('iarPoSum').textContent };
+    iarSetPo(at(/rack/i), '4800');
+    const dearer = { diff: document.querySelector(`[data-iar-podiff="${at(/rack/i)}"]`).textContent, sum: document.getElementById('iarPoSum').textContent };
+    iarSetPo(at(/rack/i), '4300');
+    return { before, cheaper, dearer, after: document.getElementById('iarPoSum').textContent };
+  });
+  check(po0.before.d === 8900 && po0.before.r === 4500 && po0.before.inputs === 3 && /PO ₱23,680\.00 · PR ₱23,680\.00/.test(po0.before.sum), 'PO unit cost on each item that came, prefilled with the PR price');
+  check(/PR ₱8,900\.00 · ₱400\.00 less/.test(po0.cheaper.diff) && /₱800\.00 less than the PR/.test(po0.cheaper.sum), 'PO below the PR: shows how much less (₱400 a unit, ₱800 in all)');
+  check(/₱300\.00 more/.test(po0.dearer.diff) && /1 item costs more on the PO than on the PR/.test(po0.dearer.sum), 'PO above the PR: flagged before accepting');
+  check(/₱1,000\.00 less than the PR/.test(po0.after), 'totals follow the PO prices');
   await ev(a, () => { document.getElementById('iarDateReceived').value = '2026-11-06'; iarDraft.dateReceived = '2026-11-06'; iarAccept(); });
   await waitNode(() => insps()[0].status === 'accepted', 'accepted on the server');
   const acc = insps()[0];
@@ -123,6 +138,10 @@ try {
     return { d: d && { qty: d.qty, units: getUnits(d.code).map(u => u.no), type: d.type }, r: r && { qty: r.qty, units: getUnits(r.code).length }, p: p && p.qty };
   });
   check(stock.d && stock.d.qty === 2 && stock.d.units.length === 2 && stock.r.qty === 1 && stock.p === 6, `stock in: 2 dispensers (numbered ${stock.d && stock.d.units.join(', ')}), 1 rack, 6 reams`);
+  const prices = await ev(a, () => ({ d: items.find(i => /^WATER DISPENSER, HOT AND COLD$/i.test(i.name)).price, r: items.find(i => /^STEEL RACK, 4 LAYERS$/i.test(i.name)).price, p: items.find(i => /^BOND PAPER, A4, 70 GSM$/i.test(i.name)).price }));
+  check(prices.d === 8500 && prices.r === 4300 && prices.p === 230, `inventory costs use the PO price (₱${prices.d}, ₱${prices.r}, ₱${prices.p})`);
+  check(acc.poTotal === 22680 && acc.prTotal === 23680 && acc.lines.find(l => /dispenser/i.test(l.desc)).unitCost === 8500 && acc.lines.find(l => /dispenser/i.test(l.desc)).prCost === 8900, 'IAR keeps the PO and PR prices (₱22,680 vs ₱23,680)');
+  check(acc.schoolIcs.find(s => /SPHV/.test(s.no)).total === 17000, 'school ICS amounts at the PO price (2 × ₱8,500)');
   check(acc.complete === false && acc.dateReceived === '2026-11-06' && acc.receivedBy.name === 'Rhealyn B. Nadado', 'IAR: Partial, Date Received, accepted by the custodian');
   const ics = acc.schoolIcs || [];
   check(ics.length === 2 && ics.some(s => /^SPHV-2026-11-0001$/.test(s.no) && /DISPENSER/i.test(s.lines[0].desc) && s.lines[0].qty === 2) && ics.some(s => /^SPLV-2026-11-0001$/.test(s.no) && /RACK/i.test(s.lines[0].desc)),
@@ -143,6 +162,7 @@ try {
   check(/JOHN RUSSELL L\. GUADALUPE/.test(papers.sch) && /RHEALYN B\. NADADO/.test(papers.sch) && papers.sch.indexOf('GUADALUPE') < papers.sch.indexOf('NADADO</b><br><span style="font-size:8.5pt">Signature'), 'school ICS: received from the head, received by the custodian');
   check(/Appendix 62/.test(papers.sheet) && /INSPECTION AND ACCEPTANCE REPORT/.test(papers.sheet) && /Partial/.test(papers.sheet), 'IAR as Excel (Appendix 62)');
   check(papers.card === 1, 'PR card lists IAR 2026-11-15');
+  check(await ev(a, () => /PO ₱22,680\.00 \(₱1,000\.00 below PR\)/.test(document.querySelector('[data-iar-row]').textContent) && changeHistory.some(e => /PO ₱22,680\.00 \(₱1,000\.00 below the PR\)/.test(e.x))), 'PR card and change history: PO total and how much below the PR');
   check(await ev(a, () => changeHistory.some(e => e.k === 'delivery' && /Accepted delivery IAR 2026-11-15 .*partial/.test(e.x)) && changeHistory.some(e => /Jennabeth A\. Calizo inspected PO 2026-11-15/.test(e.x) || /sent to Jennabeth/.test(e.x))), 'change history: sent, accepted (partial)');
   await ev(a, () => closeIar());
 
@@ -162,6 +182,7 @@ try {
   check(!!prs()[0].deliveredMs, 'everything came: PR delivered');
   await until(a, id => reqList.some(r => r.id === id && r.status === 'closed'), 'request ready', 8000, reqId);
   check(true, 'the request shows Ready');
+  check(await ev(a, () => { const p = prList[0]; return Object.values(p.poCosts || {}).sort((x, y) => x - y).join(','); }) === '230,4300,8500', 'PO prices kept on the PR for later deliveries');
 
   out('7 release Juan’s share; Distribution List');
   check(await ev(a, id => !!document.querySelector(`[data-iar-release="${id}"]`), reqId), 'papers screen: release each teacher’s share');
@@ -184,6 +205,32 @@ try {
   check(dl.d.people.length === 1 && dl.d.people[0].name === 'Leonard Q. Fuentes' && dl.d.lines.every(l => l.left === 0) && dl.d.lines.map(l => l.per[0]).join(',') === '10,1,2', 'Distribution List: Leonard got 10 reams, 1 rack and 2 dispensers; nothing left');
   check(/DISTRIBUTION LIST/.test(dl.html) && /LEONARD Q\. FUENTES/.test(dl.html) && /P\.O\. No\.: <b>2026-11-15/.test(dl.html) && dl.d.people[0].allAcked, 'DL print: P.O. No., one column per teacher, received date filled in from his phone');
   check(/DISTRIBUTION LIST/.test(dl.sheet) && /<f>SUM\(D5:D5\)<\/f>/.test(dl.sheet), 'DL as Excel with totals');
+
+  out('7b all papers in one Excel file');
+  const wb = await ev(a, async id => {
+    const pr = prList.find(p => p.id === id);
+    const files = fflate.unzipSync(await buildXlsx(prWorkbookSheets(pr)));
+    const book = fflate.strFromU8(files['xl/workbook.xml']);
+    const tabs = [...book.matchAll(/<sheet name="([^"]+)"/g)].map(m => m[1]);
+    const sheets = Object.keys(files).filter(f => /^xl\/worksheets\/sheet\d+\.xml$/.test(f)).length;
+    const types = fflate.strFromU8(files['[Content_Types].xml']);
+    const rels = fflate.strFromU8(files['xl/_rels/workbook.xml.rels']);
+    const price = fflate.strFromU8(files[`xl/worksheets/sheet${tabs.indexOf('PR vs PO') + 1}.xml`]);
+    const ics = fflate.strFromU8(files[`xl/worksheets/sheet${tabs.findIndex(t => /^ICS SPHV/.test(t)) + 1}.xml`]);
+    return { tabs, sheets, types: (types.match(/worksheet\+xml/g) || []).length, rels: (rels.match(/worksheets\/sheet/g) || []).length, price, ics, btn: !!document.querySelector(`[data-pr-workbook="${id}"]`) };
+  }, prId);
+  check(wb.tabs.join(' | ') === 'PR 2026-11-15 | IAR 2026-11-15 | IAR 2026-11-15-2 | ICS SPLV-2026-11-0001 | ICS SPHV-2026-11-0001 | DL 2026-11-15 | PR vs PO' && wb.sheets === 7 && wb.types === 7 && wb.rels === 7,
+    `one workbook, a tab per form (${wb.tabs.join(', ')})`);
+  check(/PR ESTIMATE vs PO PRICE/.test(wb.price) && /<f>G\d+-H\d+<\/f>/.test(wb.price) && /<v>1000<\/v>/.test(wb.price), 'PR vs PO tab: per-item difference and ₱1,000 less in all (formulas)');
+  check(/INVENTORY CUSTODIAN SLIP/.test(wb.ics) && /JOHN RUSSELL L\. GUADALUPE/.test(wb.ics) && /RHEALYN B\. NADADO/.test(wb.ics) && /<f>A\d+\*C\d+<\/f>/.test(wb.ics), 'ICS tab (Appendix 59): head → custodian, amounts as formulas');
+  check(wb.btn, 'PR card: All papers · 1 Excel');
+  const saved = await ev(a, async id => {
+    let name = null; const orig = window.downloadBytes;
+    window.downloadBytes = (bytes, n) => { name = n; };
+    try { await exportPrWorkbookById(id); } finally { window.downloadBytes = orig; }
+    return name;
+  }, prId);
+  check(saved === 'PR_2026-11-15_all_papers.xlsx', `the button saves the workbook (${saved})`);
 
   out('8 Forms → Slips & receipts');
   await ev(a, () => { openCoa(); coaGo('slips'); });
