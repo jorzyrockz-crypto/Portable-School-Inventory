@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="ed2eae100896">
+  <meta name="app-version" content="a06ef4bcb2bf">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -8078,13 +8078,22 @@
           <div class="space-y-1.5">${d.receipts.map(r => `
             <div class="rounded-xl bg-emerald-50/60 border border-emerald-200 px-3 py-2 text-xs text-emerald-900">
               <span class="font-bold">${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : formatShortDate(r.at))}</span>${receiptDoc(r) ? ` · ${escapeHTML(receiptDoc(r))}` : ''} · ${plural(r.lines.reduce((n, x) => n + x.q, 0), 'item')} · ${formatCurrency(r.lines.reduce((n, x) => n + x.q * (x.uc || 0), 0))}
+              ${r.inspId && inspList.some(i => i.id === r.inspId) ? `<span class="mt-1 flex items-center gap-2"><span class="flex-1">Inspected${(inspList.find(i => i.id === r.inspId) || {}).inspectorName ? ` by ${escapeHTML(inspList.find(i => i.id === r.inspId).inspectorName)}` : ''} · from the Purchase Request</span><button type="button" data-dlv-iar="${r.inspId}" onclick="closeDeliveries(true); openInspection('${r.inspId}')" class="h-8 px-2.5 rounded-lg bg-white border border-emerald-200 text-[11px] font-bold text-emerald-800 flex items-center gap-1"><i class="ph-bold ph-files"></i> IAR papers</button></span>` : ''}
             </div>`).join('')}</div>
         </div>` : ''}
         <div class="flex flex-wrap gap-2">
+          ${open && iarPrForPo(d) ? `<button type="button" data-dlv-inspect="${d.id}" onclick="closeDeliveries(true); openRequestsView(); setReqTab('prs'); openInspectPr('${iarPrForPo(d).id}')" class="h-11 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5"><i class="ph-bold ph-clipboard-text"></i> Inspect on PR ${escapeHTML(iarPrForPo(d).prNo)}</button>` : ''}
           ${open ? `<button type="button" onclick="startReceive('${d.id}')" class="h-11 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5"><i class="ph-bold ph-package"></i> Receive items</button>
           <button type="button" onclick="dlvScan('iar', '${d.id}')" class="h-11 px-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-xs font-bold flex items-center gap-1.5"><i class="ph-bold ph-camera"></i> Scan its IAR / DR</button>
           <button type="button" onclick="closePo('${d.id}')" class="h-11 px-4 rounded-xl bg-white border border-slate-200 hover:bg-rose-50 text-rose-700 text-xs font-bold flex items-center gap-1.5"><i class="ph-bold ph-x-circle"></i> ${(d.receipts || []).length ? 'Close (no more coming)' : 'Cancel PO'}</button>` : ''}
         </div>`;
+    }
+
+    // The open Purchase Request a scanned PO belongs to (custodian signed in), if any.
+    function iarPrForPo(po) {
+      if (!isCustodianDevice() || !prList.length) return null;
+      const n = normalizePropNo;
+      return prList.find(p => p.status !== 'cancelled' && !p.deliveredMs && (po.inspPrId === p.id || (po.prNo && n(po.prNo) === n(p.prNo)) || (po.poNo && n(po.poNo) === n(p.prNo)))) || null;
     }
 
     async function closePo(id) {
@@ -9607,7 +9616,9 @@
       if (!left.length) { showToast('Everything on this PR was received already', 'ph-info'); return; }
       const d = iarDefaults();
       const before = prInspections(pr).filter(x => x.status === 'accepted').length;
-      const poNo = d.lastPrId === pr.id && d.poNo ? d.poNo : pr.prNo;
+      const linked = prScannedPo(pr, d.lastPrId === pr.id ? d.poNo : '');
+      const poNo = linked && linked.poNo ? linked.poNo : d.lastPrId === pr.id && d.poNo ? d.poNo : pr.prNo;
+      const outside = linked ? (linked.receipts || []).filter(r => !r.inspId).reduce((n, r) => n + r.lines.reduce((m, x) => m + (x.q || 0), 0), 0) : 0;
       iarDraft = {
         stage: 'new', prId: pr.id, inspId: null, poNo, poDate: d.lastPrId === pr.id ? (d.poDate || '') : '',
         iarNo: before ? `${poNo}-${before + 1}` : poNo, invoice: '', supplier: d.lastPrId === pr.id ? (d.supplier || '') : '',
@@ -9615,7 +9626,52 @@
         otherName: d.inspUid ? '' : (d.inspName || ''), otherDesig: d.inspUid ? '' : (d.inspDesig || ''),
         lines: left.map(l => ({ id: l.id, code: l.code || null, stockNo: l.stockNo || '', desc: l.desc || '', unit: l.unit || '', qty: l.left, received: null, note: '', short: false }))
       };
+      if (linked) iarLinkPo(linked, true);
       showIarModal();
+      // Items of that PO already received under Deliveries are in stock: inspecting them again would add them twice
+      if (outside) appAlert(`${plural(outside, 'item')} of PO No. ${linked.poNo || ''} ${outside === 1 ? 'was' : 'were'} already received under Deliveries and ${outside === 1 ? 'is' : 'are'} in stock. Mark only what came now, or they are added twice.`, { title: 'Part of this PO is already in stock' });
+    }
+
+    // ---- A PO scanned under Deliveries (Expected) and the PR's inspection --------------------
+    // Inspect delivery finds the PR's scanned PO (by PR No. or PO No.), takes its PO No., date,
+    // supplier and prices, and accepting the IAR receives that PO (Partly received / Received),
+    // so it is never stocked in twice.
+    function prScannedPo(pr, poNo = '') {
+      const pos = deliveries.filter(d => d.kind === 'po' && d.status !== 'closed');
+      const n = normalizePropNo;
+      const hit = d => d.inspPrId === pr.id || (d.prNo && n(d.prNo) === n(pr.prNo)) || (poNo && d.poNo && n(d.poNo) === n(poNo)) || (d.poNo && n(d.poNo) === n(pr.prNo));
+      const open = pos.filter(d => d.status === 'expected' || d.status === 'partial');
+      return open.find(hit) || pos.find(d => d.inspPrId === pr.id) || null;
+    }
+    function iarLinkPo(po, quiet) {
+      const d = iarDraft;
+      if (!d || !po) return;
+      d.dlvId = po.id;
+      if (po.poNo) { d.poNo = po.poNo; if (!d.iarTouched) iarSyncNo(po.poNo, true); }
+      if (po.date) d.poDate = po.date;
+      if (po.supplier) d.supplier = po.supplier;
+      if (!quiet) renderIar();
+    }
+    // The PO line for an IAR line: same item, same stock no., or the same wording.
+    function poLineFor(po, l, code) {
+      if (!po) return null;
+      const lines = po.lines || [];
+      return (code && lines.find(x => x.code === code)) || (l.stockNo && lines.find(x => x.stockNo && x.stockNo === l.stockNo))
+        || lines.find(x => normItemName(x.desc) === normItemName(l.desc))
+        || (l.code && lines.find(x => x.code === l.code)) || null;
+    }
+    function iarItemFor(pr, l) {
+      const codes = (pr && pr.codes) || {};
+      return (codes[l.id] && items.find(i => i.code === codes[l.id])) || (l.code && items.find(i => i.code === l.code)) || (l.stockNo && items.find(i => i.code === l.stockNo))
+        || items.find(i => normItemName(i.name) === normItemName(l.desc)) || null;
+    }
+    const iarPoOf = x => (x && x.dlvId ? deliveries.find(d => d.id === x.dlvId) || null : null);
+    function iarPoLinkHTML() {
+      const d = iarDraft;
+      const po = d.dlvId ? deliveries.find(x => x.id === d.dlvId) : null;
+      if (!po) return '';
+      return `<p id="iarPoLink" class="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-900 flex items-center gap-2"><i class="ph-bold ph-clipboard-text text-base text-amber-700"></i>
+        <span>Scanned <b>PO ${escapeHTML(po.poNo || '')}</b>${po.supplier ? ` · ${escapeHTML(po.supplier)}` : ''} (under Deliveries): its prices fill in when you accept, and accepting receives the PO.</span></p>`;
     }
     function openInspection(id) {
       const x = inspList.find(i => i.id === id);
@@ -9715,8 +9771,12 @@
       const v = escapeHTML(iarDraft[key] || '');
       return `<label class="${opts.span ? 'col-span-2' : ''} block text-[11px] font-bold uppercase text-slate-500">${label}<input data-iar="${key}" type="${opts.type || 'text'}" value="${v}" ${opts.ph ? `placeholder="${escapeHTML(opts.ph)}"` : ''} oninput="iarDraft['${key}'] = this.value${key === 'poNo' ? '; iarSyncNo(this.value)' : key === 'iarNo' ? '; iarDraft.iarTouched = true' : ''}" class="pr-in"></label>`;
     }
-    function iarSyncNo(v) {
+    function iarSyncNo(v, fromLink) {
       const d = iarDraft, pr = prList.find(p => p.id === d.prId);
+      if (!fromLink && pr && !d.dlvId) {
+        const po = deliveries.find(x => x.kind === 'po' && (x.status === 'expected' || x.status === 'partial') && x.poNo && normalizePropNo(x.poNo) === normalizePropNo(v));
+        if (po) { iarLinkPo(po); return; }
+      }
       const before = pr ? prInspections(pr).filter(x => x.status === 'accepted').length : 0;
       if (d.iarTouched) return;
       d.iarNo = before ? `${v}-${before + 1}` : v;
@@ -9754,6 +9814,7 @@
             ${iarField('supplier', 'Supplier', { ph: 'e.g. EJ Marketing' })}
             ${iarField('date', 'Date inspected', { type: 'date' })}
           </div>
+          ${iarPoLinkHTML()}
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-500">Inspection officer
               <select id="iarWho" onchange="iarDraft.who = this.value; renderIar()" class="pr-in">
@@ -9799,7 +9860,7 @@
       }
       if (d.stage === 'accept') {
         const complete = iarIsComplete(x.lines || []);
-        if (!d.po) d.po = (x.lines || []).map(l => iarPoDefault(pr, l));
+        if (!d.po) d.po = (x.lines || []).map(l => iarPoDefault(pr, l, x));
         title.textContent = 'Accept delivery';
         sub.textContent = `PO No. ${x.poNo || x.prNo} · inspected by ${x.inspectorName}`;
         body.innerHTML = `
@@ -9849,9 +9910,13 @@
     // normally the ceiling.
     const iarPrLine = (pr, l) => (pr && (pr.lines || []).find((p, i) => prLineKey(p, i) === l.id)) || null;
     const iarPrCost = (pr, l) => Number((iarPrLine(pr, l) || {}).unitCost) || 0;
-    function iarPoDefault(pr, l) {
+    function iarPoDefault(pr, l, x) {
       const prev = pr && pr.poCosts && pr.poCosts[l.id];
-      return prev > 0 ? Number(prev) : (Number(l.unitCost) > 0 ? Number(l.unitCost) : iarPrCost(pr, l));
+      if (prev > 0) return Number(prev);
+      const it = iarItemFor(pr, l);
+      const pl = poLineFor(iarPoOf(x), l, it && it.code);
+      if (pl && Number(pl.unitCost) > 0) return Number(pl.unitCost);
+      return Number(l.unitCost) > 0 ? Number(l.unitCost) : iarPrCost(pr, l);
     }
     function iarPoDiffHTML(prCost, po) {
       const diff = round2(po - prCost);
@@ -9923,7 +9988,8 @@
       return {
         prId: pr.id, prNo: pr.prNo, poNo: (d.poNo || '').trim() || pr.prNo, poDate: d.poDate || '', iarNo: (d.iarNo || '').trim() || (d.poNo || '').trim() || pr.prNo,
         invoice: (d.invoice || '').trim().slice(0, 80), supplier: (d.supplier || '').trim().slice(0, 120),
-        office: pr.office || '', rcc: pr.rcc || '', fund: pr.fund || dd.fund || '', entity: pr.entity || dd.entity || schoolInfo.school || ''
+        office: pr.office || '', rcc: pr.rcc || '', fund: pr.fund || dd.fund || '', entity: pr.entity || dd.entity || schoolInfo.school || '',
+        dlvId: d.dlvId || null
       };
     }
     function iarRemember(who, head) {
@@ -10012,18 +10078,20 @@
       const got = (x.lines || []).filter(l => Number(l.received) > 0);
       const codes = { ...(pr.codes || {}) };
       let created = 0;
-      const po = d.po || (x.lines || []).map(l => iarPoDefault(pr, l));
+      const po = d.po || (x.lines || []).map(l => iarPoDefault(pr, l, x));
+      const scanned = iarPoOf(x);
       const poCosts = { ...(pr.poCosts || {}) };
       (x.lines || []).forEach((l, i) => { if (Number(l.received) > 0 && po[i] > 0) poCosts[l.id] = po[i]; });
       const totals = iarPoTotals(x, pr, po);
       const plan = got.map(l => {
         const idx = (x.lines || []).indexOf(l);
-        const item = (codes[l.id] && items.find(i => i.code === codes[l.id])) || (l.code && items.find(i => i.code === l.code)) || (l.stockNo && items.find(i => i.code === l.stockNo))
-          || items.find(i => normItemName(i.name) === normItemName(l.desc)) || null;
+        const found = iarItemFor(pr, l);
+        const pl = poLineFor(scanned, l, found && found.code);
+        const item = found || (pl && pl.code && items.find(i => i.code === pl.code)) || null;
         let code = item && item.code;
         if (!code) { code = addCustomItemSilently({ name: l.desc, unit: l.unit, price: 0, qty: 0 }); created += 1; }
         codes[l.id] = code;
-        return { l, code, unitCost: Number(po[idx]) > 0 ? Number(po[idx]) : iarPrCost(pr, l) };
+        return { l, code, pl, unitCost: Number(po[idx]) > 0 ? Number(po[idx]) : iarPrCost(pr, l) };
       });
       if (created) rebuildCatalogList();
       const docRef = `IAR ${x.iarNo || x.poNo}`;
@@ -10045,21 +10113,32 @@
       const schoolIcs = Object.entries(groups).filter(([, ls]) => ls.length).map(([cls, ls]) => ({
         cls, no: cls === 'ICS' ? nextReleaseNo('ICS', date) : nextCoaIcsNo(cls, date), date, lines: ls, total: relTotal(ls)
       }));
-      if (plan.length) {
-        deliveries.push(cleanJSON({
-          id: newDlvId(), kind: 'stockin', prNo: pr.prNo, poNo: x.poNo || '', iarNo: x.iarNo || '', date, supplier: x.supplier || '', status: 'received', createdMs: now,
-          lines: plan.map((p, i) => ({ id: 'P' + i, desc: p.l.desc, stockNo: p.l.stockNo || '', unit: p.l.unit || '', code: p.code, qty: Number(p.l.qty), unitCost: p.unitCost, received: Number(p.l.received) })),
-          receipts: [{ id: newDlvId(), at: now, date, lines: plan.map((p, i) => ({ l: 'P' + i, c: p.code, q: Number(p.l.received), uc: p.unitCost })) }]
-        }));
-        saveDeliveries();
+      const iarNo = x.iarNo || x.poNo || '';
+      const onPo = scanned ? plan.filter(p => p.pl) : [];
+      const offPo = plan.filter(p => !onPo.includes(p));
+      if (onPo.length) {
+        onPo.forEach(p => { p.pl.received = (Number(p.pl.received) || 0) + Number(p.l.received); p.pl.unitCost = p.unitCost; if (!p.pl.code) p.pl.code = p.code; });
+        scanned.receipts = [...(scanned.receipts || []), cleanJSON({ id: newDlvId(), at: now, date, iarNo, invoiceNo: x.invoice || '', inspId: x.id,
+          lines: onPo.map(p => ({ l: p.pl.id, c: p.code, q: Number(p.l.received), uc: p.unitCost })) })];
+        scanned.status = scanned.lines.every(l => (Number(l.received) || 0) >= Number(l.qty)) ? 'received' : 'partial';
+        scanned.inspPrId = pr.id;
+        if (!scanned.prNo) scanned.prNo = pr.prNo;
       }
+      if (offPo.length) {
+        deliveries.push(cleanJSON({
+          id: newDlvId(), kind: 'stockin', prNo: pr.prNo, poNo: x.poNo || '', iarNo, date, supplier: x.supplier || '', status: 'received', createdMs: now, inspPrId: pr.id,
+          lines: offPo.map((p, i) => ({ id: 'P' + i, desc: p.l.desc, stockNo: p.l.stockNo || '', unit: p.l.unit || '', code: p.code, qty: Number(p.l.qty), unitCost: p.unitCost, received: Number(p.l.received) })),
+          receipts: [{ id: newDlvId(), at: now, date, iarNo, invoiceNo: x.invoice || '', inspId: x.id, lines: offPo.map((p, i) => ({ l: 'P' + i, c: p.code, q: Number(p.l.received), uc: p.unitCost })) }]
+        }));
+      }
+      if (plan.length) saveDeliveries();
       const complete = iarIsComplete(x.lines || []);
       const received = { ...(pr.received || {}) };
       (x.lines || []).forEach(l => { received[l.id] = prGot(pr, l.id) + (Number(l.received) || 0); });
       const prAfter = { ...pr, received };
       const allIn = !prLeftLines(prAfter).length;
       const priceNote = totals.poT ? ` · PO ₱${peso2(totals.poT)}${totals.prT - totals.poT > 0.004 ? ` (₱${peso2(totals.prT - totals.poT)} below the PR)` : totals.higher ? ` (above the PR on ${plural(totals.higher, 'item')})` : ''}` : '';
-      const text = `Accepted delivery ${docRef} (PO ${x.poNo || x.prNo}, PR ${pr.prNo}): ${complete ? 'complete' : 'partial'}, ${plural(plan.length, 'item')} added to stock${created ? ` (${created} new)` : ''}${priceNote}${schoolIcs.length ? ` · school ICS ${schoolIcs.map(s => s.no).join(', ')}` : ''}`;
+      const text = `Accepted delivery ${docRef} (PO ${x.poNo || x.prNo}, PR ${pr.prNo}): ${complete ? 'complete' : 'partial'}, ${plural(plan.length, 'item')} added to stock${created ? ` (${created} new)` : ''}${priceNote}${schoolIcs.length ? ` · school ICS ${schoolIcs.map(s => s.no).join(', ')}` : ''}${onPo.length ? ` · scanned PO ${scanned.poNo || ''} ${scanned.status === 'received' ? 'received' : 'partly received'}` : ''}`;
       saveStateWith({ summary: { kind: 'delivery', text, track: true } });
       const open = allIn ? reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr') : [];
       const receivedBy = { name: schoolInfo.custodian || '', designation: schoolInfo.position || 'Property Custodian' };
@@ -17762,6 +17841,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-iar-po-link', date: 'Nov 2026', title: 'Scanned POs and inspections work together', points: [
+        'If you scanned the PO under Deliveries, Inspect delivery on its Purchase Request finds it and fills in the PO No., PO date, supplier and the PO prices.',
+        'Accepting the inspection receives that PO too (Partly received or Received), so it leaves the Expected list and the items are never added to stock twice.',
+        'In Deliveries, the PO shows each IAR with an IAR papers button, and Inspect on PR for what is still to come.',
+        'Fixes: a delivery accepted from a Purchase Request is now listed in Deliveries as IAR (number), with its invoice, instead of PR (number).'
+      ] },
       { id: '2026-11-iar-workbook', date: 'Nov 2026', title: 'All papers in one Excel file, and PO prices', points: [
         'All papers · 1 Excel on a Purchase Request saves one workbook with a tab for each form: the PR, every IAR, the school’s ICS, the Distribution List and a PR vs PO price sheet.',
         'When you accept a delivery, type the PO unit cost of each item. It starts at the PR price, and later deliveries on the same PR remember it.',

@@ -71,8 +71,18 @@ try {
   const card = await ev(a, id => ({ inspect: !!document.querySelector(`[data-inspect-pr="${id}"]`), delivered: !!document.querySelector(`button[onclick="markPrDelivered('${id}')"]`) }), prId);
   check(card.inspect && card.delivered, 'PR card: Inspect delivery (and Items delivered without an IAR)');
 
+  // The PO was scanned under Deliveries (Expected) with the awarded prices
+  await ev(a, () => {
+    const L = (id, desc, unit, qty, unitCost) => ({ id, desc, stockNo: '', unit, code: null, qty, unitCost, received: 0 });
+    deliveries.push({ id: newDlvId(), kind: 'po', poNo: '2026-11-15', prNo: '2026-11-15', date: '2026-11-06', supplier: 'EJ MARKETING', status: 'expected', createdMs: Date.now(),
+      lines: [L('A', 'WATER DISPENSER, HOT AND COLD', 'unit', 2, 8500), L('B', 'STEEL RACK, 4 LAYERS', 'unit', 1, 4300), L('C', 'BOND PAPER, A4, 70 GSM', 'ream', 10, 230)], receipts: [] });
+    saveDeliveries();
+  });
+
   out('3 send the inspection to the teacher’s phone');
   await ev(a, id => openInspectPr(id), prId);
+  const link = await ev(a, () => ({ dlv: !!iarDraft.dlvId, poDate: iarDraft.poDate, supplier: iarDraft.supplier, chip: !!document.getElementById('iarPoLink') }));
+  check(link.dlv && link.poDate === '2026-11-06' && link.supplier === 'EJ MARKETING' && link.chip, 'Inspect delivery finds the scanned PO: PO date and supplier filled in, linked');
   check(await ev(a, () => !document.getElementById('iarModal').classList.contains('hidden') && iarDraft.stage === 'new' && iarDraft.lines.length === 3 && iarDraft.poNo === '2026-11-15' && iarDraft.iarNo === '2026-11-15'),
     'checklist opens: 3 lines, PO No. and IAR No. default to the PR No.');
   await ev(a, uid => {
@@ -125,8 +135,8 @@ try {
     iarSetPo(at(/rack/i), '4300');
     return { before, cheaper, dearer, after: document.getElementById('iarPoSum').textContent };
   });
-  check(po0.before.d === 8900 && po0.before.r === 4500 && po0.before.inputs === 3 && /PO ₱23,680\.00 · PR ₱23,680\.00/.test(po0.before.sum), 'PO unit cost on each item that came, prefilled with the PR price');
-  check(/PR ₱8,900\.00 · ₱400\.00 less/.test(po0.cheaper.diff) && /₱800\.00 less than the PR/.test(po0.cheaper.sum), 'PO below the PR: shows how much less (₱400 a unit, ₱800 in all)');
+  check(po0.before.d === 8500 && po0.before.r === 4300 && po0.before.inputs === 3 && /PO ₱22,680\.00 · PR ₱23,680\.00/.test(po0.before.sum), 'PO unit costs come from the scanned PO (₱8,500, ₱4,300)');
+  check(/PR ₱8,900\.00 · ₱400\.00 less/.test(po0.cheaper.diff) && /₱1,000\.00 less than the PR/.test(po0.cheaper.sum), 'PO below the PR: shows how much less (₱400 a unit, ₱1,000 in all)');
   check(/₱300\.00 more/.test(po0.dearer.diff) && /1 item costs more on the PO than on the PR/.test(po0.dearer.sum), 'PO above the PR: flagged before accepting');
   check(/₱1,000\.00 less than the PR/.test(po0.after), 'totals follow the PO prices');
   await ev(a, () => { document.getElementById('iarDateReceived').value = '2026-11-06'; iarDraft.dateReceived = '2026-11-06'; iarAccept(); });
@@ -162,6 +172,14 @@ try {
   check(/JOHN RUSSELL L\. GUADALUPE/.test(papers.sch) && /RHEALYN B\. NADADO/.test(papers.sch) && papers.sch.indexOf('GUADALUPE') < papers.sch.indexOf('NADADO</b><br><span style="font-size:8.5pt">Signature'), 'school ICS: received from the head, received by the custodian');
   check(/Appendix 62/.test(papers.sheet) && /INSPECTION AND ACCEPTANCE REPORT/.test(papers.sheet) && /Partial/.test(papers.sheet), 'IAR as Excel (Appendix 62)');
   check(papers.card === 1, 'PR card lists IAR 2026-11-15');
+  const po1 = await ev(a, () => { const d = deliveries.find(x => x.kind === 'po'); return { status: d.status, rec: d.receipts.map(r => [r.iarNo, r.invoiceNo, !!r.inspId, r.lines.reduce((n, l) => n + l.q, 0)]), got: d.lines.map(l => l.received).join(','), extra: deliveries.filter(x => x.kind === 'stockin').length, label: receiptDoc(d.receipts[0]) }; });
+  check(po1.status === 'partial' && po1.got === '2,1,6' && JSON.stringify(po1.rec) === JSON.stringify([['2026-11-15', '7001-7002', true, 9]]) && po1.extra === 0,
+    'accepting received the scanned PO: Partly received (2, 1, 6), receipt IAR 2026-11-15 / Invoice 7001-7002, no second stock-in record');
+  await ev(a, () => { closeIar(); openDeliveries('detail', { id: deliveries.find(x => x.kind === 'po').id }); });
+  check(await ev(a, () => !!document.querySelector('[data-dlv-iar]') && /IAR 2026-11-15/.test(document.getElementById('dlvModal').textContent) && !!document.querySelector('[data-dlv-inspect]')), 'Deliveries: the PO shows its IAR (IAR papers) and Inspect on PR for the rest');
+  await ev(a, () => { document.querySelector('[data-dlv-iar]').click(); });
+  check(await ev(a, () => document.getElementById('dlvModal').classList.contains('hidden') && iarDraft && iarDraft.stage === 'done'), 'IAR papers opens the IAR from Deliveries');
+  await ev(a, () => openInspection(inspList.find(i => i.status === 'accepted').id));
   check(await ev(a, () => /PO ₱22,680\.00 \(₱1,000\.00 below PR\)/.test(document.querySelector('[data-iar-row]').textContent) && changeHistory.some(e => /PO ₱22,680\.00 \(₱1,000\.00 below the PR\)/.test(e.x))), 'PR card and change history: PO total and how much below the PR');
   check(await ev(a, () => changeHistory.some(e => e.k === 'delivery' && /Accepted delivery IAR 2026-11-15 .*partial/.test(e.x)) && changeHistory.some(e => /Jennabeth A\. Calizo inspected PO 2026-11-15/.test(e.x) || /sent to Jennabeth/.test(e.x))), 'change history: sent, accepted (partial)');
   await ev(a, () => closeIar());
@@ -170,14 +188,15 @@ try {
   await ev(a, () => setReqTab('prs'));
   check(/Still to come: 4 ream/.test(await ev(a, () => document.body.innerText)), 'PR card: still to come 4 reams');
   await ev(a, id => openInspectPr(id), prId);
-  const nd = await ev(a, () => ({ n: iarDraft.lines.length, qty: iarDraft.lines[0].qty, iarNo: iarDraft.iarNo, who: iarDraft.who, supplier: iarDraft.supplier }));
-  check(nd.n === 1 && nd.qty === 4 && nd.iarNo === '2026-11-15-2' && nd.who === anaUid && nd.supplier === 'EJ Marketing', 'next inspection: only the 4 reams, IAR No. 2026-11-15-2, inspector and supplier remembered');
+  const nd = await ev(a, () => ({ n: iarDraft.lines.length, qty: iarDraft.lines[0].qty, iarNo: iarDraft.iarNo, who: iarDraft.who, supplier: iarDraft.supplier, dlv: !!iarDraft.dlvId }));
+  check(nd.n === 1 && nd.qty === 4 && nd.iarNo === '2026-11-15-2' && nd.who === anaUid && nd.supplier === 'EJ MARKETING' && nd.dlv, 'next inspection: only the 4 reams, IAR No. 2026-11-15-2, inspector remembered, still linked to the scanned PO');
   await ev(a, () => { iarAllComplete(); iarSign(); });
   await until(a, () => iarDraft && iarDraft.stage === 'accept', 'accept right away', 5000);
   await ev(a, () => iarAccept());
   await waitNode(() => insps().filter(d => d.status === 'accepted').length === 2, 'second accepted');
   const second = insps().find(d => d.iarNo === '2026-11-15-2');
   check(second && second.inspectedVia === 'here' && second.complete === true && !(second.schoolIcs || []).length, 'signed here; Complete; no ICS for supplies');
+  check(await ev(a, () => { const d = deliveries.find(x => x.kind === 'po'); return d.status === 'received' && d.receipts.length === 2 && d.receipts[1].iarNo === '2026-11-15-2' && expectedDeliveries().length === 0; }), 'the rest received on the same PO: Received, off the Expected list');
   await waitNode(() => !!prs()[0].deliveredMs, 'PR delivered');
   check(!!prs()[0].deliveredMs, 'everything came: PR delivered');
   await until(a, id => reqList.some(r => r.id === id && r.status === 'closed'), 'request ready', 8000, reqId);
