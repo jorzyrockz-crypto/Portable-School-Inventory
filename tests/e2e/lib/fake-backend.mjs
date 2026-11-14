@@ -124,6 +124,14 @@ export function createBackend({ autoApprove = true } = {}) {
       if (!isCust(ctx, sid)) deny('release write', { path });
       return;
     }
+    if (p.length === 4 && sub === 'inspections') {
+      if (isCust(ctx, sid)) return;
+      const ch = changedKeys(before, data);
+      if (kind !== 'create' && isMember(ctx, sid) && before.inspectorUid === ctx.uid && before.status === 'assigned' && data.status === 'inspected' &&
+          ch.every(k => ['lines', 'status', 'inspectedMs', 'dateInspected', 'inspectedVia', 'updatedAt'].includes(k)) &&
+          Array.isArray(data.lines) && data.lines.length === (before.lines || []).length) return;
+      deny('inspection write', { path, ch });
+    }
     if (p.length === 4 && CUSTODIAN_ONLY.includes(sub)) {
       if (!isCust(ctx, sid)) deny(`${sub} write`, { path });
       return;
@@ -166,6 +174,12 @@ export function createBackend({ autoApprove = true } = {}) {
       if (!filters.some(f => f.field === 'uid' && f.op === '==' && f.value === ctx.uid)) deny('list teacher reports', { path, filters });
       return;
     }
+    if (sub === 'inspections') {
+      if (isCust(ctx, sid)) return;
+      if (single) { const d = store.get(path); if (d && d.inspectorUid === ctx.uid) return; deny('get inspection', { path }); }
+      if (!filters.some(f => f.field === 'inspectorUid' && f.op === '==' && f.value === ctx.uid)) deny('list inspections', { path, filters });
+      return;
+    }
     if (sub === 'releases') {
       if (isCust(ctx, sid)) return;
       if (single) { const d = store.get(path); if (d && d.teacherUid === ctx.uid) return; deny('get release', { path }); }
@@ -197,7 +211,7 @@ export function createBackend({ autoApprove = true } = {}) {
     let after = kind === 'set' || !before ? resolveTS(data) : { ...before, ...resolveTS(data) };
     const p = parts(path);
     // members/requests/reports/holds rules look at the whole document; others at what was sent
-    const whole = p.length === 4 && ['members', 'stockHolds'].includes(p[2]);
+    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections'].includes(p[2]);
     checkWrite(before ? 'update' : 'create', path, whole ? after : data, before || {}, ctx);
     if (autoApprove && !before && p.length === 4 && p[2] === 'members' && after.status === 'pending') after = { ...after, status: 'active', approvedMs: Date.now() };
     store.set(path, after);

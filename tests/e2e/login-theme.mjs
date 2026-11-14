@@ -208,12 +208,21 @@ try {
   await ev(t, () => { joinName.value = 'Ana Reyes'; submitJoin(); });
   check(!(await gated(t)), 'joined → sign-in screen gone');
   check(await ev(t, () => activeMainView) === 'REQUESTER', 'teacher screen');
-  check(await ev(t, () => document.querySelectorAll('#rqTheme [data-theme-opt]').length) === 3, 'teachers get the appearance switch too');
-  check(await ev(t, () => document.body.classList.contains('page-art') && document.querySelector('#rqArt [data-art-opt="REQUESTER"]').getAttribute('aria-checked') === 'true'), 'teachers: background picture on, with a switch to turn it off');
+  const ap = await ev(t, () => { const b = document.getElementById('appearBtn'), n = document.getElementById('notifBtn'); const r = b.getBoundingClientRect(), q = n.getBoundingClientRect();
+    return { shown: r.width > 0, nextToBell: Math.abs(r.top - q.top) < 2 && r.right <= q.left && q.left - r.right < 16, inPage: !!document.querySelector('#viewRequester #rqTheme') }; });
+  check(ap.shown && ap.nextToBell && !ap.inPage, 'teachers: Appearance is a header button next to the bell, not at the bottom of the page');
   await ev(t, () => { const el = document.getElementById('appToast'); el.classList.add('hidden'); el.classList.remove('flex'); }); // the welcome toast fades on its own
+  await t.click('#appearBtn');
+  check(await ev(t, () => !document.getElementById('appearPanel').classList.contains('hidden') && document.querySelectorAll('#appearPanel #rqTheme [data-theme-opt]').length === 3), 'the Appearance menu opens with the theme switch');
+  await t.click('#appearPanel [data-theme-opt="dark"]');
+  check(await ev(t, () => document.documentElement.classList.contains('dark') && /ph-moon/.test(document.getElementById('appearIcon').className)), 'picking Dark applies it; the button shows a moon');
+  await t.click('#appearPanel [data-theme-opt="system"]');
+  check(await ev(t, () => document.body.classList.contains('page-art') && document.querySelector('#rqArt [data-art-opt="REQUESTER"]').getAttribute('aria-checked') === 'true'), 'teachers: background picture on, with a switch to turn it off');
   await t.click('#rqArt [data-art-opt="REQUESTER"]');
   check(await ev(t, () => !document.body.classList.contains('page-art')), 'teachers: the switch turns the picture off');
   await t.click('#rqArt [data-art-opt="REQUESTER"]');
+  await ev(t, () => closeAppearPanel());
+  check(await ev(t, () => document.getElementById('appearPanel').classList.contains('hidden')), 'the menu closes');
   await ev(t, () => setTheme('dark'));
   await t.screenshot({ path: `${SHOTS}/teacher-dark.png`, fullPage: true });
   await ev(t, () => setTheme('system'));
