@@ -296,6 +296,10 @@ Equipment can be tracked **per unit** instead of only as a count:
    setting (a saved school info without a numbering choice means *One per unit*).
 2. Per unit you can record the serial number, location, who it is assigned to, and its condition.
    Once an item has units, its Serviceable / Repair / Unserviceable counts come from the units.
+   **Remove unit** (trash button) asks for the reason (disposed, transferred to another school,
+   lost, stolen, destroyed… or your own text) and keeps the unit under *Written off*, like a relieved
+   unit: not counted, its number never reused, kept for audit. Untick *Keep it under Written off*
+   only for a unit added by mistake. Undo puts it back.
 3. **Print QR labels** – 3 across on A4/Letter; cut them out, or print on sticker paper.
 4. **Scan** (bottom bar, or *Scan Tags* on the dashboard) opens the camera. Each label scanned
    is marked *verified today*, and the dashboard shows how many units were verified this year,

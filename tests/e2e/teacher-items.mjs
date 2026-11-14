@@ -216,6 +216,31 @@ try {
   check(/Written off \(1\)/i.test(wo.html) && wo.html.includes(wo.rec.no), 'the item lists it under Written off');
   check(wo.takenNo && wo.shown && wo.shown.gone && wo.shown.gone.no === wo.rec.no, 'its number is not given out again; scanning its sticker says Written off');
   check(/written-off unit/.test(wo.uses), `counts as a use of the item (${wo.uses})`);
+  // Remove unit (trash): kept under Written off with the reason, unless it was added by mistake
+  const rmUI = await ev(a, c => {
+    window.__dialogUI = true;
+    removeUnitTag(c, getUnits(c)[0].id);
+    return new Promise(r => setTimeout(() => {
+      const wrap = document.getElementById('appDialogCheckWrap'), box = document.getElementById('appDialogCheck');
+      const out = { shown: !wrap.classList.contains('hidden'), checked: box.checked, label: wrap.innerText, sugg: document.querySelectorAll('#appDialogList option').length, list: document.getElementById('appDialogInput').getAttribute('list') };
+      closeDialog(false); window.__dialogUI = false; r(out);
+    }, 120));
+  }, D);
+  check(rmUI.shown && rmUI.checked && /Written off/i.test(rmUI.label) && rmUI.sugg >= 4 && rmUI.list === 'appDialogList', 'Remove unit asks for a reason (with suggestions) and ticks “Keep it under Written off”');
+  const rmBefore = await ev(a, c => ({ qty: items.find(i => i.code === c).qty, units: getUnits(c).map(u => u.id), gone: getWrittenOff(c).length }), D);
+  a.dialogs.prompt = 'Disposed – unserviceable, IIRUSP No. 2026-01';
+  await ev(a, (c, id) => { removeUnitTag(c, id); }, D, rmBefore.units[0]);
+  await until(a, (c, n) => getWrittenOff(c).length === n + 1, 'removed with a record', 5000, D, rmBefore.gone);
+  const rm1 = await ev(a, (c, id) => ({ rec: getWrittenOff(c).find(r => r.id === id), qty: items.find(i => i.code === c).qty, toast: document.getElementById('appToastText').innerText, hist: changeHistory[changeHistory.length - 1].x }), D, rmBefore.units[0]);
+  check(rm1.rec && rm1.rec.cause === 'removed' && rm1.rec.ref === 'Disposed – unserviceable, IIRUSP No. 2026-01' && rm1.qty === rmBefore.qty - 1 && /written off/i.test(rm1.toast) && /^Written off unit/.test(rm1.hist), `removed unit kept under Written off with the reason (“${rm1.hist}”)`);
+  await a.click('#appToastAction');
+  await sleep(200);
+  check(await ev(a, (c, n, id) => getWrittenOff(c).length === n && getUnits(c).some(u => u.id === id), D, rmBefore.gone, rmBefore.units[0]), 'Undo puts the unit back and drops the record');
+  a.dialogs.prompt = '';
+  await ev(a, (c, id) => { window.__dialogCheck = false; removeUnitTag(c, id); }, D, rmBefore.units[0]);
+  await until(a, (c, id) => !getUnits(c).some(u => u.id === id), 'removed by mistake', 5000, D, rmBefore.units[0]);
+  const rm2 = await ev(a, c => { delete window.__dialogCheck; return { gone: getWrittenOff(c).length, hist: changeHistory[changeHistory.length - 1].x }; }, D);
+  check(rm2.gone === rmBefore.gone && /^Removed unit .* added by mistake/.test(rm2.hist), `untick for a mistake: no record (“${rm2.hist}”)`);
   await until(j, () => !/DOCUMENT CAMERA/.test(document.getElementById('rqItemsPane').innerText), 'off Juan’s list', 8000);
   check(!/DOCUMENT CAMERA/.test(await paneText(j)), 'off Juan’s list (and no longer asks for Received)');
   await until(j, () => !!notifScope() && loadNotifs().items.some(n => n.title === 'Relieved of accountability' && /RLSDDSP No\. 2026-001/.test(n.body)), 'relieved notif', 8000);

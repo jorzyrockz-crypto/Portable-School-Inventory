@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="53b9285497e4">
+  <meta name="app-version" content="b26e2c068b42">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1337,7 +1337,12 @@
         <label id="appDialogLabel" for="appDialogInput" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1"></label>
         <input id="appDialogInput" type="text" autocomplete="off" class="w-full h-11 px-3 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none">
         <textarea id="appDialogArea" rows="3" class="hidden w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none resize-none"></textarea>
+        <datalist id="appDialogList"></datalist>
         <p id="appDialogHint" class="hidden mt-1 text-xs font-semibold text-rose-600"></p>
+        <label id="appDialogCheckWrap" class="hidden mt-3 flex items-start gap-2 text-sm text-slate-700 cursor-pointer">
+          <input id="appDialogCheck" type="checkbox" class="mt-0.5 w-4 h-4 shrink-0 accent-brand-600">
+          <span id="appDialogCheckLabel" class="leading-snug"></span>
+        </label>
       </div>
       <div class="mt-5 flex gap-2 sm:justify-end">
         <button id="appDialogCancel" onclick="closeDialog(false)" class="flex-1 sm:flex-none h-11 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 transition">Cancel</button>
@@ -4865,7 +4870,12 @@
           </div>`) + writtenOffHTML(item);
     }
 
-    // Written-off units (relief from accountability granted), newest first. Read-only, for audit.
+    // Why a unit was written off: relief after a loss, or removed (disposed, transferred out…).
+    function writtenOffWhy(r) {
+      if (r.cause === 'lost') return `Lost${r.from ? ` · ${escapeHTML(r.from)} relieved of accountability` : ' · relieved of accountability'}${r.ref ? ` · ${escapeHTML(r.ref)}` : ''}`;
+      return `${r.ref ? escapeHTML(r.ref) : 'Removed'}${r.from ? ` · was with ${escapeHTML(r.from)}` : ''}`;
+    }
+    // Written-off units (relief from accountability, or removed with a record), newest first. Read-only, for audit.
     function writtenOffHTML(item) {
       const gone = getWrittenOff(item.code).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
       if (!gone.length) return '';
@@ -4875,7 +4885,7 @@
           <div class="mt-2 space-y-1.5">${gone.map(r => `
             <div class="rounded-lg bg-white border border-slate-200 px-2.5 py-2 text-xs">
               <div class="flex items-center gap-2"><span class="font-mono font-bold text-slate-800 break-all">${escapeHTML(r.no || '(no number)')}</span><span class="ml-auto shrink-0 text-slate-500">${r.at ? formatShortDate(r.at) : ''}</span></div>
-              <p class="text-slate-600 mt-0.5">Lost${r.from ? ` · ${escapeHTML(r.from)} relieved of accountability` : ' · relieved of accountability'}${r.ref ? ` · ${escapeHTML(r.ref)}` : ''}</p>
+              <p class="text-slate-600 mt-0.5">${writtenOffWhy(r)}</p>
               ${r.ics || r.cost ? `<p class="text-slate-500 mt-0.5">${[r.ics && `${escapeHTML(r.doc || 'ICS')} ${escapeHTML(r.ics)}`, r.cost > 0 && formatCurrency(r.cost), r.serial && `S/N ${escapeHTML(r.serial)}`].filter(Boolean).join(' · ')}</p>` : ''}
             </div>`).join('')}
           </div>
@@ -5042,16 +5052,24 @@
       const item = items.find(i => i.code === code);
       const unit = findUnit(code, id);
       if (!item || !unit) return;
-      const reason = await appPrompt(`Use this when the unit was disposed of, transferred or lost. ` +
+      const reason = await appPrompt(`Use this when the unit was disposed of, transferred out or lost. ` +
         `On-hand quantity goes from ${item.qty} to ${item.qty - 1}.`, '',
-        { title: `Remove unit ${unit.no}?`, label: 'Reason (optional, saved in Change History)', placeholder: 'e.g. Disposed – beyond repair', ok: 'Remove unit', tone: 'danger', icon: 'ph-trash' });
+        { title: `Remove unit ${unit.no}?`, label: 'Reason', placeholder: 'e.g. Disposed – unserviceable, IIRUSP No. 2026-01', ok: 'Remove unit', tone: 'danger', icon: 'ph-trash',
+          suggestions: ['Disposed – unserviceable', 'Transferred to another school', 'Lost', 'Stolen', 'Destroyed (calamity)', 'Donated'],
+          check: { label: 'Keep it under Written off, for audit. Untick only if this unit was added by mistake.', checked: true } });
       if (reason === null) return;
-      const why = reason.trim();
-      const removedText = `Removed unit ${unit.no} (${(UNIT_COND[unit.cond] || UNIT_COND.S).label})` +
-        `${why ? ` – ${why}` : ''} · quantity ${item.qty} → ${item.qty - 1}`;
-      const before = { units: getUnits(code).slice(), qty: item.qty };
+      const why = reason.trim().slice(0, 200);
+      const keep = appDialogChecked;
+      const removedText = `${keep ? 'Written off' : 'Removed'} unit ${unit.no} (${(UNIT_COND[unit.cond] || UNIT_COND.S).label})` +
+        `${why ? ` – ${why}` : keep ? '' : ' – added by mistake'} · quantity ${item.qty} → ${item.qty - 1}`;
+      const before = { units: getUnits(code).slice(), qty: item.qty, writtenOff: getWrittenOff(code).slice() };
       const state = userState[code];
       state.units = before.units.filter(u => u.id !== id);
+      if (keep) {
+        const rec = cleanJSON({ ...unit, cause: 'removed', ref: why, from: unitHolder(unit) || '', at: Date.now() });
+        delete rec.toUid; delete rec.seen; delete rec.printed;
+        state.writtenOff = [...before.writtenOff, rec];
+      }
       item.qty -= 1;
       state.qty = item.qty;
       if (state.units.length) {
@@ -5064,11 +5082,12 @@
       }
       saveStateWith({ summary: { kind: 'tag', code, text: removedText } });
       if (unitsModalCode === code) renderUnitsModal();
-      showToast(`Removed ${unit.no}`, 'ph-trash', {
+      showToast(keep ? `${unit.no} written off` : `Removed ${unit.no}`, 'ph-trash', {
         label: 'Undo',
         onClick: () => {
           const s = userState[code] || (userState[code] = {});
           s.units = before.units;
+          if (before.writtenOff.length) s.writtenOff = before.writtenOff; else delete s.writtenOff;
           item.qty = before.qty;
           s.qty = before.qty;
           syncUnitCondition(item);
@@ -5395,7 +5414,7 @@
       const hit = all.find(x => !scanSession.has(x.unit.id)) || all[0] || null;
       if (!hit) {
         const gone = findWrittenOffByNo(text);
-        scanShown = gone ? { gone: { no: gone.rec.no, name: gone.item.name, code: gone.item.code, id: gone.rec.id, at: gone.rec.at, ref: gone.rec.ref || '', from: gone.rec.from || '' } } : { missing: text };
+        scanShown = gone ? { gone: { no: gone.rec.no, name: gone.item.name, code: gone.item.code, id: gone.rec.id, at: gone.rec.at, why: writtenOffWhy(gone.rec) } } : { missing: text };
         scanFeedback(false);
         renderScanResult();
         return;
@@ -5458,7 +5477,7 @@
             <i class="ph-fill ph-seal-check text-2xl text-amber-600 mt-0.5"></i>
             <div class="min-w-0">
               <p class="text-sm font-bold text-amber-900">Written off: <span class="font-mono break-all">${escapeHTML(g.no)}</span></p>
-              <p class="text-xs text-amber-800 mt-0.5">${escapeHTML(g.name)} · lost${g.from ? `, ${escapeHTML(g.from)} relieved` : ', relieved'}${g.at ? ` on ${formatShortDate(g.at)}` : ''}${g.ref ? ` · ${escapeHTML(g.ref)}` : ''}. It is not counted. If it turned up, tell your COA auditor before putting it back.</p>
+              <p class="text-xs text-amber-800 mt-0.5">${escapeHTML(g.name)}${g.at ? ` · ${formatShortDate(g.at)}` : ''} · ${g.why}. It is not counted. If it turned up, tell your COA auditor before putting it back.</p>
               <button onclick="unitsWrittenOffOpen='${escapeHTML(g.id || '')}'; closeScanner(); openUnitsModal('${escapeHTML(g.code)}')" class="mt-1.5 text-xs font-bold text-amber-900 underline">Open the item</button>
             </div>
           </div>`;
@@ -9084,6 +9103,7 @@
       return new Promise(resolve => {
         // End-to-end tests answer here instead of tapping (tests/e2e/lib/harness.mjs).
         if (typeof window.__answerDialog === 'function' && !window.__dialogUI) {
+          appDialogChecked = o.check ? (typeof window.__dialogCheck === 'boolean' ? window.__dialogCheck : !!o.check.checked) : false;
           Promise.resolve(window.__answerDialog(kind, [o.title, o.message].filter(Boolean).join('\n'), String(o.value))).then(a => {
             resolve(kind === 'confirm' ? a !== false : kind === 'prompt' ? (a === null || a === false ? null : String(a == null ? '' : a)) : undefined);
           });
@@ -9096,6 +9116,8 @@
     const appAlert = (message, opts) => appDialog('alert', message, opts);
     const appConfirm = (message, opts) => appDialog('confirm', message, opts);
     const appPrompt = (message, value = '', opts) => appDialog('prompt', message, { ...opts, value });
+    // A prompt with opts.check = { label, checked } shows a tick box; its state after the answer is here.
+    let appDialogChecked = false;
     // Anything that still calls appAlert() gets the in-app box too.
     window.alert = message => { appAlert(message); };
 
@@ -9147,6 +9169,15 @@
       label.textContent = o.label || '';
       label.classList.toggle('hidden', !o.label);
       label.htmlFor = box.id;
+      const checkWrap = document.getElementById('appDialogCheckWrap');
+      checkWrap.classList.toggle('hidden', !(o.kind === 'prompt' && o.check));
+      if (o.check) {
+        document.getElementById('appDialogCheckLabel').textContent = o.check.label || '';
+        document.getElementById('appDialogCheck').checked = !!o.check.checked;
+      }
+      const sugg = o.kind === 'prompt' && !o.multiline && Array.isArray(o.suggestions) ? o.suggestions : [];
+      document.getElementById('appDialogList').innerHTML = sugg.map(v => `<option value="${escapeHTML(v)}"></option>`).join('');
+      if (sugg.length) input.setAttribute('list', 'appDialogList'); else input.removeAttribute('list');
       if (o.kind === 'prompt') {
         box.value = o.value;
         box.placeholder = o.placeholder || '';
@@ -9180,6 +9211,7 @@
           return;
         }
       }
+      appDialogChecked = !!(o.check && document.getElementById('appDialogCheck').checked);
       job.resolve(answer);
       nextDialog();
     }
@@ -16487,6 +16519,11 @@
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-remove-written-off', date: 'Nov 2026', title: 'Removed units are kept for audit too', points: [
+        'Remove unit (the trash button on a property number) now keeps the unit under Written off, with your reason, like a relieved unit. Use it for units disposed of, transferred to another school, lost, stolen or destroyed.',
+        'Pick a reason from the list or type your own, for example with the IIRUSP number. Untick Keep it under Written off only when the unit was added by mistake.',
+        'Undo puts the unit back and removes the record. Written-off numbers are never given out again.'
+      ] },
       { id: '2026-11-history-releases', date: 'Nov 2026', title: 'Item history shows every release', points: [
         'Fixes: an item’s Change History (Releases) now lists its releases, including releases from teacher requests, returns, take-backs and transfers. Before, a release showed only in the full history, not under the item.',
         'Releases, returns, transfers and deliveries made on another phone or laptop now show in Change History too, read from the slips and delivery records in the school account (marked School account). Counts, prices and other edits are still kept on the device where they were made.',
