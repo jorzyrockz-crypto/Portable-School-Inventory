@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="44d5d2d8e5a1">
+  <meta name="app-version" content="61979e70d976">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1574,6 +1574,11 @@
         <div>
           <p class="text-[11px] font-bold uppercase text-slate-500 mb-1.5">Items</p>
           <div id="prLines" class="space-y-2"></div>
+          <div class="relative mt-2">
+            <i class="ph-bold ph-plus absolute left-3 top-1/2 -translate-y-1/2 text-brand-600"></i>
+            <input id="prAdd" list="prItemList" type="text" placeholder="Add an item (Inventory or new)" onchange="addPrLine(this)" onkeydown="if (event.key === 'Enter') { event.preventDefault(); addPrLine(this); }" aria-label="Add an item to the Purchase Request" class="w-full h-10 pl-9 pr-3 rounded-xl border border-dashed border-slate-300 text-sm focus:border-brand-500 outline-none">
+            <datalist id="prItemList"></datalist>
+          </div>
           <p class="mt-2 text-right text-sm font-extrabold text-slate-900">Total <span id="prTotal" class="font-mono">₱0.00</span></p>
         </div>
         <label class="block text-[11px] font-bold uppercase text-slate-500">Purpose<textarea id="prPurpose" rows="3" class="pr-in h-auto py-2 normal-case"></textarea></label>
@@ -1587,7 +1592,7 @@
       <div class="px-5 py-3 border-t border-slate-100 flex items-center gap-2">
         <button onclick="closePr()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Cancel</button>
         <button id="prSaveBtn" onclick="savePr()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 transition">
-          <i class="ph-bold ph-printer"></i> Save &amp; print
+          <i class="ph-bold ph-printer"></i> <span id="prSaveLabel">Save &amp; print</span>
         </button>
       </div>
     </div>
@@ -8247,7 +8252,7 @@
           <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">${label}</span>
           <input ${extra} data-dlv="h:${key}" value="${escapeHTML(value || '')}" onchange="setDlvHeader('${key}', this.value)" class="w-full h-10 px-2.5 rounded-lg border border-slate-300 text-sm font-semibold text-slate-800 focus:border-brand-500 outline-none disabled:bg-slate-50 disabled:text-slate-500">
         </label>`;
-      const pr = h.prNo ? prList.find(p => normalizePropNo(p.prNo) === normalizePropNo(h.prNo)) : null;
+      const pr = h.prNo ? prList.find(p => p.status !== 'cancelled' && normalizePropNo(p.prNo) === normalizePropNo(h.prNo)) : null;
       const lineCard = (l, idx) => {
         const item = l.target && !['NEW', 'SKIP'].includes(l.target) ? items.find(i => i.code === l.target) : null;
         const off = !l.include || l.target === 'SKIP';
@@ -8441,7 +8446,7 @@
     // A PO that came from a Purchase Request: when all of it is received, the PR is delivered
     // (its requests show "Ready" to the teachers). Stock was already added by the receipt.
     function closePrAfterDelivery(prNo) {
-      const pr = prList.find(p => normalizePropNo(p.prNo) === normalizePropNo(prNo) && !p.deliveredMs);
+      const pr = prList.find(p => normalizePropNo(p.prNo) === normalizePropNo(prNo) && !p.deliveredMs && p.status !== 'cancelled');
       if (!pr || !cloud.db || !reqRole) return '';
       const open = reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr');
       const F = cloud.sdk;
@@ -8529,7 +8534,7 @@
       if (gone) uses.push(plural(gone, 'written-off unit'));
       const slips = new Set([...releaseAll, ...releaseList].filter(r => (r.lines || []).some(l => l.code === code)).map(r => r.id || r.no)).size;
       if (slips) uses.push(plural(slips, 'slip'));
-      const prs = prList.filter(p => (p.lines || []).some(l => l.code === code)).length;
+      const prs = prList.filter(p => p.status !== 'cancelled' && (p.lines || []).some(l => l.code === code)).length;
       if (prs) uses.push(plural(prs, 'Purchase Request'));
       const reqs = reqList.filter(r => (r.lines || []).some(l => l.code === code)).length;
       if (reqs) uses.push(plural(reqs, 'request'));
@@ -10100,7 +10105,7 @@
       const pending = reqList.filter(r => r.status === 'pending');
       const approved = reqList.filter(r => r.status === 'approved');
       const closed = reqList.filter(r => ['declined', 'cancelled', 'closed', 'released', 'pr'].includes(r.status));
-      const counts = { pending: pending.length, approved: approved.length, prs: prList.length, closed: closed.length };
+      const counts = { pending: pending.length, approved: approved.length, prs: prList.filter(p => p.status !== 'cancelled').length, closed: closed.length };
       let html = `
         ${cloud.error ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2">${escapeHTML(cloud.error)}</p>` : ''}
         ${!navigator.onLine ? `<p class="rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"><i class="ph-bold ph-cloud-slash"></i> Offline · showing saved requests. Your changes are sent when you reconnect.</p>` : ''}
@@ -10269,7 +10274,24 @@
     function prCardHTML(pr) {
       const mine = reqList.filter(r => (pr.requestIds || []).includes(r.id));
       const waiting = mine.filter(r => r.status === 'pr').length;
-      const delivered = pr.deliveredMs || (!waiting && mine.length && mine.every(r => ['closed', 'released'].includes(r.status)));
+      const cancelled = pr.status === 'cancelled';
+      const delivered = !cancelled && (pr.deliveredMs || (!waiting && mine.length && mine.every(r => ['closed', 'released'].includes(r.status))));
+      const canChange = !cancelled && !delivered;
+      const small = 'h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5';
+      if (cancelled) return `
+        <div class="rounded-2xl bg-slate-50 border border-dashed border-slate-300 p-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-slate-500">PR No. <span class="font-mono line-through">${escapeHTML(pr.prNo)}</span></p>
+              <p class="text-[11px] text-slate-500 truncate">${escapeHTML(pr.date ? formatShortDate(pr.date + 'T00:00:00') : '')} · ${plural((pr.lines || []).length, 'item')} · ₱${peso2(pr.total)}</p>
+            </div>
+            <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-slate-300 bg-white text-[11px] font-bold text-slate-600"><i class="ph-bold ph-x-circle"></i> Cancelled</span>
+          </div>
+          <p class="mt-1 text-[11px] text-slate-500">${pr.cancelledMs ? `Cancelled ${escapeHTML(formatShortDate(new Date(pr.cancelledMs).toISOString()))}` : 'Cancelled'}${pr.cancelReason ? ` · ${escapeHTML(pr.cancelReason)}` : ''}</p>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <button onclick="printPrById('${pr.id}')" class="${small}"><i class="ph-bold ph-printer"></i> Print</button>
+          </div>
+        </div>`;
       return `
         <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3">
           <div class="flex items-start justify-between gap-2">
@@ -10280,10 +10302,13 @@
             <p class="shrink-0 text-sm font-extrabold font-mono text-slate-900">₱${peso2(pr.total)}</p>
           </div>
           <p class="mt-1 text-[11px] text-slate-500 line-clamp-2">${escapeHTML(pr.purpose || '')}</p>
+          ${pr.editedMs ? `<p class="mt-0.5 text-[11px] text-slate-500 flex items-center gap-1"><i class="ph-bold ph-pencil-simple"></i> Changed ${escapeHTML(formatShortDate(new Date(pr.editedMs).toISOString()))}</p>` : ''}
           <div class="mt-2 flex flex-wrap gap-2">
             <button onclick="printPrById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print</button>
             <button onclick="exportPrXlsxById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-file-xls text-emerald-700"></i> Excel</button>
             <button onclick="exportPrCSVById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-file-csv"></i> CSV</button>
+            ${canChange ? `<button onclick="editPr('${pr.id}')" class="${small}"><i class="ph-bold ph-pencil-simple"></i> Edit</button>
+            <button onclick="cancelPr('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-rose-50 text-xs font-bold text-rose-700 flex items-center gap-1.5"><i class="ph-bold ph-x-circle"></i> Cancel PR</button>` : ''}
             ${waiting ? `<button onclick="markPrDelivered('${pr.id}')" class="ml-auto h-9 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-xs font-bold text-white flex items-center gap-1.5"><i class="ph-bold ph-package"></i> Items delivered</button>`
               : delivered ? `<span class="ml-auto h-9 px-2 text-xs font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Delivered</span>` : ''}
           </div>
@@ -11138,7 +11163,7 @@
     // "Ready" to the teachers until the custodian releases the items to them.
     async function markPrDelivered(prId) {
       const pr = prList.find(p => p.id === prId);
-      if (!pr || pr.deliveredMs) return;
+      if (!pr || prLocked(pr)) return;
       const open = reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr');
       const plan = prStockInPlan(pr);
       const fresh = plan.filter(x => !x.item).length;
@@ -11197,23 +11222,27 @@
       });
     }
     // A Purchase Request draft: from approved requests, or from the supplies reorder list.
-    function openPrDraft({ requestIds = [], requesters = [], lines, purpose, sub }) {
+    // edit = a saved PR (not delivered or cancelled yet): its header, lines and signatories are loaded.
+    function openPrDraft({ requestIds = [], requesters = [], lines, purpose, sub, edit = null }) {
       const d = prDefaults();
       const date = localISODate();
-      prDraft = { requestIds, requesters, lines };
+      prDraft = { requestIds, requesters, lines, editId: edit ? edit.id : null };
       const set = (id, v) => { document.getElementById(id).value = v || ''; };
-      set('prEntity', d.entity || schoolInfo.school);
-      set('prFund', d.fund);
-      set('prOffice', d.office);
-      set('prNo', nextPrNo(date));
-      set('prDate', date);
-      set('prRcc', d.rcc);
+      const pick = (key, fallback) => (edit ? edit[key] : fallback);
+      set('prEntity', pick('entity', d.entity || schoolInfo.school));
+      set('prFund', pick('fund', d.fund));
+      set('prOffice', pick('office', d.office));
+      set('prNo', pick('prNo', nextPrNo(date)));
+      set('prDate', pick('date', date));
+      set('prRcc', pick('rcc', d.rcc));
       set('prPurpose', String(purpose || '').slice(0, 600));
-      set('prReqName', d.reqName || schoolInfo.custodian);
-      set('prReqDesig', d.reqDesig || schoolInfo.position);
-      set('prApprName', d.apprName || schoolInfo.head);
-      set('prApprDesig', d.apprDesig || 'School Principal');
+      set('prReqName', edit ? (edit.requestedBy || {}).name : d.reqName || schoolInfo.custodian);
+      set('prReqDesig', edit ? (edit.requestedBy || {}).designation : d.reqDesig || schoolInfo.position);
+      set('prApprName', edit ? (edit.approvedBy || {}).name : d.apprName || schoolInfo.head);
+      set('prApprDesig', edit ? (edit.approvedBy || {}).designation : d.apprDesig || 'School Principal');
       document.getElementById('prSub').textContent = sub || 'Appendix 60 · check every line before saving';
+      document.getElementById('prSaveLabel').textContent = edit ? 'Save changes & print' : 'Save & print';
+      document.getElementById('prAdd').value = '';
       renderPrLines();
       document.getElementById('prModal').classList.remove('hidden');
     }
@@ -11236,7 +11265,33 @@
           </div>
           ${l.code && lastPaid(l.code) ? `<p class="pl-6 text-[11px] text-slate-500 flex items-center gap-1"><i class="ph-bold ph-receipt"></i> ${escapeHTML(lastPaidText(l.code))}</p>` : ''}
         </div>`).join('') || '<p class="text-xs text-slate-500">No items left on this PR.</p>';
+      document.getElementById('prItemList').innerHTML = items.filter(i => !prDraft.lines.some(l => l.code === i.code))
+        .map(i => `<option value="${escapeHTML(i.name)} · ${escapeHTML(i.code)}"></option>`).join('');
       updatePrTotal();
+    }
+    // Add a line on the PR screen: an Inventory item (with its stock no., unit and last cost) or
+    // anything typed (a new item; it is added to Inventory when the PR is delivered).
+    function addPrLine(input) {
+      if (!prDraft) return;
+      const text = String(input.value || '').trim();
+      if (!text) return;
+      input.value = '';
+      const code = text.includes(' · ') ? text.split(' · ').pop().trim() : '';
+      const item = (code && items.find(i => i.code === code)) || items.find(i => normItemName(i.name) === normItemName(text)) || null;
+      if (item && prDraft.lines.some(l => l.code === item.code)) {
+        showToast(`${item.name.split(',')[0]} is already on this PR · change its quantity`, 'ph-info');
+        return;
+      }
+      const paid = item && lastPaid(item.code);
+      prDraft.lines.push({
+        id: newReqLineId(), code: item ? item.code : null, stockNo: item && !/^CUSTOM-/.test(item.code) ? item.code : '',
+        unit: item ? item.unit || 'piece' : 'piece', desc: item ? item.name : text.slice(0, 200), qty: 1,
+        unitCost: Math.round(((paid && paid.c) || (item && item.price) || 0) * 100) / 100
+      });
+      renderPrLines();
+      const boxes = document.querySelectorAll('#prLines input[type="number"]');
+      const qty = boxes[boxes.length - 2];
+      if (qty) { qty.focus(); qty.select(); }
     }
     function setPrLine(id, key, value) {
       const l = prDraft.lines.find(x => x.id === id);
@@ -11264,7 +11319,11 @@
       if (!lines.length) { appAlert('The Purchase Request has no items.'); return; }
       const prNo = reqVal('prNo');
       if (!prNo) { appAlert('Enter the PR No.'); document.getElementById('prNo').focus(); return; }
-      if (prList.some(p => p.prNo === prNo) && !await appConfirm(`PR No. ${prNo} was already used. Save another PR with the same number?`, { title: 'PR No. already used', ok: 'Save anyway', tone: 'warn' })) return;
+      const editing = prDraft.editId ? prList.find(p => p.id === prDraft.editId) : null;
+      if (prDraft.editId && (!editing || editing.deliveredMs || editing.status === 'cancelled')) {
+        appAlert('This Purchase Request was delivered or cancelled in the meantime, so it can no longer be changed.'); closePr(); return;
+      }
+      if (prList.some(p => p.prNo === prNo && p.id !== prDraft.editId) && !await appConfirm(`PR No. ${prNo} was already used. Save another PR with the same number?`, { title: 'PR No. already used', ok: 'Save anyway', tone: 'warn' })) return;
       if (lines.some(l => !l.unitCost) && !await appConfirm('The total on the Purchase Request will be incomplete.', { title: 'Some items have no unit cost', ok: 'Save anyway', cancel: 'Add costs', tone: 'warn' })) return;
       const F = cloud.sdk;
       const total = Math.round(lines.reduce((n, l) => n + l.qty * l.unitCost, 0) * 100) / 100;
@@ -11276,6 +11335,7 @@
         approvedBy: { name: reqVal('prApprName'), designation: reqVal('prApprDesig') },
         createdMs: Date.now(), createdAt: F.serverTimestamp(), createdBy: cloud.user.uid
       };
+      if (editing) { savePrEdit(editing, data); return; }
       localStorage.setItem(PR_DEFAULTS_KEY, JSON.stringify({
         entity: data.entity, fund: data.fund, office: data.office, rcc: data.rcc,
         reqName: data.requestedBy.name, reqDesig: data.requestedBy.designation, apprName: data.approvedBy.name, apprDesig: data.approvedBy.designation
@@ -11291,6 +11351,88 @@
       renderRequestsEverywhere();
       showToast(`PR No. ${prNo} saved · ₱${peso2(total)}`, 'ph-file-text');
       printPr({ ...data, id: ref.id });
+    }
+
+    // ---- Change or cancel a saved PR (until its items are delivered) ------------------------
+    const prLocked = pr => !!pr.deliveredMs || pr.status === 'cancelled';
+    function editPr(id) {
+      const pr = prList.find(p => p.id === id);
+      if (!pr || prLocked(pr)) return;
+      openPrDraft({
+        edit: pr, requestIds: pr.requestIds || [], requesters: pr.requesters || [], purpose: pr.purpose,
+        lines: (pr.lines || []).map(l => ({ id: newReqLineId(), code: l.code || null, stockNo: l.stockNo || '', unit: l.unit || '', desc: l.desc || '', qty: Number(l.qty) || 0, unitCost: Number(l.unitCost) || 0 })),
+        sub: `Changing PR No. ${pr.prNo} · saved ${pr.createdMs ? formatShortDate(new Date(pr.createdMs).toISOString()) : ''}`
+      });
+    }
+    // What changed on the lines, for Change History: "+ Bond paper (5), − Stapler, Ink 8 → 10".
+    function prLineChanges(before, after) {
+      const key = l => l.code || 'D:' + normItemName(l.desc);
+      const name = l => String(l.desc || '').split(',')[0].slice(0, 40);
+      const old = new Map((before || []).map(l => [key(l), l]));
+      const out = [];
+      after.forEach(l => {
+        const o = old.get(key(l));
+        old.delete(key(l));
+        if (!o) { out.push(`+ ${name(l)} (${l.qty})`); return; }
+        const bits = [];
+        if (Number(o.qty) !== l.qty) bits.push(`${o.qty} → ${l.qty}`);
+        if (Math.abs((Number(o.unitCost) || 0) - l.unitCost) > 0.004) bits.push(`₱${peso2(o.unitCost)} → ₱${peso2(l.unitCost)}`);
+        if (bits.length) out.push(`${name(l)} ${bits.join(', ')}`);
+      });
+      old.forEach(o => out.push(`− ${name(o)}`));
+      return out;
+    }
+    function savePrEdit(pr, data) {
+      const F = cloud.sdk;
+      const { createdMs, createdAt, createdBy, requestIds, requesters, ...changes } = data;
+      void createdMs; void createdAt; void createdBy; void requestIds; void requesters;
+      const batch = F.writeBatch(cloud.db);
+      batch.update(F.doc(prCol(), pr.id), { ...changes, editedMs: Date.now(), updatedAt: F.serverTimestamp() });
+      if (changes.prNo !== pr.prNo) {
+        reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr')
+          .forEach(r => batch.update(F.doc(reqCol(), r.id), { prNo: changes.prNo, updatedAt: F.serverTimestamp() }));
+      }
+      cloudWrite(batch.commit(), 'Saving the Purchase Request');
+      const what = prLineChanges(pr.lines, changes.lines);
+      if (changes.prNo !== pr.prNo) what.unshift(`PR No. ${pr.prNo} → ${changes.prNo}`);
+      if (Math.abs((Number(pr.total) || 0) - changes.total) > 0.004) what.push(`total ₱${peso2(pr.total)} → ₱${peso2(changes.total)}`);
+      logHistory('system', `Changed Purchase Request ${changes.prNo}${what.length ? `: ${what.slice(0, 8).join(', ')}${what.length > 8 ? ` and ${what.length - 8} more` : ''}` : ' (header or signatories)'}`);
+      const merged = { ...pr, ...changes };
+      const at = prList.findIndex(p => p.id === pr.id);
+      if (at >= 0) prList[at] = merged;   // shown now; the cloud snapshot follows
+      closePr();
+      reqTab = 'prs';
+      renderRequestsEverywhere();
+      showToast(`PR No. ${changes.prNo} changed · ₱${peso2(changes.total)}`, 'ph-pencil-simple');
+      printPr(merged);
+    }
+    // Cancel a PR saved by mistake (or not pushing through): it stays on the list, marked
+    // Cancelled, for the record; its requests go back to To purchase so they can go on another PR.
+    async function cancelPr(id) {
+      const pr = prList.find(p => p.id === id);
+      if (!pr || prLocked(pr)) return;
+      const back = reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr');
+      const why = await appPrompt(`PR No. ${pr.prNo} (₱${peso2(pr.total)}) will be marked Cancelled. It stays on the list for the record.` +
+        (back.length ? `\n\n${plural(back.length, 'request')} go back to To purchase (${back.map(r => r.name).join(', ')}).` : ''),
+        '', { title: 'Cancel this Purchase Request?', ok: 'Cancel PR', cancel: 'Keep it', tone: 'danger', placeholder: 'Reason (optional), e.g. saved by mistake',
+          suggestions: ['Saved by mistake', 'Budget not available', 'Will be bought on another PR', 'No longer needed'] });
+      if (why === null) return;
+      const cur = prList.find(p => p.id === id);
+      if (!cur || prLocked(cur)) return;
+      const F = cloud.sdk;
+      const reason = String(why).trim().slice(0, 200);
+      const batch = F.writeBatch(cloud.db);
+      batch.update(F.doc(prCol(), pr.id), { status: 'cancelled', cancelledMs: Date.now(), cancelReason: reason, updatedAt: F.serverTimestamp() });
+      back.forEach(r => {
+        batch.update(F.doc(reqCol(), r.id), { status: 'approved', prNo: null, prId: null, updatedAt: F.serverTimestamp() });
+        reqUnpicked.delete(r.id);
+      });
+      cloudWrite(batch.commit(), 'Cancelling the Purchase Request');
+      logHistory('system', `Cancelled Purchase Request ${pr.prNo} (₱${peso2(pr.total)})${reason ? ` – ${reason}` : ''}${back.length ? ` · ${plural(back.length, 'request')} back to To purchase` : ''}`);
+      Object.assign(cur, { status: 'cancelled', cancelledMs: Date.now(), cancelReason: reason });
+      back.forEach(r => { r.status = 'approved'; r.prNo = null; r.prId = null; });
+      renderRequestsEverywhere();
+      showToast(`PR No. ${pr.prNo} cancelled`, 'ph-x-circle', back.length ? { label: 'To purchase', onClick: () => setReqTab('approved') } : null);
     }
 
     function prPrintHTML(pr) {
@@ -16677,6 +16819,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-pr-edit', date: 'Nov 2026', title: 'Change or cancel a Purchase Request', points: [
+        'Add an item right on the Purchase Request screen: pick it from Inventory (its stock no., unit and last cost are filled in) or type a new one.',
+        'Saved Purchase Requests can be changed with Edit until the items are delivered: header, PR No., items, quantities, costs, purpose and signatories. Change History lists what changed.',
+        'Cancel PR marks a Purchase Request saved by mistake as Cancelled, with the reason. It stays on the list for the record, and its requests go back to To purchase so they can go on another PR.'
+      ] },
       { id: '2026-11-pr-excel', date: 'Nov 2026', title: 'Purchase Requests as Excel files', points: [
         'Each Purchase Request now has an Excel button. It saves an .xlsx file laid out like the printed Appendix 60 form, on A4, ready to print or edit in Excel or Google Sheets.',
         'Total Cost (Quantity × Unit Cost) and the grand total are Excel formulas, so they update when you change a quantity or price in the file.',
