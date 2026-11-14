@@ -6,6 +6,7 @@ rules_version = '2';
 //   schools/{schoolId}                        a school; custodians[] may manage it
 //   schools/{schoolId}/requests/{id}          supply requests from teachers
 //   schools/{schoolId}/purchaseRequests/{id}  Purchase Requests (Appendix 60)
+//   schools/{schoolId}/inspections/{id}       deliveries inspected on a PR (IAR, Appendix 62)
 //   schools/{schoolId}/inventory/{code}       My Items (school inventory), custodian only
 //   schools/{schoolId}/catalog/{code}         custom catalog items, custodian only
 //   schools/{schoolId}/settings/info          school & custodian info, custodian only
@@ -126,6 +127,25 @@ service cloud.firestore {
 
       match /purchaseRequests/{prId} {
         allow read, create, update: if isCustodian(schoolId);
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+
+      // Inspection of a delivery (IAR): the custodian makes it. When it is sent to a teacher's
+      // phone (inspectorUid), that teacher reads it and signs it once: they may only fill in the
+      // quantities and notes and mark it 'inspected'. The custodian accepts it afterwards.
+      match /inspections/{inspId} {
+        allow create: if isCustodian(schoolId);
+        allow update: if isCustodian(schoolId)
+          || (isMember(schoolId)
+              && resource.data.inspectorUid == request.auth.uid
+              && resource.data.status == 'assigned'
+              && request.resource.data.status == 'inspected'
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['lines', 'status', 'inspectedMs', 'dateInspected', 'inspectedVia', 'updatedAt'])
+              && request.resource.data.lines is list
+              && request.resource.data.lines.size() == resource.data.lines.size());
+        allow get, list: if signedIn()
+          && (resource.data.inspectorUid == request.auth.uid || isCustodian(schoolId));
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
 

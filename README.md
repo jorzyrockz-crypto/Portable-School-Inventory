@@ -226,7 +226,10 @@ Teachers kept asking *“Sir, meron pa ba nito?”*. The teacher's phone now has
 2. Tap **Invite** and send the link or QR code to your faculty group chat.
 3. **To review**: open a request to see *asked / on hand / to buy* for every line. Edit names, quantities, units and unit costs, link a line to an inventory item, add a note, then **Approve** or **Decline** (with a reason). You can also enter walk-in requests with **New**.
 4. **To purchase**: tick approved requests and tap **Prepare Purchase Request**. Only the quantity not in stock goes on the PR (asked minus on hand, editable). Identical items from several teachers are added together, and their names go in the Purpose.
-5. Check the PR header (entity, fund cluster, office, PR No., responsibility center code, date), the lines and the signatories, then **Save & print**. Saved PRs are listed under **Purchase requests**, where you can reprint them or export them to CSV. Mark a request **Supplied** once the items are handed over.
+5. Check the PR header (entity, fund cluster, office, PR No., responsibility center code, date), the lines and the signatories, then **Save & print**. Saved PRs are listed under **Purchase requests**, where you can reprint them or save them as **Excel** (.xlsx) or CSV. **Edit** changes a saved PR until its items are delivered (header, PR No., lines, purpose, signatories; Change History lists what changed), and **Cancel PR** marks one saved by mistake as Cancelled, with the reason, and sends its requests back to *To purchase*. On the PR screen, **Add an item** picks an item from Inventory or takes a new one typed in. The Excel file is laid out like the printed Appendix 60 (A4 portrait), and Total Cost and the grand total are formulas, so it can still be edited. A line with no stock no. shows its line number (1, 2, 3…), as many schools write it. Mark a request **Supplied** once the items are handed over.
+6. **Inspect delivery** (on the saved PR) when the supplier delivers. Enter the PO No., PO date, Invoice/DR No. and supplier (the IAR No. starts as the PO No.), pick the inspection officer, and go through the checklist: **Complete** for each item that fully came, or **Short** with how many came, plus an optional note (e.g. damaged, returned). The inspector signs by tapping (name, date and time are recorded; the printed IAR has blank lines for wet signatures). Sign on your phone with the inspector there, or tap **Send** to put the inspection on a teacher's own phone (a teacher who joined), where they check and sign; you are notified when they do. The app remembers the inspector.
+7. **Accept delivery**: Complete or Partial is worked out from the quantities. Set the Date Received and accept. What came goes into Inventory (new items are added). Equipment gets property numbers and the school's own **ICS** (received from the school head, received by you; with COA numbering, separate SPLV and SPHV slips). Lines still short stay open on the PR (*Still to come*) and get their own IAR (`<PO No.>-2`, …) on the next delivery. When everything has come, the requests show *Ready*. The papers screen prints the **IAR (Appendix 62)** or saves it as Excel, prints the school's ICS, and has a **Release** button for each teacher's share (RIS / ICS from their request).
+8. **Distribution list** (on the PR, print or Excel): one column per teacher with what they got from the PR's items through their releases, totals and what is not yet released. A teacher's **Received** on their phone fills in their date. IARs, the school's ICS and Distribution Lists are also under **Forms → Slips & receipts**. **Items delivered** still adds everything to stock at once without an IAR.
 
 ### Supply requests: Firebase setup
 
@@ -238,7 +241,7 @@ The app is connected to the Firebase project **russapps-custodianpro** (settings
    - **Email/Password** (optional: custodians without a Google account).
 2. **Authentication → Settings → Authorized domains**: add `jorzyrockz-crypto.github.io`. Without it, Google sign-in shows “This website is not on the Firebase authorized domains list”.
 3. **Build → Firestore Database → Create database**: pick a location near you (e.g. `asia-southeast1`, Singapore) and start in **production mode**.
-4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school. Nothing can be deleted, except by the school's custodian through **Reset app** (below). **Publish again after updating the app** when `firestore.rules` changed (latest: custodian-only delete for Reset app, and the `schoolIds` lookup for joining by School ID).
+4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school. Nothing can be deleted, except by the school's custodian through **Reset app** (below). **Publish again after updating the app** when `firestore.rules` changed (latest: `inspections`, so a teacher can sign an inspection sent to their phone).
 
 The config values are not secret; access is controlled by the published rules. To use a different project, replace the object in `firebase-config.js` (or set it to `null` to hide Supply requests).
 
@@ -296,6 +299,10 @@ Equipment can be tracked **per unit** instead of only as a count:
    setting (a saved school info without a numbering choice means *One per unit*).
 2. Per unit you can record the serial number, location, who it is assigned to, and its condition.
    Once an item has units, its Serviceable / Repair / Unserviceable counts come from the units.
+   **Remove unit** (trash button) asks for the reason (disposed, transferred to another school,
+   lost, stolen, destroyed… or your own text) and keeps the unit under *Written off*, like a relieved
+   unit: not counted, its number never reused, kept for audit. Untick *Keep it under Written off*
+   only for a unit added by mistake. Undo puts it back.
 3. **Print QR labels** – 3 across on A4/Letter; cut them out, or print on sticker paper.
 4. **Scan** (bottom bar, or *Scan Tags* on the dashboard) opens the camera. Each label scanned
    is marked *verified today*, and the dashboard shows how many units were verified this year,
@@ -638,6 +645,7 @@ node inventory-sync.mjs               # Inventory saved to the account
 node release.mjs                      # teachers, RIS/ICS releases, stock in
 node teacher-items.mjs                # a teacher's My Items, reports and returns
 node teachers-overview.mjs            # Teachers page: filters, Remind, count, clearance, merge, supply usage, two panes
+node iar.mjs                          # Inspect delivery: checklist on the teacher's phone, tap to sign, accept (partial), school ICS, Distribution List
 node sample-data.mjs                  # Load / Clear sample data: sample teachers stay on the device, inventory restored
 node project-switch.mjs               # moving to another Firebase project keeps inventory, resets cloud links
 node notifications.mjs                # bell, phone notifications, shortcuts, install bar
