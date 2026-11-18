@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="002ccd6e457d">
+  <meta name="app-version" content="3dcd23a888e4">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1462,6 +1462,7 @@
           <button id="moreInstallItem" onclick="closeMoreMenu(); installApp()" class="more-item" style="display:none"><i class="ph-bold ph-device-mobile text-brand-600"></i> Install app on this phone</button>
           <button onclick="closeMoreMenu(); openSchoolModal()" class="more-item"><i class="ph-bold ph-buildings text-brand-600"></i> School &amp; custodian info</button>
           <button id="moreTurnoverItem" onclick="closeMoreMenu(); openTurnover()" class="more-item"><i class="ph-bold ph-handshake text-brand-600"></i> Custodian turnover</button>
+          <button id="moreAssistItem" onclick="closeMoreMenu(); openAssistPanel()" class="more-item"><i class="ph-bold ph-users-three text-brand-600"></i> Assistant custodians</button>
           <button onclick="closeMoreMenu(); exportBackupJSON()" class="more-item"><i class="ph-bold ph-floppy-disk text-emerald-600"></i> Back up now</button>
           <button onclick="closeMoreMenu(); document.getElementById('restoreFileInput').click()" class="more-item"><i class="ph-bold ph-upload-simple text-amber-600"></i> Restore a backup</button>
           <button onclick="closeMoreMenu(); openHistory()" class="more-item"><i class="ph-bold ph-list-magnifying-glass text-brand-600"></i> Change history</button>
@@ -1865,6 +1866,23 @@
         <button onclick="closeTurnover()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
       <div id="turnoverBody" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- ASSISTANT CUSTODIANS (custodian: More → Assistant custodians) -->
+  <div id="assistModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeAssistPanel()">
+    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-users-three text-xl"></i></span>
+          <div class="min-w-0">
+            <h3 class="font-extrabold text-base text-slate-900 leading-tight">Assistant custodians</h3>
+            <p class="text-xs font-semibold text-slate-500">Help on their own phone · you stay accountable</p>
+          </div>
+        </div>
+        <button onclick="closeAssistPanel()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="assistBody" class="space-y-4"></div>
     </div>
   </div>
 
@@ -5715,7 +5733,9 @@
     function historyEntry(kind, text, code = null, extra = null) {
       const e = { t: Date.now(), k: kind, x: text };
       if (code) e.c = code;
-      if (schoolInfo.custodian) e.by = schoolInfo.custodian;
+      let who = schoolInfo.custodian;
+      try { if (isAssistant()) who = reqRole.assistant.name || who; } catch (err) {}   // reqRole is declared further down
+      if (who) e.by = who;
       return extra ? Object.assign(e, extra) : e;
     }
 
@@ -9590,6 +9610,9 @@
       if (/invite-only/.test(code)) return 'This school only accepts its invite link. Ask your property custodian for it.';
       if (/no-school/.test(code)) return 'This invite link is not valid. Ask the property custodian for a new one.';
       if (/old-invite/.test(code)) return 'This invite link was replaced by a newer one. Ask the property custodian for the new link.';
+      if (/old-assist-invite/.test(code)) return 'This assistant link was replaced. Ask the property custodian for the new one.';
+      if (/assist-is-custodian/.test(code)) return 'This Google account is the school’s property custodian. Use your own account to join as an assistant.';
+      if (/assist-is-head/.test(code)) return 'This Google account is the School Head’s. The School Head can’t also be an assistant custodian.';
       if (/old-turnover-invite/.test(code)) return 'This Turnover link was replaced or already used. Ask the outgoing custodian or the School Head for a new one.';
       if (/turnover-already-custodian/.test(code)) return 'This Google account is already the property custodian of this school. Sign in as the property custodian instead.';
       if (/turnover-is-head/.test(code)) return 'This Google account is the School Head’s. The new property custodian signs in with their own Google account, so nobody approves their own Purchase Request.';
@@ -10775,7 +10798,7 @@
       myReleases = []; tReports = [];
       myRelLoaded = false; tRepLoaded = false;
       inspList = [];
-      headList = []; headsLoaded = false; headMe = null; headMeLoaded = false;
+      headList = []; headsLoaded = false; headMe = null; headMeLoaded = false; staffList = []; staffLoaded = false;
       turnList = []; turnLoaded = false; turnJoinCard = null; turnJoinLoaded = false; lastSchoolDoc = null; schoolTidySent = ''; viewOnlyLive = false;
       stopInventorySync();
     }
@@ -10786,11 +10809,19 @@
       const F = cloud.sdk;
       if (isHeadDevice()) { subscribeHead(F); return; }   // the School Head: their card, then the PRs
       if (isIncomingDevice()) { subscribeIncoming(F); return; }   // a new custodian waiting for Confirm
-      if (viewOnlyEnded()) return;
+      if (viewOnlyEnded() || assistantRemoved()) return;
       // The outgoing custodian: the school's records, read only, once the school still lists them
       // as a viewer (onSchoolDoc → startViewOnlyRecords).
       if (isViewOnly()) { subscribeSchoolDoc(F); return; }
-      const onErr = err => { console.error('sync', err); cloud.error = cloudErrorText(err); renderRequestsEverywhere(); };
+      const onErr = err => {
+        // An assistant who was just removed: refused before the school's change arrives. Check it.
+        if (isAssistant() && /permission/i.test(String(err && (err.code || err.message)))) {
+          console.warn('sync (assistant)', err);
+          F.getDoc(F.doc(cloud.db, 'schools', reqRole.schoolId)).then(snap => { if (snap.exists()) onSchoolDoc(snap.data()); }).catch(() => {});
+          return;
+        }
+        console.error('sync', err); cloud.error = cloudErrorText(err); renderRequestsEverywhere();
+      };
       const onRequests = snap => {
         reqList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
         reqList.sort((a, b) => reqTime(b) - reqTime(a));
@@ -10810,6 +10841,7 @@
           notifFromPrs(snap.metadata);
         }, onErr));
         subscribeHeads(F);
+        subscribeStaff(F);
         subscribeTeam(F);
         subscribeInspections(F);
         subscribeSchoolDoc(F);
@@ -10976,6 +11008,11 @@
           meta[col] = { pending: !!snap.metadata.hasPendingWrites, fromCache: !!snap.metadata.fromCache };
           onInvSnapshot(meta);
         }, err => {
+          if (isAssistant() && /permission/i.test(String(err && (err.code || err.message)))) {   // removed as assistant
+            console.warn('inventory sync (assistant)', err);
+            F.getDoc(F.doc(cloud.db, 'schools', reqRole.schoolId)).then(snap => { if (snap.exists()) onSchoolDoc(snap.data()); }).catch(() => {});
+            return;
+          }
           console.error('inventory sync', err);
           setInvStatus('error', cloudErrorText(err));
         }));
@@ -11284,6 +11321,7 @@
     function renderRequestsEverywhere() {
       renderLoginGate();
       renderViewOnly();
+      renderAssistantMode();
       if (typeof renderNotifBell === 'function') renderNotifBell();
       renderHomeReqCard();
       if (activeMainView === 'REQUESTS') renderRequestsView();
@@ -11714,6 +11752,20 @@
           showToast(`${d.name}: view-only until ${msDate(d.viewOnly[uid].untilMs)}`, 'ph-eye');
           return;
         }
+        // An assistant custodian signing in on another device.
+        const helps = await F.getDocs(F.query(F.collection(cloud.db, 'schools'), F.where('assistants', 'array-contains', uid)));
+        if (helps.docs.length) {
+          const sd = helps.docs[0];
+          let card = {};
+          try { const c = await F.getDoc(F.doc(cloud.db, 'schools', sd.id, 'staff', uid)); card = c.exists() ? c.data() : {}; } catch (e) {}
+          reqRole = { role: 'custodian', schoolId: sd.id, schoolName: sd.data().name, email, assistant: { name: card.name || user.displayName || email, designation: card.designation || '' } };
+          invMergeAnswer = false;
+          saveReqRole();
+          subscribeRequests();
+          renderRequestsEverywhere();
+          showToast(`${sd.data().name}: signed in as assistant custodian`, 'ph-users-three');
+          return;
+        }
       }
       if (found.docs.length) {
         schoolId = found.docs[0].id;
@@ -11791,7 +11843,7 @@
     // school's card (teachers see it when they join) and listed under schoolIds/{id}, so a
     // teacher can type the ID instead of the school code. One school per ID (first come).
     async function publishSchoolNo() {
-      if (!isCustodianDevice() || !cloud.user || !cloud.db || !navigator.onLine) return;
+      if (!isCustodianDevice() || isAssistant() || isViewOnly() || !cloud.user || !cloud.db || !navigator.onLine) return;
       const no = mySchoolNo();
       if (!no || (reqRole.schoolNo === no && (reqRole.schoolNoListed === no || reqRole.schoolNoTaken === no))) return;
       const F = cloud.sdk;
@@ -11887,6 +11939,14 @@
     }
 
     function checkJoinLink() {
+      const as = location.hash.match(/[#&]assist=([A-Za-z0-9_-]{6,64})/);   // an assistant custodian's link
+      if (as) {
+        if (exploring()) { exploreRestore(); location.reload(); return; }
+        history.replaceState(null, '', location.pathname + location.search);
+        if (!reqRole) { gateStep = 'head'; renderLoginGate(); }
+        openAssistJoin(as[1]);
+        return;
+      }
       const to = location.hash.match(/[#&]turnover=([A-Za-z0-9_-]{6,64})/);   // a new property custodian's Turnover link
       if (to) {
         if (exploring()) { exploreRestore(); location.reload(); return; }
@@ -13152,7 +13212,7 @@
     const turnInviteCode = () => (reqRole && turnInviteMap()[reqRole.schoolId]) || '';
     function setTurnInviteCode(code) { const m = turnInviteMap(); m[reqRole.schoolId] = code; localStorage.setItem(TO_INVITE_KEY, JSON.stringify(m)); }
     const turnoverLink = () => `${location.origin}${location.pathname}#turnover=${reqRole.schoolId}-${turnInviteCode()}`;
-    const canHandOver = () => !!cloud.user && ((isCustodianDevice() && !isViewOnly()) || (isHeadDevice() && !!headMe && headMe.status === 'active'));
+    const canHandOver = () => !!cloud.user && ((isCustodianDevice() && !isViewOnly() && !isAssistant()) || (isHeadDevice() && !!headMe && headMe.status === 'active'));
     // The custodian who signed a slip: its own record, else whoever was custodian when it was made.
     function slipCustodian(r) {
       if (r && r.custName) return { name: r.custName, desig: r.custDesig || '' };
@@ -13191,6 +13251,17 @@
       lastSchoolDoc = d;
       const uid = cloud.user && cloud.user.uid;
       if (!uid || !isCustodianDevice()) return;
+      if (isAssistant()) {
+        if ((d.custodians || []).includes(uid)) { delete reqRole.assistant; saveReqRole(); subscribeRequests(); renderRequestsEverywhere(); return; }   // took over
+        const on = (d.assistants || []).includes(uid);
+        if (!on && !reqRole.assistant.removed) {
+          reqRole.assistant.removed = true;
+          saveReqRole();
+          stopRequestSync();
+          renderRequestsEverywhere();
+        }
+        return;
+      }
       if ((d.custodians || []).includes(uid)) {
         if (isViewOnly()) {   // handed back to this custodian
           delete reqRole.viewOnly;
@@ -13478,7 +13549,8 @@
         confirmedBy: { uid: cloud.user.uid, name: me.name, role: me.role }, doneMs: now, updatedAt: F.serverTimestamp() });
       if (t.invite) batch.set(F.doc(cloud.db, 'schools', sid, 'turnoverInvites', t.invite), { active: false, createdMs: 0, by: cloud.user.uid, endedMs: now });
       batch.update(F.doc(cloud.db, 'schools', sid), { custodians: [t.uid], ownerUid: t.uid, turnoverId: id, turnoverMs: now,
-        custodianName: String(t.name || '').slice(0, 80), custodianDesig: String(t.designation || '').slice(0, 80), viewOnly, viewerUids: Object.keys(viewOnly) });
+        custodianName: String(t.name || '').slice(0, 80), custodianDesig: String(t.designation || '').slice(0, 80), viewOnly, viewerUids: Object.keys(viewOnly),
+        ...((school.assistants || []).includes(t.uid) ? { assistants: school.assistants.filter(u => u !== t.uid) } : {}) });   // an assistant who takes over
       showToast('Confirming the turnover…', 'ph-handshake');
       try {
         await batch.commit();
@@ -13595,6 +13667,16 @@
       }
     }
     function subscribeIncoming(F) {
+      if (reqRole.kind === 'assist') {
+        reqUnsubs.push(F.onSnapshot(F.doc(staffCol(), cloud.user.uid), snap => {
+          turnJoinCard = snap.exists() ? { ...snap.data(), id: snap.id } : null;
+          turnJoinLoaded = true;
+          cloud.error = '';
+          if (turnJoinCard && turnJoinCard.status === 'active') { becomeAssistant(turnJoinCard); return; }
+          renderRequestsEverywhere();
+        }, err => { console.warn('staff card', err); cloud.error = cloudErrorText(err); turnJoinLoaded = true; renderRequestsEverywhere(); }));
+        return;
+      }
       reqUnsubs.push(F.onSnapshot(F.doc(turnCol(), reqRole.turnId), snap => {
         turnJoinCard = snap.exists() ? { ...snap.data(), id: snap.id } : null;
         turnJoinLoaded = true;
@@ -13638,12 +13720,19 @@
       if (!cloud.user) return cloud.state === 'ready' ? 'signin' : 'connecting';
       if (!turnJoinLoaded) return 'connecting';
       if (!turnJoinCard) return 'missing';
-      return turnJoinCard.status === 'declined' ? 'declined' : 'pending';
+      return ['declined', 'removed'].includes(turnJoinCard.status) ? 'declined' : 'pending';
     }
     function incomingGateHTML() {
       const st = incomingState();
       const r = reqRole, me = r.me || {};
-      const msg = {
+      const assist = r.kind === 'assist';
+      const msg = assist ? {
+        connecting: ['ph-circle-notch animate-spin', 'Connecting…', 'Checking with your school.'],
+        signin: ['ph-sign-in', 'Sign in again', `Use the Google account you opened the assistant link with${r.email ? ` (${escapeHTML(r.email)})` : ''}.`],
+        pending: ['ph-hourglass-medium', 'Waiting for the property custodian', 'They confirm you on their device. The school’s inventory opens here on its own as soon as they do.'],
+        declined: ['ph-prohibit', 'Not confirmed', 'The property custodian did not confirm you, or removed you. Ask them for a new assistant link if this is a mistake.'],
+        missing: ['ph-question', 'This account has not joined', 'Open the assistant link again and sign in with the account you used.']
+      }[st] : {
         connecting: ['ph-circle-notch animate-spin', 'Connecting…', 'Checking your turnover.'],
         signin: ['ph-sign-in', 'Sign in again', `Use the Google account you opened the Turnover link with${r.email ? ` (${escapeHTML(r.email)})` : ''}.`],
         pending: ['ph-hourglass-medium', 'Waiting for Confirm', 'The outgoing property custodian, or the School Head, confirms the turnover on their phone. The school’s inventory opens here on its own as soon as they do.'],
@@ -13653,9 +13742,9 @@
       return `
         <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3" data-incoming="${st}">
           <div class="flex items-center gap-3">
-            <span class="w-11 h-11 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-handshake text-2xl"></i></span>
+            <span class="w-11 h-11 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ${assist ? 'ph-users-three' : 'ph-handshake'} text-2xl"></i></span>
             <div class="min-w-0">
-              <p class="text-[11px] font-bold uppercase tracking-wider text-brand-600">New property custodian</p>
+              <p class="text-[11px] font-bold uppercase tracking-wider text-brand-600">${assist ? 'Assistant custodian' : 'New property custodian'}</p>
               <p class="text-sm font-extrabold text-slate-900">${escapeHTML(r.schoolName || 'Your school')}</p>
               <p class="text-xs text-slate-500">${escapeHTML([me.name, me.designation].filter(Boolean).join(' · '))}</p>
             </div>
@@ -13670,7 +13759,8 @@
     }
     async function leaveIncoming() {
       if (!isIncomingDevice()) return;
-      if (turnJoinCard && turnJoinCard.status === 'pending' && !await appConfirm('You can open the Turnover link again later.', { title: 'Cancel the turnover on this phone?', ok: 'Start over', tone: 'warn' })) return;
+      if (turnJoinCard && turnJoinCard.status === 'pending' && !await appConfirm(reqRole.kind === 'assist' ? 'You can open the assistant link again later.' : 'You can open the Turnover link again later.',
+        { title: reqRole.kind === 'assist' ? 'Stop joining on this phone?' : 'Cancel the turnover on this phone?', ok: 'Start over', tone: 'warn' })) return;
       stopRequestSync();
       try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
       cloud.user = null;
@@ -13908,7 +13998,7 @@
     function auditWrite(list, role) {
       const F = cloud.sdk, sid = reqRole.schoolId;
       const me = reqRole.me || {};
-      const name = (role === 'head' ? (me.name || (headMe && headMe.name)) : (schoolInfo.custodian || me.name)) || (cloud.user.email || '').split('@')[0] || 'Unknown';
+      const name = (role === 'head' ? (me.name || (headMe && headMe.name)) : actorName()) || (cloud.user.email || '').split('@')[0] || 'Unknown';
       list.forEach(e => { e.au = 1; });   // queued: Firestore keeps it until it reaches the server, also offline
       persistHistory();
       F.addDoc(F.collection(cloud.db, 'schools', sid, 'auditLog'), {
@@ -14014,6 +14104,279 @@
     }
     function openSchoolHistory() { openHistory(null); setHistorySource(true); }
 
+    // ---- Assistant custodians ------------------------------------------------------------------
+    // A helper (e.g. a teacher-in-charge of the supply room) opens the assistant link on their own
+    // phone and signs in with their own Google account (staff/{uid}, 'pending'). The custodian
+    // confirms: the card becomes 'active' and their uid goes into school.assistants. The assistant's
+    // device then works like the custodian's: inventory, releases, requests, deliveries, counts.
+    // They can't remove items, hand over, manage the School Head, teachers or invite links, change
+    // the school info or reset the school (the rules refuse it too). Their name goes on Change
+    // History and on the slips they make (by); the forms keep the custodian as the accountable officer.
+    let staffList = [];
+    let staffLoaded = false;
+    function isAssistant() { return !!(reqRole && reqRole.role === 'custodian' && reqRole.assistant); }
+    function assistantRemoved() { return isAssistant() && !!reqRole.assistant.removed; }
+    function actorName() { return isAssistant() ? (reqRole.assistant.name || reqRole.email || '') : (schoolInfo.custodian || (reqRole && reqRole.email) || ''); }
+    function staffCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'staff'); }
+    const staffInviteLink = () => `${location.origin}${location.pathname}#assist=${reqRole.schoolId}-${schoolInfo.staffInvite}`;
+    const activeStaff = () => staffList.filter(s => s.status === 'active');
+    const pendingStaff = () => staffList.filter(s => s.status === 'pending').sort((a, b) => (b.joinedMs || 0) - (a.joinedMs || 0));
+    function subscribeStaff(F) {
+      reqUnsubs.push(F.onSnapshot(staffCol(), snap => {
+        staffList = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        staffLoaded = true;
+        if (!document.getElementById('assistModal').classList.contains('hidden')) renderAssistPanel();
+        if (!isAssistant()) notifFromStaff(snap.metadata);
+      }, err => console.warn('staff', err)));
+    }
+    function notifFromStaff(meta) {
+      notifCheck('staff', staffList.map(s => ({
+        key: 'st:' + s.id, sig: `${s.status || 'pending'}|${s.joinedMs || 0}`,
+        make: prev => (s.status === 'pending' && (prev === undefined || !String(prev).startsWith('pending')))
+          ? { title: `${s.name || 'Someone'} wants to join as assistant custodian`, body: `${[s.designation, s.email].filter(Boolean).join(' · ')} · tap to confirm`, icon: 'ph-users-three', tone: 'brand', go: 'assist' }
+          : null
+      })), fromCacheOf(meta));
+    }
+
+    // ---- The custodian's panel (More → Assistant custodians) ----------------------------------
+    async function openAssistPanel() {
+      if (!isCustodianDevice() || isViewOnly() || isAssistant() || !cloud.user) { showToast('Sign in as the property custodian first', 'ph-info'); return; }
+      document.getElementById('assistModal').classList.remove('hidden');
+      renderAssistPanel();
+      if (!schoolInfo.staffInvite && navigator.onLine) await newAssistInvite(true);
+    }
+    function closeAssistPanel() { document.getElementById('assistModal').classList.add('hidden'); }
+    function renderAssistPanel() {
+      const body = document.getElementById('assistBody');
+      if (!body || !isCustodianDevice() || isAssistant()) return;
+      const since = ms => (ms ? msDate(ms) : '');
+      const card = (s, extra) => `
+        <div class="rounded-2xl border ${s.status === 'active' ? 'border-emerald-200 bg-emerald-50/50' : 'border-brand-200 bg-brand-50/50'} p-3 space-y-2" data-staff-card="${s.id}">
+          <div class="flex items-start gap-2.5">
+            <span class="w-9 h-9 shrink-0 rounded-full bg-white border border-slate-200 flex items-center justify-center text-sm font-extrabold text-slate-700">${escapeHTML(((s.name || '?').trim()[0] || '?').toUpperCase())}</span>
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-slate-900 truncate">${escapeHTML(s.name || '')}</p>
+              <p class="text-[11px] text-slate-600 truncate">${escapeHTML([s.designation, s.email].filter(Boolean).join(' · '))}</p>
+              <p class="text-[11px] font-semibold ${s.status === 'active' ? 'text-emerald-700' : 'text-brand-700'}">${s.status === 'active' ? `Assistant custodian · since ${escapeHTML(since(s.approvedMs))}` : `Asked to join · ${escapeHTML(since(s.joinedMs))}`}</p>
+            </div>
+          </div>
+          ${extra}
+        </div>`;
+      let html = '';
+      pendingStaff().forEach(s => {
+        html += card(s, `
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="removeAssistant('${s.id}')" class="h-10 rounded-xl bg-white border border-slate-200 hover:border-rose-300 text-xs font-bold text-slate-700">Not them</button>
+            <button onclick="confirmAssistant('${s.id}')" data-confirm-staff="${s.id}" class="h-10 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-extrabold flex items-center justify-center gap-1"><i class="ph-bold ph-check"></i> Confirm</button>
+          </div>
+          <p class="text-[11px] text-slate-500">Confirm only if this is the person’s own Google account.</p>`);
+      });
+      activeStaff().forEach(s => { html += card(s, `<button onclick="removeAssistant('${s.id}')" data-remove-staff="${s.id}" class="text-[11px] font-bold text-slate-500 hover:text-rose-600">Remove as assistant</button>`); });
+      if (!staffList.some(s => s.status === 'pending' || s.status === 'active')) html += `<p class="text-xs text-slate-600">An assistant helps with the work on their own phone: releases, requests, deliveries, counts and encoding. You stay the accountable officer, and the forms keep your name.</p>`;
+      html += `
+        <div class="rounded-2xl bg-slate-50 border border-slate-200 p-3 text-[11px] text-slate-600 space-y-1">
+          <p class="font-bold text-slate-800 flex items-center gap-1.5"><i class="ph-bold ph-shield-check text-emerald-600"></i> What an assistant can’t do</p>
+          <p>Remove items, change the school info, invite or remove teachers and the School Head, hand over (turnover) or reset the school. Everything they do shows their name in Change History.</p>
+        </div>`;
+      const invite = schoolInfo.staffInvite ? `
+          <div class="text-center">
+            <div id="assistQr" class="keep-light mx-auto w-40 h-40 rounded-2xl border border-slate-200 p-2.5 bg-white flex items-center justify-center text-xs text-slate-500">QR code</div>
+            <p class="mt-2 text-[11px] text-slate-500">They scan this with their phone camera, or open the link you send them, and sign in with their own Google account. You confirm them here.</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Assistant link</p>
+            <p id="assistLinkText" class="text-[11px] font-mono text-slate-700 break-all leading-snug select-all">${escapeHTML(staffInviteLink())}</p>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="copyAssistInvite()" class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-copy"></i> Copy link</button>
+            <button onclick="shareAssistInvite()" class="h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-share-network"></i> Share</button>
+          </div>
+          <button onclick="newAssistInvite()" class="w-full min-h-10 text-xs font-bold text-slate-500 hover:text-rose-600 flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrows-clockwise"></i> Make a new assistant link</button>`
+        : `<p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-3 text-xs text-slate-600 text-center">${navigator.onLine ? '<i class="ph-bold ph-circle-notch animate-spin"></i> Making the assistant link…' : 'Connect to the internet to make the assistant link.'}</p>`;
+      html += activeStaff().length ? `<details class="rounded-2xl border border-slate-200 p-3"><summary class="text-xs font-bold text-slate-700 cursor-pointer">Add another assistant</summary><div class="mt-3 space-y-3">${invite}</div></details>` : invite;
+      body.innerHTML = html;
+      const box = document.getElementById('assistQr');
+      if (box) {
+        (typeof qrcode === 'function' ? Promise.resolve() : loadScript('assets/vendor/qrcode.js'))
+          .then(() => { box.innerHTML = qrSVG(staffInviteLink()); })
+          .catch(() => { box.textContent = 'QR code needs the app to be opened online once.'; });
+      }
+    }
+    async function copyAssistInvite() {
+      try { await navigator.clipboard.writeText(staffInviteLink()); }
+      catch (e) { const r = document.createRange(); r.selectNodeContents(document.getElementById('assistLinkText')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.execCommand('copy'); }
+      showToast('Assistant link copied · send it only to your assistant', 'ph-copy');
+    }
+    async function shareAssistInvite() {
+      const data = { title: `${reqRole.schoolName} · Assistant custodian`, text: `Help with ${reqRole.schoolName}'s property and supplies in CustodianPro (sign in with your own Google account):`, url: staffInviteLink() };
+      if (navigator.share) { try { await navigator.share(data); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+      copyAssistInvite();
+    }
+    async function newAssistInvite(first = false) {
+      if (!isCustodianDevice() || isAssistant() || isViewOnly() || !cloud.user) return;
+      if (!first && !await appConfirm('The old assistant link stops working. Assistants who already joined are not affected.', { title: 'Make a new assistant link?', ok: 'New link', icon: 'ph-arrows-clockwise', tone: 'warn' })) return;
+      const F = cloud.sdk, now = Date.now();
+      const abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const code = [...crypto.getRandomValues(new Uint8Array(10))].map(b => abc[b % abc.length]).join('');
+      const old = schoolInfo.staffInvite;
+      const batch = F.writeBatch(cloud.db);
+      batch.set(F.doc(cloud.db, 'schools', reqRole.schoolId, 'staffInvites', code), { active: true, createdMs: now, by: cloud.user.uid });
+      if (old) batch.set(F.doc(cloud.db, 'schools', reqRole.schoolId, 'staffInvites', old), { active: false, createdMs: 0, by: cloud.user.uid, endedMs: now });
+      try { await batch.commit(); }
+      catch (err) { showToast(`Could not make the assistant link: ${cloudErrorText(err)}`, 'ph-warning'); return; }
+      schoolInfo.staffInvite = code;
+      localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+      scheduleInventorySync();
+      renderAssistPanel();
+      if (!first) showToast('New assistant link ready', 'ph-arrows-clockwise');
+    }
+    async function confirmAssistant(uid) {
+      const s = staffList.find(x => x.id === uid);
+      if (!s || s.status !== 'pending' || !isCustodianDevice() || isAssistant() || uid === cloud.user.uid) return;
+      const school = lastSchoolDoc || {};
+      if (school.headUid === uid) { appAlert('This account is the School Head’s. The School Head can’t also be an assistant custodian.'); return; }
+      if (!await appConfirm(`${s.name}${s.email ? ` (${s.email})` : ''} can release items, handle requests and deliveries, count and encode on their own phone. Their name is recorded with everything they do.`,
+        { title: 'Confirm the assistant custodian?', ok: 'Confirm', tone: 'good', icon: 'ph-users-three' })) return;
+      const F = cloud.sdk, now = Date.now();
+      const batch = F.writeBatch(cloud.db);
+      batch.update(F.doc(staffCol(), uid), { status: 'active', approvedMs: now, by: cloud.user.uid, updatedAt: F.serverTimestamp() });
+      batch.update(F.doc(cloud.db, 'schools', reqRole.schoolId), { assistants: [...new Set([...(school.assistants || []), uid])] });
+      cloudWrite(batch.commit(), 'Confirming the assistant');
+      Object.assign(s, { status: 'active', approvedMs: now });
+      logHistory('system', `Confirmed ${s.name}${s.designation ? `, ${s.designation}` : ''} as assistant custodian${s.email ? ` (${s.email})` : ''}`);
+      renderAssistPanel();
+      showToast(`${s.name} is now an assistant custodian`, 'ph-users-three');
+    }
+    async function removeAssistant(uid) {
+      const s = staffList.find(x => x.id === uid);
+      if (!s || !isCustodianDevice() || isAssistant()) return;
+      const active = s.status === 'active';
+      if (!await appConfirm(active ? `${s.name} can no longer open the school on their phone. What they already did stays in Change History.` : `${s.name}${s.email ? ` (${s.email})` : ''} will not become an assistant.`,
+        { title: active ? 'Remove the assistant?' : 'Not your assistant?', ok: 'Remove', tone: 'danger', focusCancel: true })) return;
+      const F = cloud.sdk, now = Date.now();
+      const batch = F.writeBatch(cloud.db);
+      batch.update(F.doc(staffCol(), uid), { status: 'removed', removedMs: now, by: cloud.user.uid, updatedAt: F.serverTimestamp() });
+      const cur = (lastSchoolDoc && lastSchoolDoc.assistants) || [];
+      if (cur.includes(uid)) batch.update(F.doc(cloud.db, 'schools', reqRole.schoolId), { assistants: cur.filter(u => u !== uid) });
+      cloudWrite(batch.commit(), 'Removing the assistant');
+      s.status = 'removed';
+      logHistory('system', active ? `Removed ${s.name} as assistant custodian` : `Declined ${s.name}${s.email ? ` (${s.email})` : ''} as assistant custodian`);
+      renderAssistPanel();
+    }
+
+    // ---- The assistant's phone ---------------------------------------------------------------
+    function openAssistJoin(text) {
+      const parts = headLinkParts(text);
+      if (!parts) { showToast('That assistant link does not look right', 'ph-warning'); return; }
+      if (isCustodianDevice() && !isViewOnly() && reqRole.schoolId === parts.schoolId) {
+        appAlert(isAssistant() ? 'This phone is already an assistant custodian of this school.' : 'This is your school’s assistant link. Send it to your assistant: they open it on their own phone and sign in with their own Google account.', { title: 'Assistant link' });
+        return;
+      }
+      openHeadJoin(text, false, 'assist');
+    }
+    async function assistJoinGo(st) {
+      const typedName = reqVal('hjName'), desig = reqVal('hjDesig');
+      const btn = document.getElementById('hjBtn'), label = document.getElementById('hjBtnLabel');
+      btn.disabled = true;
+      label.textContent = 'Signing in…';
+      try {
+        await cloudStart();
+        const F = cloud.sdk;
+        if (reqRole) { stopRequestSync(); reqRole = null; saveReqRole(); }
+        const cur = cloud.auth.currentUser;
+        if (cur && (cur.isAnonymous || !(cur.providerData || []).some(pd => pd.providerId === 'google.com'))) await F.signOut(cloud.auth);
+        const user = await googleSignIn();
+        cloud.user = user;
+        if (headJoinState !== st) return;
+        const snap = await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId));
+        if (!snap.exists()) throw new Error('no-school');
+        const school = snap.data();
+        if ((school.custodians || []).includes(user.uid)) throw new Error('assist-is-custodian');
+        if (school.headUid && school.headUid === user.uid) throw new Error('assist-is-head');
+        st.schoolName = school.name || 'School';
+        document.getElementById('hjSchool').textContent = st.schoolName;
+        const ref = F.doc(cloud.db, 'schools', st.schoolId, 'staff', user.uid);
+        const mine = await F.getDoc(ref);
+        const name = (typedName || (mine.exists() && mine.data().name) || user.displayName || '').trim().slice(0, 80);
+        if (!name) { headJoinError('Type your name, then tap Continue again.'); document.getElementById('hjName').focus(); btn.disabled = false; label.textContent = 'Continue with Google'; return; }
+        const me = { name, designation: (desig || (mine.exists() && mine.data().designation) || '').slice(0, 80) };
+        const card = mine.exists() ? mine.data() : null;
+        if (!card || card.status === 'removed') {
+          const inv = await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId, 'staffInvites', st.invite));
+          if (!inv.exists() || inv.data().active !== true) throw new Error('old-assist-invite');
+          const data = { uid: user.uid, name: me.name, designation: me.designation, email: user.email || '', status: 'pending', invite: st.invite, joinedMs: Date.now() };
+          if (card) await F.updateDoc(ref, { ...data, updatedAt: F.serverTimestamp() });
+          else await F.setDoc(ref, { ...data, createdAt: F.serverTimestamp() });
+        }
+        if (headJoinState !== st) return;
+        reqRole = { role: 'incoming', kind: 'assist', schoolId: st.schoolId, schoolName: st.schoolName, email: user.email || '', me };
+        saveReqRole();
+        closeHeadJoin();
+        subscribeRequests();
+        renderRequestsEverywhere();
+        if (!(card && card.status === 'active')) showToast(`Hi ${me.name.split(' ')[0]}! The property custodian confirms you next.`, 'ph-hand-waving');
+      } catch (err) {
+        btn.disabled = false;
+        label.textContent = 'Continue with Google';
+        if (googleCancelled(err)) return;
+        headJoinError(cloudErrorText(err));
+      }
+    }
+    function becomeAssistant(card) {
+      const r = reqRole;
+      reqRole = { role: 'custodian', schoolId: r.schoolId, schoolName: r.schoolName, email: r.email || '',
+        assistant: { name: card.name || (r.me && r.me.name) || '', designation: card.designation || (r.me && r.me.designation) || '' } };
+      saveReqRole();
+      turnJoinCard = null;
+      turnJoinLoaded = false;
+      gateStep = 'welcome';
+      invMergeAnswer = false;   // this phone's own items never go into the school's inventory
+      subscribeRequests();
+      switchMainView('HOME');
+      updateSchoolHeader();
+      renderRequestsEverywhere();
+      showToast(`You are now an assistant custodian of ${r.schoolName}`, 'ph-users-three');
+    }
+    function assistEndedGateHTML() {
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3" data-assist-ended>
+          <div class="flex items-center gap-3">
+            <span class="w-11 h-11 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="ph-bold ph-user-minus text-2xl"></i></span>
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-slate-900">You are no longer an assistant custodian</p>
+              <p class="text-xs text-slate-500">${escapeHTML(reqRole.schoolName || 'The school')} · the property custodian removed your access</p>
+            </div>
+          </div>
+          <p class="text-xs text-slate-600">What you did stays in the school’s Change History. A copy of the inventory is still on this device: Reset app removes it.</p>
+          <button onclick="gateStartOver(); renderLoginGate()" class="w-full h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold">Start over</button>
+          <button onclick="openResetApp()" class="w-full h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">Reset app…</button>
+        </div>`;
+    }
+    // What the assistant's device can't do: hidden, and taps stopped (the rules refuse it anyway).
+    const ASSIST_BLOCK = new Set(['openTurnover', 'newTurnoverInvite', 'confirmTurnover', 'declineTurnover', 'renewAllSlips', 'openHeadPanel', 'newHeadInvite',
+      'confirmHead', 'removeHead', 'newInviteLink', 'approveMember', 'declineMember', 'removeMember', 'addBackMember', 'saveMemberEdit', 'openAssistPanel',
+      'deleteCustomItem', 'deleteItem', 'loadSampleData', 'clearSampleData', 'saveSchoolInfo', 'openSchoolModal', 'removeWrittenOff', 'applyImport', 'openImport']);
+    document.addEventListener('click', e => {
+      if (!isAssistant()) return;
+      const el = e.target && e.target.closest && e.target.closest('[onclick]');
+      if (!el) return;
+      const names = String(el.getAttribute('onclick') || '').match(/[A-Za-z_$][\w$]*(?=\s*\()/g) || [];
+      if (!names.some(n => ASSIST_BLOCK.has(n))) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      showToast('Only the property custodian can do this', 'ph-lock-key');
+    }, true);
+    function renderAssistantMode() {
+      const on = isAssistant();
+      document.documentElement.classList.toggle('assistant', on);
+      if (on && !document.getElementById('assistStyle')) {
+        const st = document.createElement('style');
+        st.id = 'assistStyle';
+        st.textContent = [...ASSIST_BLOCK].map(n => `html.assistant [onclick*="${n}("]`).join(',') + '{display:none !important}';
+        document.head.appendChild(st);
+      }
+    }
+
     // ---- School Head's phone: join, approve, return --------------------------------------
     function headLinkParts(text) {
       const m = String(text || '').trim().match(/(?:^|[#&=\/])([A-Za-z0-9_]{6,40})-([A-Za-z0-9]{8,12})$/);
@@ -14039,6 +14402,23 @@
       }
       const parts = headLinkParts(text);
       if (!parts) { showToast('That School Head link does not look right', 'ph-warning'); return; }
+      if (kind === 'assist') {
+        if (reqRole && !await appConfirm(`This ${isCustodianDevice() ? 'device is signed in as the property custodian' : isHeadDevice() ? 'phone is signed in as the School Head' : isIncomingDevice() ? 'phone is waiting to join a school' : 'phone is set up as a teacher'} of ${reqRole.schoolName}. Use it as an assistant custodian instead?`,
+          { title: 'Join as assistant custodian?', ok: 'Continue', tone: 'warn' })) return;
+        headJoinState = { ...parts, schoolName: '', kind: 'assist' };
+        document.getElementById('hjName').value = '';
+        document.getElementById('hjDesig').value = '';
+        document.getElementById('hjDesig').placeholder = 'Designation, e.g. Teacher I / Supply officer';
+        document.getElementById('hjKicker').textContent = 'Assistant custodian · join your school';
+        document.getElementById('hjSchool').textContent = 'Sign in with your Google account';
+        document.getElementById('hjSub').textContent = 'You help the property custodian on this phone: releases, requests, deliveries, counts and encoding. The custodian confirms you first.';
+        document.getElementById('hjG').innerHTML = GOOGLE_G;
+        document.getElementById('hjBtnLabel').textContent = 'Continue with Google';
+        document.getElementById('hjNote').textContent = 'Use your own Google account, not the property custodian’s.';
+        document.getElementById('hjNote').classList.remove('hidden');
+        document.getElementById('headJoinModal').classList.remove('hidden');
+        return;
+      }
       if (kind === 'turnover') {
         if (reqRole && !await appConfirm(`This ${isCustodianDevice() ? 'device is signed in as the property custodian' : isHeadDevice() ? 'phone is signed in as the School Head' : isIncomingDevice() ? 'phone is waiting for another turnover' : 'phone is set up as a teacher'} of ${reqRole.schoolName}. Use it as the new property custodian instead?`,
           { title: 'Take over as property custodian?', ok: 'Continue', tone: 'warn' })) return;
@@ -14087,6 +14467,7 @@
       if (!st) return;
       document.getElementById('hjError').classList.add('hidden');
       if (st.kind === 'turnover') { await turnoverJoinGo(st); return; }
+      if (st.kind === 'assist') { await assistJoinGo(st); return; }
       const typedName = reqVal('hjName'), desig = reqVal('hjDesig');
       if (st.edit) {
         if (!typedName) { headJoinError('Type your name.'); return; }
@@ -14621,7 +15002,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function relBase(t, extra) {
       return {
         teacherUid: t.uid || null, teacherName: t.name, position: t.position || '', office: t.office || '',
-        by: schoolInfo.custodian || reqRole.email || '', byUid: cloud.user ? cloud.user.uid : null, createdMs: Date.now(),
+        by: actorName(), byUid: cloud.user ? cloud.user.uid : null, createdMs: Date.now(),
         custName: schoolInfo.custodian || '', custDesig: schoolInfo.position || '',   // stays on the slip after a turnover
         ...extra
       };
@@ -19563,7 +19944,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       goToNotifTarget(n);
     }
     function goToNotifTarget(n) {
-      if (n.go === 'turnover') {              // custodian: the Turnover panel; School Head: their screen
+      if (n.go === 'assist') {
+        openAssistPanel();
+      } else if (n.go === 'turnover') {              // custodian: the Turnover panel; School Head: their screen
         if (isHeadDevice()) switchMainView('HEAD');
         else openTurnover();
       } else if (n.go === 'head') {                  // School Head: their approvals; custodian: the School Head panel
@@ -19738,6 +20121,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-assistant-custodian', date: 'Nov 2026', title: 'Assistant custodians', points: [
+        'New in More \u2192 Assistant custodians: send a helper (for example, the teacher in charge of the supply room) an assistant link or QR code. They sign in with their own Google account, and you tap Confirm.',
+        'An assistant works on their own phone: releases, teachers\u2019 requests, deliveries, counts and encoding. Their name is recorded with everything they do.',
+        'They can\u2019t remove items, change the school info, invite or remove teachers or the School Head, hand over the school, or reset it. You stay the accountable officer, and the forms keep your name.',
+        'Remove as assistant ends their access right away.'
+      ] },
       { id: '2026-11-school-history', date: 'Nov 2026', title: 'School history that can\u2019t be changed', points: [
         'Every change made on the property custodian\u2019s devices is now also saved to the school account, with the account, the device and the server\u2019s date and time.',
         'Nobody can edit or delete these entries, not even the custodian. They stay even after Reset app, which helps during a COA audit or a turnover.',
@@ -20200,7 +20589,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function loginGateNeeded() {
       if (!cloudConfigured()) return false;
       if (!reqRole) return !exploring();
-      if (isIncomingDevice() || viewOnlyEnded()) return true;
+      if (isIncomingDevice() || viewOnlyEnded() || assistantRemoved()) return true;
       return (isCustodianDevice() || isHeadDevice()) && cloud.state === 'ready' && !cloud.user;
     }
 
@@ -20289,6 +20678,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (isHeadDevice() && gateStep === 'welcome') gateStep = 'head';
       if (isIncomingDevice()) gateStep = 'incoming:' + incomingState() + (cloud.error ? ':err' : '');
       else if (viewOnlyEnded()) gateStep = 'view-ended';
+      else if (assistantRemoved()) gateStep = 'assist-ended';
       const offline = document.getElementById('gateOffline');
       offline.classList.toggle('hidden', navigator.onLine);
       offline.classList.toggle('flex', !navigator.onLine);
@@ -20324,6 +20714,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       }
       if (gateStep.startsWith('incoming:') && isIncomingDevice()) return incomingGateHTML();
       if (gateStep === 'view-ended' && viewOnlyEnded()) return viewEndedGateHTML();
+      if (gateStep === 'assist-ended' && assistantRemoved()) return assistEndedGateHTML();
       if (gateStep === 'custodian') {
         const stale = isCustodianDevice();
         return `
@@ -20504,8 +20895,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     // so nothing syncs back. Typed RESET confirms; the page reloads clean.
     var resetScope = 'device';
     var resetBusy = false;
-    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites', 'turnovers', 'turnoverInvites'];
-    const canEraseCloud = () => isCustodianDevice() && !isViewOnly() && !!cloud.user && !!cloud.db && !!(reqRole && reqRole.schoolId);
+    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites', 'turnovers', 'turnoverInvites', 'staff', 'staffInvites'];
+    const canEraseCloud = () => isCustodianDevice() && !isViewOnly() && !isAssistant() && !!cloud.user && !!cloud.db && !!(reqRole && reqRole.schoolId);
     function openResetApp() {
       if (typeof closeMoreMenu === 'function') { try { closeMoreMenu(); } catch (e) {} }
       resetScope = 'device';
