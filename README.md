@@ -219,7 +219,7 @@ Every Purchase Request needs the School Head's approval or signature.
 - **Waiting for approval.** A new PR is saved as *waiting for approval*. Until it is approved, the print, Excel and CSV say **FOR APPROVAL** and the *Approved by* signature is blank. **Inspect delivery** and **Items delivered** stay closed. PRs saved before this update count as approved.
 - **No School Head in the app yet.** Print the PR, have the head sign it, then tap **Signed on paper…** on the PR card and enter the date they signed. Change History shows it as a paper signature. If you recorded it by mistake, **Recorded by mistake?** removes it.
 - **Inviting the School Head.** Go to **Supply requests → Invite → School Head (approves PRs)**. Send the head their own link or QR code (it is not the teachers' link). On their phone, they open it (or choose **School Head** on the sign-in screen and paste it), then sign in with **their own Google account**. Anonymous sign-in and the custodian's account are refused. You get a notification, and you tap **Confirm** in the School Head panel. **Make a new School Head link** stops the old link from working.
-- **Approving.** The head's phone shows only *For your approval*: each PR waiting for them, with its items, purpose and total. They tap **Approve**, or **Return** with a note saying what to change. Their name, designation, date and time are saved on the PR. You are notified, and Change History records it. The final print shows *Approved in CustodianPro by …* under the head's signature.
+- **Approving.** The head's phone shows *For your approval*: each PR waiting for them, with its items, purpose and total. They tap **Approve**, or **Return** with a note saying what to change. Their name, designation, date and time are saved on the PR. You are notified, and Change History records it. The final print shows *Approved in CustodianPro by …* under the head's signature.
 - **Returned PRs.** **Change it** (Edit) or **Send again as is** sends the PR back to the head. Changing an approved PR also sends it back for approval (the app asks first).
 - **Once a head is confirmed, only they can approve.** The rules then refuse paper signatures from the custodian. Approval and Return by the custodian are always refused, and so is any change to an approved PR that doesn't send it back. The head can read the PRs but change nothing except their decision on a PR that is waiting. A custodian of the school can never be its School Head, so nobody approves their own PR. **Remove as School Head** ends the head's access. PRs that are still waiting go back to paper signatures until a new head is confirmed.
 
@@ -236,6 +236,43 @@ When the property custodian changes, the school's inventory, requests and record
 - **Rules.** Only a confirmed turnover card can change the school's custodian. The card must belong to a signed-in Google account that opened an active Turnover link. A stranger can't make themself the custodian, the School Head can't become the custodian, and the School Head can change nothing else on the school.
 
 **Publish `firestore.rules` again** after this update (new: `turnovers`, `turnoverInvites`, view-only reads). Until you do, Confirm fails with a permissions error.
+
+### Assistant custodians
+
+A helper (for example, the teacher in charge of the supply room) can work on their own phone while you stay the accountable officer.
+
+- **Inviting.** Go to **More → Assistant custodians** and send the assistant link or QR code. The helper opens it and signs in with **their own Google account**. You get a notification and tap **Confirm**. **Make a new assistant link** stops the old link from working.
+- **What they can do.** On their phone they get the school inventory and can release items (RIS, ICS, PAR), handle teachers' requests, record deliveries, count and encode. Their name is recorded on each release (*by*) and in the history, while the forms keep **your** name as the property custodian. Their own phone's items are never merged into the school.
+- **What they can't do.** They can't remove items, change the school info, invite or remove teachers or the School Head, make invite links, hand over the school, relieve lost property, renew slips or reset the school. The app hides these, and the rules refuse them.
+- **Remove as assistant** ends their access at once. Their phone shows *You are no longer an assistant custodian*.
+
+### The School Head's desk: dashboard, RIS, write-offs and the count report
+
+Once a School Head is confirmed, more goes to their phone than PRs.
+
+- **School property.** Their screen shows a summary of the school's property: items and value, supplies that are low or out, **who holds what** (each person's units and value), requests waiting, items needing repair or unserviceable, and units reported lost. The custodian's devices keep it current (`dashboard/summary`). The head still can't read the inventory itself.
+- **RIS approval (optional).** In **More → School Head** (the School Head panel), turn on **Supply requests (RIS) need approval too**. After you approve a teacher's request, it waits for the head (*Waiting for the School Head's approval*), and **Release** stays closed until they approve. If they **Return** it with a note, change it and tap **Send again**. The RIS then prints their name under *Approved by*, with *Approved in the app*. Requests a teacher already took ("I took this") and releases without a request don't wait.
+- **Write-offs.** **Relieve** (lost property) and **Remove unit** with *keep it under Written off* go to the head first. Once they approve, the unit leaves the inventory on the device that sent it (or on any custodian device a day later). It stays under *Written off*, and the reference notes *approved by …*. If they return it, the unit stays and shows their note. With no head in the app, these work as before (signed on paper).
+- **The count report.** See *Year-end & reminders* below.
+- **Rules.** These items are kept in `approvals`. Only the confirmed head approves or returns one, and only while it is waiting. The custodian and assistants can send, send again or cancel, never decide. A teacher can't read them.
+
+### Lost property
+
+- **Report lost** on a unit (Inventory → the item's units), or **Lost** on the Teachers page, records that it is missing, with what happened. It stays on the inventory and under the holder's name until it is **Found** or relief is granted. A teacher's own report (*Report a problem → Lost*) does the same.
+- **30 days to apply for relief (COA).** The unit shows the days left. You get a notification 7 days before the deadline and again when it is overdue. Print the RLSDDP / RLSDDSP from **Forms**.
+- **Relieve** writes the unit off once relief is granted, after the School Head's approval if a head is in the app.
+
+### Year-end & reminders
+
+**More → Year-end & reminders** keeps the yearly tasks in one place:
+
+- **The physical count.** The year-end count runs as at 31 December (counted from 1 December, report due 31 January). The semestral count runs as at 30 June (counted from 1 June). The panel shows how many tagged units are counted so far, with **Count now** and **RPCPPE / RPCSP**.
+- **Inventory Committee.** Write the names once (chair first). They fill *Certified Correct by* on the count reports.
+- **Count report to the School Head.** **Send the count report** sends the counts and the committee to the head. When they approve, the printed RPCPPE / RPCSP for that date shows their name under *Approved by*, with *Approved in the app*.
+- **ICS / PAR older than 3 years** are listed, and **Renew these slips** makes new slips for just those units (*Renewal of slips older than 3 years*). You get a reminder once a month while some are due.
+- **Bond and designation order.** Enter the fidelity bond and designation order numbers and dates. You get a notification 30 days before either one ends, and again when it has ended.
+
+**Publish `firestore.rules` again** after this update (new: `staff`, `staffInvites`, `approvals`, `dashboard`, `auditLog`, assistant access). Until you do, assistants can't join, and approvals and the head's summary fail with a permissions error.
 
 ### School stock and “I took this” (teachers)
 
@@ -375,6 +412,8 @@ Releases, returns, transfers and deliveries are also read from the slips and del
 the school account, so those made on another device (or before this device's log began) appear
 too, marked *School account*. One made on this device is not listed twice. Counts, prices and
 other edits stay in the log of the device where they were made.
+
+**School history in the cloud (can't be changed).** On a signed-in custodian or assistant device, each change is also saved to the school account (`auditLog`) with the account, the role, the device and the server's date and time. The School Head's approvals are saved there too. Nobody can edit or delete these entries, not even the custodian, and they stay after **Reset app**. Only changes made after a device first signs in to the school go up. See them in **Change History → School (cloud)**, or under **School history** on the School Head's phone. **Export CSV** works there as well.
 
 ## Importing from Excel or CSV
 
@@ -707,6 +746,9 @@ node app-reset.mjs                    # Reset app: this device only / and the sc
 node deliveries.mjs                   # PO scan, expected / received deliveries, average cost, prices, Catalog editing
 node school-head.mjs                  # School Head link, Google sign-in, Confirm, Approve / Return PRs, paper signature, rules
 node turnover.mjs                     # custodian turnover: link, Confirm (custodian or head), turnover inventory, Renew all slips, 30-day view-only, rules
+node school-history.mjs               # append-only school history in the cloud: saved per device, read by the custodian and head, never edited or deleted
+node assistant.mjs                    # assistant custodians: link, Google sign-in, Confirm, release and encode with their name, what they can't do, removal
+node head-desk.mjs                    # School Head dashboard, RIS approval, lost units and write-offs approved by the head, Year-end & reminders
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

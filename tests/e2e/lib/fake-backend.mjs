@@ -27,11 +27,13 @@ export function createBackend({ autoApprove = true } = {}) {
   const isCust = (ctx, sid) => !!(ctx.uid && schoolPre(sid) && (schoolPre(sid).custodians || []).includes(ctx.uid));
   // A custodian who turned the school over: read only until viewOnly[uid].untilMs.
   const isViewer = (ctx, sid) => !!(ctx.uid && school(sid) && (((school(sid).viewOnly || {})[ctx.uid] || {}).untilMs || 0) > Date.now());
-  const canView = (ctx, sid) => isCust(ctx, sid) || isViewer(ctx, sid);
+  const isAssistant = (ctx, sid) => !!(ctx.uid && schoolPre(sid) && (schoolPre(sid).assistants || []).includes(ctx.uid) && !schoolPre(sid).erasing);
+  const isStaff = (ctx, sid) => isCust(ctx, sid) || isAssistant(ctx, sid);
+  const canView = (ctx, sid) => isStaff(ctx, sid) || isViewer(ctx, sid);
   const str = (v, max) => typeof v === 'string' && v.length <= max;
   const CUSTODIAN_ONLY = ['inventory', 'catalog', 'settings'];
   // The confirmed School Head (school.headUid), never one of the custodians.
-  const isHeadOf = (ctx, sid) => !!(ctx.uid && schoolPre(sid) && schoolPre(sid).headUid === ctx.uid && !isCust(ctx, sid));
+  const isHeadOf = (ctx, sid) => !!(ctx.uid && schoolPre(sid) && schoolPre(sid).headUid === ctx.uid && !isCust(ctx, sid) && !(schoolPre(sid).assistants || []).includes(ctx.uid));
   // firestore.rules turnoverOk: one custodian (the new owner) whose card was pending before the
   // batch and is 'done' after it; only the outgoing custodians may become viewers.
   const turnoverOk = (sid, before, after) => {
@@ -81,9 +83,11 @@ export function createBackend({ autoApprove = true } = {}) {
         const ownerSame = !data.ownerUid || data.ownerUid === before.ownerUid;
         if (isCust(ctx, p[1])) {
           if (!ownerSame && !turnoverOk(p[1], before, after)) deny('school update: owner changes only with a confirmed turnover', { path, data });
+          if ((after.assistants || []).includes(after.headUid || '-') || (after.assistants || []).includes(after.ownerUid)) deny('school update: head or owner is an assistant', { path, data });
         } else if (isHeadOf(ctx, p[1])) {
-          const keys = ['custodians', 'ownerUid', 'turnoverId', 'turnoverMs', 'custodianName', 'custodianDesig', 'viewOnly', 'viewerUids'];
-          if (!turnoverOk(p[1], before, after) || !changedKeys(before, after).every(k => keys.includes(k))) deny('school update (head)', { path, data });
+          const keys = ['custodians', 'ownerUid', 'turnoverId', 'turnoverMs', 'custodianName', 'custodianDesig', 'viewOnly', 'viewerUids', 'assistants'];
+          if (!turnoverOk(p[1], before, after) || !changedKeys(before, after).every(k => keys.includes(k)) ||
+              !(after.assistants || []).every(u => (before.assistants || []).includes(u)) || (after.assistants || []).includes(after.ownerUid)) deny('school update (head)', { path, data });
         } else deny('school update', { path });
         if (after.headUid && (after.custodians || []).includes(after.headUid)) deny('school update: head is a custodian', { path, data });
       }
@@ -93,7 +97,7 @@ export function createBackend({ autoApprove = true } = {}) {
     if (p.length === 4 && sub === 'requests') {
       if (kind === 'create') {
         const keys = ['uid', 'name', 'position', 'office', 'purpose', 'neededBy', 'lines', 'status', 'createdAt', 'clientAt', 'via', 'kind'];
-        if (!(isCust(ctx, sid) || isMember(ctx, sid))) deny('request create: not an approved member', { path });
+        if (!(isStaff(ctx, sid) || isMember(ctx, sid))) deny('request create: not an approved member', { path });
         const ok = school(sid) && Object.keys(data).every(k => keys.includes(k)) && data.uid === ctx.uid && data.status === 'pending' &&
           ['request', 'took'].includes(data.kind ?? 'request') &&
           typeof data.name === 'string' && data.name.length > 0 && data.name.length <= 80 && str(data.position, 80) && str(data.office, 80) &&
@@ -102,7 +106,7 @@ export function createBackend({ autoApprove = true } = {}) {
         return;
       }
       const after = { ...before, ...data };
-      if (isCust(ctx, sid) && after.uid === before.uid) return;
+      if (isStaff(ctx, sid) && after.uid === before.uid) return;
       const changed = Object.keys(data);
       if (before.uid === ctx.uid && before.status === 'pending' && after.status === 'cancelled' && changed.every(k => ['status', 'updatedAt'].includes(k))) return;
       deny('request update', { path, data });
@@ -124,11 +128,11 @@ export function createBackend({ autoApprove = true } = {}) {
     }
     if (p.length === 4 && sub === 'purchaseRequests') {
       if (kind === 'create') {
-        if (!isCust(ctx, sid) || apprStatus(data) !== 'pending') deny('pr create', { path, approval: data.approval });
+        if (!isStaff(ctx, sid) || apprStatus(data) !== 'pending') deny('pr create', { path, approval: data.approval });
         return;
       }
       const ch = changedKeys(before, data);
-      if (isCust(ctx, sid)) {
+      if (isStaff(ctx, sid)) {
         const same = JSON.stringify(before.approval ?? null) === JSON.stringify(data.approval ?? null);
         const ok = same ? !(apprStatus(before) === 'approved' && ch.some(k => PR_CONTENT.includes(k)))
           : apprStatus(data) === 'pending' || (apprStatus(data) === 'approved' && data.approval.via === 'paper' && !school(sid).headUid);
@@ -144,7 +148,7 @@ export function createBackend({ autoApprove = true } = {}) {
       if (kind === 'create') {
         const keys = ['uid', 'name', 'designation', 'email', 'joinedMs', 'status', 'invite', 'updatedAt'];
         const inv = typeof data.invite === 'string' && data.invite && store.get(`schools/${sid}/headInvites/${data.invite}`);
-        const ok = ctx.uid === p[3] && ctx.provider === 'google.com' && school(sid) && !erasing(sid) && !isCust(ctx, sid) &&
+        const ok = ctx.uid === p[3] && ctx.provider === 'google.com' && school(sid) && !erasing(sid) && !isStaff(ctx, sid) &&
           Object.keys(data).every(k => keys.includes(k)) && data.status === 'pending' && !!(inv && inv.active === true) && headCardOk(data, p[3]);
         if (!ok) deny('head create', { path, data, provider: ctx.provider });
         return;
@@ -158,6 +162,60 @@ export function createBackend({ autoApprove = true } = {}) {
     }
     if (p.length === 4 && sub === 'headInvites') {
       if (!isCust(ctx, sid)) deny('head invite write', { path });
+      return;
+    }
+    if (p.length === 4 && sub === 'staffInvites') {
+      if (!isCust(ctx, sid)) deny('staff invite write', { path });
+      return;
+    }
+    if (p.length === 4 && sub === 'staff') {
+      const okCard = d => d.uid === p[3] && typeof d.name === 'string' && d.name.length > 0 && d.name.length <= 80 && str(d.designation, 80) && str(d.email ?? '', 120);
+      const invOk = d => { const inv = typeof d.invite === 'string' && d.invite && store.get(`schools/${sid}/staffInvites/${d.invite}`); return !!(inv && inv.active === true); };
+      if (kind === 'create') {
+        const keys = ['uid', 'name', 'designation', 'email', 'joinedMs', 'status', 'invite', 'createdAt'];
+        const ok = ctx.uid === p[3] && ctx.provider === 'google.com' && school(sid) && !erasing(sid) && !isStaff(ctx, sid) && (school(sid).headUid || '') !== ctx.uid &&
+          Object.keys(data).every(k => keys.includes(k)) && data.status === 'pending' && invOk(data) && okCard(data);
+        if (!ok) deny('staff card create', { path, data });
+        return;
+      }
+      const ch = changedKeys(before, data);
+      const own = ctx.uid === p[3] && ch.every(k => ['name', 'designation', 'email', 'updatedAt'].includes(k)) && okCard(data);
+      const again = ctx.uid === p[3] && before.status === 'removed' && data.status === 'pending' && !isStaff(ctx, sid) &&
+        ch.every(k => ['name', 'designation', 'email', 'status', 'invite', 'joinedMs', 'updatedAt'].includes(k)) && invOk(data) && okCard(data);
+      const cust = isCust(ctx, sid) && ch.every(k => ['status', 'approvedMs', 'removedMs', 'by', 'updatedAt'].includes(k)) && ['pending', 'active', 'removed'].includes(data.status);
+      if (!own && !again && !cust) deny('staff card update', { path, ch });
+      return;
+    }
+    if (p.length === 4 && sub === 'approvals') {
+      const bodyOk = d => ['ris', 'writeoff', 'count'].includes(d.kind) && typeof d.refId === 'string' && d.refId.length > 0 && d.refId.length <= 120 &&
+        str(d.title ?? '', 160) && str(d.summary ?? '', 600) && Array.isArray(d.lines ?? []) && (d.lines ?? []).length <= 200;
+      if (kind === 'create') {
+        if (!(isStaff(ctx, sid) && school(sid).headUid && data.status === 'pending' && !('decision' in data) && data.byUid === ctx.uid && bodyOk(data))) deny('approval create', { path, status: data.status });
+        return;
+      }
+      const ch = changedKeys(before, data);
+      if (isStaff(ctx, sid)) {
+        const ok = JSON.stringify(before.decision ?? null) === JSON.stringify(data.decision ?? null) && data.kind === before.kind && data.refId === before.refId &&
+          (before.status === 'approved' ? ch.every(k => ['appliedMs', 'updatedAt'].includes(k)) : ['pending', 'cancelled'].includes(data.status) && bodyOk(data));
+        if (!ok) deny('approval update (staff)', { path, ch, status: data.status });
+        return;
+      }
+      const dec = data.decision || {};
+      if (isHeadOf(ctx, sid) && before.status === 'pending' && ch.every(k => ['status', 'decision', 'updatedAt'].includes(k)) &&
+          ['approved', 'returned'].includes(data.status) && dec.byUid === ctx.uid && str(dec.byName ?? '', 80) && str(dec.note ?? '', 300)) return;
+      deny('approval update', { path, ch });
+    }
+    if (p.length === 4 && sub === 'dashboard') {
+      if (!(isStaff(ctx, sid) && p[3] === 'summary')) deny('dashboard write', { path });
+      return;
+    }
+    if (p.length === 4 && sub === 'auditLog') {
+      const head = isHeadOf(ctx, sid);
+      const asst = isAssistant(ctx, sid);
+      const ok = kind === 'create' && (isStaff(ctx, sid) || head) && (data.role === 'assistant') === asst && Object.keys(data).every(k => ['uid', 'name', 'role', 'device', 'entries', 'createdAt'].includes(k)) &&
+        data.uid === ctx.uid && !!(data.createdAt && Math.abs(data.createdAt.seconds * 1000 - (Date.now() + clock.offset)) < 5000) /* request.time */ && (data.role === 'head') === head && ['custodian', 'head', 'assistant'].includes(data.role) &&
+        str(data.name, 80) && str(data.device, 40) && Array.isArray(data.entries) && data.entries.length > 0 && data.entries.length <= 100;
+      if (!ok) deny('audit log write', { path, kind, role: data.role });
       return;
     }
     if (p.length === 4 && sub === 'turnoverInvites') {
@@ -192,7 +250,7 @@ export function createBackend({ autoApprove = true } = {}) {
       return;
     }
     if (p.length === 4 && sub === 'stock') {
-      if (!isCust(ctx, sid)) deny('stock write', { path });
+      if (!isStaff(ctx, sid)) deny('stock write', { path });
       return;
     }
     if (p.length === 4 && sub === 'stockHolds') {
@@ -203,7 +261,7 @@ export function createBackend({ autoApprove = true } = {}) {
         if (!ok) deny('stock hold create', { path, data });
         return;
       }
-      if (isCust(ctx, sid) && data.uid === before.uid) return;
+      if (isStaff(ctx, sid) && data.uid === before.uid) return;
       const ch = changedKeys(before, data);
       if (before.uid === ctx.uid && before.status === 'open' && data.status === 'cancelled' && ch.every(k => k === 'status')) return;
       deny('stock hold update', { path, data });
@@ -217,15 +275,15 @@ export function createBackend({ autoApprove = true } = {}) {
         if (!ok) deny('teacher report create', { path, data });
         return;
       }
-      if (!isCust(ctx, sid) || ({ ...before, ...data }).uid !== before.uid) deny('teacher report update', { path, data });
+      if (!isStaff(ctx, sid) || ({ ...before, ...data }).uid !== before.uid) deny('teacher report update', { path, data });
       return;
     }
     if (p.length === 4 && sub === 'releases') {
-      if (!isCust(ctx, sid)) deny('release write', { path });
+      if (!isStaff(ctx, sid)) deny('release write', { path });
       return;
     }
     if (p.length === 4 && sub === 'inspections') {
-      if (isCust(ctx, sid)) return;
+      if (isStaff(ctx, sid)) return;
       const ch = changedKeys(before, data);
       if (kind !== 'create' && isMember(ctx, sid) && before.inspectorUid === ctx.uid && before.status === 'assigned' && data.status === 'inspected' &&
           ch.every(k => ['lines', 'status', 'inspectedMs', 'dateInspected', 'inspectedVia', 'updatedAt'].includes(k)) &&
@@ -233,8 +291,10 @@ export function createBackend({ autoApprove = true } = {}) {
       deny('inspection write', { path, ch });
     }
     if (p.length === 4 && CUSTODIAN_ONLY.includes(sub)) {
-      if (!isCust(ctx, sid)) deny(`${sub} write`, { path });
-      return;
+      if (isCust(ctx, sid)) return;
+      // the assistant can't remove inventory or catalog items
+      if (isAssistant(ctx, sid) && !(sub !== 'settings' && ({ ...before, ...data }).deleted === true && data.deleted !== undefined)) return;
+      deny(`${sub} write`, { path });
     }
     deny('no rule', { path });
   }
@@ -245,7 +305,7 @@ export function createBackend({ autoApprove = true } = {}) {
     if (p[0] === 'schoolIds') { if (single && p.length === 2) return; deny('list school ids', { path }); }
     if (p.length <= 2) {
       if (single) return;
-      if (!filters.some(f => ['custodians', 'viewerUids'].includes(f.field) && f.op === 'array-contains' && f.value === ctx.uid)) deny('list schools', { path, filters });
+      if (!filters.some(f => ['custodians', 'viewerUids', 'assistants'].includes(f.field) && f.op === 'array-contains' && f.value === ctx.uid)) deny('list schools', { path, filters });
       return;
     }
     const sid = p[1], sub = p[2];
@@ -259,6 +319,22 @@ export function createBackend({ autoApprove = true } = {}) {
     if (sub === 'turnovers') {
       if (canView(ctx, sid) || isHeadOf(ctx, sid) || (single && p[3].split('-')[0] === ctx.uid)) return;
       deny('read turnovers', { path, uid: ctx.uid });
+    }
+    if (sub === 'staff') {
+      if (canView(ctx, sid) || (single && p[3] === ctx.uid)) return;
+      deny('read staff', { path });
+    }
+    if (sub === 'staffInvites') {
+      if (single || isCust(ctx, sid)) return;
+      deny('list staff invites', { path });
+    }
+    if (sub === 'approvals' || sub === 'dashboard') {
+      if (canView(ctx, sid) || isHeadOf(ctx, sid)) return;
+      deny(`read ${sub}`, { path });
+    }
+    if (sub === 'auditLog') {
+      if (canView(ctx, sid) || isHeadOf(ctx, sid)) return;
+      deny('read auditLog', { path });
     }
     if (sub === 'turnoverInvites') {
       if (single || canView(ctx, sid) || isHeadOf(ctx, sid)) return;
@@ -316,6 +392,7 @@ export function createBackend({ autoApprove = true } = {}) {
     if (p[0] === 'schoolIds' && p.length === 2) {
       if (before && !isCust(ctx, before.schoolId)) deny('school id delete', { path });
     } else if (p[0] === 'schools' && (p.length === 2 || p.length === 4)) {
+      if (p[2] === 'auditLog') deny('audit log delete', { path });
       if (!isCust(ctx, p[1])) deny('delete', { path });
     } else deny('delete: no rule', { path });
     store.delete(path);
@@ -328,7 +405,7 @@ export function createBackend({ autoApprove = true } = {}) {
     let after = kind === 'set' || !before ? resolveTS(data) : { ...before, ...resolveTS(data) };
     const p = parts(path);
     // members/requests/reports/holds rules look at the whole document; others at what was sent
-    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers'].includes(p[2]);
+    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog', 'staff', 'approvals'].includes(p[2]);
     checkWrite(before ? 'update' : 'create', path, whole ? after : data, before || {}, ctx);
     if (autoApprove && !before && p.length === 4 && p[2] === 'members' && after.status === 'pending') after = { ...after, status: 'active', approvedMs: Date.now() };
     store.set(path, after);

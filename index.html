@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="002ccd6e457d">
+  <meta name="app-version" content="e12f36ad8013">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1462,6 +1462,8 @@
           <button id="moreInstallItem" onclick="closeMoreMenu(); installApp()" class="more-item" style="display:none"><i class="ph-bold ph-device-mobile text-brand-600"></i> Install app on this phone</button>
           <button onclick="closeMoreMenu(); openSchoolModal()" class="more-item"><i class="ph-bold ph-buildings text-brand-600"></i> School &amp; custodian info</button>
           <button id="moreTurnoverItem" onclick="closeMoreMenu(); openTurnover()" class="more-item"><i class="ph-bold ph-handshake text-brand-600"></i> Custodian turnover</button>
+          <button id="moreAssistItem" onclick="closeMoreMenu(); openAssistPanel()" class="more-item"><i class="ph-bold ph-users-three text-brand-600"></i> Assistant custodians</button>
+          <button id="moreYearEndItem" onclick="closeMoreMenu(); openYearEnd()" class="more-item"><i class="ph-bold ph-calendar-check text-brand-600"></i> Year-end &amp; reminders</button>
           <button onclick="closeMoreMenu(); exportBackupJSON()" class="more-item"><i class="ph-bold ph-floppy-disk text-emerald-600"></i> Back up now</button>
           <button onclick="closeMoreMenu(); document.getElementById('restoreFileInput').click()" class="more-item"><i class="ph-bold ph-upload-simple text-amber-600"></i> Restore a backup</button>
           <button onclick="closeMoreMenu(); openHistory()" class="more-item"><i class="ph-bold ph-list-magnifying-glass text-brand-600"></i> Change history</button>
@@ -1865,6 +1867,39 @@
         <button onclick="closeTurnover()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
       <div id="turnoverBody" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- ASSISTANT CUSTODIANS (custodian: More → Assistant custodians) -->
+  <div id="yearEndModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeYearEnd()">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-calendar-check text-xl"></i></span>
+          <div class="min-w-0">
+            <h3 class="font-extrabold text-base text-slate-900 leading-tight">Year-end &amp; reminders</h3>
+            <p class="text-xs font-semibold text-slate-500">Physical count, lost property, slip renewal, bond</p>
+          </div>
+        </div>
+        <button onclick="closeYearEnd()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="yeBody" class="space-y-3"></div>
+    </div>
+  </div>
+
+  <div id="assistModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeAssistPanel()">
+    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-users-three text-xl"></i></span>
+          <div class="min-w-0">
+            <h3 class="font-extrabold text-base text-slate-900 leading-tight">Assistant custodians</h3>
+            <p class="text-xs font-semibold text-slate-500">Help on their own phone · you stay accountable</p>
+          </div>
+        </div>
+        <button onclick="closeAssistPanel()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="assistBody" class="space-y-4"></div>
     </div>
   </div>
 
@@ -2559,6 +2594,7 @@
             <i class="ph-bold ph-x"></i>
           </button>
         </div>
+        <div id="historySource" class="mt-2.5 empty:hidden"></div>
         <div id="historyItemFilter" class="hidden mt-2.5"></div>
         <div class="relative mt-3">
           <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
@@ -5045,6 +5081,7 @@
             </button>
           </div>
           ${condButtonsHTML(code, u.id, u.cond, 'setUnitCond')}
+          ${unitLostHTML(item, u)}
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
             ${field('serial', 'Serial No.', 'Optional')}
             ${field('loc', 'Location', item.note || 'Room')}
@@ -5192,6 +5229,11 @@
       if (reason === null) return;
       const why = reason.trim().slice(0, 200);
       const keep = appDialogChecked;
+      if (keep && writeOffNeedsHead() && isCustodianDevice() && cloud.user) {   // the School Head approves write-offs
+        if (woPendingFor(id)) { showToast('Already waiting for the School Head', 'ph-hourglass-medium'); return; }
+        requestWriteOff('removed', [{ item, unit }], why);
+        return;
+      }
       const removedText = `${keep ? 'Written off' : 'Removed'} unit ${unit.no} (${(UNIT_COND[unit.cond] || UNIT_COND.S).label})` +
         `${why ? ` – ${why}` : keep ? '' : ' – added by mistake'} · quantity ${item.qty} → ${item.qty - 1}`;
       const before = { units: getUnits(code).slice(), qty: item.qty, writtenOff: getWrittenOff(code).slice() };
@@ -5704,6 +5746,7 @@
         changeHistory = changeHistory.slice(-Math.floor(changeHistory.length / 2));
         try { localStorage.setItem(HISTORY_KEY, JSON.stringify(changeHistory)); } catch (e2) {}
       }
+      try { scheduleAudit(); } catch (e) {}   // the school history in the cloud (defined further down)
     }
 
     function resetHistoryBase() {
@@ -5713,7 +5756,9 @@
     function historyEntry(kind, text, code = null, extra = null) {
       const e = { t: Date.now(), k: kind, x: text };
       if (code) e.c = code;
-      if (schoolInfo.custodian) e.by = schoolInfo.custodian;
+      let who = schoolInfo.custodian;
+      try { if (isAssistant()) who = reqRole.assistant.name || who; } catch (err) {}   // reqRole is declared further down
+      if (who) e.by = who;
       return extra ? Object.assign(e, extra) : e;
     }
 
@@ -5847,7 +5892,7 @@
 
     // ---- History viewer -------------------------------------------------------
     function openHistory(code = null) {
-      historyFilter = { code: code || null, kind: 'ALL', limit: 150 };
+      historyFilter = { code: code || null, kind: 'ALL', limit: 150, cloud: false };
       document.getElementById('historySearch').value = '';
       document.getElementById('historyModal').classList.remove('hidden');
       renderHistory();
@@ -5968,6 +6013,10 @@
         .map(([k, label]) => `
           <button onclick="setHistoryKind('${k}')" class="shrink-0 h-8 px-3 rounded-lg text-xs font-bold transition ${historyFilter.kind === k ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${label}</button>`)
         .join('');
+      const src = document.getElementById('historySource');
+      const srcHTML = historySourceHTML();
+      if (src.innerHTML !== srcHTML) src.innerHTML = srcHTML;
+      if (historyFilter.cloud && canReadAudit()) { renderAudit(); return; }
 
       const list = document.getElementById('historyList');
       const all = filteredHistory();
@@ -6021,14 +6070,15 @@
     }
 
     function exportHistoryCSV() {
-      const rows = filteredHistory();
+      const fromCloud = historyFilter.cloud && canReadAudit();
+      const rows = fromCloud ? auditRows() : filteredHistory();
       if (!rows.length) {
         appAlert('There are no changes to export in this view.');
         return;
       }
       const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
       const csv = [
-        q('CHANGE HISTORY'),
+        q(fromCloud ? 'CHANGE HISTORY (SCHOOL ACCOUNT, CANNOT BE EDITED)' : 'CHANGE HISTORY'),
         [q('School/Office:'), q(schoolInfo.school || 'N/A'), q('Date Exported:'), q(new Date().toLocaleDateString('en-PH'))].join(','),
         '',
         ['Date', 'Time', 'Type', 'Item Code', 'Item', 'Change', 'By'].map(q).join(',')
@@ -6037,7 +6087,8 @@
         const d = new Date(e.t);
         csv.push([
           d.toLocaleDateString('en-PH'), d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }),
-          (HISTORY_KINDS[e.k] || HISTORY_KINDS.edit).label, historyCodes(e).join(' '), historyCodes(e).map(historyItemName).join('; '), e.x, e.by || (e.synced ? 'School account' : '')
+          (HISTORY_KINDS[e.k] || HISTORY_KINDS.edit).label, historyCodes(e).join(' '), historyCodes(e).map(historyItemName).join('; '), e.x,
+          fromCloud ? [e.by, AUDIT_ROLE[e.role] || '', e.device, e.saved ? `saved ${new Date(e.saved).toLocaleString('en-PH')}` : ''].filter(Boolean).join(' · ') : (e.by || (e.synced ? 'School account' : ''))
         ].map(q).join(','));
       });
       const school = (schoolInfo.school || 'School').replace(/\s+/g, '_');
@@ -9549,7 +9600,7 @@
       if (!v) return 0;
       if (typeof v === 'number') return v;
       if (typeof v.toMillis === 'function') return v.toMillis();
-      if (typeof v.seconds === 'number') return v.seconds * 1000;
+      if (typeof v.seconds === 'number') return v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6);
       return 0;
     }
     const reqTime = r => r.clientAt || tsMillis(r.createdAt) || 0;
@@ -9582,6 +9633,9 @@
       if (/invite-only/.test(code)) return 'This school only accepts its invite link. Ask your property custodian for it.';
       if (/no-school/.test(code)) return 'This invite link is not valid. Ask the property custodian for a new one.';
       if (/old-invite/.test(code)) return 'This invite link was replaced by a newer one. Ask the property custodian for the new link.';
+      if (/old-assist-invite/.test(code)) return 'This assistant link was replaced. Ask the property custodian for the new one.';
+      if (/assist-is-custodian/.test(code)) return 'This Google account is the school’s property custodian. Use your own account to join as an assistant.';
+      if (/assist-is-head/.test(code)) return 'This Google account is the School Head’s. The School Head can’t also be an assistant custodian.';
       if (/old-turnover-invite/.test(code)) return 'This Turnover link was replaced or already used. Ask the outgoing custodian or the School Head for a new one.';
       if (/turnover-already-custodian/.test(code)) return 'This Google account is already the property custodian of this school. Sign in as the property custodian instead.';
       if (/turnover-is-head/.test(code)) return 'This Google account is the School Head’s. The new property custodian signs in with their own Google account, so nobody approves their own Purchase Request.';
@@ -10767,7 +10821,8 @@
       myReleases = []; tReports = [];
       myRelLoaded = false; tRepLoaded = false;
       inspList = [];
-      headList = []; headsLoaded = false; headMe = null; headMeLoaded = false;
+      headList = []; headsLoaded = false; headMe = null; headMeLoaded = false; staffList = []; staffLoaded = false;
+      apList = []; apLoaded = false; dashDoc = null; dashLoaded = false; dashSentHash = ''; clearTimeout(dashTimer);
       turnList = []; turnLoaded = false; turnJoinCard = null; turnJoinLoaded = false; lastSchoolDoc = null; schoolTidySent = ''; viewOnlyLive = false;
       stopInventorySync();
     }
@@ -10778,11 +10833,19 @@
       const F = cloud.sdk;
       if (isHeadDevice()) { subscribeHead(F); return; }   // the School Head: their card, then the PRs
       if (isIncomingDevice()) { subscribeIncoming(F); return; }   // a new custodian waiting for Confirm
-      if (viewOnlyEnded()) return;
+      if (viewOnlyEnded() || assistantRemoved()) return;
       // The outgoing custodian: the school's records, read only, once the school still lists them
       // as a viewer (onSchoolDoc → startViewOnlyRecords).
       if (isViewOnly()) { subscribeSchoolDoc(F); return; }
-      const onErr = err => { console.error('sync', err); cloud.error = cloudErrorText(err); renderRequestsEverywhere(); };
+      const onErr = err => {
+        // An assistant who was just removed: refused before the school's change arrives. Check it.
+        if (isAssistant() && /permission/i.test(String(err && (err.code || err.message)))) {
+          console.warn('sync (assistant)', err);
+          F.getDoc(F.doc(cloud.db, 'schools', reqRole.schoolId)).then(snap => { if (snap.exists()) onSchoolDoc(snap.data()); }).catch(() => {});
+          return;
+        }
+        console.error('sync', err); cloud.error = cloudErrorText(err); renderRequestsEverywhere();
+      };
       const onRequests = snap => {
         reqList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
         reqList.sort((a, b) => reqTime(b) - reqTime(a));
@@ -10802,11 +10865,14 @@
           notifFromPrs(snap.metadata);
         }, onErr));
         subscribeHeads(F);
+        subscribeStaff(F);
+        subscribeApprovals(F, onErr);
         subscribeTeam(F);
         subscribeInspections(F);
         subscribeSchoolDoc(F);
         reqUnsubs.push(listenTurnovers(F));
         startInventorySync();
+        auditBlocked = ''; auditSince(); scheduleAudit(4000);   // Change History made offline or before sign-in goes up
         setTimeout(publishSchoolNo, 1500);   // lists the DepEd School ID (once, or when it changes)
         scheduleLowStockCheck(300);   // remember today's stock levels (primes low-stock notifications)
       } else {
@@ -10967,6 +11033,11 @@
           meta[col] = { pending: !!snap.metadata.hasPendingWrites, fromCache: !!snap.metadata.fromCache };
           onInvSnapshot(meta);
         }, err => {
+          if (isAssistant() && /permission/i.test(String(err && (err.code || err.message)))) {   // removed as assistant
+            console.warn('inventory sync (assistant)', err);
+            F.getDoc(F.doc(cloud.db, 'schools', reqRole.schoolId)).then(snap => { if (snap.exists()) onSchoolDoc(snap.data()); }).catch(() => {});
+            return;
+          }
           console.error('inventory sync', err);
           setInvStatus('error', cloudErrorText(err));
         }));
@@ -11186,6 +11257,7 @@
         }
       }
       pushStock();
+      try { scheduleDash(); } catch (e) {}
       if (!writes.length) { saveInvSync(); return; }
       const by = cloud.user.uid, now = Date.now();
       if (!invSync.pendingSince) invSync.pendingSince = now;   // oldest change not yet in the account
@@ -11273,8 +11345,10 @@
     }
 
     function renderRequestsEverywhere() {
+      try { scheduleDash(); } catch (e) {}   // the School Head's summary (custodian devices)
       renderLoginGate();
       renderViewOnly();
+      renderAssistantMode();
       if (typeof renderNotifBell === 'function') renderNotifBell();
       renderHomeReqCard();
       if (activeMainView === 'REQUESTS') renderRequestsView();
@@ -11529,9 +11603,11 @@
             ${pick ? `<span class="block mt-1.5 text-[11px] font-bold text-brand-700">To buy: ${plural(buy.length, 'item')} · ₱${peso2(reqBuyTotal(r))}</span>` : ''}
             ${r.status === 'declined' && r.declineReason ? `<span class="block mt-1 text-[11px] text-rose-600">Reason: ${escapeHTML(r.declineReason)}</span>` : ''}
             ${r.status === 'released' && r.releaseNos ? `<span class="block mt-1 text-[11px] font-bold text-teal-700">${escapeHTML(r.releaseNos.join(' · '))}</span>` : ''}
+            ${risHeadLineHTML(r)}
           </button>
           ${r.kind === 'took' && r.status === 'pending' ? `<button data-took-confirm onclick="openReleaseFromRequest('${r.id}')" class="shrink-0 w-20 px-2 border-l border-slate-100 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 flex flex-col items-center justify-center gap-1"><i class="ph-bold ph-check-circle text-xl"></i> Confirm · RIS</button>` : ''}
-          ${supply ? `<button onclick="openReleaseFromRequest('${r.id}')" class="shrink-0 w-20 px-2 border-l border-slate-100 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 flex flex-col items-center justify-center gap-1"><i class="ph-bold ph-hand-arrow-up text-lg"></i>Release</button>` : ''}
+          ${supply && risBlocked(r) ? risSideBtnHTML(r) : ''}
+          ${supply && !risBlocked(r) ? `<button onclick="openReleaseFromRequest('${r.id}')" class="shrink-0 w-20 px-2 border-l border-slate-100 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 flex flex-col items-center justify-center gap-1"><i class="ph-bold ph-hand-arrow-up text-lg"></i>Release</button>` : ''}
         </div>`;
     }
 
@@ -11705,6 +11781,20 @@
           showToast(`${d.name}: view-only until ${msDate(d.viewOnly[uid].untilMs)}`, 'ph-eye');
           return;
         }
+        // An assistant custodian signing in on another device.
+        const helps = await F.getDocs(F.query(F.collection(cloud.db, 'schools'), F.where('assistants', 'array-contains', uid)));
+        if (helps.docs.length) {
+          const sd = helps.docs[0];
+          let card = {};
+          try { const c = await F.getDoc(F.doc(cloud.db, 'schools', sd.id, 'staff', uid)); card = c.exists() ? c.data() : {}; } catch (e) {}
+          reqRole = { role: 'custodian', schoolId: sd.id, schoolName: sd.data().name, email, assistant: { name: card.name || user.displayName || email, designation: card.designation || '' } };
+          invMergeAnswer = false;
+          saveReqRole();
+          subscribeRequests();
+          renderRequestsEverywhere();
+          showToast(`${sd.data().name}: signed in as assistant custodian`, 'ph-users-three');
+          return;
+        }
       }
       if (found.docs.length) {
         schoolId = found.docs[0].id;
@@ -11782,7 +11872,7 @@
     // school's card (teachers see it when they join) and listed under schoolIds/{id}, so a
     // teacher can type the ID instead of the school code. One school per ID (first come).
     async function publishSchoolNo() {
-      if (!isCustodianDevice() || !cloud.user || !cloud.db || !navigator.onLine) return;
+      if (!isCustodianDevice() || isAssistant() || isViewOnly() || !cloud.user || !cloud.db || !navigator.onLine) return;
       const no = mySchoolNo();
       if (!no || (reqRole.schoolNo === no && (reqRole.schoolNoListed === no || reqRole.schoolNoTaken === no))) return;
       const F = cloud.sdk;
@@ -11878,6 +11968,14 @@
     }
 
     function checkJoinLink() {
+      const as = location.hash.match(/[#&]assist=([A-Za-z0-9_-]{6,64})/);   // an assistant custodian's link
+      if (as) {
+        if (exploring()) { exploreRestore(); location.reload(); return; }
+        history.replaceState(null, '', location.pathname + location.search);
+        if (!reqRole) { gateStep = 'head'; renderLoginGate(); }
+        openAssistJoin(as[1]);
+        return;
+      }
       const to = location.hash.match(/[#&]turnover=([A-Za-z0-9_-]{6,64})/);   // a new property custodian's Turnover link
       if (to) {
         if (exploring()) { exploreRestore(); location.reload(); return; }
@@ -12372,7 +12470,7 @@
         : btn('h-12 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-bold', 'declineRequest()', '<i class="ph-bold ph-x"></i> Decline') +
           btn('flex-1 h-12 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2', 'approveRequest()',
             `<i class="ph-bold ph-check-circle"></i> ${st.status === 'approved' ? 'Save changes' : 'Approve'}`) +
-          (st.status === 'approved' ? btn('h-12 px-4 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 text-sm font-bold flex items-center gap-1.5', `openReleaseFromRequest('${st.id}')`, '<i class="ph-bold ph-hand-arrow-up"></i> Release') : '');
+          (st.status === 'approved' && risBlocked(reqList.find(x => x.id === st.id)) ? risReviewBtnHTML(st.id) : st.status === 'approved' ? btn('h-12 px-4 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 text-sm font-bold flex items-center gap-1.5', `openReleaseFromRequest('${st.id}')`, '<i class="ph-bold ph-hand-arrow-up"></i> Release') : '');
     }
 
     function updateReviewSummary() {
@@ -12443,8 +12541,10 @@
         updatedAt: F.serverTimestamp()
       }), 'Approving');
       const buy = lines.filter(l => l.prQty > 0).length;
+      const toHead = !!(r && r.kind !== 'took' && risNeedsHead());
+      if (toHead) submitRisApproval({ ...r, status: 'approved', review: { lines } });
       closeReview();
-      showToast(wasApproved ? 'Changes saved' : `Approved ${r ? r.name.split(' ')[0] + '’s' : 'the'} request · ${buy ? `${plural(buy, 'item')} to purchase` : 'all from stock'}`, 'ph-check-circle');
+      showToast(toHead ? `Approved · sent to ${currentHead().name} before you release it` : wasApproved ? 'Changes saved' : `Approved ${r ? r.name.split(' ')[0] + '’s' : 'the'} request · ${buy ? `${plural(buy, 'item')} to purchase` : 'all from stock'}`, toHead ? 'ph-paper-plane-tilt' : 'ph-check-circle');
     }
 
     async function declineRequest() {
@@ -13030,8 +13130,14 @@
           <button onclick="newHeadInvite()" class="w-full min-h-10 text-xs font-bold text-slate-500 hover:text-rose-600 flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrows-clockwise"></i> Make a new School Head link</button>`
         : `<p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-3 text-xs text-slate-600 text-center">${navigator.onLine ? '<i class="ph-bold ph-circle-notch animate-spin"></i> Making the School Head link…' : 'Connect to the internet to make the School Head link.'}</p>`;
       html += head ? `<details class="rounded-2xl border border-slate-200 p-3"><summary class="text-xs font-bold text-slate-700 cursor-pointer">Invite a different School Head</summary><div class="mt-3 space-y-3">${invite}</div></details>` : invite;
+      if (head) html += `
+        <label class="flex items-start gap-2.5 rounded-2xl border border-slate-200 p-3 cursor-pointer" data-ris-toggle>
+          <input type="checkbox" id="risApprovalToggle" ${lastSchoolDoc && lastSchoolDoc.risApproval ? 'checked' : ''} onchange="setRisApproval(this.checked)" class="mt-0.5 w-5 h-5 shrink-0 accent-violet-700">
+          <span class="min-w-0"><span class="block text-sm font-extrabold text-slate-900">Supply requests (RIS) need approval too</span>
+            <span class="block text-[11px] text-slate-500">After you approve a teacher’s request, it waits for ${escapeHTML(head.name)} before you release it. The RIS shows their approval.</span></span>
+        </label>`;
       html += `<p class="text-[11px] text-slate-500">${head
-        ? `Only ${escapeHTML(head.name)} can approve Purchase Requests now. Each approval keeps their name, the date and the time.`
+        ? `Only ${escapeHTML(head.name)} can approve Purchase Requests now, and write-offs and the physical count report go to them too. Each approval keeps their name, the date and the time.`
         : 'Every Purchase Request needs the School Head’s approval. Until your School Head joins, print each PR for signing and tap <b>Signed on paper</b> on it with the date it was signed.'}</p>`;
       body.innerHTML = html;
       const box = document.getElementById('headQr');
@@ -13143,7 +13249,7 @@
     const turnInviteCode = () => (reqRole && turnInviteMap()[reqRole.schoolId]) || '';
     function setTurnInviteCode(code) { const m = turnInviteMap(); m[reqRole.schoolId] = code; localStorage.setItem(TO_INVITE_KEY, JSON.stringify(m)); }
     const turnoverLink = () => `${location.origin}${location.pathname}#turnover=${reqRole.schoolId}-${turnInviteCode()}`;
-    const canHandOver = () => !!cloud.user && ((isCustodianDevice() && !isViewOnly()) || (isHeadDevice() && !!headMe && headMe.status === 'active'));
+    const canHandOver = () => !!cloud.user && ((isCustodianDevice() && !isViewOnly() && !isAssistant()) || (isHeadDevice() && !!headMe && headMe.status === 'active'));
     // The custodian who signed a slip: its own record, else whoever was custodian when it was made.
     function slipCustodian(r) {
       if (r && r.custName) return { name: r.custName, desig: r.custDesig || '' };
@@ -13182,6 +13288,17 @@
       lastSchoolDoc = d;
       const uid = cloud.user && cloud.user.uid;
       if (!uid || !isCustodianDevice()) return;
+      if (isAssistant()) {
+        if ((d.custodians || []).includes(uid)) { delete reqRole.assistant; saveReqRole(); subscribeRequests(); renderRequestsEverywhere(); return; }   // took over
+        const on = (d.assistants || []).includes(uid);
+        if (!on && !reqRole.assistant.removed) {
+          reqRole.assistant.removed = true;
+          saveReqRole();
+          stopRequestSync();
+          renderRequestsEverywhere();
+        }
+        return;
+      }
       if ((d.custodians || []).includes(uid)) {
         if (isViewOnly()) {   // handed back to this custodian
           delete reqRole.viewOnly;
@@ -13469,7 +13586,8 @@
         confirmedBy: { uid: cloud.user.uid, name: me.name, role: me.role }, doneMs: now, updatedAt: F.serverTimestamp() });
       if (t.invite) batch.set(F.doc(cloud.db, 'schools', sid, 'turnoverInvites', t.invite), { active: false, createdMs: 0, by: cloud.user.uid, endedMs: now });
       batch.update(F.doc(cloud.db, 'schools', sid), { custodians: [t.uid], ownerUid: t.uid, turnoverId: id, turnoverMs: now,
-        custodianName: String(t.name || '').slice(0, 80), custodianDesig: String(t.designation || '').slice(0, 80), viewOnly, viewerUids: Object.keys(viewOnly) });
+        custodianName: String(t.name || '').slice(0, 80), custodianDesig: String(t.designation || '').slice(0, 80), viewOnly, viewerUids: Object.keys(viewOnly),
+        ...((school.assistants || []).includes(t.uid) ? { assistants: school.assistants.filter(u => u !== t.uid) } : {}) });   // an assistant who takes over
       showToast('Confirming the turnover…', 'ph-handshake');
       try {
         await batch.commit();
@@ -13586,6 +13704,16 @@
       }
     }
     function subscribeIncoming(F) {
+      if (reqRole.kind === 'assist') {
+        reqUnsubs.push(F.onSnapshot(F.doc(staffCol(), cloud.user.uid), snap => {
+          turnJoinCard = snap.exists() ? { ...snap.data(), id: snap.id } : null;
+          turnJoinLoaded = true;
+          cloud.error = '';
+          if (turnJoinCard && turnJoinCard.status === 'active') { becomeAssistant(turnJoinCard); return; }
+          renderRequestsEverywhere();
+        }, err => { console.warn('staff card', err); cloud.error = cloudErrorText(err); turnJoinLoaded = true; renderRequestsEverywhere(); }));
+        return;
+      }
       reqUnsubs.push(F.onSnapshot(F.doc(turnCol(), reqRole.turnId), snap => {
         turnJoinCard = snap.exists() ? { ...snap.data(), id: snap.id } : null;
         turnJoinLoaded = true;
@@ -13629,12 +13757,19 @@
       if (!cloud.user) return cloud.state === 'ready' ? 'signin' : 'connecting';
       if (!turnJoinLoaded) return 'connecting';
       if (!turnJoinCard) return 'missing';
-      return turnJoinCard.status === 'declined' ? 'declined' : 'pending';
+      return ['declined', 'removed'].includes(turnJoinCard.status) ? 'declined' : 'pending';
     }
     function incomingGateHTML() {
       const st = incomingState();
       const r = reqRole, me = r.me || {};
-      const msg = {
+      const assist = r.kind === 'assist';
+      const msg = assist ? {
+        connecting: ['ph-circle-notch animate-spin', 'Connecting…', 'Checking with your school.'],
+        signin: ['ph-sign-in', 'Sign in again', `Use the Google account you opened the assistant link with${r.email ? ` (${escapeHTML(r.email)})` : ''}.`],
+        pending: ['ph-hourglass-medium', 'Waiting for the property custodian', 'They confirm you on their device. The school’s inventory opens here on its own as soon as they do.'],
+        declined: ['ph-prohibit', 'Not confirmed', 'The property custodian did not confirm you, or removed you. Ask them for a new assistant link if this is a mistake.'],
+        missing: ['ph-question', 'This account has not joined', 'Open the assistant link again and sign in with the account you used.']
+      }[st] : {
         connecting: ['ph-circle-notch animate-spin', 'Connecting…', 'Checking your turnover.'],
         signin: ['ph-sign-in', 'Sign in again', `Use the Google account you opened the Turnover link with${r.email ? ` (${escapeHTML(r.email)})` : ''}.`],
         pending: ['ph-hourglass-medium', 'Waiting for Confirm', 'The outgoing property custodian, or the School Head, confirms the turnover on their phone. The school’s inventory opens here on its own as soon as they do.'],
@@ -13644,9 +13779,9 @@
       return `
         <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3" data-incoming="${st}">
           <div class="flex items-center gap-3">
-            <span class="w-11 h-11 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-handshake text-2xl"></i></span>
+            <span class="w-11 h-11 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ${assist ? 'ph-users-three' : 'ph-handshake'} text-2xl"></i></span>
             <div class="min-w-0">
-              <p class="text-[11px] font-bold uppercase tracking-wider text-brand-600">New property custodian</p>
+              <p class="text-[11px] font-bold uppercase tracking-wider text-brand-600">${assist ? 'Assistant custodian' : 'New property custodian'}</p>
               <p class="text-sm font-extrabold text-slate-900">${escapeHTML(r.schoolName || 'Your school')}</p>
               <p class="text-xs text-slate-500">${escapeHTML([me.name, me.designation].filter(Boolean).join(' · '))}</p>
             </div>
@@ -13661,7 +13796,8 @@
     }
     async function leaveIncoming() {
       if (!isIncomingDevice()) return;
-      if (turnJoinCard && turnJoinCard.status === 'pending' && !await appConfirm('You can open the Turnover link again later.', { title: 'Cancel the turnover on this phone?', ok: 'Start over', tone: 'warn' })) return;
+      if (turnJoinCard && turnJoinCard.status === 'pending' && !await appConfirm(reqRole.kind === 'assist' ? 'You can open the assistant link again later.' : 'You can open the Turnover link again later.',
+        { title: reqRole.kind === 'assist' ? 'Stop joining on this phone?' : 'Cancel the turnover on this phone?', ok: 'Start over', tone: 'warn' })) return;
       stopRequestSync();
       try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
       cloud.user = null;
@@ -13764,18 +13900,23 @@
     function renewHolders() {
       return accountabilityPeople().map(p => ({ ...p, equipment: p.equipment.filter(x => !x.unit.lostMs) })).filter(p => p.equipment.length && (p.uid || p.name));
     }
-    async function renewAllSlips() {
+    // onlyOld (Year-end & reminders): just the units on slips older than 3 years.
+    async function renewAllSlips(onlyOld = false) {
       if (!isCustodianDevice() || isViewOnly() || !cloud.user) return;
-      const mine = turnDone().find(t => t.uid === cloud.user.uid);
-      const holders = renewHolders();
-      if (!holders.length) { showToast('No teacher holds property right now', 'ph-info'); return; }
+      onlyOld = onlyOld === true;
+      const mine = onlyOld ? null : turnDone().find(t => t.uid === cloud.user.uid);
+      const cut = icsRenewCutoff();
+      const holders = onlyOld
+        ? renewHolders().map(p => ({ ...p, equipment: p.equipment.filter(x => x.unit.icsDate && x.unit.icsDate <= cut) })).filter(p => p.equipment.length)
+        : renewHolders();
+      if (!holders.length) { showToast(onlyOld ? `No slips older than ${ICS_RENEW_YEARS} years` : 'No teacher holds property right now', 'ph-info'); return; }
       const units = holders.reduce((n, p) => n + p.equipment.length, 0);
-      if (!await appConfirm(`Makes a new ICS or PAR in your name for each of ${plural(holders.length, 'teacher')} (${plural(units, 'unit')} they hold now). The old slips stay on record, and each teacher taps Received on the new one.`,
-        { title: 'Renew all slips?', ok: 'Renew all', icon: 'ph-arrows-clockwise', tone: 'good' })) return;
+      if (!await appConfirm(`Makes a new ICS or PAR in your name for each of ${plural(holders.length, 'teacher')} (${plural(units, 'unit')}${onlyOld ? ` on slips older than ${ICS_RENEW_YEARS} years` : ' they hold now'}). The old slips stay on record, and each teacher taps Received on the new one.`,
+        { title: onlyOld ? 'Renew the old slips?' : 'Renew all slips?', ok: onlyOld ? 'Renew' : 'Renew all', icon: 'ph-arrows-clockwise', tone: 'good' })) return;
       const F = cloud.sdk, date = localISODate(), now = Date.now();
       const coaIcs = numberingMode() === 'coa';
       const docs = [];
-      const purpose = `Renewal on change of property custodian${mine && mine.fromName ? ` (from ${mine.fromName})` : ''}`.slice(0, 300);
+      const purpose = (onlyOld ? `Renewal of slips older than ${ICS_RENEW_YEARS} years` : `Renewal on change of property custodian${mine && mine.fromName ? ` (from ${mine.fromName})` : ''}`).slice(0, 300);
       holders.forEach(p => {
         const groups = { PAR: [], ICS: [], SPLV: [], SPHV: [] };
         p.equipment.forEach(x => {
@@ -13800,7 +13941,7 @@
         });
       });
       releaseAll = releaseAll.filter(r => !String(r.id).startsWith('tmp-'));
-      saveStateWith({ summary: { kind: 'release', text: `Renewed the slips of ${plural(holders.length, 'teacher')} on the change of property custodian: ${docs.map(x => `${x.kind} ${x.no}`).join(', ')}`.slice(0, 600) } });
+      saveStateWith({ summary: { kind: 'release', text: `Renewed the slips of ${plural(holders.length, 'teacher')} ${onlyOld ? `(older than ${ICS_RENEW_YEARS} years)` : 'on the change of property custodian'}: ${docs.map(x => `${x.kind} ${x.no}`).join(', ')}`.slice(0, 600) } });
       const out = [];
       for (let i = 0; i < docs.length; i += 400) {
         const batch = F.writeBatch(cloud.db);
@@ -13812,6 +13953,13 @@
         localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
         scheduleInventorySync();
       }
+      if (onlyOld) {
+        yeRenewDone = { docs: out };
+        if (yeIsOpen()) renderYearEnd();
+        if (activeMainView === 'TEACHERS') renderTeachersView();
+        showToast(`Renewed ${plural(out.length, 'slip')} · teachers confirm on their phones`, 'ph-arrows-clockwise');
+        return;
+      }
       turnRenewDone = { docs: out };
       renderTurnover();
       if (activeMainView === 'TEACHERS') renderTeachersView();
@@ -13820,6 +13968,1058 @@
     function printRenewedSlips() {
       if (!turnRenewDone || !turnRenewDone.docs.length) return;
       printFormHTML(`<div class="pr-pages">${turnRenewDone.docs.map(r => (r.kind === 'PAR' ? parPrintHTML : icsPrintHTML)(r)).join('')}</div>`);
+    }
+
+    // ---- School history in the cloud: can't be edited or deleted -------------------------
+    // Each custodian device appends its Change History entries to schools/{id}/auditLog, several
+    // entries per document ({ uid, name, role, device, entries[], createdAt }). The rules allow
+    // create only, stamped with the signed-in account and the server time: nobody can change or
+    // remove an entry, not even the custodian (Reset app leaves them; the app owner still sees
+    // them in the Firebase console). The custodian, view-only custodians and the School Head read
+    // it in Change History → School (cloud), 20 documents at a time.
+    const AUDIT_KEY = 'custodian_audit_v1';     // { [schoolId]: ms } entries from this time on go up
+    const AUDIT_BATCH = 100;
+    const AUDIT_PAGE = 20;
+    var auditTimer = null;
+    var auditBlocked = '';                      // a refused write (rules not published yet): retried on the next open
+    var audit = { sid: '', docs: [], loading: false, done: false, error: '' };
+    function auditRole() {
+      if (!reqRole || !cloud.user || !cloud.sdk) return '';
+      if (isViewOnly() || isIncomingDevice()) return '';
+      if (isHeadDevice()) return headMe && headMe.status === 'active' ? 'head' : '';
+      if (isCustodianDevice()) return reqRole.assistant ? 'assistant' : 'custodian';
+      return '';
+    }
+    function canReadAudit() { return !!(reqRole && cloud.user && (isCustodianDevice() || isViewOnly() || (isHeadDevice() && headMe && headMe.status === 'active'))); }
+    function auditDevice() {
+      let id = localStorage.getItem('custodian_device_id_v1');
+      if (!id) { id = Math.random().toString(36).slice(2, 10); localStorage.setItem('custodian_device_id_v1', id); }
+      const ua = navigator.userAgent;
+      const kind = /iPad|Tablet|Android(?!.*Mobile)/i.test(ua) ? 'Tablet' : /Mobi|Android|iPhone/i.test(ua) ? 'Phone' : 'Computer';
+      return `${kind} ${id.slice(0, 4)}`;
+    }
+    function auditSince() {
+      const sid = reqRole && reqRole.schoolId;
+      if (!sid) return 0;
+      let all = {};
+      try { all = JSON.parse(localStorage.getItem(AUDIT_KEY)) || {}; } catch (e) {}
+      if (!all[sid]) { all[sid] = Date.now(); localStorage.setItem(AUDIT_KEY, JSON.stringify(all)); }
+      return all[sid];
+    }
+    // What goes up: the entry as shown in Change History, trimmed.
+    function auditSlim(e) {
+      const o = { t: e.t || Date.now(), k: String(e.k || 'edit').slice(0, 20), x: String(e.x || '').slice(0, 500) };
+      if (e.c) o.c = String(e.c).slice(0, 60);
+      if (Array.isArray(e.cs) && e.cs.length) o.cs = e.cs.slice(0, 20).map(c => String(c).slice(0, 60));
+      if (e.q && typeof e.q === 'object') { const q = {}; Object.keys(e.q).slice(0, 20).forEach(c => { q[c] = Number(e.q[c]) || 0; }); o.q = q; }
+      if (e.from !== undefined && e.to !== undefined) { o.from = e.from; o.to = e.to; }
+      return o;
+    }
+    function scheduleAudit(ms = 15000) {
+      if (!auditRole() || auditRole() === 'head') return;
+      clearTimeout(auditTimer);
+      auditTimer = setTimeout(flushAudit, ms);
+    }
+    // Entries not sent yet (newest last). A count still being merged (same item within 3 minutes)
+    // waits, so the cloud gets its final value.
+    function auditPending() {
+      const since = auditSince();
+      const out = [];
+      let wait = false;
+      for (let i = changeHistory.length - 1; i >= 0; i--) {
+        const e = changeHistory[i];
+        if ((e.t || 0) < since) break;
+        if (e.au) continue;
+        if (e.k === 'count' && Date.now() - e.t < HISTORY_MERGE_MS) { wait = true; continue; }
+        out.unshift(e);
+      }
+      return { list: out, wait };
+    }
+    function flushAudit() {
+      clearTimeout(auditTimer);
+      const role = auditRole();
+      if (!role || role === 'head' || auditBlocked === reqRole.schoolId) return;
+      const { list, wait } = auditPending();
+      if (wait) auditTimer = setTimeout(flushAudit, 60000);
+      if (!list.length) return;
+      for (let i = 0; i < list.length; i += AUDIT_BATCH) auditWrite(list.slice(i, i + AUDIT_BATCH), role);
+    }
+    function auditWrite(list, role) {
+      const F = cloud.sdk, sid = reqRole.schoolId;
+      const me = reqRole.me || {};
+      const name = (role === 'head' ? (me.name || (headMe && headMe.name)) : actorName()) || (cloud.user.email || '').split('@')[0] || 'Unknown';
+      list.forEach(e => { e.au = 1; });   // queued: Firestore keeps it until it reaches the server, also offline
+      persistHistory();
+      F.addDoc(F.collection(cloud.db, 'schools', sid, 'auditLog'), {
+        uid: cloud.user.uid, name: String(name).slice(0, 80), role, device: auditDevice(),
+        entries: list.map(auditSlim), createdAt: F.serverTimestamp()
+      }).catch(err => {
+        console.warn('audit', err);
+        list.forEach(e => { delete e.au; });
+        persistHistory();
+        if (/permission/i.test(String(err && (err.code || err.message)))) auditBlocked = sid;
+      });
+    }
+    // The School Head's own decisions go up from their phone right away.
+    function auditNow(kind, text) {
+      if (auditRole() !== 'head') return;
+      auditWrite([{ t: Date.now(), k: kind, x: text }], 'head');
+    }
+    addEventListener('pagehide', () => flushAudit());
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushAudit(); });
+
+    function auditRows() {
+      const q = document.getElementById('historySearch').value.toLowerCase().trim();
+      const code = historyFilter.code;
+      return audit.docs.flatMap(d => (d.entries || []).map(e => ({ ...e, by: d.name, role: d.role, device: d.device, saved: tsMillis(d.createdAt) || 0 })))
+        .filter(e => (!code || historyHas(e, code)) && (historyFilter.kind === 'ALL' || e.k === historyFilter.kind) &&
+          (!q || `${e.x} ${historyCodes(e).map(c => `${c} ${historyItemName(c)}`).join(' ')} ${e.by || ''}`.toLowerCase().includes(q)))
+        .sort((a, b) => (b.t - a.t) || (b.saved - a.saved));
+    }
+    async function loadAudit(more = false) {
+      if (!canReadAudit() || audit.loading) return;
+      const sid = reqRole.schoolId;
+      if (audit.sid !== sid) audit = { sid, docs: [], loading: false, done: false, error: '' };
+      if (more && audit.done) return;
+      audit.loading = true; audit.error = '';
+      if (historyFilter.cloud) renderHistory();
+      try {
+        const F = cloud.sdk;
+        const col = F.collection(cloud.db, 'schools', sid, 'auditLog');
+        const last = more && audit.docs.length ? audit.docs[audit.docs.length - 1].createdAt : null;
+        const q = last
+          ? F.query(col, F.where('createdAt', '<', last), F.orderBy('createdAt', 'desc'), F.limit(AUDIT_PAGE))
+          : F.query(col, F.orderBy('createdAt', 'desc'), F.limit(AUDIT_PAGE));
+        const snap = await F.getDocs(q);
+        const got = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }))
+          .sort((a, b) => (tsMillis(b.createdAt) || 0) - (tsMillis(a.createdAt) || 0)).slice(0, AUDIT_PAGE);
+        if (!more) audit.docs = [];
+        const have = new Set(audit.docs.map(d => d.id));
+        audit.docs.push(...got.filter(d => !have.has(d.id)));
+        audit.done = got.length < AUDIT_PAGE;
+      } catch (err) {
+        console.warn('audit read', err);
+        audit.error = cloudErrorText(err);
+      }
+      audit.loading = false;
+      if (historyFilter.cloud) renderHistory();
+    }
+    function setHistorySource(cloudOn) {
+      historyFilter.cloud = !!cloudOn;
+      historyFilter.limit = 150;
+      if (cloudOn) { flushAudit(); loadAudit(false); }
+      renderHistory();
+      document.getElementById('historyList').scrollTop = 0;
+    }
+    function historySourceHTML() {
+      if (!canReadAudit()) return '';
+      const b = (on, label, icon, cl) => `<button onclick="setHistorySource(${cl})" data-history-source="${cl ? 'cloud' : 'device'}" class="flex-1 h-8 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 ${on ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
+      return `<div class="flex gap-1 p-1 rounded-xl bg-slate-100">${b(!historyFilter.cloud, 'This device', 'ph-device-mobile', false)}${b(historyFilter.cloud, 'School (cloud)', 'ph-lock-key', true)}</div>`;
+    }
+    const AUDIT_ROLE = { custodian: 'Property custodian', assistant: 'Assistant custodian', head: 'School Head' };
+    function renderAudit() {
+      document.getElementById('historySubtitle').textContent = 'Saved in the school account · can’t be edited or deleted, not even by the custodian';
+      const list = document.getElementById('historyList');
+      const rows = auditRows();
+      if (!rows.length) {
+        list.innerHTML = audit.loading ? `<div class="py-12 text-center text-sm text-slate-500"><i class="ph-bold ph-circle-notch animate-spin text-2xl block mb-2"></i>Getting the school history…</div>` : `
+          <div class="py-12 text-center" data-audit-empty>
+            <i class="ph-duotone ph-lock-key text-4xl text-slate-300 block mb-2"></i>
+            <p class="text-sm font-bold text-slate-700">${audit.error ? 'Couldn’t get the school history' : audit.docs.length ? 'No changes match this view' : 'Nothing saved to the school history yet'}</p>
+            <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">${audit.error ? escapeHTML(audit.error) : 'From this update on, every change made on the custodian’s devices is also saved here, with the account, device and the server’s date and time.'}</p>
+          </div>`;
+        return;
+      }
+      const shown = rows.slice(0, historyFilter.limit);
+      let html = '', day = '';
+      shown.forEach(e => {
+        const label = historyDayLabel(e.t);
+        if (label !== day) { day = label; html += `<p class="sticky top-0 z-10 bg-white/95 backdrop-blur pt-3 pb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">${label}</p>`; }
+        const kind = HISTORY_KINDS[e.k] || HISTORY_KINDS.edit;
+        const time = new Date(e.t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+        const late = e.saved && Math.abs(e.saved - e.t) > 10 * 60000 ? ` · saved ${escapeHTML(iarStamp(e.saved))}` : '';
+        html += `
+          <div class="flex items-start gap-3 py-2 border-b border-slate-50 last:border-0" data-audit-row>
+            <div class="w-8 h-8 shrink-0 rounded-lg ${kind.tone} flex items-center justify-center"><i class="ph-bold ${kind.icon}"></i></div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-slate-800 leading-snug break-words">${historyTextHTML(e.x)}</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">${time} · ${escapeHTML(e.by || '')}${e.role && e.role !== 'custodian' ? ` (${AUDIT_ROLE[e.role] || e.role})` : ''} · ${escapeHTML(e.device || '')}${late}</p>
+            </div>
+          </div>`;
+      });
+      if (rows.length > shown.length) html += `<div class="pt-3 text-center"><button onclick="showMoreHistory()" class="h-9 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs">Show older (${(rows.length - shown.length).toLocaleString()} more)</button></div>`;
+      else if (!audit.done) html += `<div class="pt-3 text-center"><button onclick="loadAudit(true)" data-audit-more class="h-9 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs">${audit.loading ? 'Getting…' : 'Get older from the school account'}</button></div>`;
+      list.innerHTML = html;
+    }
+    function openSchoolHistory() { openHistory(null); setHistorySource(true); }
+
+    // ---- Assistant custodians ------------------------------------------------------------------
+    // A helper (e.g. a teacher-in-charge of the supply room) opens the assistant link on their own
+    // phone and signs in with their own Google account (staff/{uid}, 'pending'). The custodian
+    // confirms: the card becomes 'active' and their uid goes into school.assistants. The assistant's
+    // device then works like the custodian's: inventory, releases, requests, deliveries, counts.
+    // They can't remove items, hand over, manage the School Head, teachers or invite links, change
+    // the school info or reset the school (the rules refuse it too). Their name goes on Change
+    // History and on the slips they make (by); the forms keep the custodian as the accountable officer.
+    let staffList = [];
+    let staffLoaded = false;
+    function isAssistant() { return !!(reqRole && reqRole.role === 'custodian' && reqRole.assistant); }
+    function assistantRemoved() { return isAssistant() && !!reqRole.assistant.removed; }
+    function actorName() { return isAssistant() ? (reqRole.assistant.name || reqRole.email || '') : (schoolInfo.custodian || (reqRole && reqRole.email) || ''); }
+    function staffCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'staff'); }
+    const staffInviteLink = () => `${location.origin}${location.pathname}#assist=${reqRole.schoolId}-${schoolInfo.staffInvite}`;
+    const activeStaff = () => staffList.filter(s => s.status === 'active');
+    const pendingStaff = () => staffList.filter(s => s.status === 'pending').sort((a, b) => (b.joinedMs || 0) - (a.joinedMs || 0));
+    function subscribeStaff(F) {
+      reqUnsubs.push(F.onSnapshot(staffCol(), snap => {
+        staffList = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        staffLoaded = true;
+        if (!document.getElementById('assistModal').classList.contains('hidden')) renderAssistPanel();
+        if (!isAssistant()) notifFromStaff(snap.metadata);
+      }, err => console.warn('staff', err)));
+    }
+    function notifFromStaff(meta) {
+      notifCheck('staff', staffList.map(s => ({
+        key: 'st:' + s.id, sig: `${s.status || 'pending'}|${s.joinedMs || 0}`,
+        make: prev => (s.status === 'pending' && (prev === undefined || !String(prev).startsWith('pending')))
+          ? { title: `${s.name || 'Someone'} wants to join as assistant custodian`, body: `${[s.designation, s.email].filter(Boolean).join(' · ')} · tap to confirm`, icon: 'ph-users-three', tone: 'brand', go: 'assist' }
+          : null
+      })), fromCacheOf(meta));
+    }
+
+    // ---- The custodian's panel (More → Assistant custodians) ----------------------------------
+    async function openAssistPanel() {
+      if (!isCustodianDevice() || isViewOnly() || isAssistant() || !cloud.user) { showToast('Sign in as the property custodian first', 'ph-info'); return; }
+      document.getElementById('assistModal').classList.remove('hidden');
+      renderAssistPanel();
+      if (!schoolInfo.staffInvite && navigator.onLine) await newAssistInvite(true);
+    }
+    function closeAssistPanel() { document.getElementById('assistModal').classList.add('hidden'); }
+    function renderAssistPanel() {
+      const body = document.getElementById('assistBody');
+      if (!body || !isCustodianDevice() || isAssistant()) return;
+      const since = ms => (ms ? msDate(ms) : '');
+      const card = (s, extra) => `
+        <div class="rounded-2xl border ${s.status === 'active' ? 'border-emerald-200 bg-emerald-50/50' : 'border-brand-200 bg-brand-50/50'} p-3 space-y-2" data-staff-card="${s.id}">
+          <div class="flex items-start gap-2.5">
+            <span class="w-9 h-9 shrink-0 rounded-full bg-white border border-slate-200 flex items-center justify-center text-sm font-extrabold text-slate-700">${escapeHTML(((s.name || '?').trim()[0] || '?').toUpperCase())}</span>
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-slate-900 truncate">${escapeHTML(s.name || '')}</p>
+              <p class="text-[11px] text-slate-600 truncate">${escapeHTML([s.designation, s.email].filter(Boolean).join(' · '))}</p>
+              <p class="text-[11px] font-semibold ${s.status === 'active' ? 'text-emerald-700' : 'text-brand-700'}">${s.status === 'active' ? `Assistant custodian · since ${escapeHTML(since(s.approvedMs))}` : `Asked to join · ${escapeHTML(since(s.joinedMs))}`}</p>
+            </div>
+          </div>
+          ${extra}
+        </div>`;
+      let html = '';
+      pendingStaff().forEach(s => {
+        html += card(s, `
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="removeAssistant('${s.id}')" class="h-10 rounded-xl bg-white border border-slate-200 hover:border-rose-300 text-xs font-bold text-slate-700">Not them</button>
+            <button onclick="confirmAssistant('${s.id}')" data-confirm-staff="${s.id}" class="h-10 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-extrabold flex items-center justify-center gap-1"><i class="ph-bold ph-check"></i> Confirm</button>
+          </div>
+          <p class="text-[11px] text-slate-500">Confirm only if this is the person’s own Google account.</p>`);
+      });
+      activeStaff().forEach(s => { html += card(s, `<button onclick="removeAssistant('${s.id}')" data-remove-staff="${s.id}" class="text-[11px] font-bold text-slate-500 hover:text-rose-600">Remove as assistant</button>`); });
+      if (!staffList.some(s => s.status === 'pending' || s.status === 'active')) html += `<p class="text-xs text-slate-600">An assistant helps with the work on their own phone: releases, requests, deliveries, counts and encoding. You stay the accountable officer, and the forms keep your name.</p>`;
+      html += `
+        <div class="rounded-2xl bg-slate-50 border border-slate-200 p-3 text-[11px] text-slate-600 space-y-1">
+          <p class="font-bold text-slate-800 flex items-center gap-1.5"><i class="ph-bold ph-shield-check text-emerald-600"></i> What an assistant can’t do</p>
+          <p>Remove items, change the school info, invite or remove teachers and the School Head, hand over (turnover) or reset the school. Everything they do shows their name in Change History.</p>
+        </div>`;
+      const invite = schoolInfo.staffInvite ? `
+          <div class="text-center">
+            <div id="assistQr" class="keep-light mx-auto w-40 h-40 rounded-2xl border border-slate-200 p-2.5 bg-white flex items-center justify-center text-xs text-slate-500">QR code</div>
+            <p class="mt-2 text-[11px] text-slate-500">They scan this with their phone camera, or open the link you send them, and sign in with their own Google account. You confirm them here.</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Assistant link</p>
+            <p id="assistLinkText" class="text-[11px] font-mono text-slate-700 break-all leading-snug select-all">${escapeHTML(staffInviteLink())}</p>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="copyAssistInvite()" class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-copy"></i> Copy link</button>
+            <button onclick="shareAssistInvite()" class="h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-share-network"></i> Share</button>
+          </div>
+          <button onclick="newAssistInvite()" class="w-full min-h-10 text-xs font-bold text-slate-500 hover:text-rose-600 flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrows-clockwise"></i> Make a new assistant link</button>`
+        : `<p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-3 text-xs text-slate-600 text-center">${navigator.onLine ? '<i class="ph-bold ph-circle-notch animate-spin"></i> Making the assistant link…' : 'Connect to the internet to make the assistant link.'}</p>`;
+      html += activeStaff().length ? `<details class="rounded-2xl border border-slate-200 p-3"><summary class="text-xs font-bold text-slate-700 cursor-pointer">Add another assistant</summary><div class="mt-3 space-y-3">${invite}</div></details>` : invite;
+      body.innerHTML = html;
+      const box = document.getElementById('assistQr');
+      if (box) {
+        (typeof qrcode === 'function' ? Promise.resolve() : loadScript('assets/vendor/qrcode.js'))
+          .then(() => { box.innerHTML = qrSVG(staffInviteLink()); })
+          .catch(() => { box.textContent = 'QR code needs the app to be opened online once.'; });
+      }
+    }
+    async function copyAssistInvite() {
+      try { await navigator.clipboard.writeText(staffInviteLink()); }
+      catch (e) { const r = document.createRange(); r.selectNodeContents(document.getElementById('assistLinkText')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.execCommand('copy'); }
+      showToast('Assistant link copied · send it only to your assistant', 'ph-copy');
+    }
+    async function shareAssistInvite() {
+      const data = { title: `${reqRole.schoolName} · Assistant custodian`, text: `Help with ${reqRole.schoolName}'s property and supplies in CustodianPro (sign in with your own Google account):`, url: staffInviteLink() };
+      if (navigator.share) { try { await navigator.share(data); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+      copyAssistInvite();
+    }
+    async function newAssistInvite(first = false) {
+      if (!isCustodianDevice() || isAssistant() || isViewOnly() || !cloud.user) return;
+      if (!first && !await appConfirm('The old assistant link stops working. Assistants who already joined are not affected.', { title: 'Make a new assistant link?', ok: 'New link', icon: 'ph-arrows-clockwise', tone: 'warn' })) return;
+      const F = cloud.sdk, now = Date.now();
+      const abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const code = [...crypto.getRandomValues(new Uint8Array(10))].map(b => abc[b % abc.length]).join('');
+      const old = schoolInfo.staffInvite;
+      const batch = F.writeBatch(cloud.db);
+      batch.set(F.doc(cloud.db, 'schools', reqRole.schoolId, 'staffInvites', code), { active: true, createdMs: now, by: cloud.user.uid });
+      if (old) batch.set(F.doc(cloud.db, 'schools', reqRole.schoolId, 'staffInvites', old), { active: false, createdMs: 0, by: cloud.user.uid, endedMs: now });
+      try { await batch.commit(); }
+      catch (err) { showToast(`Could not make the assistant link: ${cloudErrorText(err)}`, 'ph-warning'); return; }
+      schoolInfo.staffInvite = code;
+      localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+      scheduleInventorySync();
+      renderAssistPanel();
+      if (!first) showToast('New assistant link ready', 'ph-arrows-clockwise');
+    }
+    async function confirmAssistant(uid) {
+      const s = staffList.find(x => x.id === uid);
+      if (!s || s.status !== 'pending' || !isCustodianDevice() || isAssistant() || uid === cloud.user.uid) return;
+      const school = lastSchoolDoc || {};
+      if (school.headUid === uid) { appAlert('This account is the School Head’s. The School Head can’t also be an assistant custodian.'); return; }
+      if (!await appConfirm(`${s.name}${s.email ? ` (${s.email})` : ''} can release items, handle requests and deliveries, count and encode on their own phone. Their name is recorded with everything they do.`,
+        { title: 'Confirm the assistant custodian?', ok: 'Confirm', tone: 'good', icon: 'ph-users-three' })) return;
+      const F = cloud.sdk, now = Date.now();
+      const batch = F.writeBatch(cloud.db);
+      batch.update(F.doc(staffCol(), uid), { status: 'active', approvedMs: now, by: cloud.user.uid, updatedAt: F.serverTimestamp() });
+      batch.update(F.doc(cloud.db, 'schools', reqRole.schoolId), { assistants: [...new Set([...(school.assistants || []), uid])] });
+      cloudWrite(batch.commit(), 'Confirming the assistant');
+      Object.assign(s, { status: 'active', approvedMs: now });
+      logHistory('system', `Confirmed ${s.name}${s.designation ? `, ${s.designation}` : ''} as assistant custodian${s.email ? ` (${s.email})` : ''}`);
+      renderAssistPanel();
+      showToast(`${s.name} is now an assistant custodian`, 'ph-users-three');
+    }
+    async function removeAssistant(uid) {
+      const s = staffList.find(x => x.id === uid);
+      if (!s || !isCustodianDevice() || isAssistant()) return;
+      const active = s.status === 'active';
+      if (!await appConfirm(active ? `${s.name} can no longer open the school on their phone. What they already did stays in Change History.` : `${s.name}${s.email ? ` (${s.email})` : ''} will not become an assistant.`,
+        { title: active ? 'Remove the assistant?' : 'Not your assistant?', ok: 'Remove', tone: 'danger', focusCancel: true })) return;
+      const F = cloud.sdk, now = Date.now();
+      const batch = F.writeBatch(cloud.db);
+      batch.update(F.doc(staffCol(), uid), { status: 'removed', removedMs: now, by: cloud.user.uid, updatedAt: F.serverTimestamp() });
+      const cur = (lastSchoolDoc && lastSchoolDoc.assistants) || [];
+      if (cur.includes(uid)) batch.update(F.doc(cloud.db, 'schools', reqRole.schoolId), { assistants: cur.filter(u => u !== uid) });
+      cloudWrite(batch.commit(), 'Removing the assistant');
+      s.status = 'removed';
+      logHistory('system', active ? `Removed ${s.name} as assistant custodian` : `Declined ${s.name}${s.email ? ` (${s.email})` : ''} as assistant custodian`);
+      renderAssistPanel();
+    }
+
+    // ---- The assistant's phone ---------------------------------------------------------------
+    function openAssistJoin(text) {
+      const parts = headLinkParts(text);
+      if (!parts) { showToast('That assistant link does not look right', 'ph-warning'); return; }
+      if (isCustodianDevice() && !isViewOnly() && reqRole.schoolId === parts.schoolId) {
+        appAlert(isAssistant() ? 'This phone is already an assistant custodian of this school.' : 'This is your school’s assistant link. Send it to your assistant: they open it on their own phone and sign in with their own Google account.', { title: 'Assistant link' });
+        return;
+      }
+      openHeadJoin(text, false, 'assist');
+    }
+    async function assistJoinGo(st) {
+      const typedName = reqVal('hjName'), desig = reqVal('hjDesig');
+      const btn = document.getElementById('hjBtn'), label = document.getElementById('hjBtnLabel');
+      btn.disabled = true;
+      label.textContent = 'Signing in…';
+      try {
+        await cloudStart();
+        const F = cloud.sdk;
+        if (reqRole) { stopRequestSync(); reqRole = null; saveReqRole(); }
+        const cur = cloud.auth.currentUser;
+        if (cur && (cur.isAnonymous || !(cur.providerData || []).some(pd => pd.providerId === 'google.com'))) await F.signOut(cloud.auth);
+        const user = await googleSignIn();
+        cloud.user = user;
+        if (headJoinState !== st) return;
+        const snap = await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId));
+        if (!snap.exists()) throw new Error('no-school');
+        const school = snap.data();
+        if ((school.custodians || []).includes(user.uid)) throw new Error('assist-is-custodian');
+        if (school.headUid && school.headUid === user.uid) throw new Error('assist-is-head');
+        st.schoolName = school.name || 'School';
+        document.getElementById('hjSchool').textContent = st.schoolName;
+        const ref = F.doc(cloud.db, 'schools', st.schoolId, 'staff', user.uid);
+        const mine = await F.getDoc(ref);
+        const name = (typedName || (mine.exists() && mine.data().name) || user.displayName || '').trim().slice(0, 80);
+        if (!name) { headJoinError('Type your name, then tap Continue again.'); document.getElementById('hjName').focus(); btn.disabled = false; label.textContent = 'Continue with Google'; return; }
+        const me = { name, designation: (desig || (mine.exists() && mine.data().designation) || '').slice(0, 80) };
+        const card = mine.exists() ? mine.data() : null;
+        if (!card || card.status === 'removed') {
+          const inv = await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId, 'staffInvites', st.invite));
+          if (!inv.exists() || inv.data().active !== true) throw new Error('old-assist-invite');
+          const data = { uid: user.uid, name: me.name, designation: me.designation, email: user.email || '', status: 'pending', invite: st.invite, joinedMs: Date.now() };
+          if (card) await F.updateDoc(ref, { ...data, updatedAt: F.serverTimestamp() });
+          else await F.setDoc(ref, { ...data, createdAt: F.serverTimestamp() });
+        }
+        if (headJoinState !== st) return;
+        reqRole = { role: 'incoming', kind: 'assist', schoolId: st.schoolId, schoolName: st.schoolName, email: user.email || '', me };
+        saveReqRole();
+        closeHeadJoin();
+        subscribeRequests();
+        renderRequestsEverywhere();
+        if (!(card && card.status === 'active')) showToast(`Hi ${me.name.split(' ')[0]}! The property custodian confirms you next.`, 'ph-hand-waving');
+      } catch (err) {
+        btn.disabled = false;
+        label.textContent = 'Continue with Google';
+        if (googleCancelled(err)) return;
+        headJoinError(cloudErrorText(err));
+      }
+    }
+    function becomeAssistant(card) {
+      const r = reqRole;
+      reqRole = { role: 'custodian', schoolId: r.schoolId, schoolName: r.schoolName, email: r.email || '',
+        assistant: { name: card.name || (r.me && r.me.name) || '', designation: card.designation || (r.me && r.me.designation) || '' } };
+      saveReqRole();
+      turnJoinCard = null;
+      turnJoinLoaded = false;
+      gateStep = 'welcome';
+      invMergeAnswer = false;   // this phone's own items never go into the school's inventory
+      subscribeRequests();
+      switchMainView('HOME');
+      updateSchoolHeader();
+      renderRequestsEverywhere();
+      showToast(`You are now an assistant custodian of ${r.schoolName}`, 'ph-users-three');
+    }
+    function assistEndedGateHTML() {
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3" data-assist-ended>
+          <div class="flex items-center gap-3">
+            <span class="w-11 h-11 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="ph-bold ph-user-minus text-2xl"></i></span>
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-slate-900">You are no longer an assistant custodian</p>
+              <p class="text-xs text-slate-500">${escapeHTML(reqRole.schoolName || 'The school')} · the property custodian removed your access</p>
+            </div>
+          </div>
+          <p class="text-xs text-slate-600">What you did stays in the school’s Change History. A copy of the inventory is still on this device: Reset app removes it.</p>
+          <button onclick="gateStartOver(); renderLoginGate()" class="w-full h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold">Start over</button>
+          <button onclick="openResetApp()" class="w-full h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">Reset app…</button>
+        </div>`;
+    }
+    // What the assistant's device can't do: hidden, and taps stopped (the rules refuse it anyway).
+    const ASSIST_BLOCK = new Set(['openTurnover', 'newTurnoverInvite', 'confirmTurnover', 'declineTurnover', 'renewAllSlips', 'openHeadPanel', 'newHeadInvite',
+      'confirmHead', 'removeHead', 'newInviteLink', 'approveMember', 'declineMember', 'removeMember', 'addBackMember', 'saveMemberEdit', 'openAssistPanel',
+      'deleteCustomItem', 'deleteItem', 'loadSampleData', 'clearSampleData', 'saveSchoolInfo', 'openSchoolModal', 'removeWrittenOff', 'applyImport', 'openImport',
+      'relieveLost', 'sendCountToHead', 'renewOldSlips', 'setRisApproval']);
+    document.addEventListener('click', e => {
+      if (!isAssistant()) return;
+      const el = e.target && e.target.closest && e.target.closest('[onclick]');
+      if (!el) return;
+      const names = String(el.getAttribute('onclick') || '').match(/[A-Za-z_$][\w$]*(?=\s*\()/g) || [];
+      if (!names.some(n => ASSIST_BLOCK.has(n))) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      showToast('Only the property custodian can do this', 'ph-lock-key');
+    }, true);
+    function renderAssistantMode() {
+      const on = isAssistant();
+      document.documentElement.classList.toggle('assistant', on);
+      if (on && !document.getElementById('assistStyle')) {
+        const st = document.createElement('style');
+        st.id = 'assistStyle';
+        st.textContent = [...ASSIST_BLOCK].map(n => `html.assistant [onclick*="${n}("]`).join(',') + '{display:none !important}';
+        document.head.appendChild(st);
+      }
+    }
+
+    // ---- The School Head's desk: supply requests (RIS), write-offs, count reports ---------------
+    // Besides the Purchase Requests, what the School Head signs waits in schools/{id}/approvals.
+    // Only the confirmed head approves or returns (with a note); the custodian can't decide:
+    //   { kind: 'ris' | 'writeoff' | 'count', refId, title, summary, lines: [{ desc, qty, unit, no, amount }],
+    //     total, data, status: 'pending' | 'approved' | 'returned' | 'cancelled', submittedMs, by, byUid,
+    //     dev, decision: { byUid, byName, byDesig, atMs, note }, appliedMs, createdAt, updatedAt }
+    // RIS: when the custodian turns it on (More → School Head). Write-offs (a lost unit's relief, a
+    // written-off unit) and the physical count report: always, once a head is confirmed. Without a
+    // head, everything works as before (signed on paper).
+    // The head's screen also shows schools/{id}/dashboard/summary: a short summary of the school's
+    // property (stock, who holds what, requests, condition) kept current by the custodian's devices.
+    var apList = [], apLoaded = false, apUnsub = null, dashUnsub = null, apApplyTimer = null;
+    var dashDoc = null, dashLoaded = false, dashSentHash = '', dashTimer = null;
+    const apCol = () => cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'approvals');
+    const dashRef = () => cloud.sdk.doc(cloud.db, 'schools', reqRole.schoolId, 'dashboard', 'summary');
+    const AP_KIND = { ris: 'Supply request (RIS)', writeoff: 'Write-off', count: 'Physical count report' };
+    const AP_ICON = { ris: 'ph-hand-arrow-up', writeoff: 'ph-seal-check', count: 'ph-clipboard-text' };
+    const apStamp = a => (a && a.decision ? `${a.decision.byName || 'The School Head'} · ${iarStamp(a.decision.atMs)}` : '');
+    function apLatest(kind, refId) {
+      return apList.filter(a => a.kind === kind && a.refId === refId && a.status !== 'cancelled')
+        .sort((a, b) => (b.submittedMs || 0) - (a.submittedMs || 0))[0] || null;
+    }
+    const apPending = () => apList.filter(a => a.status === 'pending');
+    function onApprovals(snap) {
+      apList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+      apLoaded = true;
+      if (isHeadDevice()) renderHeadView(); else renderRequestsEverywhere();
+      notifFromApprovals(snap.metadata);
+      if (!(snap.metadata && snap.metadata.fromCache)) applyApprovedWriteOffs();
+      if (yeIsOpen()) renderYearEnd();
+      if (unitsModalCode) { try { renderUnitsModal(); } catch (e) {} }
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+    }
+    function subscribeApprovals(F, onErr) {
+      reqUnsubs.push(listenSynced(apCol(), ['createdAt', 'updatedAt'], onApprovals, onErr));
+    }
+
+    // Sends something to the School Head (an earlier one for the same thing is cancelled).
+    function submitApproval(kind, refId, body) {
+      if (!isCustodianDevice() || isViewOnly() || !cloud.user || !currentHead()) return null;
+      const F = cloud.sdk;
+      const batch = F.writeBatch(cloud.db);
+      apList.filter(a => a.kind === kind && a.refId === refId && ['pending', 'returned'].includes(a.status)).forEach(a => {
+        batch.update(F.doc(apCol(), a.id), { status: 'cancelled', updatedAt: F.serverTimestamp() });
+        a.status = 'cancelled';
+      });
+      const ref = F.doc(apCol());
+      const doc = cleanJSON({ kind, refId: String(refId).slice(0, 120), ...body, status: 'pending', submittedMs: Date.now(), by: actorName(), byUid: cloud.user.uid, dev: auditDevice() });
+      batch.set(ref, { ...doc, createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp() });
+      cloudWrite(batch.commit(), 'Sending to the School Head');
+      apList = [...apList, { ...doc, id: ref.id }];
+      return ref.id;
+    }
+
+    function notifFromApprovals(meta) {
+      if (isCustodianDevice()) {
+        notifCheck('apDecisions', apList.filter(a => ['approved', 'returned'].includes(a.status)).map(a => ({
+          key: 'ap:' + a.id, sig: a.status,
+          make: () => {
+            const who = (a.decision && a.decision.byName) || 'The School Head';
+            const what = a.kind === 'ris' ? `${a.title}’s supply request` : a.kind === 'count' ? 'the physical count report' : `the write-off (${a.title})`;
+            logHistory('system', `${who} ${a.status === 'approved' ? 'approved' : 'returned'} ${what} in the app · ${iarStamp(a.decision && a.decision.atMs)}${a.decision && a.decision.note ? ` – ${a.decision.note}` : ''}`);
+            if (a.status === 'returned') return { title: `${who} returned ${what}`, body: (a.decision && a.decision.note) || 'Tap to see it', icon: 'ph-arrow-u-up-left', tone: 'rose', go: a.kind === 'ris' ? 'requests' : 'yearend' };
+            return a.kind === 'ris'
+              ? { title: `${who} approved ${what}`, body: 'You can release the items now (RIS)', icon: 'ph-seal-check', tone: 'emerald', go: 'requests' }
+              : a.kind === 'count'
+                ? { title: `${who} approved the physical count report`, body: 'The printed RPCPPE / RPCSP shows the approval', icon: 'ph-seal-check', tone: 'emerald', go: 'yearend' }
+                : { title: `${who} approved the write-off`, body: `${a.title} · taken off the inventory, kept under Written off`, icon: 'ph-seal-check', tone: 'emerald', go: 'yearend' };
+          }
+        })), fromCacheOf(meta));
+      } else if (isHeadDevice()) {
+        notifCheck('apWaiting', apPending().map(a => ({
+          key: 'hw:' + a.id, sig: String(a.submittedMs || 0),
+          make: () => ({ title: `${AP_KIND[a.kind] || 'Approval'} waits for you`, body: `${a.title}${a.total ? ` · ₱${peso2(a.total)}` : ''}`, icon: AP_ICON[a.kind] || 'ph-seal-check', tone: 'brand', go: 'head' })
+        })), fromCacheOf(meta));
+      }
+    }
+
+    // ---- RIS approval -----------------------------------------------------------------------
+    const risNeedsHead = () => !!(currentHead() && lastSchoolDoc && lastSchoolDoc.risApproval);
+    const risAp = r => (r ? apLatest('ris', r.id) : null);
+    function risBlocked(r) {
+      return !!r && r.kind !== 'took' && r.status === 'approved' && risNeedsHead() && (risAp(r) || {}).status !== 'approved';
+    }
+    function submitRisApproval(r) {
+      const reviewed = !!(r.review && r.review.lines);
+      const lines = reqLinesOf(r).map(l => ({ l, q: reviewed ? Number(l.approved) || 0 : Number(l.qty) || 0 })).filter(x => x.q > 0)
+        .map(({ l, q }) => ({ desc: String(l.desc || '').slice(0, 200), qty: q, unit: l.unit || '', amount: Math.round(q * (Number(l.unitCost) || 0) * 100) / 100 }));
+      return submitApproval('ris', r.id, {
+        title: String(r.name || 'A teacher').slice(0, 160), summary: [r.position, r.office, r.purpose && `Purpose: ${r.purpose}`].filter(Boolean).join(' · ').slice(0, 600),
+        lines, total: Math.round(lines.reduce((n, l) => n + l.amount, 0) * 100) / 100
+      });
+    }
+    function sendRisToHead(id) {
+      const r = reqList.find(x => x.id === id);
+      if (!r || !risNeedsHead()) return;
+      submitRisApproval(r);
+      renderRequestsEverywhere();
+      if (reviewState && reviewState.id === id) renderReview();
+      showToast(`Sent to ${currentHead().name} for approval`, 'ph-paper-plane-tilt');
+    }
+    // The RIS approval on a request card (spans: it sits inside the card's button).
+    function risHeadLineHTML(r) {
+      if (!r || r.kind === 'took' || !['approved', 'released'].includes(r.status)) return '';
+      const ap = risAp(r);
+      if (!ap && !(r.status === 'approved' && risNeedsHead())) return '';
+      const line = (tone, icon, html, st) => `<span class="block mt-1 text-[11px] font-bold ${tone} flex items-start gap-1" data-ris-head="${st}"><i class="ph-bold ${icon} mt-px"></i><span class="min-w-0">${html}</span></span>`;
+      if (!ap) return line('text-violet-700', 'ph-paper-plane-tilt', 'Send to the School Head before releasing', 'none');
+      if (ap.status === 'pending') return line('text-violet-700', 'ph-hourglass-medium', `Waiting for the School Head’s approval${ap.lines && ap.lines.length ? '' : ''}`, 'pending');
+      if (ap.status === 'returned') return line('text-rose-700', 'ph-arrow-u-up-left', `Returned by ${escapeHTML(apStamp(ap))}${ap.decision.note ? ` · “${escapeHTML(ap.decision.note)}”` : ''}`, 'returned');
+      return line('text-emerald-700', 'ph-seal-check', `Approved by ${escapeHTML(apStamp(ap))}`, 'approved');
+    }
+    function risSideBtnHTML(r) {
+      const ap = risAp(r);
+      return ap && ap.status === 'pending'
+        ? `<span class="shrink-0 w-20 px-2 border-l border-slate-100 text-[11px] font-bold text-violet-700 flex flex-col items-center justify-center gap-1 text-center" data-ris-wait><i class="ph-bold ph-hourglass-medium text-lg"></i>School Head</span>`
+        : `<button onclick="sendRisToHead('${r.id}')" data-ris-send class="shrink-0 w-20 px-2 border-l border-slate-100 text-[11px] font-bold text-violet-700 hover:bg-violet-50 flex flex-col items-center justify-center gap-1"><i class="ph-bold ph-paper-plane-tilt text-lg"></i>${ap && ap.status === 'returned' ? 'Send again' : 'To Head'}</button>`;
+    }
+    function risReviewBtnHTML(id) {
+      const r = reqList.find(x => x.id === id);
+      const ap = risAp(r);
+      return ap && ap.status === 'pending'
+        ? '<span class="h-12 px-3 rounded-xl bg-violet-50 text-violet-700 text-xs font-bold flex items-center gap-1.5" data-ris-wait><i class="ph-bold ph-hourglass-medium"></i> School Head</span>'
+        : `<button onclick="sendRisToHead('${id}')" data-ris-send class="h-12 px-3 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold flex items-center gap-1.5"><i class="ph-bold ph-paper-plane-tilt"></i> ${ap && ap.status === 'returned' ? 'Send again' : 'To School Head'}</button>`;
+    }
+    function risApprovalForRelease(requestId) {
+      const ap = requestId ? apLatest('ris', requestId) : null;
+      return ap && ap.status === 'approved' && ap.decision ? { byName: ap.decision.byName || '', byDesig: ap.decision.byDesig || '', atMs: ap.decision.atMs || 0 } : null;
+    }
+    function setRisApproval(on) {
+      if (!isCustodianDevice() || isAssistant() || !cloud.user) return;
+      const F = cloud.sdk;
+      cloudWrite(F.updateDoc(F.doc(cloud.db, 'schools', reqRole.schoolId), { risApproval: !!on }), 'Saving');
+      if (lastSchoolDoc) lastSchoolDoc.risApproval = !!on;
+      logHistory('system', on ? 'Supply requests (RIS) now need the School Head’s approval before release' : 'Supply requests (RIS) no longer wait for the School Head');
+      showToast(on ? 'Approved requests now wait for the School Head' : 'Requests no longer wait for the School Head', 'ph-seal-check');
+      renderRequestsEverywhere();
+    }
+
+    // ---- Write-offs: approved by the School Head ---------------------------------------------
+    const RELIEF_DAYS = 30;
+    const writeOffNeedsHead = () => !!currentHead();
+    const apUnits = a => ((a && a.data && a.data.units) || []);
+    function woLatestFor(unitId) {
+      return apList.filter(a => a.kind === 'writeoff' && a.status !== 'cancelled' && apUnits(a).some(u => u.id === unitId))
+        .sort((a, b) => (b.submittedMs || 0) - (a.submittedMs || 0))[0] || null;
+    }
+    function woPendingFor(unitId) { const a = woLatestFor(unitId); return a && a.status === 'pending' ? a : null; }
+    function requestWriteOff(cause, pairs, why) {
+      const holder = unitHolder(pairs[0].unit) || '';
+      const lines = pairs.map(({ item, unit }) => ({ desc: String(item.name).slice(0, 200), no: unit.no || '', qty: 1, unit: item.unit || '', amount: Number(unit.cost > 0 ? unit.cost : item.price) || 0 }));
+      const lost = pairs[0].unit.lostMs;
+      const id = submitApproval('writeoff', pairs.map(p => p.unit.id).join(','), {
+        title: (cause === 'lost' ? `Lost · ${lines.map(l => l.no || l.desc).join(', ')}${holder ? ` (${holder})` : ''}` : `Written off · ${lines.map(l => l.no || l.desc).join(', ')}`).slice(0, 160),
+        summary: [why, cause === 'lost' && pairs[0].unit.lostNote, cause === 'lost' && lost && `Reported lost ${formatShortDate(lost)}`, holder && cause !== 'lost' && `With ${holder}`].filter(Boolean).join(' · ').slice(0, 600),
+        lines, total: Math.round(lines.reduce((n, l) => n + l.amount, 0) * 100) / 100,
+        data: { cause, units: pairs.map(p => ({ code: p.item.code, id: p.unit.id })), ref: why, holder }
+      });
+      if (!id) return null;
+      logHistory('system', `Asked the School Head to approve: ${cause === 'lost' ? 'relief of' : 'writing off'} ${lines.map(l => l.no || l.desc).join(', ')}${why ? ` (${why})` : ''}`);
+      showToast(`Sent to ${currentHead().name} · written off once approved`, 'ph-paper-plane-tilt');
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+      if (unitsModalCode) { try { renderUnitsModal(); } catch (e) {} }
+      return id;
+    }
+    function woStatusHTML(unitId) {
+      const a = woLatestFor(unitId);
+      if (!a) return '';
+      if (a.status === 'pending') return '<p class="font-bold text-violet-700 flex items-center gap-1" data-wo="pending"><i class="ph-bold ph-hourglass-medium"></i> Waiting for the School Head’s approval to write it off</p>';
+      if (a.status === 'returned') return `<p class="font-bold text-rose-700" data-wo="returned">Returned by ${escapeHTML(apStamp(a))}${a.decision.note ? `: “${escapeHTML(a.decision.note)}”` : ''}</p>`;
+      return `<p class="font-bold text-emerald-700" data-wo="approved">Approved by ${escapeHTML(apStamp(a))}</p>`;
+    }
+    // On the device that sent it (or any custodian device after a day): the approved write-off.
+    function applyApprovedWriteOffs() {
+      const due = apList.filter(a => a.kind === 'writeoff' && a.status === 'approved' && !a.appliedMs
+        && (a.dev === auditDevice() || Date.now() - ((a.decision && a.decision.atMs) || 0) > 864e5));
+      if (!due.length || !isCustodianDevice() || isViewOnly() || !cloud.user) return;
+      if (!invReady || invApplying) { clearTimeout(apApplyTimer); apApplyTimer = setTimeout(applyApprovedWriteOffs, 2000); return; }
+      const F = cloud.sdk;
+      due.forEach(a => {
+        const by = `approved by ${apStamp(a)}`;
+        const ref = (a.data && a.data.ref) || '';
+        apUnits(a).forEach(u => {
+          if (a.data.cause === 'lost') applyRelief(u.id, [ref, by].filter(Boolean).join(' · '));
+          else applyRemoval(u.code, u.id, [ref, by].filter(Boolean).join(' · '));
+        });
+        a.appliedMs = Date.now();
+        cloudWrite(F.updateDoc(F.doc(apCol(), a.id), { appliedMs: a.appliedMs, updatedAt: F.serverTimestamp() }), 'Updating');
+      });
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+      if (unitsModalCode) { try { renderUnitsModal(); } catch (e) {} }
+      renderDashboard();
+    }
+    // A unit written off with the School Head's approval (no question asked: they approved it).
+    function applyRemoval(code, id, ref) {
+      const item = items.find(i => i.code === code);
+      const unit = findUnit(code, id);
+      if (!item || !unit) return false;
+      const state = userState[code] || (userState[code] = { qty: item.qty });
+      state.units = getUnits(code).filter(u => u.id !== id);
+      const rec = cleanJSON({ ...unit, cause: 'removed', ref: String(ref || '').slice(0, 200), from: unitHolder(unit) || '', at: Date.now() });
+      delete rec.toUid; delete rec.seen; delete rec.printed;
+      state.writtenOff = [...getWrittenOff(code), rec];
+      item.qty = Math.max(0, (item.qty || 0) - 1);
+      state.qty = item.qty;
+      if (state.units.length) syncUnitCondition(item);
+      else {
+        delete state.units;
+        item.repair = unit.cond === 'R' ? Math.max(0, item.repair - 1) : item.repair;
+        item.unserv = unit.cond === 'U' ? Math.max(0, item.unserv - 1) : item.unserv;
+        clampCondition(item);
+      }
+      saveStateWith({ summary: { kind: 'tag', code, text: `Written off unit ${unit.no}${ref ? ` – ${ref}` : ''} · quantity ${item.qty + 1} → ${item.qty}` } });
+      return true;
+    }
+
+    // ---- Lost property: reported by the custodian, 30 days to apply for relief ---------------
+    const reliefDueMs = u => (u.lostMs || 0) + RELIEF_DAYS * 864e5;
+    const reliefLeft = (u, now = Date.now()) => Math.ceil((reliefDueMs(u) - now) / 864e5);
+    function reliefText(u) {
+      const left = reliefLeft(u), due = formatShortDate(reliefDueMs(u));
+      return left > 0 ? `apply for relief within ${plural(left, 'day')} (by ${due})` : `the relief application was due ${due}`;
+    }
+    async function reportLostUnit(unitId) {
+      const found = findUnitWithItem(unitId);
+      if (!found || found.unit.lostMs || isViewOnly()) return;
+      const { item, unit } = found;
+      const holder = unitHolder(unit);
+      const note = await appPrompt(`${unit.no || item.name}${holder ? ` stays under ${holder}’s name` : ' stays on the inventory'} until it is found or relief is granted. COA: apply for relief within ${RELIEF_DAYS} days · the app reminds you.`, '',
+        { title: 'Report this unit lost?', label: 'What happened', placeholder: 'e.g. Missing from Room 4 since 3 Nov', ok: 'Report lost', tone: 'danger', icon: 'ph-question', maxLength: 300,
+          suggestions: ['Lost', 'Stolen', 'Destroyed (calamity)'] });
+      if (note === null) return;
+      const cur = findUnitWithItem(unitId);
+      if (!cur || cur.unit.lostMs) return;
+      cur.unit.lostMs = Date.now();
+      const why = String(note).trim().slice(0, 300);
+      if (why) cur.unit.lostNote = why;
+      saveStateWith({ summary: { kind: 'condition', code: item.code, text: `${unit.no || item.name} reported lost${holder ? ` (with ${holder})` : ''}${why ? `: ${why}` : ''} · apply for relief by ${formatShortDate(reliefDueMs(cur.unit))}` } });
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+      if (unitsModalCode) { try { renderUnitsModal(); } catch (e) {} }
+      showToast(`Reported lost · apply for relief within ${RELIEF_DAYS} days`, 'ph-question', {
+        label: 'Make the report', onClick: () => { openCoa('lost'); coaSetOpt('lostType', isPPE(item, unit) ? 'ppe' : 'sep'); }
+      });
+    }
+    function unitLostHTML(item, u) {
+      if (!u.lostMs) return `${woLatestFor(u.id) ? `<div class="mt-2 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-2 text-[11px] space-y-1">${woStatusHTML(u.id)}</div>` : ''}<button data-report-lost onclick="reportLostUnit('${u.id}')" class="mt-2 min-h-8 text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-question"></i> Report lost or stolen</button>`;
+      const waiting = woPendingFor(u.id);
+      return `
+        <div class="mt-2 rounded-lg bg-rose-50 border border-rose-200 px-2.5 py-2 text-[11px] text-rose-800 space-y-1" data-lost-unit>
+          <p class="font-bold flex items-center gap-1"><i class="ph-bold ph-question"></i> Lost · ${escapeHTML(reliefText(u))}</p>
+          ${u.lostNote ? `<p>${escapeHTML(u.lostNote)}</p>` : ''}
+          ${woStatusHTML(u.id)}
+          <div class="flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
+            ${waiting ? '' : `<button onclick="relieveLost('${u.id}')" class="min-h-8 font-bold text-rose-700 hover:text-rose-800 flex items-center gap-1"><i class="ph-bold ph-seal-check"></i> Relieve${writeOffNeedsHead() ? ' (School Head approves)' : ''}</button>`}
+            <button onclick="markFound('${u.id}')" class="min-h-8 font-bold text-slate-600 hover:text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Found</button>
+          </div>
+        </div>`;
+    }
+    function notifReliefDue(now) {
+      const st = loadNotifs();
+      const due = [];
+      allTaggedUnits().forEach(({ item, unit }) => {
+        if (!unit.lostMs || woPendingFor(unit.id)) return;
+        const left = reliefLeft(unit, now);
+        const stage = left <= 0 ? 2 : left <= 7 ? 1 : 0;
+        if (stage && (st.seen['rl:' + unit.id] || 0) < stage) due.push({ item, unit, left, stage });
+      });
+      if (!due.length) return;
+      due.forEach(x => { st.seen['rl:' + x.unit.id] = x.stage; });
+      saveNotifs();
+      const x = due[0], label = x.unit.no || x.item.name;
+      addNotif(due.length === 1
+        ? { title: x.left > 0 ? `Lost ${label}: ${plural(x.left, 'day')} left to apply for relief` : `Lost ${label}: the relief application is overdue`, body: 'Print the RLSDDP / RLSDDSP from Forms, then tap Relieve once relief is granted', icon: 'ph-question', tone: 'rose', go: 'yearend' }
+        : { title: `${due.length} lost units need a relief application`, body: due.slice(0, 4).map(d => `${d.unit.no || d.item.name} (${d.left > 0 ? plural(d.left, 'day') + ' left' : 'overdue'})`).join(', '), icon: 'ph-question', tone: 'rose', go: 'yearend' });
+    }
+
+    // ---- What the School Head sees on their screen --------------------------------------------
+    function dashSummary() {
+      const stock = items.filter(i => !relIsEquip(i));
+      const inInv = items.filter(i => i.qty > 0);
+      const low = stock.filter(i => i.qty > 0 && i.minQty > 0 && i.qty <= i.minQty).map(i => ({ n: i.name, q: i.qty, u: i.unit || '' }));
+      const out = stock.filter(i => i.qty <= 0 && userState[i.code] && userState[i.code].qty !== undefined).map(i => ({ n: i.name, u: i.unit || '' }));
+      const units = allTaggedUnits();
+      const holders = accountabilityPeople().filter(p => p.equipment.length)
+        .map(p => ({ n: p.name, p: p.position || '', u: p.equipment.length, v: Math.round(p.value * 100) / 100 }))
+        .sort((a, b) => b.v - a.v || a.n.localeCompare(b.n));
+      const lost = units.filter(x => x.unit.lostMs).map(x => ({ n: x.item.name, no: x.unit.no || '', w: unitHolder(x.unit) || '', d: localISODate(new Date(reliefDueMs(x.unit))) }));
+      const reqs = reqList.filter(r => !r.sending);
+      return {
+        v: 1, items: inInv.length, value: Math.round(inInv.reduce((n, i) => n + (Number(i.price) || 0) * (i.qty || 0), 0) * 100) / 100,
+        units: units.length, held: units.filter(x => x.unit.to || x.unit.toUid).length,
+        low: low.slice(0, 40), out: out.slice(0, 40), nLow: low.length, nOut: out.length,
+        holders: holders.slice(0, 80), nHolders: holders.length,
+        repair: units.filter(x => x.unit.cond === 'R').length, unserv: units.filter(x => x.unit.cond === 'U').length, lost: lost.slice(0, 40),
+        req: { pending: reqs.filter(r => (r.status || 'pending') === 'pending').length, approved: reqs.filter(r => r.status === 'approved').length, pr: reqs.filter(r => r.status === 'pr').length }
+      };
+    }
+    function scheduleDash(ms = 4000) {
+      if (!isCustodianDevice() || isViewOnly() || !cloud.user || !currentHead()) return;
+      clearTimeout(dashTimer);
+      dashTimer = setTimeout(publishDash, ms);
+    }
+    function publishDash() {
+      if (!isCustodianDevice() || isViewOnly() || !cloud.user || !currentHead() || !invReady || !releasesLoaded) return;
+      const body = dashSummary();
+      const h = invHash(body);
+      if (h === dashSentHash) return;
+      dashSentHash = h;
+      const F = cloud.sdk;
+      F.setDoc(dashRef(), cleanJSON({ ...body, updatedMs: Date.now(), by: actorName(), updatedAt: F.serverTimestamp() })).catch(err => { dashSentHash = ''; console.warn('dashboard', err); });
+    }
+
+    function headDashHTML() {
+      if (!dashLoaded) return '';
+      const d = dashDoc;
+      if (!d) return `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600" data-head-dash="none"><p class="font-bold text-slate-800 text-sm flex items-center gap-1.5"><i class="ph-bold ph-chart-bar"></i> School property</p><p class="mt-1">The summary shows up here the next time the property custodian’s phone is online.</p></div>`;
+      const tile = (v, label, tone = 'text-slate-900') => `<div class="rounded-xl bg-white border border-slate-200 px-2 py-2 text-center"><p class="text-lg font-extrabold font-mono ${tone}">${v}</p><p class="text-[11px] font-bold uppercase text-slate-500 leading-tight">${label}</p></div>`;
+      const list = (rows, empty) => (rows.length ? `<ul class="mt-1.5 text-xs text-slate-800 space-y-1">${rows.join('')}</ul>` : `<p class="mt-1.5 text-xs text-slate-500">${empty}</p>`);
+      const li = (a, b) => `<li class="flex justify-between gap-3"><span class="min-w-0">${a}</span><span class="shrink-0 font-mono text-slate-600">${b}</span></li>`;
+      const more = (n, shown) => (n > shown ? `<p class="text-[11px] text-slate-500 mt-1">+ ${n - shown} more</p>` : '');
+      const r = d.req || {};
+      return `
+        <div class="space-y-2.5" data-head-dash>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">School property</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            ${tile(d.items || 0, 'Items')}
+            ${tile(`₱${peso2(d.value || 0)}`, 'Value')}
+            ${tile((d.nLow || 0) + (d.nOut || 0), 'Low / out', (d.nLow || d.nOut) ? 'text-amber-600' : 'text-slate-900')}
+            ${tile(`${d.held || 0}/${d.units || 0}`, 'Units with staff')}
+          </div>
+          <details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-dash-stock>
+            <summary class="text-xs font-bold text-slate-800 cursor-pointer">Stock levels · ${d.nLow || 0} low, ${d.nOut || 0} out</summary>
+            ${list([...(d.out || []).map(x => li(escapeHTML(x.n), '<span class="text-rose-600 font-bold">Out</span>')), ...(d.low || []).map(x => li(escapeHTML(x.n), `${x.q} ${escapeHTML(x.u)}`))], 'All supplies above their alert levels.')}
+            ${more((d.nLow || 0) + (d.nOut || 0), (d.low || []).length + (d.out || []).length)}
+          </details>
+          <details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-dash-holders>
+            <summary class="text-xs font-bold text-slate-800 cursor-pointer">Who holds what · ${plural(d.nHolders || 0, 'person')}</summary>
+            ${list((d.holders || []).map(x => li(`${escapeHTML(x.n)}${x.p ? ` <span class="text-slate-500">· ${escapeHTML(x.p)}</span>` : ''}`, `${plural(x.u, 'unit')} · ₱${peso2(x.v)}`)), 'No equipment is issued to anyone yet.')}
+            ${more(d.nHolders || 0, (d.holders || []).length)}
+          </details>
+          <div class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5 text-xs text-slate-700 space-y-1" data-dash-status>
+            <p class="flex justify-between"><span>Supply requests waiting for the custodian</span><b class="font-mono">${r.pending || 0}</b></p>
+            <p class="flex justify-between"><span>Approved, not yet released</span><b class="font-mono">${r.approved || 0}</b></p>
+            <p class="flex justify-between"><span>On a Purchase Request</span><b class="font-mono">${r.pr || 0}</b></p>
+            <p class="flex justify-between"><span>Needs repair · unserviceable</span><b class="font-mono">${d.repair || 0} · ${d.unserv || 0}</b></p>
+            <p class="flex justify-between"><span>Reported lost</span><b class="font-mono ${(d.lost || []).length ? 'text-rose-600' : ''}">${(d.lost || []).length}</b></p>
+            ${(d.lost || []).length ? `<ul class="pt-1 text-[11px] text-rose-700 space-y-0.5">${d.lost.map(x => `<li>${escapeHTML(x.no || x.n)}${x.w ? ` · ${escapeHTML(x.w)}` : ''} · relief due ${escapeHTML(formatShortDate(x.d + 'T00:00:00'))}</li>`).join('')}</ul>` : ''}
+          </div>
+          <p class="text-[11px] text-slate-500 px-1">As of ${escapeHTML(iarStamp(d.updatedMs))}${d.by ? ` · ${escapeHTML(d.by)}` : ''}</p>
+        </div>`;
+    }
+    function headApCardHTML(a, wait) {
+      const lines = a.lines || [];
+      const rows = lines.map(l => `<li class="flex justify-between gap-3"><span class="min-w-0">${escapeHTML(l.desc)}${l.no ? ` <span class="font-mono text-slate-500">${escapeHTML(l.no)}</span>` : ''}</span><span class="shrink-0 font-mono text-slate-600">${l.qty} ${escapeHTML(l.unit || '')}${l.amount ? ` · ₱${peso2(l.amount)}` : ''}</span></li>`).join('');
+      const dec = a.decision || {};
+      const status = a.status === 'approved'
+        ? `<p class="text-[11px] font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-seal-check"></i> You approved it · ${escapeHTML(iarStamp(dec.atMs))}</p>`
+        : `<p class="text-[11px] font-bold text-rose-700 flex items-start gap-1"><i class="ph-bold ph-arrow-u-up-left mt-px"></i><span>You returned it · ${escapeHTML(iarStamp(dec.atMs))}${dec.note ? ` · “${escapeHTML(dec.note)}”` : ''}</span></p>`;
+      return `
+        <div class="rounded-2xl bg-white border ${wait ? 'border-violet-200' : 'border-slate-200'} shadow-sm p-3 space-y-2" data-head-ap="${a.id}" data-kind="${a.kind}">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="text-[11px] font-bold uppercase tracking-wider text-violet-700 flex items-center gap-1"><i class="ph-bold ${AP_ICON[a.kind] || 'ph-seal-check'}"></i> ${escapeHTML(AP_KIND[a.kind] || 'Approval')}</p>
+              <p class="text-sm font-extrabold text-slate-900">${escapeHTML(a.title || '')}</p>
+              <p class="text-[11px] text-slate-500">${escapeHTML(iarStamp(a.submittedMs))}${a.by ? ` · ${escapeHTML(a.by)}` : ''}</p>
+            </div>
+            ${a.total ? `<p class="shrink-0 text-base font-extrabold font-mono text-slate-900">₱${peso2(a.total)}</p>` : ''}
+          </div>
+          ${a.summary ? `<p class="text-xs text-slate-600">${escapeHTML(a.summary)}</p>` : ''}
+          ${lines.length ? `<details ${wait && lines.length <= 6 ? 'open' : ''} class="rounded-xl bg-slate-50 px-3 py-2"><summary class="text-xs font-bold text-slate-700 cursor-pointer">${a.kind === 'count' ? 'Summary' : 'Items'} (${lines.length})</summary><ul class="mt-1.5 text-xs text-slate-800 space-y-1">${rows}</ul></details>` : ''}
+          ${wait ? `
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="headDecideAp('${a.id}', false)" data-ap-return="${a.id}" class="h-11 rounded-xl bg-white border border-slate-300 hover:border-rose-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrow-u-up-left"></i> Return</button>
+              <button onclick="headDecideAp('${a.id}', true)" data-ap-approve="${a.id}" class="h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-seal-check"></i> Approve</button>
+            </div>` : status}
+        </div>`;
+    }
+    async function headDecideAp(id, ok) {
+      const ap = apList.find(a => a.id === id);
+      if (!isHeadDevice() || !ap || ap.status !== 'pending' || !headMe || headMe.status !== 'active') return;
+      const me = reqRole.me || {};
+      const name = me.name || headMe.name || '';
+      const kind = (AP_KIND[ap.kind] || 'Approval').toLowerCase();
+      const what = `${AP_KIND[ap.kind] || 'Approval'}: ${ap.title}${ap.total ? ` · ₱${peso2(ap.total)}` : ''}`;
+      let note = '';
+      if (ok) {
+        const extra = ap.kind === 'writeoff' ? '\n\nThe property leaves the inventory and stays on record under Written off.' : ap.kind === 'ris' ? '\n\nThe property custodian can then release the items.' : '';
+        if (!await appConfirm(`${what}${extra}\n\nYour name (${name}), the date and the time are recorded, and the property custodian is told.`,
+          { title: `Approve this ${kind}?`, ok: 'Approve', tone: 'good', icon: 'ph-seal-check' })) return;
+      } else {
+        const why = await appPrompt(`${what} goes back to the property custodian.`, '',
+          { title: `Return this ${kind}?`, ok: 'Return', tone: 'warn', label: 'What should be changed?', placeholder: 'e.g. Attach the police report first', multiline: true, maxLength: 300 });
+        if (why === null) return;
+        note = String(why).trim().slice(0, 300);
+        if (!note) { appAlert('Write what should be changed, so the property custodian knows.'); return; }
+      }
+      const cur = apList.find(a => a.id === id);
+      if (!cur || cur.status !== 'pending') return;
+      const F = cloud.sdk;
+      const decision = { byUid: cloud.user.uid, byName: name, byDesig: me.designation || headMe.designation || '', atMs: Date.now(), note };
+      cloudWrite(F.updateDoc(F.doc(apCol(), id), { status: ok ? 'approved' : 'returned', decision, updatedAt: F.serverTimestamp() }), ok ? 'Approving' : 'Returning');
+      cur.status = ok ? 'approved' : 'returned';
+      cur.decision = decision;
+      auditNow('system', `School Head ${ok ? 'approved' : 'returned'} ${kind}: ${cur.title}${note ? ` – “${note}”` : ''}`);
+      renderHeadView();
+      showToast(ok ? 'Approved · the property custodian is told' : 'Returned to the property custodian', ok ? 'ph-seal-check' : 'ph-arrow-u-up-left');
+    }
+
+    // ---- Year-end count & reminders (More → Year-end & reminders) ----------------------------
+    // The count seasons (year-end as at 31 December; the semestral count as at 30 June), the
+    // Inventory Committee, the count report the School Head approves, ICS / PAR older than 3 years
+    // (renewal), lost units waiting for relief, and the custodian's bond and designation order.
+    const ICS_RENEW_YEARS = 3;
+    const EXPIRY_WARN_DAYS = 30;
+    let yeRenewDone = null;
+    const yeIsOpen = () => { const m = document.getElementById('yearEndModal'); return !!(m && !m.classList.contains('hidden')); };
+    function icsRenewCutoff(now = Date.now()) { const d = new Date(now); d.setFullYear(d.getFullYear() - ICS_RENEW_YEARS); return localISODate(d); }
+    function icsRenewDue(now = Date.now()) {
+      const cut = icsRenewCutoff(now);
+      return allTaggedUnits().filter(x => (x.unit.to || x.unit.toUid) && !x.unit.lostMs && x.unit.icsDate && x.unit.icsDate <= cut);
+    }
+    // { label, asAt (ISO), start (ms) } of the count now, or the next one.
+    function countPeriod(now = Date.now()) {
+      const s = countSeason(now);
+      if (s) return { label: s.mid ? 'Semestral count' : 'Year-end count', asAt: s.mid ? `${s.year}-06-30` : `${s.year}-12-31`, start: s.start, open: true };
+      const d = new Date(now), y = d.getFullYear(), m = d.getMonth();
+      return m < 5 ? { label: 'Semestral count', asAt: `${y}-06-30`, start: new Date(y, 5, 1).getTime(), open: false }
+        : { label: 'Year-end count', asAt: `${y}-12-31`, start: new Date(y, 11, 1).getTime(), open: false };
+    }
+    const daysTo = iso => Math.round((new Date(iso + 'T00:00:00').getTime() - new Date(localISODate() + 'T00:00:00').getTime()) / 864e5);
+    function expiryText(iso) {
+      if (!iso) return '';
+      const n = daysTo(iso);
+      return n < 0 ? `expired ${formatShortDate(iso + 'T00:00:00')}` : n <= EXPIRY_WARN_DAYS ? `expires in ${plural(n, 'day')} (${formatShortDate(iso + 'T00:00:00')})` : `valid until ${formatShortDate(iso + 'T00:00:00')}`;
+    }
+    const committeeList = () => String(schoolInfo.committee || '').split(/\n+/).map(x => x.trim()).filter(Boolean);
+    function countReportData(period) {
+      const out = {};
+      ['ppe', 'sep'].forEach(t => {
+        const rows = countRows(t === 'ppe', period.start);
+        const card = rows.reduce((n, r) => n + r.card, 0);
+        const found = rows.filter(r => r.count !== null).reduce((n, r) => n + Math.min(r.count, r.card), 0);
+        const missing = rows.filter(r => r.count !== null && r.count < r.card).map(r => (r.unit ? r.unit.no : r.item.name));
+        out[t] = { card, found, missing };
+      });
+      return out;
+    }
+    function openYearEnd() {
+      closeMoreMenu();
+      document.getElementById('yearEndModal').classList.remove('hidden');
+      renderYearEnd();
+    }
+    function closeYearEnd() { yeRenewDone = null; document.getElementById('yearEndModal').classList.add('hidden'); }
+    function renderYearEnd() {
+      const body = document.getElementById('yeBody');
+      if (!body) return;
+      const ro = isAssistant() || isViewOnly();
+      const now = Date.now();
+      const period = countPeriod(now);
+      const units = allTaggedUnits().filter(x => !x.unit.lostMs);
+      const counted = units.filter(x => (x.unit.seen || 0) >= period.start).length;
+      const head = isCustodianDevice() && cloud.user ? currentHead() : null;
+      const countAp = apLatest('count', period.asAt);
+      const sec = (icon, title, inner, attr = '') => `
+        <section class="rounded-2xl border border-slate-200 p-3 space-y-2" ${attr}>
+          <h4 class="text-sm font-extrabold text-slate-900 flex items-center gap-1.5"><i class="ph-bold ${icon} text-brand-600"></i> ${title}</h4>
+          ${inner}
+        </section>`;
+      const field = (key, label, type = 'text', ph = '') => `
+        <label class="block min-w-0"><span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">${label}</span>
+          <input type="${type}" data-ye="${key}" value="${escapeHTML(schoolInfo[key] || '')}" placeholder="${escapeHTML(ph)}" ${ro ? 'disabled' : ''} onchange="saveYearEnd()" class="w-full h-10 px-2.5 rounded-lg border border-slate-200 text-sm font-medium focus:border-brand-500 outline-none disabled:bg-slate-50"></label>`;
+      const pct = units.length ? Math.round(counted / units.length * 100) : 0;
+      let countStatus = '';
+      if (head) {
+        if (!countAp) countStatus = `<button onclick="sendCountToHead()" data-ye-send-count ${ro ? 'disabled' : ''} class="w-full h-11 rounded-xl bg-violet-700 hover:bg-violet-800 disabled:bg-slate-300 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-paper-plane-tilt"></i> Send the count report to ${escapeHTML(head.name)}</button>`;
+        else if (countAp.status === 'pending') countStatus = `<p class="text-xs font-bold text-violet-700 flex items-center gap-1" data-ye-count="pending"><i class="ph-bold ph-hourglass-medium"></i> Waiting for ${escapeHTML(head.name)}’s approval · sent ${escapeHTML(iarStamp(countAp.submittedMs))}</p>
+          <button onclick="sendCountToHead()" ${ro ? 'disabled' : ''} class="text-[11px] font-bold text-slate-500 hover:text-violet-700">Send the latest counts instead</button>`;
+        else if (countAp.status === 'returned') countStatus = `<p class="text-xs font-bold text-rose-700" data-ye-count="returned">Returned by ${escapeHTML(apStamp(countAp))}${countAp.decision.note ? `: “${escapeHTML(countAp.decision.note)}”` : ''}</p>
+          <button onclick="sendCountToHead()" ${ro ? 'disabled' : ''} class="w-full h-10 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold">Send again</button>`;
+        else countStatus = `<p class="text-xs font-bold text-emerald-700 flex items-center gap-1" data-ye-count="approved"><i class="ph-bold ph-seal-check"></i> Approved by ${escapeHTML(apStamp(countAp))} · shown on the printed report</p>`;
+      } else countStatus = '<p class="text-[11px] text-slate-500">The School Head signs the printed report (Approved by). Once your School Head joins the app, you can send it to them here.</p>';
+      let html = sec('ph-clipboard-text', `${period.label} · as at ${escapeHTML(formatShortDate(period.asAt + 'T00:00:00'))}`, `
+          <p class="text-xs text-slate-600">${period.open ? `Counting now: <b data-ye-counted>${counted} of ${units.length}</b> tagged units checked since ${escapeHTML(formatShortDate(period.start))} (${pct}%).` : `Starts ${escapeHTML(formatShortDate(period.start))}. Scan the QR labels or use Count on Home; the report is built from the counts.`}</p>
+          ${period.open && units.length ? `<div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-brand-600" style="width:${pct}%"></div></div>` : ''}
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="closeYearEnd(); startCount()" class="h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-check-square"></i> Count now</button>
+            <button onclick="closeYearEnd(); openCoa(); coaGo('count')" class="h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> RPCPPE / RPCSP</button>
+          </div>
+          ${countStatus}`, 'data-ye-section="count"');
+      html += sec('ph-users-three', 'Inventory Committee', `
+          <p class="text-[11px] text-slate-500">Chair first, one name per line. They certify the count report (Certified Correct by).</p>
+          <textarea data-ye="committee" rows="3" ${ro ? 'disabled' : ''} onchange="saveYearEnd()" placeholder="Chair&#10;Member&#10;Member" class="w-full px-2.5 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:border-brand-500 outline-none disabled:bg-slate-50">${escapeHTML(schoolInfo.committee || '')}</textarea>`, 'data-ye-section="committee"');
+      const lost = allTaggedUnits().filter(x => x.unit.lostMs).sort((a, b) => a.unit.lostMs - b.unit.lostMs);
+      html += sec('ph-question', `Lost property · ${lost.length}`, lost.length ? `
+          <ul class="space-y-1.5">${lost.map(({ item, unit }) => `
+            <li class="rounded-lg ${reliefLeft(unit) <= 7 ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200'} border px-2.5 py-2 text-[11px]" data-ye-lost="${unit.id}">
+              <p class="font-bold text-slate-900">${escapeHTML(unit.no || item.name)} <span class="font-medium text-slate-500">· ${escapeHTML(item.name)}${unitHolder(unit) ? ` · ${escapeHTML(unitHolder(unit))}` : ''}</span></p>
+              <p class="${reliefLeft(unit) <= 7 ? 'text-rose-700 font-bold' : 'text-slate-600'}">${escapeHTML(reliefText(unit))}</p>
+              ${woStatusHTML(unit.id)}
+            </li>`).join('')}</ul>
+          <button onclick="closeYearEnd(); openCoa('lost')" class="w-full h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> RLSDDP / RLSDDSP</button>`
+        : '<p class="text-[11px] text-slate-500">Nothing reported lost. To report one, open the item’s units in Inventory, or the person on the Teachers page; you have 30 days to apply for relief.</p>', 'data-ye-section="lost"');
+      const old = icsRenewDue(now);
+      const people = new Set(old.map(x => personId(x.unit.toUid, x.unit.to)));
+      html += sec('ph-arrows-clockwise', `ICS / PAR older than ${ICS_RENEW_YEARS} years · ${old.length}`, old.length ? `
+          <p class="text-xs text-slate-600" data-ye-renew="${old.length}">${plural(old.length, 'unit')} with ${plural(people.size, 'person')} on slips dated ${escapeHTML(formatShortDate(icsRenewCutoff(now) + 'T00:00:00'))} or earlier. Renew them: new slips in the current custodian’s name, and each teacher taps Received.</p>
+          ${yeRenewDone ? `<button onclick="printYeRenewed()" class="w-full h-10 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print the ${plural(yeRenewDone.docs.length, 'new slip')}</button>` : ''}
+          <button onclick="renewOldSlips()" ${ro || !cloud.user ? 'disabled' : ''} class="w-full h-10 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white text-xs font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrows-clockwise"></i> Renew these slips</button>`
+        : `${yeRenewDone ? `<button onclick="printYeRenewed()" class="w-full h-10 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print the ${plural(yeRenewDone.docs.length, 'new slip')}</button>` : ''}<p class="text-[11px] text-slate-500">None. Slips are renewed every ${ICS_RENEW_YEARS} years, or when the property custodian changes.</p>`, 'data-ye-section="renew"');
+      const bond = schoolInfo.bondUntil, desig = schoolInfo.desigUntil;
+      const warn = iso => iso && daysTo(iso) <= EXPIRY_WARN_DAYS;
+      html += sec('ph-identification-card', 'Bond & designation order', `
+          <div class="grid grid-cols-2 gap-2">
+            ${field('bondNo', 'Fidelity bond No.', 'text', 'Optional')}
+            ${field('bondUntil', 'Bond valid until', 'date')}
+            ${field('desigNo', 'Designation order No.', 'text', 'e.g. SO No. 12, s. 2026')}
+            ${field('desigUntil', 'Designation valid until', 'date')}
+          </div>
+          ${bond ? `<p class="text-[11px] ${warn(bond) ? 'text-rose-700 font-bold' : 'text-slate-500'}" data-ye-bond>Bond ${escapeHTML(expiryText(bond))}</p>` : ''}
+          ${desig ? `<p class="text-[11px] ${warn(desig) ? 'text-rose-700 font-bold' : 'text-slate-500'}" data-ye-desig>Designation order ${escapeHTML(expiryText(desig))}</p>` : ''}
+          <p class="text-[11px] text-slate-500">You get a notification ${EXPIRY_WARN_DAYS} days before either one ends.</p>`, 'data-ye-section="bond"');
+      if (head) {
+        const mine = apList.filter(a => a.status === 'pending');
+        html += sec('ph-seal-check', `Waiting for the School Head · ${mine.length}`, mine.length
+          ? `<ul class="space-y-1 text-[11px] text-slate-700">${mine.map(a => `<li class="flex justify-between gap-2"><span class="min-w-0">${escapeHTML(AP_KIND[a.kind] || '')}: ${escapeHTML(a.title)}</span><span class="shrink-0 text-slate-500">${escapeHTML(formatShortDate(a.submittedMs))}</span></li>`).join('')}</ul>`
+          : `<p class="text-[11px] text-slate-500">Nothing waiting. Write-offs and the count report go to ${escapeHTML(head.name)} for approval.</p>`, 'data-ye-section="waiting"');
+      }
+      if (ro) html = `<p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[11px] text-slate-600">Only the property custodian changes these.</p>` + html;
+      body.innerHTML = html;
+    }
+    function saveYearEnd() {
+      if (isAssistant() || isViewOnly()) return;
+      const before = { ...schoolInfo };
+      document.querySelectorAll('#yeBody [data-ye]').forEach(el => { schoolInfo[el.dataset.ye] = el.value.trim().slice(0, el.tagName === 'TEXTAREA' ? 600 : 80); });
+      const labels = { committee: 'Inventory Committee', bondNo: 'bond No.', bondUntil: 'bond validity', desigNo: 'designation order', desigUntil: 'designation validity' };
+      const changed = Object.keys(labels).filter(k => (before[k] || '') !== (schoolInfo[k] || ''));
+      if (!changed.length) return;
+      if (changed.includes('committee')) { delete coaOpts.committee; coaSave(); }   // the count report uses this list
+      localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo)); scheduleInventorySync();
+      logHistory('system', `Year-end details updated: ${changed.map(k => labels[k]).join(', ')}`);
+      if (changed.some(k => k === 'bondUntil' || k === 'desigUntil')) { const st = loadNotifs(); delete st.seen['xb:' + (before.bondUntil || '')]; saveNotifs(); }
+      renderYearEnd();
+      showToast('Saved', 'ph-check-circle');
+    }
+    function sendCountToHead() {
+      if (isAssistant() || isViewOnly() || !currentHead()) return;
+      const period = countPeriod();
+      const data = countReportData(period);
+      const committee = committeeList();
+      const line = (t, label) => ({ desc: `${label}: ${data[t].found} of ${data[t].card} found${data[t].missing.length ? ` · not found: ${data[t].missing.slice(0, 12).join(', ')}${data[t].missing.length > 12 ? ` +${data[t].missing.length - 12} more` : ''}` : ''}`.slice(0, 200), qty: data[t].found, unit: `of ${data[t].card}` });
+      const lines = [line('ppe', 'PPE (RPCPPE)'), line('sep', 'Semi-expendable (RPCSP)')].filter((l, i) => data[i ? 'sep' : 'ppe'].card > 0);
+      const id = submitApproval('count', period.asAt, {
+        title: `${period.label} as at ${formatShortDate(period.asAt + 'T00:00:00')}`,
+        summary: [committee.length ? `Inventory Committee: ${committee.join(', ')}` : 'No Inventory Committee written yet', `Counted since ${formatShortDate(period.start)}`].join(' · ').slice(0, 600),
+        lines, total: 0, data: { asAt: period.asAt, committee, ppe: data.ppe.card, sep: data.sep.card }
+      });
+      if (!id) return;
+      logHistory('system', `Sent the ${period.label.toLowerCase()} report (as at ${period.asAt}) to the School Head for approval`);
+      showToast(`Sent to ${currentHead().name} for approval`, 'ph-paper-plane-tilt');
+      renderYearEnd();
+    }
+    // The count report's approval, for the printed RPCPPE / RPCSP ("Approved by").
+    function countApprovalNear(asAt) {   // the approved report closest to this "As at" (within 45 days)
+      const t = isoMs(asAt || localISODate());
+      return apList.filter(a => a.kind === 'count' && a.status === 'approved' && a.decision && Math.abs(isoMs(a.refId) - t) <= 45 * 864e5)
+        .sort((a, b) => (b.decision.atMs || 0) - (a.decision.atMs || 0))[0] || null;
+    }
+    function renewOldSlips() { return renewAllSlips(true); }
+    function printYeRenewed() {
+      if (!yeRenewDone || !yeRenewDone.docs.length) return;
+      printFormHTML(`<div class="pr-pages">${yeRenewDone.docs.map(r => (r.kind === 'PAR' ? parPrintHTML : icsPrintHTML)(r)).join('')}</div>`);
+    }
+    // Reminders: bond and designation order ending, ICS / PAR due for renewal (once a month).
+    function notifYearEnd(now) {
+      const st = loadNotifs();
+      [['bondUntil', 'xb', 'Your fidelity bond'], ['desigUntil', 'xd', 'Your designation order']].forEach(([k, key, label]) => {
+        const iso = schoolInfo[k];
+        if (!iso) return;
+        const n = daysTo(iso);
+        const stage = n < 0 ? 2 : n <= EXPIRY_WARN_DAYS ? 1 : 0;
+        const id = `${key}:${iso}`;
+        if (!stage || (st.seen[id] || 0) >= stage) return;
+        st.seen[id] = stage;
+        saveNotifs();
+        addNotif({ title: `${label} ${n < 0 ? 'has ended' : `ends in ${plural(n, 'day')}`}`, body: `${n < 0 ? 'Ended' : 'Valid until'} ${formatShortDate(iso + 'T00:00:00')} · ${k === 'bondUntil' ? 'renew it before it lapses (PD 1445, Sec. 101)' : 'ask the School Head for a new order'}`, icon: 'ph-identification-card', tone: n < 0 ? 'rose' : 'amber', go: 'yearend' });
+      });
+      const old = icsRenewDue(now);
+      const month = localISODate(new Date(now)).slice(0, 7);
+      if (old.length && st.seen['ir:' + month] === undefined) {
+        st.seen['ir:' + month] = old.length;
+        saveNotifs();
+        addNotif({ title: `${plural(old.length, 'unit')} on slips older than ${ICS_RENEW_YEARS} years`, body: 'Renew the ICS / PAR in More → Year-end & reminders', icon: 'ph-arrows-clockwise', tone: 'amber', go: 'yearend' });
+      }
     }
 
     // ---- School Head's phone: join, approve, return --------------------------------------
@@ -13847,6 +15047,23 @@
       }
       const parts = headLinkParts(text);
       if (!parts) { showToast('That School Head link does not look right', 'ph-warning'); return; }
+      if (kind === 'assist') {
+        if (reqRole && !await appConfirm(`This ${isCustodianDevice() ? 'device is signed in as the property custodian' : isHeadDevice() ? 'phone is signed in as the School Head' : isIncomingDevice() ? 'phone is waiting to join a school' : 'phone is set up as a teacher'} of ${reqRole.schoolName}. Use it as an assistant custodian instead?`,
+          { title: 'Join as assistant custodian?', ok: 'Continue', tone: 'warn' })) return;
+        headJoinState = { ...parts, schoolName: '', kind: 'assist' };
+        document.getElementById('hjName').value = '';
+        document.getElementById('hjDesig').value = '';
+        document.getElementById('hjDesig').placeholder = 'Designation, e.g. Teacher I / Supply officer';
+        document.getElementById('hjKicker').textContent = 'Assistant custodian · join your school';
+        document.getElementById('hjSchool').textContent = 'Sign in with your Google account';
+        document.getElementById('hjSub').textContent = 'You help the property custodian on this phone: releases, requests, deliveries, counts and encoding. The custodian confirms you first.';
+        document.getElementById('hjG').innerHTML = GOOGLE_G;
+        document.getElementById('hjBtnLabel').textContent = 'Continue with Google';
+        document.getElementById('hjNote').textContent = 'Use your own Google account, not the property custodian’s.';
+        document.getElementById('hjNote').classList.remove('hidden');
+        document.getElementById('headJoinModal').classList.remove('hidden');
+        return;
+      }
       if (kind === 'turnover') {
         if (reqRole && !await appConfirm(`This ${isCustodianDevice() ? 'device is signed in as the property custodian' : isHeadDevice() ? 'phone is signed in as the School Head' : isIncomingDevice() ? 'phone is waiting for another turnover' : 'phone is set up as a teacher'} of ${reqRole.schoolName}. Use it as the new property custodian instead?`,
           { title: 'Take over as property custodian?', ok: 'Continue', tone: 'warn' })) return;
@@ -13895,6 +15112,7 @@
       if (!st) return;
       document.getElementById('hjError').classList.add('hidden');
       if (st.kind === 'turnover') { await turnoverJoinGo(st); return; }
+      if (st.kind === 'assist') { await assistJoinGo(st); return; }
       const typedName = reqVal('hjName'), desig = reqVal('hjDesig');
       if (st.edit) {
         if (!typedName) { headJoinError('Type your name.'); return; }
@@ -14006,6 +15224,9 @@
     let headTurnUnsub = null;
     function startHeadPrs(F) {
       headTurnUnsub = listenTurnovers(F);
+      apUnsub = listenSynced(apCol(), ['createdAt', 'updatedAt'], onApprovals, err => { console.warn('head approvals', err); apUnsub = null; apList = []; renderHeadView(); });
+      dashUnsub = F.onSnapshot(dashRef(), snap => { dashDoc = snap.exists() ? snap.data() : null; dashLoaded = true; renderHeadView(); },
+        err => { console.warn('head dashboard', err); dashUnsub = null; dashLoaded = true; renderHeadView(); });
       headPrUnsub = listenSynced(prCol(), ['createdAt', 'updatedAt'], snap => {
         prList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
         prList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
@@ -14026,6 +15247,8 @@
       headPrUnsub = null;
       if (headTurnUnsub) { try { headTurnUnsub(); } catch (e) {} }
       headTurnUnsub = null;
+      [apUnsub, dashUnsub].forEach(off => { if (off) { try { off(); } catch (e) {} } });
+      apUnsub = null; dashUnsub = null; apList = []; dashDoc = null; dashLoaded = false;
       turnList = [];
       if (isHeadDevice()) prList = [];
     }
@@ -14059,19 +15282,29 @@
           .sort((a, b) => ((a.approval.submittedMs || a.createdMs || 0) - (b.approval.submittedMs || b.createdMs || 0)));
         const done = live.filter(p => ['approved', 'returned'].includes(prApprStatus(p)) && prApproval(p).via === 'app')
           .sort((a, b) => (prApproval(b).atMs || 0) - (prApproval(a).atMs || 0)).slice(0, 15);
+        const aps = apPending().sort((a, b) => (a.submittedMs || 0) - (b.submittedMs || 0));
+        const doneAp = apList.filter(a => ['approved', 'returned'].includes(a.status) && a.decision && a.decision.byUid === u.uid)
+          .sort((a, b) => (b.decision.atMs || 0) - (a.decision.atMs || 0)).slice(0, 10);
+        const nWait = waiting.length + aps.length;
         html = `
           <div class="space-y-2.5">
-            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Waiting for you · ${waiting.length}</h2>
-            ${waiting.length ? waiting.map(p => headPrCardHTML(p, true)).join('') : `
+            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Waiting for you · ${nWait}</h2>
+            ${nWait ? waiting.map(p => headPrCardHTML(p, true)).join('') + aps.map(a => headApCardHTML(a, true)).join('') : `
               <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
                 <i class="ph-bold ph-seal-check text-3xl text-slate-300"></i>
                 <p class="mt-1 font-bold text-slate-700 text-sm">Nothing to approve</p>
-                <p>New Purchase Requests from the property custodian show up here.</p>
+                <p>Purchase Requests, write-offs and count reports from the property custodian show up here.</p>
               </div>`}
           </div>
-          ${done.length ? `<div class="space-y-2.5"><h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Recently decided</h2>${done.map(p => headPrCardHTML(p, false)).join('')}</div>` : ''}`;
+          ${headDashHTML()}
+          ${done.length || doneAp.length ? `<div class="space-y-2.5"><h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Recently decided</h2>${done.map(p => headPrCardHTML(p, false)).join('')}${doneAp.map(a => headApCardHTML(a, false)).join('')}</div>` : ''}`;
       }
-      if (headMe && headMe.status === 'active') html += headTurnoverHTML();
+      if (headMe && headMe.status === 'active') html += headTurnoverHTML() + `
+        <button onclick="openSchoolHistory()" data-head-history class="w-full rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-center gap-3 text-left hover:border-brand-300">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="ph-bold ph-lock-key text-xl"></i></span>
+          <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">School history</span><span class="block text-[11px] text-slate-500">Every change on the custodian’s devices · can’t be edited or deleted</span></span>
+          <i class="ph-bold ph-caret-right text-slate-400"></i>
+        </button>`;
       const body = document.getElementById('hdBody');
       if (body.innerHTML !== html) { body.innerHTML = html; drawTurnQr(); }
     }
@@ -14132,6 +15365,7 @@
       };
       cloudWrite(F.updateDoc(F.doc(prCol(), id), { approval, updatedAt: F.serverTimestamp() }), ok ? 'Approving' : 'Returning');
       cur.approval = approval;   // shown now; the cloud snapshot follows
+      auditNow('system', ok ? `School Head approved Purchase Request ${pr.prNo} (₱${peso2(pr.total)})` : `School Head returned Purchase Request ${pr.prNo}: “${note}”`);
       renderHeadView();
       showToast(ok ? `PR No. ${pr.prNo} approved` : `PR No. ${pr.prNo} returned to the property custodian`, ok ? 'ph-seal-check' : 'ph-arrow-u-up-left');
     }
@@ -14423,7 +15657,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function relBase(t, extra) {
       return {
         teacherUid: t.uid || null, teacherName: t.name, position: t.position || '', office: t.office || '',
-        by: schoolInfo.custodian || reqRole.email || '', byUid: cloud.user ? cloud.user.uid : null, createdMs: Date.now(),
+        by: actorName(), byUid: cloud.user ? cloud.user.uid : null, createdMs: Date.now(),
         custName: schoolInfo.custodian || '', custDesig: schoolInfo.position || '',   // stays on the slip after a turnover
         ...extra
       };
@@ -15103,6 +16337,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function openReleaseFromRequest(id) {
       const r = reqList.find(x => x.id === id);
       if (!r) return;
+      if (risBlocked(r)) { showToast('This request waits for the School Head’s approval first', 'ph-hourglass-medium'); return; }
       const missing = [];
       const lines = [];
       reqLinesOf(r).forEach(l => {
@@ -15319,7 +16554,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         syncUnitCondition(item);
       });
       const docs = [];
-      const base = relBase(t, { date: d.date, purpose: d.purpose, requestId: d.requestId || null, source: 'release' });
+      const headOk = risApprovalForRelease(d.requestId);
+      const base = relBase(t, { date: d.date, purpose: d.purpose, requestId: d.requestId || null, source: 'release', ...(headOk ? { headOk } : {}) });
       if (ris.length) docs.push({ ...base, kind: 'RIS', no: risNo, lines: ris, total: relTotal(ris) });
       ['ICS', 'SPLV', 'SPHV'].forEach(k => { const ls = icsOut[k]; if (ls.length) docs.push({ ...base, kind: 'ICS', no: icsNos[k], lines: ls, total: relTotal(ls) }); });
       if (par.length) docs.push({ ...base, kind: 'PAR', no: parNo, lines: par, total: relTotal(par) });
@@ -15384,9 +16620,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <colgroup><col style="width:16%"><col style="width:21%"><col style="width:21%"><col style="width:21%"><col style="width:21%"></colgroup>
             <tr><td></td><td><i>Requested by:</i></td><td><i>Approved by:</i></td><td><i>Issued by:</i></td><td><i>Received by:</i></td></tr>
             <tr><td>Signature:</td><td class="pr-sig"></td><td class="pr-sig"></td><td class="pr-sig"></td><td class="pr-sig"></td></tr>
-            <tr><td>Printed Name:</td><td class="c"><b>${e(r.teacherName).toUpperCase()}</b></td><td class="c"><b>${e(d.apprName || schoolInfo.principal).toUpperCase()}</b></td><td class="c"><b>${e(slipCustodian(r).name).toUpperCase()}</b></td><td class="c"><b>${e(r.teacherName).toUpperCase()}</b></td></tr>
-            <tr><td>Designation:</td><td class="c">${e(r.position)}</td><td class="c">${e(d.apprDesig || 'School Head')}</td><td class="c">${e(slipCustodian(r).desig || 'Property Custodian')}</td><td class="c">${e(r.position)}</td></tr>
-            <tr><td>Date:</td><td class="c">${e(longDate(r.date))}</td><td></td><td class="c">${e(longDate(r.date))}</td><td></td></tr>
+            <tr><td>Printed Name:</td><td class="c"><b>${e(r.teacherName).toUpperCase()}</b></td><td class="c"><b>${e(r.headOk ? r.headOk.byName : (d.apprName || schoolInfo.principal)).toUpperCase()}</b></td><td class="c"><b>${e(slipCustodian(r).name).toUpperCase()}</b></td><td class="c"><b>${e(r.teacherName).toUpperCase()}</b></td></tr>
+            <tr><td>Designation:</td><td class="c">${e(r.position)}</td><td class="c">${e((r.headOk && r.headOk.byDesig) || d.apprDesig || 'School Head')}</td><td class="c">${e(slipCustodian(r).desig || 'Property Custodian')}</td><td class="c">${e(r.position)}</td></tr>
+            <tr><td>Date:</td><td class="c">${e(longDate(r.date))}</td><td class="c">${r.headOk ? `${e(longDate(localISODate(new Date(r.headOk.atMs))))}<br><span style="font-size:7.5pt">Approved in the app</span>` : ''}</td><td class="c">${e(longDate(r.date))}</td><td></td></tr>
           </table>
         </div>`;
     }
@@ -16142,15 +17378,28 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
     // Relief granted (e.g. after the RLSDDP / RLSDDSP): off the teacher's list and dropped from
     // the inventory (quantity − 1), with the reference kept in the history and on the record.
+    // With a confirmed School Head, the write-off waits for their approval (requestWriteOff).
     async function relieveLost(unitId) {
       const found = findUnitWithItem(unitId);
-      if (!found || !found.unit.lostMs) return;
+      if (!found || !found.unit.lostMs || isViewOnly()) return;
       const { item, unit } = found;
       const holder = unitHolder(unit) || 'the teacher';
-      const ref = await appPrompt(`${unit.no || item.name} leaves ${holder}’s list and is written off: no longer counted (quantity ${item.qty} → ${Math.max(0, item.qty - 1)}), but kept under Written off on the item with this reference.`, '',
-        { title: `Relieve ${holder} of accountability?`, label: 'Reference (optional)', placeholder: 'e.g. RLSDDSP No. 2026-001 · relief granted 12 Nov 2026', ok: 'Relieve', tone: 'danger', icon: 'ph-seal-check' });
+      const viaHead = writeOffNeedsHead();
+      if (viaHead && woPendingFor(unitId)) { showToast('Already waiting for the School Head', 'ph-hourglass-medium'); return; }
+      const ref = await appPrompt(viaHead
+        ? `${unit.no || item.name} goes to ${currentHead().name} for approval. Once approved, it leaves ${holder}’s list and is written off (quantity ${item.qty} → ${Math.max(0, item.qty - 1)}), kept under Written off on the item with this reference.`
+        : `${unit.no || item.name} leaves ${holder}’s list and is written off: no longer counted (quantity ${item.qty} → ${Math.max(0, item.qty - 1)}), but kept under Written off on the item with this reference.`, '',
+        { title: `Relieve ${holder} of accountability?`, label: 'Reference (optional)', placeholder: 'e.g. RLSDDSP No. 2026-001 · relief granted 12 Nov 2026', ok: viaHead ? 'Send to the School Head' : 'Relieve', tone: 'danger', icon: 'ph-seal-check' });
       if (ref === null) return;
       const why = ref.trim().slice(0, 200);
+      if (viaHead) { requestWriteOff('lost', [found], why); return; }
+      applyRelief(unitId, why);
+    }
+    function applyRelief(unitId, why) {
+      const found = findUnitWithItem(unitId);
+      if (!found || !found.unit.lostMs) return false;
+      const { item, unit } = found;
+      const holder = unitHolder(unit) || 'the teacher';
       if (unit.to || unit.toUid) takeBackPairs([found], `Relieved of accountability (lost)${why ? ` · ${why}` : ''}`, { no: '', source: 'lost', ref: why });
       const state = userState[item.code];
       state.units = getUnits(item.code).filter(u => u.id !== unitId);
@@ -16166,6 +17415,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (activeMainView === 'TEACHERS') renderTeachersView();
       if (unitsModalCode === item.code) renderUnitsModal();
       showToast(`${holder.split(' ')[0]} relieved · ${unit.no || item.name} written off`, 'ph-seal-check');
+      return true;
     }
 
     async function declineTeacherReport(id) {
@@ -16519,10 +17769,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const okChip = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-bold"><i class="ph-bold ph-check-circle"></i> Confirmed</span>';
       const countedChip = u => ((u.seen || 0) >= since.ms ? `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-brand-50 text-brand-700 border-brand-100 text-[11px] font-bold" title="Counted ${since.year}"><i class="ph-bold ph-seal-check"></i> Counted</span>` : '');
       const unitActions = (item, unit) => unit.lostMs ? `
-        <button data-relieve onclick="relieveLost('${unit.id}')" class="text-[11px] font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 ml-auto"><i class="ph-bold ph-seal-check"></i> Relieve</button>
+        ${woPendingFor(unit.id) ? '<span data-wo-pending class="text-[11px] font-bold text-violet-700 flex items-center gap-1 ml-auto"><i class="ph-bold ph-hourglass-medium"></i> School Head</span>'
+          : `<button data-relieve onclick="relieveLost('${unit.id}')" class="text-[11px] font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 ml-auto"><i class="ph-bold ph-seal-check"></i> Relieve</button>`}
         <button data-found onclick="markFound('${unit.id}')" class="text-[11px] font-bold text-slate-500 hover:text-emerald-700 flex items-center gap-1 ml-auto"><i class="ph-bold ph-check-circle"></i> Found</button>` : `
         ${unit.cond === 'R' ? `<button data-repaired onclick="markRepaired('${unit.id}')" class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 ml-auto"><i class="ph-bold ph-wrench"></i> Repaired · back in use</button>` : ''}
         ${connected ? `<button onclick="openTransfer({ fromKey: '${k}', unitIds: ['${unit.id}'] })" class="text-[11px] font-bold text-slate-500 hover:text-brand-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>` : ''}
+        <button data-report-lost onclick="reportLostUnit('${unit.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-question"></i> Lost</button>
         <button onclick="takeBackUnit('${item.code}', '${unit.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrow-u-down-left"></i> Take back</button>`;
       const docLine = unit => [unit.ics && unitDocLabel(unit), unit.icsDate && formatShortDate(unit.icsDate + 'T00:00:00')].filter(Boolean).join(' · ');
 
@@ -17639,7 +18891,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const defaults = {
         countType: 'ppe', unservType: 'ppe', asAt: localISODate(), since: coaYearStart(), fund: d.fund || '',
         officer: schoolInfo.custodian || '', desig: schoolInfo.position || 'Property Custodian', assumed: '',
-        committee: '', head: headName(), coaRep: '', station: schoolInfo.school || '', inspector: '', witness: '', propType: '',
+        committee: schoolInfo.committee || '', head: headName(), coaRep: '', station: schoolInfo.school || '', inspector: '', witness: '', propType: '',
         cardType: 'sep', cardFrom: coaYearStart(), stockFrom: coaYearStart(), regFrom: coaYearStart(), regTo: localISODate(), regProp: '', sheetNo: '1',
         issuedType: 'sep', issFrom: monthStart(), issTo: localISODate(), serial: `${localISODate().slice(0, 7)}-001`, rcc: d.rcc || '', acctStaff: '',
         lostType: 'sep', lostDate: localISODate(), lostNature: ''
@@ -17919,7 +19171,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           </table>
           ${coaSignBlock([
             { label: 'Certified Correct by:', names: committee.length ? committee : [''], under: 'Signature over Printed Name of Inventory Committee Chair and Members' },
-            { label: 'Approved by:', names: [coaVal('head')], under: 'Signature over Printed Name of Head of Agency/Entity or Authorized Representative' },
+            (ca => ({ label: 'Approved by:', names: [ca ? ca.decision.byName : coaVal('head')], note: ca ? `Approved in the app · ${escapeHTML(iarStamp(ca.decision.atMs))}` : '', under: 'Signature over Printed Name of Head of Agency/Entity or Authorized Representative' }))(countApprovalNear(coaVal('asAt'))),
             { label: 'Verified by:', names: [coaVal('coaRep')], under: 'Signature over Printed Name of COA Representative' }
           ])}
         </div>`);
@@ -19005,6 +20257,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (notifPrefs.reminders !== false) notifReceiptReminders(now);
       if (notifPrefs.waiting !== false && isCustodianDevice()) { notifWaitingRequests(now); notifLongRepairs(now); }
       if (notifPrefs.count !== false) notifCountSeason(now);
+      if (notifPrefs.reminders !== false && isCustodianDevice() && !isAssistant()) { notifReliefDue(now); notifYearEnd(now); }
     }
 
     // ---- Supply requests waiting for review more than 2 days (custodian) ----
@@ -19070,6 +20323,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     // asked to check the items they hold.
     function countSeason(now) {
       const d = new Date(now);
+      if (d.getMonth() === 5 || d.getMonth() === 6) {   // semestral count, as at 30 June (June – July)
+        const start = new Date(d.getFullYear(), 5, 1).getTime();
+        return { year: d.getFullYear(), start, week: Math.floor((now - start) / (7 * 864e5)), due: new Date(d.getFullYear(), 6, 31).getTime(), mid: true };
+      }
       const y = d.getMonth() === 11 ? d.getFullYear() : d.getMonth() === 0 ? d.getFullYear() - 1 : 0;
       if (!y) return null;
       const start = new Date(y, 11, 1).getTime();
@@ -19079,11 +20336,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const season = countSeason(now);
       if (!season) return;
       const st = loadNotifs();
-      const key = 'yc:' + season.year;
+      const key = (season.mid ? 'ym:' : 'yc:') + season.year;
+      const label = season.mid ? 'Semestral count' : 'Year-end count';
       const last = st.seen[key];
       if (last !== undefined && last >= season.week) return;
       const daysLeft = Math.ceil((season.due - now) / 864e5);
-      const dueText = daysLeft <= 14 ? `report due 31 Jan (${plural(Math.max(0, daysLeft), 'day')} left)` : 'report due 31 Jan';
+      const dueText = season.mid ? 'as at 30 June' : daysLeft <= 14 ? `report due 31 Jan (${plural(Math.max(0, daysLeft), 'day')} left)` : 'report due 31 Jan';
       if (isCustodianDevice()) {
         const units = allTaggedUnits();
         const counted = units.filter(x => x.unit.seen && x.unit.seen >= season.start).length;
@@ -19092,9 +20350,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         saveNotifs();
         addNotif(units.length
           ? counted >= units.length
-            ? { title: `Year-end count done: all ${units.length} units checked`, body: 'Print the RPCPPE and RPCSP from Forms · due 31 Jan', icon: 'ph-seal-check', tone: 'emerald', go: 'count' }
-            : { title: `Year-end count: ${counted} of ${units.length} units counted`, body: `${dueText} · scan the QR labels or use Count on Home`, icon: 'ph-clipboard-text', tone: 'brand', go: 'count' }
-          : { title: 'Year-end physical count', body: `Count the property as at 31 December · ${dueText}`, icon: 'ph-clipboard-text', tone: 'brand', go: 'count' });
+            ? { title: `${label} done: all ${units.length} units checked`, body: season.mid ? 'Print the RPCSP from Forms, and send the report to the School Head in More → Year-end & reminders' : 'Print the RPCPPE and RPCSP from Forms · due 31 Jan', icon: 'ph-seal-check', tone: 'emerald', go: 'count' }
+            : { title: `${label}: ${counted} of ${units.length} units counted`, body: `${dueText} · scan the QR labels or use Count on Home`, icon: 'ph-clipboard-text', tone: 'brand', go: 'count' }
+          : { title: season.mid ? 'Semestral physical count' : 'Year-end physical count', body: `Count the property as at ${season.mid ? '30 June' : '31 December'} · ${dueText}`, icon: 'ph-clipboard-text', tone: 'brand', go: 'count' });
       } else if (isTeacherDevice()) {
         if (!myRelLoaded) return;
         const held = teacherHoldings(myReleases).equipment.length;
@@ -19102,7 +20360,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         st.seen[key] = season.week;
         saveNotifs();
         if (tRepLoaded && myLastCount()) return; // already counted on the phone
-        addNotif({ title: `Year-end count: check the ${plural(held, 'item')} you hold`, body: 'Tap All present under My Items, or mark what is missing or broken', icon: 'ph-clipboard-text', tone: 'teal', go: 'teacher-items' });
+        addNotif({ title: `${label}: check the ${plural(held, 'item')} you hold`, body: 'Tap All present under My Items, or mark what is missing or broken', icon: 'ph-clipboard-text', tone: 'teal', go: 'teacher-items' });
       }
     }
 
@@ -19365,7 +20623,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       goToNotifTarget(n);
     }
     function goToNotifTarget(n) {
-      if (n.go === 'turnover') {              // custodian: the Turnover panel; School Head: their screen
+      if (n.go === 'assist') {
+        openAssistPanel();
+      } else if (n.go === 'yearend') {
+        openYearEnd();
+      } else if (n.go === 'turnover') {              // custodian: the Turnover panel; School Head: their screen
         if (isHeadDevice()) switchMainView('HEAD');
         else openTurnover();
       } else if (n.go === 'head') {                  // School Head: their approvals; custodian: the School Head panel
@@ -19540,6 +20802,32 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-year-end', date: 'Nov 2026', title: 'Year-end & reminders', points: [
+        'New in More \u2192 Year-end & reminders: the physical count in one place (year-end as at 31 December, and the semestral count as at 30 June), with how many units are counted so far.',
+        'Write the Inventory Committee once: it fills the Certified Correct by on the RPCPPE and RPCSP. Send the count report to the School Head; their approval shows on the printed report.',
+        'Slips older than 3 years are listed with a Renew button. Add your fidelity bond and designation order dates and you get a reminder 30 days before either one ends.'
+      ] },
+      { id: '2026-11-lost-property', date: 'Nov 2026', title: 'Lost property and write-offs', points: [
+        'Report a unit lost or stolen yourself: tap Report lost on the unit, or Lost on the Teachers page.',
+        'You have 30 days to apply for relief (COA). The app shows the days left and reminds you 7 days before, and again when it is overdue.',
+        'With a School Head in the app, Relieve and Remove unit (written off) go to them first. Once they approve, the unit leaves the inventory and stays under Written off, with their approval noted.'
+      ] },
+      { id: '2026-11-head-desk', date: 'Nov 2026', title: 'More for the School Head', points: [
+        'The School Head\u2019s screen now shows the school\u2019s property: stock levels, who holds what, requests waiting, and items needing repair or reported lost.',
+        'New switch in More \u2192 School Head: supply requests (RIS) need the School Head\u2019s approval. When it is on, an approved request waits for them before you release it, and the RIS shows their approval.',
+        'Write-offs and the physical count report also go to the School Head. They approve or return each one with a note, and you are told right away.'
+      ] },
+      { id: '2026-11-assistant-custodian', date: 'Nov 2026', title: 'Assistant custodians', points: [
+        'New in More \u2192 Assistant custodians: send a helper (for example, the teacher in charge of the supply room) an assistant link or QR code. They sign in with their own Google account, and you tap Confirm.',
+        'An assistant works on their own phone: releases, teachers\u2019 requests, deliveries, counts and encoding. Their name is recorded with everything they do.',
+        'They can\u2019t remove items, change the school info, invite or remove teachers or the School Head, hand over the school, or reset it. You stay the accountable officer, and the forms keep your name.',
+        'Remove as assistant ends their access right away.'
+      ] },
+      { id: '2026-11-school-history', date: 'Nov 2026', title: 'School history that can\u2019t be changed', points: [
+        'Every change made on the property custodian\u2019s devices is now also saved to the school account, with the account, the device and the server\u2019s date and time.',
+        'Nobody can edit or delete these entries, not even the custodian. They stay even after Reset app, which helps during a COA audit or a turnover.',
+        'See it in Change History \u2192 School (cloud). The School Head sees it on their phone under School history. Export CSV works there too.'
+      ] },
       { id: '2026-11-custodian-turnover', date: 'Nov 2026', title: 'Hand over to a new property custodian', points: [
         'New in More \u2192 Custodian turnover: send the new property custodian a Turnover link or QR code. They open it on their own phone and sign in with their own Google account.',
         'You, or the School Head, tap Confirm. The School Head can do it from their phone when the outgoing custodian has already left. The new custodian then gets the school inventory, requests and records, in their name.',
@@ -19997,7 +21285,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function loginGateNeeded() {
       if (!cloudConfigured()) return false;
       if (!reqRole) return !exploring();
-      if (isIncomingDevice() || viewOnlyEnded()) return true;
+      if (isIncomingDevice() || viewOnlyEnded() || assistantRemoved()) return true;
       return (isCustodianDevice() || isHeadDevice()) && cloud.state === 'ready' && !cloud.user;
     }
 
@@ -20086,6 +21374,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (isHeadDevice() && gateStep === 'welcome') gateStep = 'head';
       if (isIncomingDevice()) gateStep = 'incoming:' + incomingState() + (cloud.error ? ':err' : '');
       else if (viewOnlyEnded()) gateStep = 'view-ended';
+      else if (assistantRemoved()) gateStep = 'assist-ended';
       const offline = document.getElementById('gateOffline');
       offline.classList.toggle('hidden', navigator.onLine);
       offline.classList.toggle('flex', !navigator.onLine);
@@ -20121,6 +21410,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       }
       if (gateStep.startsWith('incoming:') && isIncomingDevice()) return incomingGateHTML();
       if (gateStep === 'view-ended' && viewOnlyEnded()) return viewEndedGateHTML();
+      if (gateStep === 'assist-ended' && assistantRemoved()) return assistEndedGateHTML();
       if (gateStep === 'custodian') {
         const stale = isCustodianDevice();
         return `
@@ -20301,8 +21591,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     // so nothing syncs back. Typed RESET confirms; the page reloads clean.
     var resetScope = 'device';
     var resetBusy = false;
-    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites', 'turnovers', 'turnoverInvites'];
-    const canEraseCloud = () => isCustodianDevice() && !isViewOnly() && !!cloud.user && !!cloud.db && !!(reqRole && reqRole.schoolId);
+    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites', 'turnovers', 'turnoverInvites', 'staff', 'staffInvites', 'approvals', 'dashboard'];
+    const canEraseCloud = () => isCustodianDevice() && !isViewOnly() && !isAssistant() && !!cloud.user && !!cloud.db && !!(reqRole && reqRole.schoolId);
     function openResetApp() {
       if (typeof closeMoreMenu === 'function') { try { closeMoreMenu(); } catch (e) {} }
       resetScope = 'device';
