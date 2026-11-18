@@ -552,7 +552,7 @@ On a computer or a tablet held sideways, the list stays on the left and the pers
 
 **Reset app.** More → *Reset app…* starts clean, after testing or before the school uses the app for real. Pick one option, optionally tap **Back up**, then type **RESET**:
 
-- **Only this device:** clears everything stored on this phone or computer: inventory, change history, forms, sample data, settings, notifications, sign-in and Firestore's offline copy. The page then reloads like a new install. The school in the cloud is kept, so signing in again brings it back.
+- **Only this device:** clears everything stored on this phone or computer: inventory, change history, forms, sample data, settings, notifications, sign-in and Firestore's offline copy. It erases **only CustodianPro's own storage**, so other web apps on the same address keep their data (see *Sharing one address with other apps* below). The page then reloads like a new install. The school in the cloud is kept, so signing in again brings it back.
 - **This device and the school in the cloud** (custodian, online): first marks the school as being erased, so teachers' phones can't add anything. Then it deletes every document of the school (inventory, catalog, settings, teachers, RIS / ICS / PAR and returns, reports, requests, PRs, stock, holds, invite links), its School ID entry and the school itself, and finally clears this device. Teachers' phones show *San Jose NHS was reset* with **Leave**, and they join again with the new link or School ID. The custodian's sign-in account stays: signing in again asks for the school name and makes a new, empty school. This needs the current `firestore.rules` published. With older rules Firebase refuses, and nothing is reset.
 - On a teacher's phone, **Reset** (next to Leave) clears only that phone. Their requests and reports stay with the custodian.
 
@@ -636,6 +636,13 @@ npm run serve   # http://localhost:8080
 Generated files (`assets/`, `sw.js`) are committed so GitHub Pages can serve them directly.
 
 **Vercel (optional mirror).** [`vercel.json`](vercel.json) deploys the same committed files. It skips `npm install` and the rebuild, and copies `index.html`, `sw.js`, `manifest.webmanifest`, `firebase-config.js` and `assets/` into `public/`, the folder Vercel serves. Run `npm run build` and commit before pushing, exactly as for GitHub Pages. For Google sign-in on the Vercel address, add that domain under Firebase → Authentication → Settings → Authorized domains.
+
+**Sharing one address with other apps.** GitHub Pages serves every project of an account from one origin (`jorzyrockz-crypto.github.io/<repo>/`). Browsers separate saved data by origin, not by folder, so all those projects share localStorage, sessionStorage, IndexedDB and Cache Storage. CustodianPro keeps to its own part:
+- **localStorage / sessionStorage:** every key starts with `custodian_` or `cp_`. The app never calls `clear()`. **Reset app** removes only those keys, plus Firebase entries that carry this project's ID, API key or app ID.
+- **IndexedDB:** Firestore's offline copy is named after the project (`firestore/[DEFAULT]/russapps-custodianpro/main`), and Reset deletes only that database. Firebase keeps the sign-ins of every Firebase app on the address in shared databases (`firebaseLocalStorageDb`, `firebase-heartbeat-database`). Reset removes only this project's entries from them, never the databases. OCR (Tesseract) uses `cacheMethod: 'none'`, so it doesn't use the shared `keyval-store`; its language file is in the app's own cache.
+- **Service worker and caches:** `sw.js` is registered with `scope: './'`, so it controls only this folder. Its caches are `custodianpro-…` and `cpmeta-v1`, and it deletes only old `custodianpro-…` caches.
+
+This keeps the apps from **overwriting** each other. It doesn't stop them **reading** each other's data: any script on the same origin can read all of it. Only a separate origin gives full isolation. That means the Vercel address (`custodianpro.vercel.app`) or a custom subdomain, which is why Vercel is the recommended address for real school data. Your other apps on `github.io` should also avoid `localStorage.clear()`, deleting every IndexedDB database, deleting every cache, and a service worker at the root scope (`/`): those would affect CustodianPro there.
 
 ### End-to-end tests
 

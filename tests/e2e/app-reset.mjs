@@ -27,7 +27,39 @@ async function typeReset(a) {
 }
 // Keys a brand-new device writes on its first start (version seen, default cloud project).
 let FRESH = [];
-const leftovers = page => ev(page, fresh => Object.keys(localStorage).filter(k => k !== 'cp_welcome_tour_v1' && !fresh.includes(k)), FRESH);
+const leftovers = page => ev(page, fresh => Object.keys(localStorage).filter(k => k !== 'cp_welcome_tour_v1' && !fresh.includes(k) && !/^(pondoapp_|paperuss_)/.test(k)), FRESH);
+// Other web apps on the same address (GitHub Pages: username.github.io/<repo>/ share one origin)
+const plantOtherApps = page => ev(page, async () => {
+  const c = window.FIREBASE_CONFIG || {};
+  localStorage.setItem('pondoapp_v1_tasks', '["buy chalk"]');
+  sessionStorage.setItem('paperuss_draft', 'x');
+  const put = (name, store, entries) => new Promise((res, rej) => {
+    const r = indexedDB.open(name, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore(store);
+    r.onerror = () => rej(r.error);
+    r.onsuccess = () => { const tx = r.result.transaction(store, 'readwrite'); entries.forEach(([k, v]) => tx.objectStore(store).put(v, k)); tx.oncomplete = () => { r.result.close(); res(); }; };
+  });
+  await put('pondo_db', 'tasks', [['t1', 'buy chalk']]);
+  await put('firebaseLocalStorageDb', 'firebaseLocalStorage', [[`firebase:authUser:OTHER-APP-KEY-123:[DEFAULT]`, { uid: 'other' }], [`firebase:authUser:${c.apiKey}:[DEFAULT]`, { uid: 'ours' }]]);
+  await put('firestore/[DEFAULT]/pondo-project/main', 'x', [['a', 1]]);
+  await put(`firestore/[DEFAULT]/${c.projectId}/main`, 'x', [['a', 1]]);
+  return { apiKey: c.apiKey, projectId: c.projectId };
+});
+const otherAppsLeft = page => ev(page, async () => {
+  const c = window.FIREBASE_CONFIG || {};
+  const names = (await indexedDB.databases()).map(d => d.name);
+  const keys = await new Promise(res => {
+    if (!names.includes('firebaseLocalStorageDb')) return res([]);
+    const r = indexedDB.open('firebaseLocalStorageDb');
+    r.onsuccess = () => { const q = r.result.transaction('firebaseLocalStorage').objectStore('firebaseLocalStorage').getAllKeys(); q.onsuccess = () => { r.result.close(); res(q.result.map(String)); }; };
+    r.onerror = () => res([]);
+  });
+  return {
+    ls: localStorage.getItem('pondoapp_v1_tasks'), ss: sessionStorage.getItem('paperuss_draft'),
+    pondoDb: names.includes('pondo_db'), otherFs: names.includes('firestore/[DEFAULT]/pondo-project/main'), ourFs: names.includes(`firestore/[DEFAULT]/${c.projectId}/main`),
+    otherAuth: keys.some(k => k.includes('OTHER-APP-KEY-123')), ourAuth: keys.some(k => k.includes(c.apiKey))
+  };
+});
 const reloaded = (a, ms = 10000) => until(a, () => document.readyState === 'complete' && typeof reqRole !== 'undefined' && !window.__beforeReset, 'reloaded', ms);
 
 try {
@@ -95,6 +127,8 @@ try {
   check(await ev(a, () => document.getElementById('resetModal').classList.contains('hidden') && reqRole && items.some(i => i.qty > 0)), 'Cancel: nothing changed');
 
   out('3 Only this device');
+  const ids = await plantOtherApps(a);
+  check(!!(ids.apiKey && ids.projectId), 'another app’s data planted on the same address');
   await ev(a, () => openResetApp());
   await typeReset(a);
   await ev(a, () => { window.__beforeReset = true; });
@@ -109,6 +143,10 @@ try {
   check(!local.role && local.qty === 0, 'signed out, no inventory on the device');
   check(/Reset done · this device is clean/.test(local.toast), 'toast: “Reset done · this device is clean”');
   check(backend.docs(`schools/${sid}`).length === before, 'the school in the cloud is untouched');
+  const others = await otherAppsLeft(a);
+  check(others.ls === '["buy chalk"]' && others.ss === 'x' && others.pondoDb && others.otherFs && others.otherAuth,
+    `other apps on the same address keep their data and sign-in (${JSON.stringify(others)})`);
+  check(!others.ourFs && !others.ourAuth, 'CustodianPro’s own offline copy and sign-in entry are gone');
   await signIn(a, false);
   await until(a, () => inventorySyncActive() && items.some(i => i.qty > 0), 'inventory back', 10000);
   check(await ev(a, s => reqRole.schoolId === s && items.find(i => i.code === '12191601-AL-E04').qty > 0, sid), 'sign in again: the same school and its inventory come back');
