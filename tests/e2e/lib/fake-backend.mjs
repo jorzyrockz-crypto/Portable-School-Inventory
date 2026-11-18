@@ -186,6 +186,29 @@ export function createBackend({ autoApprove = true } = {}) {
       if (!own && !again && !cust) deny('staff card update', { path, ch });
       return;
     }
+    if (p.length === 4 && sub === 'approvals') {
+      const bodyOk = d => ['ris', 'writeoff', 'count'].includes(d.kind) && typeof d.refId === 'string' && d.refId.length > 0 && d.refId.length <= 120 &&
+        str(d.title ?? '', 160) && str(d.summary ?? '', 600) && Array.isArray(d.lines ?? []) && (d.lines ?? []).length <= 200;
+      if (kind === 'create') {
+        if (!(isStaff(ctx, sid) && school(sid).headUid && data.status === 'pending' && !('decision' in data) && data.byUid === ctx.uid && bodyOk(data))) deny('approval create', { path, status: data.status });
+        return;
+      }
+      const ch = changedKeys(before, data);
+      if (isStaff(ctx, sid)) {
+        const ok = JSON.stringify(before.decision ?? null) === JSON.stringify(data.decision ?? null) && data.kind === before.kind && data.refId === before.refId &&
+          (before.status === 'approved' ? ch.every(k => ['appliedMs', 'updatedAt'].includes(k)) : ['pending', 'cancelled'].includes(data.status) && bodyOk(data));
+        if (!ok) deny('approval update (staff)', { path, ch, status: data.status });
+        return;
+      }
+      const dec = data.decision || {};
+      if (isHeadOf(ctx, sid) && before.status === 'pending' && ch.every(k => ['status', 'decision', 'updatedAt'].includes(k)) &&
+          ['approved', 'returned'].includes(data.status) && dec.byUid === ctx.uid && str(dec.byName ?? '', 80) && str(dec.note ?? '', 300)) return;
+      deny('approval update', { path, ch });
+    }
+    if (p.length === 4 && sub === 'dashboard') {
+      if (!(isStaff(ctx, sid) && p[3] === 'summary')) deny('dashboard write', { path });
+      return;
+    }
     if (p.length === 4 && sub === 'auditLog') {
       const head = isHeadOf(ctx, sid);
       const asst = isAssistant(ctx, sid);
@@ -305,6 +328,10 @@ export function createBackend({ autoApprove = true } = {}) {
       if (single || isCust(ctx, sid)) return;
       deny('list staff invites', { path });
     }
+    if (sub === 'approvals' || sub === 'dashboard') {
+      if (canView(ctx, sid) || isHeadOf(ctx, sid)) return;
+      deny(`read ${sub}`, { path });
+    }
     if (sub === 'auditLog') {
       if (canView(ctx, sid) || isHeadOf(ctx, sid)) return;
       deny('read auditLog', { path });
@@ -378,7 +405,7 @@ export function createBackend({ autoApprove = true } = {}) {
     let after = kind === 'set' || !before ? resolveTS(data) : { ...before, ...resolveTS(data) };
     const p = parts(path);
     // members/requests/reports/holds rules look at the whole document; others at what was sent
-    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog', 'staff'].includes(p[2]);
+    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog', 'staff', 'approvals'].includes(p[2]);
     checkWrite(before ? 'update' : 'create', path, whole ? after : data, before || {}, ctx);
     if (autoApprove && !before && p.length === 4 && p[2] === 'members' && after.status === 'pending') after = { ...after, status: 'active', approvedMs: Date.now() };
     store.set(path, after);

@@ -96,7 +96,7 @@ try {
   await until(t, () => myReleases.length === 2, 'Ana releases', 8000);
   await ev(t, () => { const r = myReleases.find(x => x.kind !== 'RIS'); openTeacherReport('problem', r.id, r.lines[0].units[0].id); sendTeacherReport(); });
   await waitNode(() => backend.docs(`schools/${sid}/teacherReports/`).length >= 1, 'report');
-  const before = backend.docs(`schools/${sid}`).length;
+  const before = backend.docs(`schools/${sid}`).filter(d => !/\/auditLog\//.test(d.path)).length;
   check(before > 10, `the school has ${before} documents in the cloud`);
 
   out('2 More → Reset app: the sheet');
@@ -141,8 +141,8 @@ try {
   local.keys = await leftovers(a);
   check(local.keys.length === 0, `this device is as empty as a new one (${local.keys.join(', ') || 'nothing left'})`);
   check(!local.role && local.qty === 0, 'signed out, no inventory on the device');
-  check(/Reset done · this device is clean/.test(local.toast), 'toast: “Reset done · this device is clean”');
-  check(backend.docs(`schools/${sid}`).length === before, 'the school in the cloud is untouched');
+  check(/Reset done · this device is clean/.test(local.toast), `toast: “${local.toast}”`);
+  check(backend.docs(`schools/${sid}`).filter(d => !/\/auditLog\//.test(d.path)).length === before, 'the school in the cloud is untouched (its history may grow)');
   const others = await otherAppsLeft(a);
   check(others.ls === '["buy chalk"]' && others.ss === 'x' && others.pondoDb && others.otherFs && others.otherAuth,
     `other apps on the same address keep their data and sign-in (${JSON.stringify(others)})`);
@@ -160,7 +160,7 @@ try {
   await a.click('#resetGo');
   await reloaded(a, 15000);
   await sleep(600);
-  const left = backend.docs(`schools/${sid}`);
+  const left = backend.docs(`schools/${sid}`).filter(d => !/\/auditLog\//.test(d.path));   // the school history stays (append-only)
   check(left.length === 0, `every document of the school erased (${left.length} left${left.length ? ': ' + left.slice(0, 3).map(d => d.path).join(', ') : ''})`);
   check(!backend.store.has('schoolIds/114656'), 'School ID 114656 is free again');
   check(await ev(a, () => !reqRole) && (await leftovers(a)).length === 0, 'this device is empty and signed out');

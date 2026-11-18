@@ -20,6 +20,8 @@ rules_version = '2';
 //   schools/{schoolId}/headInvites/{code}     the School Head's invite link
 //   schools/{schoolId}/turnovers/{uid-code}   a new property custodian taking over (custodian turnover)
 //   schools/{schoolId}/turnoverInvites/{code} the Turnover link (made by the custodian or the School Head)
+//   schools/{schoolId}/approvals/{id}         RIS, write-offs and count reports for the School Head to approve
+//   schools/{schoolId}/dashboard/summary      the School Head's summary of the school's property
 //   schoolIds/{schoolNo}                      DepEd School ID (6 digits) → school, so teachers can type it
 //
 // Members: a teacher who joins waits for the custodian's approval (status 'pending'), then is
@@ -440,6 +442,49 @@ service cloud.firestore {
       match /staffInvites/{code} {
         allow get: if signedIn();
         allow create, update, list, delete: if isCustodian(schoolId);
+      }
+
+      // What the School Head approves besides the PR: a supply request's RIS (kind 'ris', when the
+      // custodian turned it on), a write-off ('writeoff': a lost unit's relief or a written-off unit)
+      // and the physical count report ('count'). The custodian's devices send them ('pending') once a
+      // head is confirmed, and may send one again or cancel it, or mark an approved write-off as
+      // done (appliedMs), never decide. Only the confirmed head approves or returns ('decision').
+      match /approvals/{apId} {
+        function apBodyOk() {
+          let d = request.resource.data;
+          return d.kind in ['ris', 'writeoff', 'count']
+            && d.refId is string && d.refId.size() > 0 && d.refId.size() <= 120
+            && shortText(d.get('title', ''), 160) && shortText(d.get('summary', ''), 600)
+            && d.get('lines', []) is list && d.get('lines', []).size() <= 200;
+        }
+        allow read: if canView(schoolId) || isHead(schoolId);
+        allow create: if isStaff(schoolId) && headJoined(schoolId)
+          && request.resource.data.status == 'pending'
+          && !('decision' in request.resource.data)
+          && request.resource.data.byUid == request.auth.uid
+          && apBodyOk();
+        allow update: if (isStaff(schoolId)
+            && request.resource.data.get('decision', null) == resource.data.get('decision', null)
+            && request.resource.data.kind == resource.data.kind
+            && request.resource.data.refId == resource.data.refId
+            && (resource.data.status == 'approved'
+                  ? request.resource.data.diff(resource.data).affectedKeys().hasOnly(['appliedMs', 'updatedAt'])
+                  : request.resource.data.status in ['pending', 'cancelled'] && apBodyOk()))
+          || (isHead(schoolId) && resource.data.status == 'pending'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'decision', 'updatedAt'])
+            && request.resource.data.status in ['approved', 'returned']
+            && request.resource.data.decision.byUid == request.auth.uid
+            && shortText(request.resource.data.decision.get('byName', ''), 80)
+            && shortText(request.resource.data.decision.get('note', ''), 300));
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+
+      // The School Head's summary (stock levels, who holds what, requests, condition), kept current
+      // by the custodian's devices. The head reads only this, not the inventory itself.
+      match /dashboard/{docId} {
+        allow read: if canView(schoolId) || isHead(schoolId);
+        allow create, update: if isStaff(schoolId) && docId == 'summary';
+        allow delete: if isCustodian(schoolId);   // Reset app only
       }
 
       // School history that can't be changed: each custodian device appends its Change History
