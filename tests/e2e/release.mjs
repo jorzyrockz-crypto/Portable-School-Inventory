@@ -314,6 +314,11 @@ try {
   await ev(a, id => { editPr(id); const l = prDraft.lines.find(x => /Whiteboard marker/.test(x.desc)); removePrLine(l.id); savePr(); }, pre.id);
   await until(a, (id, n) => prList.find(x => x.id === id).lines.length === n, 'line removed', 8000, pre.id, af.pr.lines.length - 1);
   check(/− Whiteboard marker/.test(await ev(a, () => changeHistory.filter(e => /Changed Purchase Request/.test(e.x)).pop().x)), 'removed line in the change history');
+  // Every PR needs the School Head's signature first (no head in the app here: signed on paper)
+  a.dialogs.prompt = await ev(a, () => localISODate());
+  await ev(a, () => recordPaperSign(prList[0].id));
+  await until(a, () => prApproved(prList[0]), 'PR signed on paper', 8000);
+  a.dialogs.prompt = '';
   await ev(a, () => { setReqTab('prs'); markPrDelivered(prList[0].id); });
   await sleep(500);
   const stocked = await ev(a, c => ({ low: items.find(i => i.code === c).qty, pad: items.find(i => /RUBBER STAMP PAD/.test(i.name)) }), lowItem.code);

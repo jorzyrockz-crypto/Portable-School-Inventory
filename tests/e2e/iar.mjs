@@ -68,6 +68,12 @@ try {
   await until(a, id => reqList.some(r => r.id === id && r.status === 'pr'), 'request on the PR', 8000, reqId);
   const prId = await ev(a, () => prList[0].id);
   await ev(a, () => setReqTab('prs'));
+  // Every PR needs the School Head's signature first (no head in the app here: signed on paper)
+  check(await ev(a, id => !document.querySelector(`[data-inspect-pr="${id}"]`) && !!document.querySelector(`[data-paper-sign="${id}"]`), prId), 'PR card: needs the School Head’s signature before delivery');
+  a.dialogs.prompt = await ev(a, () => localISODate());
+  await ev(a, id => recordPaperSign(id), prId);
+  await until(a, () => prApproved(prList[0]), 'PR signed on paper', 8000);
+  a.dialogs.prompt = '';
   const card = await ev(a, id => ({ inspect: !!document.querySelector(`[data-inspect-pr="${id}"]`), delivered: !!document.querySelector(`button[onclick="markPrDelivered('${id}')"]`) }), prId);
   check(card.inspect && card.delivered, 'PR card: Inspect delivery (and Items delivered without an IAR)');
 

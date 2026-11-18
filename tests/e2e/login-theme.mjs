@@ -25,7 +25,7 @@ try {
   await a.goto(BASE_URL, { waitUntil: 'networkidle0' });
   check(await gated(a), 'sign-in screen is up');
   check(await gateStepNow(a) === 'welcome', 'welcome step');
-  check(await ev(a, () => document.querySelectorAll('[data-gate-role]').length) === 2, 'two choices: property custodian, teacher');
+  check(await ev(a, () => [...document.querySelectorAll('[data-gate-role]')].map(b => b.dataset.gateRole).join()) === 'custodian,teacher,head', 'three choices: property custodian, teacher, School Head');
   check(await ev(a, () => document.querySelector('body > header').inert && document.getElementById('tabBar').inert), 'the app behind it cannot be reached');
   check(await ev(a, () => getComputedStyle(document.querySelector('.gate-art')).backgroundImage.includes('login-portrait.webp')), 'portrait art on a phone');
   check(await ev(a, () => document.getElementById('appToast') && true), 'page loaded');

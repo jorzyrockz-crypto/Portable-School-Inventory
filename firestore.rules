@@ -16,6 +16,8 @@ rules_version = '2';
 //   schools/{schoolId}/stock/{code}           supplies left (name, unit, qty), for teachers who were approved
 //   schools/{schoolId}/stockHolds/{requestId} "I took this" from a teacher, until the custodian confirms
 //   schools/{schoolId}/invites/{code}         the current invite link (after "New invite link")
+//   schools/{schoolId}/heads/{uid}            the School Head (joins with Google, the custodian confirms)
+//   schools/{schoolId}/headInvites/{code}     the School Head's invite link
 //   schoolIds/{schoolNo}                      DepEd School ID (6 digits) → school, so teachers can type it
 //
 // Members: a teacher who joins waits for the custodian's approval (status 'pending'), then is
@@ -26,6 +28,12 @@ rules_version = '2';
 // across phones): they can send requests and see or cancel only their own. The property
 // custodian signs in with Google or email + password and sees, reviews and approves
 // every request of their school.
+//
+// School Head: joins from their own invite link with their own Google account and waits for
+// the custodian to confirm them. The confirmed head's uid is kept on the school (headUid; never
+// one of the custodians, so nobody approves their own PR). The head reads the Purchase
+// Requests and may only approve or return the ones waiting for approval. Until a head is
+// confirmed, the custodian records the date the head signed the printed PR ("signed on paper").
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -39,6 +47,14 @@ service cloud.firestore {
         request.auth.uid in get(/databases/$(database)/documents/schools/$(schoolId)).data.custodians;
     }
     function shortText(v, max) { return v is string && v.size() <= max; }
+    function schoolDoc(schoolId) { return get(/databases/$(database)/documents/schools/$(schoolId)).data; }
+    // The confirmed School Head of the school (set by the custodian when they confirm the head).
+    function isHead(schoolId) {
+      return signedIn() && schoolDoc(schoolId).get('headUid', '') == request.auth.uid
+        && !(request.auth.uid in schoolDoc(schoolId).custodians);
+    }
+    function headJoined(schoolId) { return schoolDoc(schoolId).get('headUid', '') != ''; }
+    function apprStatus(d) { return d.get('approval', {}).get('status', ''); }
     function memberPath(schoolId) {
       return /databases/$(database)/documents/schools/$(schoolId)/members/$(request.auth.uid);
     }
@@ -90,8 +106,10 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.custodians == [request.auth.uid]
         && shortText(request.resource.data.name, 120);
+      // headUid: the confirmed School Head, never one of the custodians (no self-approval).
       allow update: if isCustodian(schoolId)
-        && request.resource.data.ownerUid == resource.data.ownerUid;
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && !(request.resource.data.get('headUid', '') in request.resource.data.custodians);
       // More → Reset app → "and the school in the cloud": the custodian erases every document
       // of the school (its sub-collections first, this document last). Nobody else can delete.
       allow delete: if isCustodian(schoolId);
@@ -125,8 +143,39 @@ service cloud.firestore {
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
 
+      // Purchase Requests always need the School Head's approval:
+      //   approval { status: 'pending' | 'approved' | 'returned', via: 'app' | 'paper', byUid, byName,
+      //              byDesig, atMs, note, paperDate, submittedMs }
+      // A new PR waits ('pending'). The confirmed head approves or returns it (with a note) in the
+      // app. Before a head is confirmed, the custodian records the paper signature instead. The
+      // custodian may send a PR back for approval at any time, but may not change what is on an
+      // approved PR without sending it back. PRs saved before approvals existed have no approval.
       match /purchaseRequests/{prId} {
-        allow read, create, update: if isCustodian(schoolId);
+        function prContent() {
+          return ['prNo', 'date', 'entity', 'fund', 'office', 'rcc', 'purpose', 'lines', 'total',
+                  'requestIds', 'requesters', 'requestedBy', 'approvedBy'];
+        }
+        function custodianApprovalOk() {
+          return request.resource.data.get('approval', null) == resource.data.get('approval', null)
+            ? !(apprStatus(resource.data) == 'approved'
+                && request.resource.data.diff(resource.data).affectedKeys().hasAny(prContent()))
+            : apprStatus(request.resource.data) == 'pending'
+              || (apprStatus(request.resource.data) == 'approved'
+                  && request.resource.data.approval.get('via', '') == 'paper'
+                  && !headJoined(schoolId));
+        }
+        function headDecisionOk() {
+          return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approval', 'updatedAt'])
+            && apprStatus(resource.data) == 'pending'
+            && request.resource.data.approval.get('status', '') in ['approved', 'returned']
+            && request.resource.data.approval.get('via', '') == 'app'
+            && request.resource.data.approval.get('byUid', '') == request.auth.uid
+            && shortText(request.resource.data.approval.get('note', ''), 300);
+        }
+        allow read: if isCustodian(schoolId) || isHead(schoolId);
+        allow create: if isCustodian(schoolId) && apprStatus(request.resource.data) == 'pending';
+        allow update: if (isCustodian(schoolId) && custodianApprovalOk())
+          || (isHead(schoolId) && headDecisionOk());
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
 
@@ -203,6 +252,47 @@ service cloud.firestore {
         allow get: if signedIn();
         allow create, update: if isCustodian(schoolId);
         allow list, delete: if isCustodian(schoolId);   // Reset app finds and erases them
+      }
+
+      // The School Head: joins from the head invite link with their own Google account (never
+      // a custodian of the school), starting as 'pending'. The custodian confirms ('active'),
+      // which also sets headUid on the school, or removes them ('removed').
+      match /heads/{uid} {
+        function headCardOk() {
+          return request.resource.data.uid == uid
+            && request.resource.data.name is string
+            && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
+            && shortText(request.resource.data.designation, 80)
+            && shortText(request.resource.data.get('email', ''), 120);
+        }
+        allow get: if signedIn() && (request.auth.uid == uid || isCustodian(schoolId));
+        allow list: if isCustodian(schoolId);
+        allow create: if signedIn() && request.auth.uid == uid
+          && request.auth.token.firebase.sign_in_provider == 'google.com'
+          && exists(/databases/$(database)/documents/schools/$(schoolId))
+          && notErasing(schoolId)
+          && !isCustodian(schoolId)
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'designation', 'email', 'joinedMs', 'status', 'invite', 'updatedAt'])
+          && request.resource.data.status == 'pending'
+          && request.resource.data.invite is string && request.resource.data.invite.size() > 0
+          && exists(/databases/$(database)/documents/schools/$(schoolId)/headInvites/$(request.resource.data.invite))
+          && get(/databases/$(database)/documents/schools/$(schoolId)/headInvites/$(request.resource.data.invite)).data.active == true
+          && headCardOk();
+        allow update: if (signedIn() && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'designation', 'email', 'updatedAt'])
+            && headCardOk())
+          || (isCustodian(schoolId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'designation', 'status',
+                                                                                 'approvedMs', 'removedMs', 'by', 'updatedAt'])
+            && request.resource.data.status in ['pending', 'active', 'removed']
+            && headCardOk());
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+
+      // The School Head's invite link code.
+      match /headInvites/{code} {
+        allow get: if signedIn();
+        allow create, update, list, delete: if isCustodian(schoolId);
       }
 
       // Supplies left, published from the custodian's inventory (no prices, no property numbers).

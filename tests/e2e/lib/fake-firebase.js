@@ -2,6 +2,11 @@
 // the app uses, backed by one shared in-memory store in the test runner (window.__fb), which
 // applies the same access rules as firestore.rules (see fake-backend.mjs).
 //
+// Like Firestore's persistent cache, documents a listener received are kept on the "phone"
+// (localStorage, key with the project id so Reset app removes it) and onSnapshot(q,
+// { source: 'cache' }) answers from them without the server. window.__fakeReads counts billed
+// reads the way Firestore does: a listener's first answer (at least 1), then each changed doc.
+//
 // Offline: set window.__fakeOffline = true. Writes are then queued on the phone (snapshots
 // show them with hasPendingWrites + fromCache, like Firestore's offline cache) and are sent
 // in order once window.__fakeOffline is false again.
@@ -64,6 +69,47 @@ window.FirebaseSDK = (() => {
     return { docs: [...map.values()], pending };
   }
 
+  // ---- billed reads + the phone's document cache ----
+  window.__fakeReads = window.__fakeReads || 0;
+  window.__fakeReadsBy = window.__fakeReadsBy || {};   // collection or document path → reads
+  const bill = (path, n) => { window.__fakeReads += n; window.__fakeReadsBy[path] = (window.__fakeReadsBy[path] || 0) + n; };
+  let cacheKey = '__fakeFs';
+  let fsCache = null;
+  const loadCache = () => { if (!fsCache) { try { fsCache = JSON.parse(localStorage.getItem(cacheKey) || '{}') || {}; } catch (e) { fsCache = {}; } } return fsCache; };
+  const saveCache = () => { try { localStorage.setItem(cacheKey, JSON.stringify(fsCache)); } catch (e) {} };
+  const inCol = (p, path) => p.startsWith(path + '/') && p.split('/').length === path.split('/').length + 1;
+  function cacheList(path, docs, whole) {   // a server answer for a collection (whole = no filters)
+    const c = loadCache();
+    if (whole) Object.keys(c).forEach(p => { if (inCol(p, path)) delete c[p]; });
+    docs.forEach(d => { c[path + '/' + d.id] = d.data; });
+    saveCache();
+  }
+  function cacheDoc(path, data) {
+    const c = loadCache();
+    if (data === null || data === undefined) delete c[path]; else c[path] = data;
+    saveCache();
+  }
+  const cachedDocs = path => Object.entries(loadCache()).filter(([p]) => inCol(p, path)).map(([p, data]) => ({ id: p.split('/').pop(), data }));
+  const tsOf = v => (v && typeof v === 'object' ? (typeof v.seconds === 'number' ? v.seconds * 1000 + (v.nanoseconds || 0) / 1e6 : typeof v.__date === 'number' ? v.__date : NaN) : v);
+  class Timestamp {
+    constructor(seconds, nanoseconds) { this.seconds = seconds; this.nanoseconds = nanoseconds; }
+    static fromMillis(ms) { const s = Math.floor(ms / 1000); return new Timestamp(s, Math.floor((ms - s * 1000) * 1e6)); }
+    toMillis() { return this.seconds * 1000 + Math.floor(this.nanoseconds / 1e6); }
+  }
+  const passes = (d, f) => {
+    const x = d.data ? d.data[f.field] : undefined;
+    if (f.op === '==') return x === f.value;
+    if (f.op === 'array-contains') return (x || []).includes(f.value);
+    if (['>', '>=', '<', '<='].includes(f.op)) {
+      const isTime = v => v && typeof v === 'object' && (typeof v.seconds === 'number' || typeof v.__date === 'number');
+      if (x === undefined || x === null || isTime(x) !== isTime(f.value)) return false;   // types must match
+      const a = tsOf(x), b = tsOf(f.value);
+      if (typeof a !== 'number' || typeof b !== 'number' || isNaN(a) || isNaN(b)) return false;
+      return f.op === '>' ? a > b : f.op === '>=' ? a >= b : f.op === '<' ? a < b : a <= b;
+    }
+    return true;
+  };
+
   let seq = 0;
   const autoId = () => 'id' + Math.random().toString(36).slice(2, 10) + (++seq).toString(36);
   const col = path => ({ type: 'col', path, id: path.split('/').pop() });
@@ -80,7 +126,7 @@ window.FirebaseSDK = (() => {
   }
 
   return {
-    initializeApp: options => ({ options }),
+    initializeApp: options => { cacheKey = '__fakeFs_' + ((options && options.projectId) || ''); fsCache = null; return { options }; },
     getAuth: () => auth,
     onAuthStateChanged: (a, f) => { a.listeners.push(f); setTimeout(() => f(a.currentUser), 0); return () => { a.listeners = a.listeners.filter(x => x !== f); }; },
     signInAnonymously: async () => { if (window.__anonOff) throw err('auth/operation-not-allowed'); const u = await rpc('anon', {}); setUser(u); return { user: u }; },
@@ -121,14 +167,23 @@ window.FirebaseSDK = (() => {
     },
     getDocs: async q => {
       if (window.__fakeOffline) throw err('unavailable');
-      return { docs: (await rpc('list', { path: q.path, filters: q.filters || [], ctx: ctx() })).map(d => snapDoc(d)) };
+      const docs = await rpc('list', { path: q.path, filters: q.filters || [], ctx: ctx() });
+      bill(q.path, Math.max(1, docs.length));
+      return { docs: docs.map(d => snapDoc(d)) };
+    },
+    getCountFromServer: async q => {
+      if (window.__fakeOffline) throw err('unavailable');
+      const docs = await rpc('list', { path: q.path, filters: q.filters || [], ctx: ctx() });
+      bill(q.path, Math.max(1, Math.ceil(docs.length / 1000)));
+      return { data: () => ({ count: docs.length }) };
     },
     setDoc: (ref, data, opts) => write([[opts && opts.merge ? 'merge' : 'set', ref.path, data]]),
     updateDoc: (ref, data) => write([['update', ref.path, data]]),
     deleteDoc: ref => write([['delete', ref.path, null]]),
     addDoc: async (c, data) => { const ref = docRef(c.path + '/' + autoId()); await write([['set', ref.path, data]]); return ref; },
     query: (c, ...filters) => ({ type: 'query', path: c.path, filters: filters.filter(f => f && f.field) }),
-    where: (field, op, value) => ({ field, op, value }),
+    where: (field, op, value) => ({ field, op, value: value instanceof Date ? { __date: value.getTime() } : value instanceof Timestamp ? { seconds: value.seconds, nanoseconds: value.nanoseconds } : value }),
+    Timestamp,
     orderBy: () => null,
     limit: () => null,
     serverTimestamp: () => ({ __ts: true }),
@@ -145,28 +200,39 @@ window.FirebaseSDK = (() => {
     },
     // Polling listener: emits when the (server + queued) result or its metadata changes.
     onSnapshot: (q, a, b, c) => {
+      const opts = typeof a === 'object' && a && typeof a !== 'function' ? a : {};
       const next = typeof a === 'function' ? a : b;
       const onError = typeof a === 'function' ? b : c;
-      let last = null, stopped = false, cached = null;
+      let last = null, stopped = false, cached = null, billed = null;
       const isDoc = q.type === 'doc';
+      const fromCacheOnly = opts.source === 'cache';
+      const filters = q.filters || [];
       const tick = async () => {
         if (stopped) return;
         try {
-          const offline = !!window.__fakeOffline;
+          const offline = !!window.__fakeOffline || fromCacheOnly;
           let docs;
-          if (offline) docs = cached || [];
+          if (fromCacheOnly) docs = isDoc ? [{ id: q.id, data: loadCache()[q.path] ?? null }] : cachedDocs(q.path);
+          else if (offline) docs = cached || [];
           else {
             docs = isDoc
               ? [await rpc('get', { path: q.path, ctx: ctx() })]
-              : await rpc('list', { path: q.path, filters: q.filters || [], ctx: ctx() });
+              : await rpc('list', { path: q.path, filters, ctx: ctx() });
+            // billed like Firestore: the first answer, then each new or changed document
+            const now = new Map(docs.map(d => [d.id, JSON.stringify(d.data)]));
+            if (!billed) bill(q.path, Math.max(1, docs.length));
+            else now.forEach((v, id) => { if (billed.get(id) !== v) bill(q.path, 1); });
+            billed = now;
+            if (JSON.stringify(docs) !== JSON.stringify(cached)) {
+              if (isDoc) cacheDoc(q.path, docs[0] && docs[0].data); else cacheList(q.path, docs, !filters.length);
+            }
             cached = docs;
           }
           let pending = false;
           if (!isDoc) {
-            const filters = q.filters || [];
             const o = overlay(q.path, docs);
             pending = o.pending;
-            docs = o.docs.filter(d => filters.every(f => f.op === '==' ? d.data && d.data[f.field] === f.value : true));
+            docs = o.docs.filter(d => filters.every(f => passes(d, f)));
           }
           const sig = JSON.stringify([docs, pending, offline]);
           if (sig !== last && !stopped) {

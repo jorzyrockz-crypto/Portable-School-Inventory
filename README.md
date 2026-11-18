@@ -212,11 +212,22 @@ A teacher’s phone only shows that teacher’s own requests, slips and items. I
 
 Teachers who joined before approvals existed stay active; only new joins need **Approve**.
 
+### School Head approval of Purchase Requests
+
+Every Purchase Request needs the School Head's approval or signature.
+
+- **Waiting for approval.** A new PR is saved as *waiting for approval*. Until it is approved, the print, Excel and CSV say **FOR APPROVAL** and the *Approved by* signature is blank. **Inspect delivery** and **Items delivered** stay closed. PRs saved before this update count as approved.
+- **No School Head in the app yet.** Print the PR, have the head sign it, then tap **Signed on paper…** on the PR card and enter the date they signed. Change History shows it as a paper signature. If you recorded it by mistake, **Recorded by mistake?** removes it.
+- **Inviting the School Head.** Go to **Supply requests → Invite → School Head (approves PRs)**. Send the head their own link or QR code (it is not the teachers' link). On their phone, they open it (or choose **School Head** on the sign-in screen and paste it), then sign in with **their own Google account**. Anonymous sign-in and the custodian's account are refused. You get a notification, and you tap **Confirm** in the School Head panel. **Make a new School Head link** stops the old link from working.
+- **Approving.** The head's phone shows only *For your approval*: each PR waiting for them, with its items, purpose and total. They tap **Approve**, or **Return** with a note saying what to change. Their name, designation, date and time are saved on the PR. You are notified, and Change History records it. The final print shows *Approved in CustodianPro by …* under the head's signature.
+- **Returned PRs.** **Change it** (Edit) or **Send again as is** sends the PR back to the head. Changing an approved PR also sends it back for approval (the app asks first).
+- **Once a head is confirmed, only they can approve.** The rules then refuse paper signatures from the custodian. Approval and Return by the custodian are always refused, and so is any change to an approved PR that doesn't send it back. The head can read the PRs but change nothing except their decision on a PR that is waiting. A custodian of the school can never be its School Head, so nobody approves their own PR. **Remove as School Head** ends the head's access. PRs that are still waiting go back to paper signatures until a new head is confirmed.
+
 ### School stock and “I took this” (teachers)
 
 Teachers kept asking *“Sir, meron pa ba nito?”*. The teacher's phone now has a third tab, **Stock**:
 
-- Every **supply** with the exact number left (*85 ream left*), searchable, with **Low** and **Out** filters. Equipment, prices and holders are never shown. The custodian's devices publish only the code, name, category, unit and quantity (`schools/{id}/stock/{code}`).
+- Every **supply** with the exact number left (*85 ream left*), searchable, with **Low** and **Out** filters. Equipment, prices and holders are never shown. The custodian's devices publish only the code, name, category, unit and quantity, all supplies in one document (`schools/{id}/stock/_all`), so opening the Stock tab costs a teacher one read. Teachers still read the older per-supply documents (`stock/{code}`) until the custodian's phone has updated.
 - **Request** on a line opens a new supply request with that item.
 - **I took this** (*“Mam, kumuha ako ng ganito sa office”*): pick the quantity and add a note. The number left drops right away on every teacher's phone, marked *2 taken · waiting for the custodian to confirm*. The custodian sees *Took it* on Supply requests and gets a notification. **Confirm · RIS** opens the release with the lines filled in, and saving the RIS settles the stock. **Decline** puts the quantity back, and so does the teacher cancelling (*I didn’t take it after all*).
 - Supplies only. Equipment still needs an ICS / PAR from the custodian. Under COA rules the custodian issues the RIS, which is why “I took this” waits for the custodian's Confirm.
@@ -244,7 +255,7 @@ The app is connected to the Firebase project **russapps-custodianpro** (settings
    - **Email/Password** (optional: custodians without a Google account).
 2. **Authentication → Settings → Authorized domains**: add `jorzyrockz-crypto.github.io`. Without it, Google sign-in shows “This website is not on the Firebase authorized domains list”.
 3. **Build → Firestore Database → Create database**: pick a location near you (e.g. `asia-southeast1`, Singapore) and start in **production mode**.
-4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school. Nothing can be deleted, except by the school's custodian through **Reset app** (below). **Publish again after updating the app** when `firestore.rules` changed (latest: `inspections`, so a teacher can sign an inspection sent to their phone).
+4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school. Nothing can be deleted, except by the school's custodian through **Reset app** (below). **Publish again after updating the app** when `firestore.rules` changed (latest: `heads`, `headInvites` and the `purchaseRequests` approval rules for the School Head).
 
 The config values are not secret; access is controlled by the published rules. To use a different project, replace the object in `firebase-config.js` (or set it to `null` to hide Supply requests).
 
@@ -255,6 +266,18 @@ The config values are not secret; access is controlled by the published rules. T
 **Sign-in**
 - **Custodian:** *Continue with Google* (or email + password). The first sign-in creates the school; signing in on another phone or tablet finds it again.
 - **Teacher:** open the invite link, type your name, and tap *Continue* (no account needed), or *Continue with Google* to keep your requests when you change phones. You can also link Google later from the teacher screen.
+
+**Staying within the free plan (Spark)**
+
+The free plan allows **50,000 document reads and 20,000 writes a day** for the whole project, reset at midnight Pacific time (about 3–4 PM in the Philippines). Firestore bills every document a phone downloads, and a list that was closed for more than 30 minutes is downloaded again in full, so the school's growing lists (releases, requests, reports, inventory) would have used more of the limit every year. The app now works like this:
+- **First sign-in on a phone, then once a week:** each list is downloaded in full.
+- **Every other time:** the custodian's lists come from the copy already on the phone (no charge), and the server sends only documents created or changed since the last visit. It uses the server's `createdAt` / `updatedAt` times, so a wrong phone clock doesn't matter. A count from the server (1 read per 1,000 documents) checks that the phone has every document; if not, that list is downloaded in full again. The newest time seen is kept in `custodian_delta_sync_v1`.
+- **Teachers' School stock:** a single document instead of one per supply.
+- Every write to these lists sets `createdAt` (new) or `updatedAt` (changed); keep it that way when adding features.
+- **Limit used up:** the app says *“The school’s free daily cloud limit is used up…”* with the reset time. Work is kept on the phone and syncing restarts on its own after the reset.
+- Check **Firebase console → Firestore → Usage** now and then. One school stays far below the limit; if several schools share this project, watch the daily reads (or switch to the Blaze plan, which charges about $0.03 per 100,000 reads above the free amount).
+
+No rules change is needed for this.
 
 **Offline**
 - After the first online visit, the app and the sign-in stay on the phone.
@@ -665,6 +688,7 @@ node login-theme.mjs                  # sign-in screen, teacher code / invite li
 node coa-forms.mjs                    # welcome tour, poster, PAR, ITR/PTR transfers, RRSP, RPCPPE/IIRUP, background update check
 node phone-layout.mjs                 # 390 px phone: no sideways scroll, 32 px+ buttons, bottom sheets, toast placement
 node members-stock.mjs                # approval, edit / remove / add back, new invite link, School stock, "I took this"
+node fewer-reads.mjs                  # reopening reads only changes, count check / weekly full load, one stock document, daily-limit message
 node app-reset.mjs                    # Reset app: this device only / and the school in the cloud, teacher phones, rules
 node deliveries.mjs                   # PO scan, expected / received deliveries, average cost, prices, Catalog editing
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
