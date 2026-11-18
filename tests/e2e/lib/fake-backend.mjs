@@ -160,6 +160,14 @@ export function createBackend({ autoApprove = true } = {}) {
       if (!isCust(ctx, sid)) deny('head invite write', { path });
       return;
     }
+    if (p.length === 4 && sub === 'auditLog') {
+      const head = isHeadOf(ctx, sid);
+      const ok = kind === 'create' && (isCust(ctx, sid) || head) && Object.keys(data).every(k => ['uid', 'name', 'role', 'device', 'entries', 'createdAt'].includes(k)) &&
+        data.uid === ctx.uid && !!(data.createdAt && Math.abs(data.createdAt.seconds * 1000 - (Date.now() + clock.offset)) < 5000) /* request.time */ && (data.role === 'head') === head && ['custodian', 'head'].includes(data.role) &&
+        str(data.name, 80) && str(data.device, 40) && Array.isArray(data.entries) && data.entries.length > 0 && data.entries.length <= 100;
+      if (!ok) deny('audit log write', { path, kind, role: data.role });
+      return;
+    }
     if (p.length === 4 && sub === 'turnoverInvites') {
       if (!isCust(ctx, sid) && !isHeadOf(ctx, sid)) deny('turnover invite write', { path });
       return;
@@ -260,6 +268,10 @@ export function createBackend({ autoApprove = true } = {}) {
       if (canView(ctx, sid) || isHeadOf(ctx, sid) || (single && p[3].split('-')[0] === ctx.uid)) return;
       deny('read turnovers', { path, uid: ctx.uid });
     }
+    if (sub === 'auditLog') {
+      if (canView(ctx, sid) || isHeadOf(ctx, sid)) return;
+      deny('read auditLog', { path });
+    }
     if (sub === 'turnoverInvites') {
       if (single || canView(ctx, sid) || isHeadOf(ctx, sid)) return;
       deny('list turnover invites', { path });
@@ -316,6 +328,7 @@ export function createBackend({ autoApprove = true } = {}) {
     if (p[0] === 'schoolIds' && p.length === 2) {
       if (before && !isCust(ctx, before.schoolId)) deny('school id delete', { path });
     } else if (p[0] === 'schools' && (p.length === 2 || p.length === 4)) {
+      if (p[2] === 'auditLog') deny('audit log delete', { path });
       if (!isCust(ctx, p[1])) deny('delete', { path });
     } else deny('delete: no rule', { path });
     store.delete(path);
@@ -328,7 +341,7 @@ export function createBackend({ autoApprove = true } = {}) {
     let after = kind === 'set' || !before ? resolveTS(data) : { ...before, ...resolveTS(data) };
     const p = parts(path);
     // members/requests/reports/holds rules look at the whole document; others at what was sent
-    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers'].includes(p[2]);
+    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog'].includes(p[2]);
     checkWrite(before ? 'update' : 'create', path, whole ? after : data, before || {}, ctx);
     if (autoApprove && !before && p.length === 4 && p[2] === 'members' && after.status === 'pending') after = { ...after, status: 'active', approvedMs: Date.now() };
     store.set(path, after);

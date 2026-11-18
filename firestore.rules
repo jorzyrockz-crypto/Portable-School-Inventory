@@ -377,6 +377,26 @@ service cloud.firestore {
                && getAfter(/databases/$(database)/documents/schools/$(schoolId)).data.get('turnoverId', '') == turnId));
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
+      // School history that can't be changed: each custodian device appends its Change History
+      // entries (several per document), stamped with the account and the server time. The School
+      // Head adds their own decisions. Nobody can edit or delete an entry, not even the custodian;
+      // Reset app leaves them (the app owner still sees them in the Firebase console).
+      match /auditLog/{id} {
+        allow read: if canView(schoolId) || isHead(schoolId);
+        allow create: if (isCustodian(schoolId) || isHead(schoolId))
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'role', 'device', 'entries', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && (request.resource.data.role == 'head') == isHead(schoolId)
+          && request.resource.data.role in ['custodian', 'head']
+          && shortText(request.resource.data.name, 80)
+          && shortText(request.resource.data.device, 40)
+          && request.resource.data.entries is list
+          && request.resource.data.entries.size() > 0
+          && request.resource.data.entries.size() <= 100;
+        allow update, delete: if false;
+      }
+
       match /turnoverInvites/{code} {
         allow get: if signedIn();
         allow create, update: if isCustodian(schoolId) || isHead(schoolId);

@@ -2559,6 +2559,7 @@
             <i class="ph-bold ph-x"></i>
           </button>
         </div>
+        <div id="historySource" class="mt-2.5 empty:hidden"></div>
         <div id="historyItemFilter" class="hidden mt-2.5"></div>
         <div class="relative mt-3">
           <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
@@ -5704,6 +5705,7 @@
         changeHistory = changeHistory.slice(-Math.floor(changeHistory.length / 2));
         try { localStorage.setItem(HISTORY_KEY, JSON.stringify(changeHistory)); } catch (e2) {}
       }
+      try { scheduleAudit(); } catch (e) {}   // the school history in the cloud (defined further down)
     }
 
     function resetHistoryBase() {
@@ -5847,7 +5849,7 @@
 
     // ---- History viewer -------------------------------------------------------
     function openHistory(code = null) {
-      historyFilter = { code: code || null, kind: 'ALL', limit: 150 };
+      historyFilter = { code: code || null, kind: 'ALL', limit: 150, cloud: false };
       document.getElementById('historySearch').value = '';
       document.getElementById('historyModal').classList.remove('hidden');
       renderHistory();
@@ -5968,6 +5970,10 @@
         .map(([k, label]) => `
           <button onclick="setHistoryKind('${k}')" class="shrink-0 h-8 px-3 rounded-lg text-xs font-bold transition ${historyFilter.kind === k ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${label}</button>`)
         .join('');
+      const src = document.getElementById('historySource');
+      const srcHTML = historySourceHTML();
+      if (src.innerHTML !== srcHTML) src.innerHTML = srcHTML;
+      if (historyFilter.cloud && canReadAudit()) { renderAudit(); return; }
 
       const list = document.getElementById('historyList');
       const all = filteredHistory();
@@ -6021,14 +6027,15 @@
     }
 
     function exportHistoryCSV() {
-      const rows = filteredHistory();
+      const fromCloud = historyFilter.cloud && canReadAudit();
+      const rows = fromCloud ? auditRows() : filteredHistory();
       if (!rows.length) {
         appAlert('There are no changes to export in this view.');
         return;
       }
       const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
       const csv = [
-        q('CHANGE HISTORY'),
+        q(fromCloud ? 'CHANGE HISTORY (SCHOOL ACCOUNT, CANNOT BE EDITED)' : 'CHANGE HISTORY'),
         [q('School/Office:'), q(schoolInfo.school || 'N/A'), q('Date Exported:'), q(new Date().toLocaleDateString('en-PH'))].join(','),
         '',
         ['Date', 'Time', 'Type', 'Item Code', 'Item', 'Change', 'By'].map(q).join(',')
@@ -6037,7 +6044,8 @@
         const d = new Date(e.t);
         csv.push([
           d.toLocaleDateString('en-PH'), d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }),
-          (HISTORY_KINDS[e.k] || HISTORY_KINDS.edit).label, historyCodes(e).join(' '), historyCodes(e).map(historyItemName).join('; '), e.x, e.by || (e.synced ? 'School account' : '')
+          (HISTORY_KINDS[e.k] || HISTORY_KINDS.edit).label, historyCodes(e).join(' '), historyCodes(e).map(historyItemName).join('; '), e.x,
+          fromCloud ? [e.by, AUDIT_ROLE[e.role] || '', e.device, e.saved ? `saved ${new Date(e.saved).toLocaleString('en-PH')}` : ''].filter(Boolean).join(' · ') : (e.by || (e.synced ? 'School account' : ''))
         ].map(q).join(','));
       });
       const school = (schoolInfo.school || 'School').replace(/\s+/g, '_');
@@ -9549,7 +9557,7 @@
       if (!v) return 0;
       if (typeof v === 'number') return v;
       if (typeof v.toMillis === 'function') return v.toMillis();
-      if (typeof v.seconds === 'number') return v.seconds * 1000;
+      if (typeof v.seconds === 'number') return v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6);
       return 0;
     }
     const reqTime = r => r.clientAt || tsMillis(r.createdAt) || 0;
@@ -10807,6 +10815,7 @@
         subscribeSchoolDoc(F);
         reqUnsubs.push(listenTurnovers(F));
         startInventorySync();
+        auditBlocked = ''; auditSince(); scheduleAudit(4000);   // Change History made offline or before sign-in goes up
         setTimeout(publishSchoolNo, 1500);   // lists the DepEd School ID (once, or when it changes)
         scheduleLowStockCheck(300);   // remember today's stock levels (primes low-stock notifications)
       } else {
@@ -13822,6 +13831,189 @@
       printFormHTML(`<div class="pr-pages">${turnRenewDone.docs.map(r => (r.kind === 'PAR' ? parPrintHTML : icsPrintHTML)(r)).join('')}</div>`);
     }
 
+    // ---- School history in the cloud: can't be edited or deleted -------------------------
+    // Each custodian device appends its Change History entries to schools/{id}/auditLog, several
+    // entries per document ({ uid, name, role, device, entries[], createdAt }). The rules allow
+    // create only, stamped with the signed-in account and the server time: nobody can change or
+    // remove an entry, not even the custodian (Reset app leaves them; the app owner still sees
+    // them in the Firebase console). The custodian, view-only custodians and the School Head read
+    // it in Change History → School (cloud), 20 documents at a time.
+    const AUDIT_KEY = 'custodian_audit_v1';     // { [schoolId]: ms } entries from this time on go up
+    const AUDIT_BATCH = 100;
+    const AUDIT_PAGE = 20;
+    var auditTimer = null;
+    var auditBlocked = '';                      // a refused write (rules not published yet): retried on the next open
+    var audit = { sid: '', docs: [], loading: false, done: false, error: '' };
+    function auditRole() {
+      if (!reqRole || !cloud.user || !cloud.sdk) return '';
+      if (isViewOnly() || isIncomingDevice()) return '';
+      if (isHeadDevice()) return headMe && headMe.status === 'active' ? 'head' : '';
+      if (isCustodianDevice()) return reqRole.assistant ? 'assistant' : 'custodian';
+      return '';
+    }
+    function canReadAudit() { return !!(reqRole && cloud.user && (isCustodianDevice() || isViewOnly() || (isHeadDevice() && headMe && headMe.status === 'active'))); }
+    function auditDevice() {
+      let id = localStorage.getItem('custodian_device_id_v1');
+      if (!id) { id = Math.random().toString(36).slice(2, 10); localStorage.setItem('custodian_device_id_v1', id); }
+      const ua = navigator.userAgent;
+      const kind = /iPad|Tablet|Android(?!.*Mobile)/i.test(ua) ? 'Tablet' : /Mobi|Android|iPhone/i.test(ua) ? 'Phone' : 'Computer';
+      return `${kind} ${id.slice(0, 4)}`;
+    }
+    function auditSince() {
+      const sid = reqRole && reqRole.schoolId;
+      if (!sid) return 0;
+      let all = {};
+      try { all = JSON.parse(localStorage.getItem(AUDIT_KEY)) || {}; } catch (e) {}
+      if (!all[sid]) { all[sid] = Date.now(); localStorage.setItem(AUDIT_KEY, JSON.stringify(all)); }
+      return all[sid];
+    }
+    // What goes up: the entry as shown in Change History, trimmed.
+    function auditSlim(e) {
+      const o = { t: e.t || Date.now(), k: String(e.k || 'edit').slice(0, 20), x: String(e.x || '').slice(0, 500) };
+      if (e.c) o.c = String(e.c).slice(0, 60);
+      if (Array.isArray(e.cs) && e.cs.length) o.cs = e.cs.slice(0, 20).map(c => String(c).slice(0, 60));
+      if (e.q && typeof e.q === 'object') { const q = {}; Object.keys(e.q).slice(0, 20).forEach(c => { q[c] = Number(e.q[c]) || 0; }); o.q = q; }
+      if (e.from !== undefined && e.to !== undefined) { o.from = e.from; o.to = e.to; }
+      return o;
+    }
+    function scheduleAudit(ms = 15000) {
+      if (!auditRole() || auditRole() === 'head') return;
+      clearTimeout(auditTimer);
+      auditTimer = setTimeout(flushAudit, ms);
+    }
+    // Entries not sent yet (newest last). A count still being merged (same item within 3 minutes)
+    // waits, so the cloud gets its final value.
+    function auditPending() {
+      const since = auditSince();
+      const out = [];
+      let wait = false;
+      for (let i = changeHistory.length - 1; i >= 0; i--) {
+        const e = changeHistory[i];
+        if ((e.t || 0) < since) break;
+        if (e.au) continue;
+        if (e.k === 'count' && Date.now() - e.t < HISTORY_MERGE_MS) { wait = true; continue; }
+        out.unshift(e);
+      }
+      return { list: out, wait };
+    }
+    function flushAudit() {
+      clearTimeout(auditTimer);
+      const role = auditRole();
+      if (!role || role === 'head' || auditBlocked === reqRole.schoolId) return;
+      const { list, wait } = auditPending();
+      if (wait) auditTimer = setTimeout(flushAudit, 60000);
+      if (!list.length) return;
+      for (let i = 0; i < list.length; i += AUDIT_BATCH) auditWrite(list.slice(i, i + AUDIT_BATCH), role);
+    }
+    function auditWrite(list, role) {
+      const F = cloud.sdk, sid = reqRole.schoolId;
+      const me = reqRole.me || {};
+      const name = (role === 'head' ? (me.name || (headMe && headMe.name)) : (schoolInfo.custodian || me.name)) || (cloud.user.email || '').split('@')[0] || 'Unknown';
+      list.forEach(e => { e.au = 1; });   // queued: Firestore keeps it until it reaches the server, also offline
+      persistHistory();
+      F.addDoc(F.collection(cloud.db, 'schools', sid, 'auditLog'), {
+        uid: cloud.user.uid, name: String(name).slice(0, 80), role, device: auditDevice(),
+        entries: list.map(auditSlim), createdAt: F.serverTimestamp()
+      }).catch(err => {
+        console.warn('audit', err);
+        list.forEach(e => { delete e.au; });
+        persistHistory();
+        if (/permission/i.test(String(err && (err.code || err.message)))) auditBlocked = sid;
+      });
+    }
+    // The School Head's own decisions go up from their phone right away.
+    function auditNow(kind, text) {
+      if (auditRole() !== 'head') return;
+      auditWrite([{ t: Date.now(), k: kind, x: text }], 'head');
+    }
+    addEventListener('pagehide', () => flushAudit());
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushAudit(); });
+
+    function auditRows() {
+      const q = document.getElementById('historySearch').value.toLowerCase().trim();
+      const code = historyFilter.code;
+      return audit.docs.flatMap(d => (d.entries || []).map(e => ({ ...e, by: d.name, role: d.role, device: d.device, saved: tsMillis(d.createdAt) || 0 })))
+        .filter(e => (!code || historyHas(e, code)) && (historyFilter.kind === 'ALL' || e.k === historyFilter.kind) &&
+          (!q || `${e.x} ${historyCodes(e).map(c => `${c} ${historyItemName(c)}`).join(' ')} ${e.by || ''}`.toLowerCase().includes(q)))
+        .sort((a, b) => (b.t - a.t) || (b.saved - a.saved));
+    }
+    async function loadAudit(more = false) {
+      if (!canReadAudit() || audit.loading) return;
+      const sid = reqRole.schoolId;
+      if (audit.sid !== sid) audit = { sid, docs: [], loading: false, done: false, error: '' };
+      if (more && audit.done) return;
+      audit.loading = true; audit.error = '';
+      if (historyFilter.cloud) renderHistory();
+      try {
+        const F = cloud.sdk;
+        const col = F.collection(cloud.db, 'schools', sid, 'auditLog');
+        const last = more && audit.docs.length ? audit.docs[audit.docs.length - 1].createdAt : null;
+        const q = last
+          ? F.query(col, F.where('createdAt', '<', last), F.orderBy('createdAt', 'desc'), F.limit(AUDIT_PAGE))
+          : F.query(col, F.orderBy('createdAt', 'desc'), F.limit(AUDIT_PAGE));
+        const snap = await F.getDocs(q);
+        const got = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }))
+          .sort((a, b) => (tsMillis(b.createdAt) || 0) - (tsMillis(a.createdAt) || 0)).slice(0, AUDIT_PAGE);
+        if (!more) audit.docs = [];
+        const have = new Set(audit.docs.map(d => d.id));
+        audit.docs.push(...got.filter(d => !have.has(d.id)));
+        audit.done = got.length < AUDIT_PAGE;
+      } catch (err) {
+        console.warn('audit read', err);
+        audit.error = cloudErrorText(err);
+      }
+      audit.loading = false;
+      if (historyFilter.cloud) renderHistory();
+    }
+    function setHistorySource(cloudOn) {
+      historyFilter.cloud = !!cloudOn;
+      historyFilter.limit = 150;
+      if (cloudOn) { flushAudit(); loadAudit(false); }
+      renderHistory();
+      document.getElementById('historyList').scrollTop = 0;
+    }
+    function historySourceHTML() {
+      if (!canReadAudit()) return '';
+      const b = (on, label, icon, cl) => `<button onclick="setHistorySource(${cl})" data-history-source="${cl ? 'cloud' : 'device'}" class="flex-1 h-8 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 ${on ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
+      return `<div class="flex gap-1 p-1 rounded-xl bg-slate-100">${b(!historyFilter.cloud, 'This device', 'ph-device-mobile', false)}${b(historyFilter.cloud, 'School (cloud)', 'ph-lock-key', true)}</div>`;
+    }
+    const AUDIT_ROLE = { custodian: 'Property custodian', assistant: 'Assistant custodian', head: 'School Head' };
+    function renderAudit() {
+      document.getElementById('historySubtitle').textContent = 'Saved in the school account · can’t be edited or deleted, not even by the custodian';
+      const list = document.getElementById('historyList');
+      const rows = auditRows();
+      if (!rows.length) {
+        list.innerHTML = audit.loading ? `<div class="py-12 text-center text-sm text-slate-500"><i class="ph-bold ph-circle-notch animate-spin text-2xl block mb-2"></i>Getting the school history…</div>` : `
+          <div class="py-12 text-center" data-audit-empty>
+            <i class="ph-duotone ph-lock-key text-4xl text-slate-300 block mb-2"></i>
+            <p class="text-sm font-bold text-slate-700">${audit.error ? 'Couldn’t get the school history' : audit.docs.length ? 'No changes match this view' : 'Nothing saved to the school history yet'}</p>
+            <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">${audit.error ? escapeHTML(audit.error) : 'From this update on, every change made on the custodian’s devices is also saved here, with the account, device and the server’s date and time.'}</p>
+          </div>`;
+        return;
+      }
+      const shown = rows.slice(0, historyFilter.limit);
+      let html = '', day = '';
+      shown.forEach(e => {
+        const label = historyDayLabel(e.t);
+        if (label !== day) { day = label; html += `<p class="sticky top-0 z-10 bg-white/95 backdrop-blur pt-3 pb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">${label}</p>`; }
+        const kind = HISTORY_KINDS[e.k] || HISTORY_KINDS.edit;
+        const time = new Date(e.t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+        const late = e.saved && Math.abs(e.saved - e.t) > 10 * 60000 ? ` · saved ${escapeHTML(iarStamp(e.saved))}` : '';
+        html += `
+          <div class="flex items-start gap-3 py-2 border-b border-slate-50 last:border-0" data-audit-row>
+            <div class="w-8 h-8 shrink-0 rounded-lg ${kind.tone} flex items-center justify-center"><i class="ph-bold ${kind.icon}"></i></div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-slate-800 leading-snug break-words">${historyTextHTML(e.x)}</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">${time} · ${escapeHTML(e.by || '')}${e.role && e.role !== 'custodian' ? ` (${AUDIT_ROLE[e.role] || e.role})` : ''} · ${escapeHTML(e.device || '')}${late}</p>
+            </div>
+          </div>`;
+      });
+      if (rows.length > shown.length) html += `<div class="pt-3 text-center"><button onclick="showMoreHistory()" class="h-9 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs">Show older (${(rows.length - shown.length).toLocaleString()} more)</button></div>`;
+      else if (!audit.done) html += `<div class="pt-3 text-center"><button onclick="loadAudit(true)" data-audit-more class="h-9 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs">${audit.loading ? 'Getting…' : 'Get older from the school account'}</button></div>`;
+      list.innerHTML = html;
+    }
+    function openSchoolHistory() { openHistory(null); setHistorySource(true); }
+
     // ---- School Head's phone: join, approve, return --------------------------------------
     function headLinkParts(text) {
       const m = String(text || '').trim().match(/(?:^|[#&=\/])([A-Za-z0-9_]{6,40})-([A-Za-z0-9]{8,12})$/);
@@ -14071,7 +14263,12 @@
           </div>
           ${done.length ? `<div class="space-y-2.5"><h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Recently decided</h2>${done.map(p => headPrCardHTML(p, false)).join('')}</div>` : ''}`;
       }
-      if (headMe && headMe.status === 'active') html += headTurnoverHTML();
+      if (headMe && headMe.status === 'active') html += headTurnoverHTML() + `
+        <button onclick="openSchoolHistory()" data-head-history class="w-full rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-center gap-3 text-left hover:border-brand-300">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="ph-bold ph-lock-key text-xl"></i></span>
+          <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">School history</span><span class="block text-[11px] text-slate-500">Every change on the custodian’s devices · can’t be edited or deleted</span></span>
+          <i class="ph-bold ph-caret-right text-slate-400"></i>
+        </button>`;
       const body = document.getElementById('hdBody');
       if (body.innerHTML !== html) { body.innerHTML = html; drawTurnQr(); }
     }
@@ -14132,6 +14329,7 @@
       };
       cloudWrite(F.updateDoc(F.doc(prCol(), id), { approval, updatedAt: F.serverTimestamp() }), ok ? 'Approving' : 'Returning');
       cur.approval = approval;   // shown now; the cloud snapshot follows
+      auditNow('system', ok ? `School Head approved Purchase Request ${pr.prNo} (₱${peso2(pr.total)})` : `School Head returned Purchase Request ${pr.prNo}: “${note}”`);
       renderHeadView();
       showToast(ok ? `PR No. ${pr.prNo} approved` : `PR No. ${pr.prNo} returned to the property custodian`, ok ? 'ph-seal-check' : 'ph-arrow-u-up-left');
     }
@@ -19540,6 +19738,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-school-history', date: 'Nov 2026', title: 'School history that can\u2019t be changed', points: [
+        'Every change made on the property custodian\u2019s devices is now also saved to the school account, with the account, the device and the server\u2019s date and time.',
+        'Nobody can edit or delete these entries, not even the custodian. They stay even after Reset app, which helps during a COA audit or a turnover.',
+        'See it in Change History \u2192 School (cloud). The School Head sees it on their phone under School history. Export CSV works there too.'
+      ] },
       { id: '2026-11-custodian-turnover', date: 'Nov 2026', title: 'Hand over to a new property custodian', points: [
         'New in More \u2192 Custodian turnover: send the new property custodian a Turnover link or QR code. They open it on their own phone and sign in with their own Google account.',
         'You, or the School Head, tap Confirm. The School Head can do it from their phone when the outgoing custodian has already left. The new custodian then gets the school inventory, requests and records, in their name.',
