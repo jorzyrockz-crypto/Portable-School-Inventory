@@ -18,6 +18,8 @@ rules_version = '2';
 //   schools/{schoolId}/invites/{code}         the current invite link (after "New invite link")
 //   schools/{schoolId}/heads/{uid}            the School Head (joins with Google, the custodian confirms)
 //   schools/{schoolId}/headInvites/{code}     the School Head's invite link
+//   schools/{schoolId}/turnovers/{uid-code}   a new property custodian taking over (custodian turnover)
+//   schools/{schoolId}/turnoverInvites/{code} the Turnover link (made by the custodian or the School Head)
 //   schoolIds/{schoolNo}                      DepEd School ID (6 digits) → school, so teachers can type it
 //
 // Members: a teacher who joins waits for the custodian's approval (status 'pending'), then is
@@ -34,6 +36,13 @@ rules_version = '2';
 // one of the custodians, so nobody approves their own PR). The head reads the Purchase
 // Requests and may only approve or return the ones waiting for approval. Until a head is
 // confirmed, the custodian records the date the head signed the printed PR ("signed on paper").
+//
+// Custodian turnover: the new custodian opens the Turnover link and signs in with their own Google
+// account (a turnovers card, 'pending'). The outgoing custodian, or the confirmed School Head,
+// confirms it in one batch: the card becomes 'done' and the school gets custodians [new uid],
+// ownerUid = new uid and turnoverId = the card. The outgoing custodians go to viewOnly (with an
+// end time, untilMs) and viewerUids: they may still READ the school's records until then, never
+// write. The School Head is never the custodian.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -45,6 +54,28 @@ service cloud.firestore {
     function isCustodian(schoolId) {
       return signedIn() &&
         request.auth.uid in get(/databases/$(database)/documents/schools/$(schoolId)).data.custodians;
+    }
+    // A custodian who turned the school over: read only, until their view-only access ends.
+    function isViewer(schoolId) {
+      return signedIn() && get(/databases/$(database)/documents/schools/$(schoolId)).data
+        .get('viewOnly', {}).get(request.auth.uid, {}).get('untilMs', 0) > request.time.toMillis();
+    }
+    function canView(schoolId) { return isCustodian(schoolId) || isViewer(schoolId); }
+    function turnPath(schoolId, id) {
+      return /databases/$(database)/documents/schools/$(schoolId)/turnovers/$(id);
+    }
+    // The school after a confirmed turnover: one custodian (the new one), whose card was pending
+    // before this batch and is 'done' after it. The outgoing custodians may only become viewers.
+    function turnoverOk(schoolId) {
+      let after = request.resource.data;
+      return after.turnoverId is string
+        && after.custodians == [after.ownerUid]
+        && after.ownerUid != after.get('headUid', '')
+        && get(turnPath(schoolId, after.turnoverId)).data.status == 'pending'
+        && getAfter(turnPath(schoolId, after.turnoverId)).data.status == 'done'
+        && getAfter(turnPath(schoolId, after.turnoverId)).data.uid == after.ownerUid
+        && after.get('viewerUids', []).hasOnly(resource.data.custodians.concat(resource.data.get('viewerUids', [])))
+        && after.get('viewOnly', {}).keys().hasOnly(resource.data.custodians.concat(resource.data.get('viewerUids', [])));
     }
     function shortText(v, max) { return v is string && v.size() <= max; }
     function schoolDoc(schoolId) { return get(/databases/$(database)/documents/schools/$(schoolId)).data; }
@@ -100,16 +131,23 @@ service cloud.firestore {
     match /schools/{schoolId} {
       // Teachers read the school name after opening the invite link (the ID is the secret).
       allow get: if signedIn();
-      // A custodian finds their own school on a new device (query: custodians array-contains uid).
-      allow list: if signedIn() && request.auth.uid in resource.data.custodians;
+      // A custodian finds their own school on a new device (query: custodians array-contains uid),
+      // and a custodian who turned it over finds it while view-only (viewerUids array-contains uid).
+      allow list: if signedIn() && (request.auth.uid in resource.data.custodians
+        || request.auth.uid in resource.data.get('viewerUids', []));
       allow create: if withAccount()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.custodians == [request.auth.uid]
         && shortText(request.resource.data.name, 120);
       // headUid: the confirmed School Head, never one of the custodians (no self-approval).
-      allow update: if isCustodian(schoolId)
-        && request.resource.data.ownerUid == resource.data.ownerUid
-        && !(request.resource.data.get('headUid', '') in request.resource.data.custodians);
+      // ownerUid changes only with a confirmed turnover, by the outgoing custodian or the School Head
+      // (who may change nothing else on the school).
+      allow update: if (isCustodian(schoolId)
+          && (request.resource.data.ownerUid == resource.data.ownerUid || turnoverOk(schoolId))
+          && !(request.resource.data.get('headUid', '') in request.resource.data.custodians))
+        || (isHead(schoolId) && turnoverOk(schoolId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['custodians', 'ownerUid', 'turnoverId', 'turnoverMs',
+                                                                               'custodianName', 'custodianDesig', 'viewOnly', 'viewerUids']));
       // More → Reset app → "and the school in the cloud": the custodian erases every document
       // of the school (its sub-collections first, this document last). Nobody else can delete.
       allow delete: if isCustodian(schoolId);
@@ -132,7 +170,7 @@ service cloud.firestore {
 
         // Teachers: only their own requests (the app queries where uid == their uid).
         allow get, list: if signedIn()
-          && (resource.data.uid == request.auth.uid || isCustodian(schoolId));
+          && (resource.data.uid == request.auth.uid || canView(schoolId));
 
         // Custodian: review, approve, decline, put on a PR. Teacher: cancel while pending.
         allow update: if (isCustodian(schoolId) && request.resource.data.uid == resource.data.uid)
@@ -172,7 +210,7 @@ service cloud.firestore {
             && request.resource.data.approval.get('byUid', '') == request.auth.uid
             && shortText(request.resource.data.approval.get('note', ''), 300);
         }
-        allow read: if isCustodian(schoolId) || isHead(schoolId);
+        allow read: if canView(schoolId) || isHead(schoolId);
         allow create: if isCustodian(schoolId) && apprStatus(request.resource.data) == 'pending';
         allow update: if (isCustodian(schoolId) && custodianApprovalOk())
           || (isHead(schoolId) && headDecisionOk());
@@ -194,7 +232,7 @@ service cloud.firestore {
               && request.resource.data.lines is list
               && request.resource.data.lines.size() == resource.data.lines.size());
         allow get, list: if signedIn()
-          && (resource.data.inspectorUid == request.auth.uid || isCustodian(schoolId));
+          && (resource.data.inspectorUid == request.auth.uid || canView(schoolId));
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
 
@@ -202,15 +240,18 @@ service cloud.firestore {
       // devices only. Teachers never read the inventory. Removed items are marked
       // { deleted: true } instead of being deleted.
       match /inventory/{code} {
-        allow read, create, update: if isCustodian(schoolId);
+        allow read: if canView(schoolId);
+        allow create, update: if isCustodian(schoolId);
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
       match /catalog/{code} {
-        allow read, create, update: if isCustodian(schoolId);
+        allow read: if canView(schoolId);
+        allow create, update: if isCustodian(schoolId);
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
       match /settings/{docId} {
-        allow read, create, update: if isCustodian(schoolId);
+        allow read: if canView(schoolId);
+        allow create, update: if isCustodian(schoolId);
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
 
@@ -225,8 +266,8 @@ service cloud.firestore {
             && shortText(request.resource.data.office, 80)
             && shortText(request.resource.data.get('email', ''), 120);
         }
-        allow get: if signedIn() && (request.auth.uid == uid || isCustodian(schoolId));
-        allow list: if isCustodian(schoolId);
+        allow get: if signedIn() && (request.auth.uid == uid || canView(schoolId));
+        allow list: if canView(schoolId);
         allow create: if signedIn() && request.auth.uid == uid
           && exists(/databases/$(database)/documents/schools/$(schoolId))
           && notErasing(schoolId)
@@ -265,8 +306,8 @@ service cloud.firestore {
             && shortText(request.resource.data.designation, 80)
             && shortText(request.resource.data.get('email', ''), 120);
         }
-        allow get: if signedIn() && (request.auth.uid == uid || isCustodian(schoolId));
-        allow list: if isCustodian(schoolId);
+        allow get: if signedIn() && (request.auth.uid == uid || canView(schoolId));
+        allow list: if canView(schoolId);
         allow create: if signedIn() && request.auth.uid == uid
           && request.auth.token.firebase.sign_in_provider == 'google.com'
           && exists(/databases/$(database)/documents/schools/$(schoolId))
@@ -295,9 +336,57 @@ service cloud.firestore {
         allow create, update, list, delete: if isCustodian(schoolId);
       }
 
+      // Custodian turnover. The incoming custodian writes their own card from a live Turnover link,
+      // with their own Google account (never a custodian or the School Head of this school). The
+      // outgoing custodian or the School Head confirms it ('done', together with the school in the
+      // same batch: see turnoverOk) or declines it.
+      match /turnovers/{turnId} {
+        function turnCardOk() {
+          return request.resource.data.name is string
+            && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
+            && shortText(request.resource.data.designation, 80)
+            && shortText(request.resource.data.get('email', ''), 120);
+        }
+        // (the card's ID starts with its owner's uid, so they can look for it before it exists)
+        allow get: if signedIn() && (turnId.split('-')[0] == request.auth.uid || canView(schoolId) || isHead(schoolId));
+        allow list: if canView(schoolId) || isHead(schoolId);
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && turnId == request.auth.uid + '-' + request.resource.data.invite
+          && request.auth.token.firebase.sign_in_provider == 'google.com'
+          && exists(/databases/$(database)/documents/schools/$(schoolId))
+          && notErasing(schoolId)
+          && !isCustodian(schoolId)
+          && schoolDoc(schoolId).get('headUid', '') != request.auth.uid
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'designation', 'email', 'joinedMs', 'status', 'invite', 'createdAt'])
+          && request.resource.data.status == 'pending'
+          && request.resource.data.invite is string && request.resource.data.invite.size() > 0
+          && exists(/databases/$(database)/documents/schools/$(schoolId)/turnoverInvites/$(request.resource.data.invite))
+          && get(/databases/$(database)/documents/schools/$(schoolId)/turnoverInvites/$(request.resource.data.invite)).data.active == true
+          && turnCardOk();
+        allow update: if (isCustodian(schoolId) || isHead(schoolId))
+          && resource.data.status == 'pending'
+          && request.resource.data.uid == resource.data.uid
+          && ((request.resource.data.status == 'declined'
+               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'by', 'doneMs', 'updatedAt']))
+            || (request.resource.data.status == 'done'
+               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'fromUids', 'fromName', 'fromDesig',
+                                                                                    'assumedOn', 'confirmedBy', 'doneMs', 'updatedAt'])
+               && request.resource.data.confirmedBy.uid == request.auth.uid
+               && getAfter(/databases/$(database)/documents/schools/$(schoolId)).data.custodians == [resource.data.uid]
+               && getAfter(/databases/$(database)/documents/schools/$(schoolId)).data.get('turnoverId', '') == turnId));
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+      match /turnoverInvites/{code} {
+        allow get: if signedIn();
+        allow create, update: if isCustodian(schoolId) || isHead(schoolId);
+        allow list: if canView(schoolId) || isHead(schoolId);
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+
       // Supplies left, published from the custodian's inventory (no prices, no property numbers).
       match /stock/{code} {
-        allow read: if isCustodian(schoolId) || isMember(schoolId);
+        allow read: if canView(schoolId) || isMember(schoolId);
         allow create, update: if isCustodian(schoolId);
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
@@ -305,7 +394,7 @@ service cloud.firestore {
       // "I took this": the amounts a teacher took, subtracted from the stock everyone sees until
       // the custodian confirms (RIS → 'done') or corrects it ('cancelled'). Same ID as the request.
       match /stockHolds/{holdId} {
-        allow read: if isCustodian(schoolId) || isMember(schoolId);
+        allow read: if canView(schoolId) || isMember(schoolId);
         allow create: if isMember(schoolId)
           && request.resource.data.keys().hasOnly(['uid', 'name', 'reqId', 'lines', 'status', 'createdMs'])
           && request.resource.data.uid == request.auth.uid
@@ -325,7 +414,7 @@ service cloud.firestore {
       match /releases/{releaseId} {
         allow create, update: if isCustodian(schoolId);
         allow get, list: if signedIn()
-          && (resource.data.teacherUid == request.auth.uid || isCustodian(schoolId));
+          && (resource.data.teacherUid == request.auth.uid || canView(schoolId));
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
 
@@ -343,7 +432,7 @@ service cloud.firestore {
           && shortText(request.resource.data.note, 300)
           && request.resource.data.units is list && request.resource.data.units.size() <= 50;
         allow get, list: if signedIn()
-          && (resource.data.uid == request.auth.uid || isCustodian(schoolId));
+          && (resource.data.uid == request.auth.uid || canView(schoolId));
         allow update: if isCustodian(schoolId) && request.resource.data.uid == resource.data.uid;
         allow delete: if isCustodian(schoolId);   // Reset app only
       }

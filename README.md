@@ -223,6 +223,20 @@ Every Purchase Request needs the School Head's approval or signature.
 - **Returned PRs.** **Change it** (Edit) or **Send again as is** sends the PR back to the head. Changing an approved PR also sends it back for approval (the app asks first).
 - **Once a head is confirmed, only they can approve.** The rules then refuse paper signatures from the custodian. Approval and Return by the custodian are always refused, and so is any change to an approved PR that doesn't send it back. The head can read the PRs but change nothing except their decision on a PR that is waiting. A custodian of the school can never be its School Head, so nobody approves their own PR. **Remove as School Head** ends the head's access. PRs that are still waiting go back to paper signatures until a new head is confirmed.
 
+### Custodian turnover (a new property custodian takes over)
+
+When the property custodian changes, the school's inventory, requests and records move to the new custodian's own account. Nothing has to be typed again.
+
+- **The Turnover link.** The outgoing custodian goes to **More → Custodian turnover** and sends the link or QR code to the new custodian. The School Head can make one too, from the *Custodian turnover* section on their phone, if the custodian has already left. **Make a new Turnover link** stops the old link from working.
+- **The new custodian** opens the link on their own phone and signs in with **their own Google account** (the outgoing custodian's and the School Head's accounts are refused). Their phone waits on *Waiting for Confirm*. They can't read the school's records yet.
+- **Confirm.** The outgoing custodian, **or** the School Head, checks the name and email, sets the date the new custodian *assumes accountability*, and taps **Confirm**. **Not them** refuses a card from the wrong person. The new custodian's phone then opens the school on its own, and their name and designation go on the forms.
+- **The turnover inventory.** **Print the turnover inventory** lists all property (PPE and semi-expendable, with property numbers and who holds each) and the supplies on hand as of the turnover date. It has signature lines for the outgoing custodian, the new custodian and the School Head (Noted). Counting together first is *suggested, not required*. **Count first** opens the inventory count, but the handover doesn't wait for it.
+- **Teachers' ICS and PAR.** Old slips stay valid and keep the name of the custodian who signed them. New slips show the new custodian. When ready, the new custodian taps **Renew all slips** once. This makes one new ICS or PAR per teacher for everything they hold, marked *Renewal: change of property custodian*, for printing and signing.
+- **The outgoing custodian keeps view-only access for 30 days.** They can still open and print records and history for their clearance. A yellow **View-only** bar shows the end date, and nothing can be changed: the app hides and stops editing, and the rules refuse writes. After 30 days their phones show *Your view-only access ended*, and the rules stop their reads too. The new custodian's phone then removes them from the school.
+- **Rules.** Only a confirmed turnover card can change the school's custodian. The card must belong to a signed-in Google account that opened an active Turnover link. A stranger can't make themself the custodian, the School Head can't become the custodian, and the School Head can change nothing else on the school.
+
+**Publish `firestore.rules` again** after this update (new: `turnovers`, `turnoverInvites`, view-only reads). Until you do, Confirm fails with a permissions error.
+
 ### School stock and “I took this” (teachers)
 
 Teachers kept asking *“Sir, meron pa ba nito?”*. The teacher's phone now has a third tab, **Stock**:
@@ -255,7 +269,7 @@ The app is connected to the Firebase project **russapps-custodianpro** (settings
    - **Email/Password** (optional: custodians without a Google account).
 2. **Authentication → Settings → Authorized domains**: add `jorzyrockz-crypto.github.io`. Without it, Google sign-in shows “This website is not on the Firebase authorized domains list”.
 3. **Build → Firestore Database → Create database**: pick a location near you (e.g. `asia-southeast1`, Singapore) and start in **production mode**.
-4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school. Nothing can be deleted, except by the school's custodian through **Reset app** (below). **Publish again after updating the app** when `firestore.rules` changed (latest: `heads`, `headInvites` and the `purchaseRequests` approval rules for the School Head).
+4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school. Nothing can be deleted, except by the school's custodian through **Reset app** (below). **Publish again after updating the app** when `firestore.rules` changed (latest: `turnovers`, `turnoverInvites` and the view-only reads for custodian turnover; before that, the School Head's `heads`, `headInvites` and PR approval rules).
 
 The config values are not secret; access is controlled by the published rules. To use a different project, replace the object in `firebase-config.js` (or set it to `null` to hide Supply requests).
 
@@ -691,6 +705,8 @@ node members-stock.mjs                # approval, edit / remove / add back, new 
 node fewer-reads.mjs                  # reopening reads only changes, count check / weekly full load, one stock document, daily-limit message
 node app-reset.mjs                    # Reset app: this device only / and the school in the cloud, teacher phones, rules
 node deliveries.mjs                   # PO scan, expected / received deliveries, average cost, prices, Catalog editing
+node school-head.mjs                  # School Head link, Google sign-in, Confirm, Approve / Return PRs, paper signature, rules
+node turnover.mjs                     # custodian turnover: link, Confirm (custodian or head), turnover inventory, Renew all slips, 30-day view-only, rules
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

@@ -21,11 +21,28 @@ export function createBackend({ autoApprove = true } = {}) {
   const deny = (why, op) => { denied.push(`${why} · ${JSON.stringify(op).slice(0, 240)}`); throw new Error('permission-denied'); };
   const parts = p => p.split('/');
   const school = id => store.get(`schools/${id}`);
-  const isCust = (ctx, sid) => !!(ctx.uid && school(sid) && (school(sid).custodians || []).includes(ctx.uid));
+  // Rules read the school as it was before the batch (get()), so checks inside a batch use that.
+  let batchBefore = null, batchOps = null;
+  const schoolPre = id => (batchBefore ? batchBefore.get(`schools/${id}`) : store.get(`schools/${id}`));
+  const isCust = (ctx, sid) => !!(ctx.uid && schoolPre(sid) && (schoolPre(sid).custodians || []).includes(ctx.uid));
+  // A custodian who turned the school over: read only until viewOnly[uid].untilMs.
+  const isViewer = (ctx, sid) => !!(ctx.uid && school(sid) && (((school(sid).viewOnly || {})[ctx.uid] || {}).untilMs || 0) > Date.now());
+  const canView = (ctx, sid) => isCust(ctx, sid) || isViewer(ctx, sid);
   const str = (v, max) => typeof v === 'string' && v.length <= max;
   const CUSTODIAN_ONLY = ['inventory', 'catalog', 'settings'];
   // The confirmed School Head (school.headUid), never one of the custodians.
-  const isHeadOf = (ctx, sid) => !!(ctx.uid && school(sid) && school(sid).headUid === ctx.uid && !isCust(ctx, sid));
+  const isHeadOf = (ctx, sid) => !!(ctx.uid && schoolPre(sid) && schoolPre(sid).headUid === ctx.uid && !isCust(ctx, sid));
+  // firestore.rules turnoverOk: one custodian (the new owner) whose card was pending before the
+  // batch and is 'done' after it; only the outgoing custodians may become viewers.
+  const turnoverOk = (sid, before, after) => {
+    if (typeof after.turnoverId !== 'string') return false;
+    const path = `schools/${sid}/turnovers/${after.turnoverId}`;
+    const pre = (batchBefore || store).get(path), post = store.get(path);
+    const allowed = [...(before.custodians || []), ...(before.viewerUids || [])];
+    return JSON.stringify(after.custodians) === JSON.stringify([after.ownerUid]) && after.ownerUid !== (after.headUid || '') &&
+      !!pre && pre.status === 'pending' && !!post && post.status === 'done' && post.uid === after.ownerUid &&
+      (after.viewerUids || []).every(u => allowed.includes(u)) && Object.keys(after.viewOnly || {}).every(u => allowed.includes(u));
+  };
   const apprStatus = d => ((d && d.approval) || {}).status || '';
   const PR_CONTENT = ['prNo', 'date', 'entity', 'fund', 'office', 'rcc', 'purpose', 'lines', 'total', 'requestIds', 'requesters', 'requestedBy', 'approvedBy'];
   const headCardOk = (data, uid) => data.uid === uid && typeof data.name === 'string' && data.name.length > 0 && data.name.length <= 80 &&
@@ -61,7 +78,13 @@ export function createBackend({ autoApprove = true } = {}) {
             JSON.stringify(data.custodians) !== JSON.stringify([ctx.uid]) || !str(data.name, 120)) deny('school create', { path, data });
       } else {
         const after = { ...before, ...data };
-        if (!isCust(ctx, p[1]) || (data.ownerUid && data.ownerUid !== before.ownerUid)) deny('school update', { path });
+        const ownerSame = !data.ownerUid || data.ownerUid === before.ownerUid;
+        if (isCust(ctx, p[1])) {
+          if (!ownerSame && !turnoverOk(p[1], before, after)) deny('school update: owner changes only with a confirmed turnover', { path, data });
+        } else if (isHeadOf(ctx, p[1])) {
+          const keys = ['custodians', 'ownerUid', 'turnoverId', 'turnoverMs', 'custodianName', 'custodianDesig', 'viewOnly', 'viewerUids'];
+          if (!turnoverOk(p[1], before, after) || !changedKeys(before, after).every(k => keys.includes(k))) deny('school update (head)', { path, data });
+        } else deny('school update', { path });
         if (after.headUid && (after.custodians || []).includes(after.headUid)) deny('school update: head is a custodian', { path, data });
       }
       return;
@@ -137,6 +160,33 @@ export function createBackend({ autoApprove = true } = {}) {
       if (!isCust(ctx, sid)) deny('head invite write', { path });
       return;
     }
+    if (p.length === 4 && sub === 'turnoverInvites') {
+      if (!isCust(ctx, sid) && !isHeadOf(ctx, sid)) deny('turnover invite write', { path });
+      return;
+    }
+    if (p.length === 4 && sub === 'turnovers') {
+      const cardOk2 = d => typeof d.name === 'string' && d.name.length > 0 && d.name.length <= 80 && str(d.designation, 80) && str(d.email ?? '', 120);
+      if (kind === 'create') {
+        const keys = ['uid', 'name', 'designation', 'email', 'joinedMs', 'status', 'invite', 'createdAt'];
+        const inv = typeof data.invite === 'string' && data.invite && store.get(`schools/${sid}/turnoverInvites/${data.invite}`);
+        const ok = data.uid === ctx.uid && p[3] === `${ctx.uid}-${data.invite}` && ctx.provider === 'google.com' && school(sid) && !erasing(sid) &&
+          !isCust(ctx, sid) && (school(sid).headUid || '') !== ctx.uid && Object.keys(data).every(k => keys.includes(k)) &&
+          data.status === 'pending' && !!(inv && inv.active === true) && cardOk2(data);
+        if (!ok) deny('turnover card create', { path, data, provider: ctx.provider });
+        return;
+      }
+      const ch = changedKeys(before, data);
+      if (!(isCust(ctx, sid) || isHeadOf(ctx, sid)) || before.status !== 'pending' || data.uid !== before.uid) deny('turnover card update', { path, data });
+      if (data.status === 'declined' && ch.every(k => ['status', 'by', 'doneMs', 'updatedAt'].includes(k))) return;
+      if (data.status === 'done' && ch.every(k => ['status', 'fromUids', 'fromName', 'fromDesig', 'assumedOn', 'confirmedBy', 'doneMs', 'updatedAt'].includes(k)) &&
+          (data.confirmedBy || {}).uid === ctx.uid) {
+        // getAfter(school): the same batch makes this card's owner the one custodian
+        const op = (batchOps || []).find(([k, pth]) => pth === `schools/${sid}` && k !== 'delete');
+        const schoolAfter = op ? { ...(store.get(`schools/${sid}`) || {}), ...op[2] } : store.get(`schools/${sid}`);
+        if (JSON.stringify(schoolAfter.custodians) === JSON.stringify([before.uid]) && schoolAfter.turnoverId === p[3]) return;
+      }
+      deny('turnover card update', { path, data, ch });
+    }
     if (p.length === 4 && sub === 'invites') {
       if (!isCust(ctx, sid)) deny('invite write', { path });
       return;
@@ -195,20 +245,28 @@ export function createBackend({ autoApprove = true } = {}) {
     if (p[0] === 'schoolIds') { if (single && p.length === 2) return; deny('list school ids', { path }); }
     if (p.length <= 2) {
       if (single) return;
-      if (!filters.some(f => f.field === 'custodians' && f.op === 'array-contains' && f.value === ctx.uid)) deny('list schools', { path, filters });
+      if (!filters.some(f => ['custodians', 'viewerUids'].includes(f.field) && f.op === 'array-contains' && f.value === ctx.uid)) deny('list schools', { path, filters });
       return;
     }
     const sid = p[1], sub = p[2];
     if (sub === 'requests') {
-      if (isCust(ctx, sid)) return;
+      if (canView(ctx, sid)) return;
       if (single) { const d = store.get(path); if (d && d.uid === ctx.uid) return; deny('get request', { path }); }
       if (!filters.some(f => f.field === 'uid' && f.op === '==' && f.value === ctx.uid)) deny('list requests', { path, filters });
       return;
     }
-    if (CUSTODIAN_ONLY.includes(sub)) { if (!isCust(ctx, sid)) deny(`read ${sub}`, { path }); return; }
-    if (sub === 'purchaseRequests') { if (!isCust(ctx, sid) && !isHeadOf(ctx, sid)) deny('read purchaseRequests', { path, uid: ctx.uid }); return; }
+    if (CUSTODIAN_ONLY.includes(sub)) { if (!canView(ctx, sid)) deny(`read ${sub}`, { path }); return; }
+    if (sub === 'turnovers') {
+      if (canView(ctx, sid) || isHeadOf(ctx, sid) || (single && p[3].split('-')[0] === ctx.uid)) return;
+      deny('read turnovers', { path, uid: ctx.uid });
+    }
+    if (sub === 'turnoverInvites') {
+      if (single || canView(ctx, sid) || isHeadOf(ctx, sid)) return;
+      deny('list turnover invites', { path });
+    }
+    if (sub === 'purchaseRequests') { if (!canView(ctx, sid) && !isHeadOf(ctx, sid)) deny('read purchaseRequests', { path, uid: ctx.uid }); return; }
     if (sub === 'heads') {
-      if (isCust(ctx, sid) || (single && p[3] === ctx.uid)) return;
+      if (canView(ctx, sid) || (single && p[3] === ctx.uid)) return;
       deny('read heads', { path });
     }
     if (sub === 'headInvites') {
@@ -216,7 +274,7 @@ export function createBackend({ autoApprove = true } = {}) {
       deny('list head invites', { path });
     }
     if (sub === 'members') {
-      if (isCust(ctx, sid) || (single && p[3] === ctx.uid)) return;
+      if (canView(ctx, sid) || (single && p[3] === ctx.uid)) return;
       deny('read members', { path });
     }
     if (sub === 'invites') {
@@ -224,23 +282,23 @@ export function createBackend({ autoApprove = true } = {}) {
       deny('list invites', { path });
     }
     if (sub === 'stock' || sub === 'stockHolds') {
-      if (isCust(ctx, sid) || isMember(ctx, sid)) return;
+      if (canView(ctx, sid) || isMember(ctx, sid)) return;
       deny(`read ${sub}`, { path, uid: ctx.uid });
     }
     if (sub === 'teacherReports') {
-      if (isCust(ctx, sid)) return;
+      if (canView(ctx, sid)) return;
       if (single) { const d = store.get(path); if (d && d.uid === ctx.uid) return; deny('get teacher report', { path }); }
       if (!filters.some(f => f.field === 'uid' && f.op === '==' && f.value === ctx.uid)) deny('list teacher reports', { path, filters });
       return;
     }
     if (sub === 'inspections') {
-      if (isCust(ctx, sid)) return;
+      if (canView(ctx, sid)) return;
       if (single) { const d = store.get(path); if (d && d.inspectorUid === ctx.uid) return; deny('get inspection', { path }); }
       if (!filters.some(f => f.field === 'inspectorUid' && f.op === '==' && f.value === ctx.uid)) deny('list inspections', { path, filters });
       return;
     }
     if (sub === 'releases') {
-      if (isCust(ctx, sid)) return;
+      if (canView(ctx, sid)) return;
       if (single) { const d = store.get(path); if (d && d.teacherUid === ctx.uid) return; deny('get release', { path }); }
       if (!filters.some(f => f.field === 'teacherUid' && f.op === '==' && f.value === ctx.uid)) deny('list releases', { path, filters });
       return;
@@ -270,7 +328,7 @@ export function createBackend({ autoApprove = true } = {}) {
     let after = kind === 'set' || !before ? resolveTS(data) : { ...before, ...resolveTS(data) };
     const p = parts(path);
     // members/requests/reports/holds rules look at the whole document; others at what was sent
-    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads'].includes(p[2]);
+    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers'].includes(p[2]);
     checkWrite(before ? 'update' : 'create', path, whole ? after : data, before || {}, ctx);
     if (autoApprove && !before && p.length === 4 && p[2] === 'members' && after.status === 'pending') after = { ...after, status: 'active', approvedMs: Date.now() };
     store.set(path, after);
@@ -316,8 +374,10 @@ export function createBackend({ autoApprove = true } = {}) {
     },
     batch: ({ ops: list, ctx }) => {
       const snapshot = new Map(store);
+      batchBefore = snapshot; batchOps = list;
       try { list.forEach(([kind, path, data]) => write(kind, path, data, ctx)); }
       catch (e) { store.clear(); snapshot.forEach((v, k) => store.set(k, v)); throw e; }
+      finally { batchBefore = null; batchOps = null; }
       return true;
     }
   };
