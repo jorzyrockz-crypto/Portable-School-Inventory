@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="94089282a093">
+  <meta name="app-version" content="ed5d092a3ee7">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -6914,6 +6914,9 @@
             corePath: ocrAbsolute(OCR_BASE + (simd ? 'tesseract-core-simd-lstm.wasm.js' : 'tesseract-core-lstm.wasm.js')),
             langPath: ocrAbsolute(OCR_BASE).replace(/\/$/, ''),
             workerBlobURL: false,
+            // The language file is kept in this app's own offline cache (sw.js). Tesseract's
+            // default IndexedDB cache ("keyval-store") is shared by every app on this address.
+            cacheMethod: 'none',
             logger: m => { if (!dlvOcrLogger(m)) icsOcrLogger(m); }
           });
           await worker.setParameters({ tessedit_pageseg_mode: '6', preserve_interword_spaces: '1' });
@@ -9370,7 +9373,8 @@
       // and icons. The page itself is fetched from the network first, so right after a deploy it
       // can be the new version while its CSS still came from the previous version's cache.
       if (navigator.serviceWorker.controller) loadedAssetsVersion = workerVersion(navigator.serviceWorker.controller);
-      navigator.serviceWorker.register('./sw.js').then((reg) => {
+      // Scope: this app's folder only (on username.github.io/<repo>/ other projects share the address)
+      navigator.serviceWorker.register('./sw.js', { scope: './' }).then((reg) => {
         swReg = reg;
         reg.addEventListener('updatefound', () => {
           const worker = reg.installing;
@@ -17864,6 +17868,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-shared-address', date: 'Nov 2026', title: 'Fixes: Reset leaves your other apps alone', points: [
+        'Fixes: on an address shared with other web apps (like username.github.io), Reset app now erases only CustodianPro\u2019s data and sign-in. Before, it also cleared the other apps\u2019 saved data on that address.',
+        'Reading paper forms (scan ICS, PO, IAR) keeps its language file only in CustodianPro\u2019s own offline storage.'
+      ] },
       { id: '2026-11-teacher-appearance', date: 'Nov 2026', title: 'Appearance button for teachers', points: [
         'On a teacher\u2019s phone, Appearance (System, Light or Dark, and the background picture) now has its own button at the top, next to the bell.',
         'The button shows the theme in use: half circle for System, sun for Light, moon for Dark. It is no longer at the bottom of the page.'
@@ -18695,16 +18703,57 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       progress(total, total);
       return total;
     }
+    // Only this app's own storage is erased. GitHub Pages serves every project of an account
+    // from one address (username.github.io/<repo>/ share one origin), so localStorage.clear()
+    // or deleting every IndexedDB database would also wipe the owner's other apps there.
+    // Ours: keys starting custodian_ / cp_, Firebase entries of our project (project ID, API
+    // key, app ID) and Firestore's offline copy of our project.
+    function ownStorageIds() {
+      const c = window.FIREBASE_CONFIG || {};
+      let had = '';
+      try { had = localStorage.getItem(CLOUD_PROJECT_KEY) || ''; } catch (e) {}
+      return [c.projectId, c.apiKey, c.appId, had, 'russapps-custodian-pro'].filter(x => x && String(x).length > 5);
+    }
+    const isOwnKey = (k, ids) => /^(custodian_|cp_)/.test(k) || ids.some(id => k.includes(id));
+    function removeOwnKeys(store, ids) {
+      try { Object.keys(store).filter(k => isOwnKey(k, ids)).forEach(k => store.removeItem(k)); } catch (e) {}
+    }
+    // Firebase keeps sign-ins of every Firebase app on this address in shared databases
+    // (firebaseLocalStorageDb…): remove only our project's entries, never the database.
+    function deleteOwnIdbEntries(dbName, storeName, ids) {
+      return new Promise(resolve => {
+        let req;
+        try { req = indexedDB.open(dbName); } catch (e) { resolve(); return; }
+        req.onupgradeneeded = () => { try { req.transaction.abort(); } catch (e) {} }; // not there: do not create it
+        req.onerror = req.onblocked = () => resolve();
+        req.onsuccess = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(storeName)) { db.close(); resolve(); return; }
+          try {
+            const tx = db.transaction(storeName, 'readwrite');
+            const os = tx.objectStore(storeName);
+            const keys = os.getAllKeys();
+            keys.onsuccess = () => (keys.result || []).filter(k => ids.some(id => String(k).includes(id))).forEach(k => os.delete(k));
+            tx.oncomplete = tx.onerror = tx.onabort = () => { db.close(); resolve(); };
+          } catch (e) { db.close(); resolve(); }
+        };
+      });
+    }
     async function wipeThisDevice(scope) {
+      const ids = ownStorageIds();
       try { stopRequestSync(); } catch (e) {}
       try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
-      // Firestore's offline copy (IndexedDB); the delete finishes as the page reloads.
       try {
         const dbs = indexedDB && indexedDB.databases ? await indexedDB.databases() : [];
-        dbs.forEach(d => { if (d && d.name) { try { indexedDB.deleteDatabase(d.name); } catch (e) {} } });
+        const names = dbs.map(d => d && d.name).filter(Boolean);
+        // Firestore's offline copy of our project ("firestore/[DEFAULT]/<project>/main");
+        // the delete finishes as the page reloads.
+        names.filter(n => /^firestore/i.test(n) && ids.some(id => n.includes(id))).forEach(n => { try { indexedDB.deleteDatabase(n); } catch (e) {} });
+        const shared = [['firebaseLocalStorageDb', 'firebaseLocalStorage'], ['firebase-heartbeat-database', 'firebase-heartbeat-store']].filter(([n]) => names.includes(n));
+        await Promise.race([Promise.all(shared.map(([n, st]) => deleteOwnIdbEntries(n, st, ids))), new Promise(r => setTimeout(r, 1500))]);
       } catch (e) {}
-      try { localStorage.clear(); } catch (e) {}
-      try { sessionStorage.clear(); } catch (e) {}
+      removeOwnKeys(localStorage, ids);
+      removeOwnKeys(sessionStorage, ids);
       const set = Storage.prototype.setItem;
       try { set.call(sessionStorage, 'cp_reset_done', scope); } catch (e) {}
       // Nothing may write old state back before the reload.
