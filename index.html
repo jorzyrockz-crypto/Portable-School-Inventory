@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="2752bcf9ccfd">
+  <meta name="app-version" content="002ccd6e457d">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -594,6 +594,14 @@
         <i class="ph-bold ph-compass text-lg shrink-0"></i>
         <p class="flex-1 min-w-0 leading-snug"><b>Exploring</b> with sample data<span class="hidden sm:inline"> · nothing here is saved to a school</span></p>
         <button id="exploreSignIn" onclick="endExplore()" class="shrink-0 h-8 px-3 rounded-lg bg-amber-700 hover:bg-amber-800 text-white font-bold flex items-center gap-1.5"><i class="ph-bold ph-sign-in"></i> Sign in</button>
+      </div>
+    </div>
+    <!-- The outgoing custodian after a turnover: records can be opened and printed, not changed -->
+    <div id="viewOnlyBar" class="hidden max-w-4xl mx-auto px-4 pb-2.5">
+      <div class="rounded-xl bg-amber-50 border border-amber-200 pl-3 pr-1.5 py-1.5 flex items-center gap-2.5 text-xs text-amber-900">
+        <i class="ph-bold ph-eye text-lg shrink-0"></i>
+        <p id="viewOnlyText" class="flex-1 min-w-0 leading-snug"><b>View-only</b></p>
+        <button onclick="openTurnover()" class="shrink-0 h-8 px-3 rounded-lg bg-amber-700 hover:bg-amber-800 text-white font-bold flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Turnover</button>
       </div>
     </div>
 
@@ -1453,6 +1461,7 @@
           <p class="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Data &amp; settings</p>
           <button id="moreInstallItem" onclick="closeMoreMenu(); installApp()" class="more-item" style="display:none"><i class="ph-bold ph-device-mobile text-brand-600"></i> Install app on this phone</button>
           <button onclick="closeMoreMenu(); openSchoolModal()" class="more-item"><i class="ph-bold ph-buildings text-brand-600"></i> School &amp; custodian info</button>
+          <button id="moreTurnoverItem" onclick="closeMoreMenu(); openTurnover()" class="more-item"><i class="ph-bold ph-handshake text-brand-600"></i> Custodian turnover</button>
           <button onclick="closeMoreMenu(); exportBackupJSON()" class="more-item"><i class="ph-bold ph-floppy-disk text-emerald-600"></i> Back up now</button>
           <button onclick="closeMoreMenu(); document.getElementById('restoreFileInput').click()" class="more-item"><i class="ph-bold ph-upload-simple text-amber-600"></i> Restore a backup</button>
           <button onclick="closeMoreMenu(); openHistory()" class="more-item"><i class="ph-bold ph-list-magnifying-glass text-brand-600"></i> Change history</button>
@@ -1839,6 +1848,23 @@
         <button onclick="closeHeadPanel()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
       <div id="headPanelBody" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- CUSTODIAN TURNOVER: hand over to a new property custodian; the turnover inventory; renew slips -->
+  <div id="turnoverModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeTurnover()">
+    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-handshake text-xl"></i></span>
+          <div class="min-w-0">
+            <h3 class="font-extrabold text-base text-slate-900 leading-tight">Custodian turnover</h3>
+            <p class="text-xs font-semibold text-slate-500">A new property custodian takes over</p>
+          </div>
+        </div>
+        <button onclick="closeTurnover()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="turnoverBody" class="space-y-4"></div>
     </div>
   </div>
 
@@ -3210,6 +3236,7 @@
     }
 
     function saveState() {
+      if (typeof isViewOnly === 'function' && isViewOnly()) { viewOnlyNotice(); return; }   // after a turnover: nothing is saved
       recordHistory();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userState)); scheduleInventorySync();
       markUnsavedChanges();
@@ -9555,6 +9582,10 @@
       if (/invite-only/.test(code)) return 'This school only accepts its invite link. Ask your property custodian for it.';
       if (/no-school/.test(code)) return 'This invite link is not valid. Ask the property custodian for a new one.';
       if (/old-invite/.test(code)) return 'This invite link was replaced by a newer one. Ask the property custodian for the new link.';
+      if (/old-turnover-invite/.test(code)) return 'This Turnover link was replaced or already used. Ask the outgoing custodian or the School Head for a new one.';
+      if (/turnover-already-custodian/.test(code)) return 'This Google account is already the property custodian of this school. Sign in as the property custodian instead.';
+      if (/turnover-is-head/.test(code)) return 'This Google account is the School Head’s. The new property custodian signs in with their own Google account, so nobody approves their own Purchase Request.';
+      if (/turnover-declined/.test(code)) return 'This turnover was declined. Ask for a new Turnover link if this is a mistake.';
       if (/old-head-invite/.test(code)) return 'This School Head link was replaced by a newer one. Ask the property custodian for the new link.';
       if (/head-is-custodian/.test(code)) return 'This Google account is the property custodian’s. The School Head signs in with their own Google account, so nobody approves their own PR.';
       if (/head-removed/.test(code)) return 'The property custodian removed this account as School Head. Ask them to confirm you again with a new School Head link.';
@@ -10719,6 +10750,7 @@
 
     // Writes go to the phone's queue at once; this only reports failures.
     function cloudWrite(promise, what) {
+      if (isViewOnly()) { promise.catch(() => {}); viewOnlyNotice(); return; }
       promise.catch(err => {
         console.error(what, err);
         showToast(`${what} failed: ${cloudErrorText(err)}`, 'ph-warning');
@@ -10736,6 +10768,7 @@
       myRelLoaded = false; tRepLoaded = false;
       inspList = [];
       headList = []; headsLoaded = false; headMe = null; headMeLoaded = false;
+      turnList = []; turnLoaded = false; turnJoinCard = null; turnJoinLoaded = false; lastSchoolDoc = null; schoolTidySent = ''; viewOnlyLive = false;
       stopInventorySync();
     }
 
@@ -10744,6 +10777,11 @@
       if (!reqRole || !cloud.db || !cloud.user) return;
       const F = cloud.sdk;
       if (isHeadDevice()) { subscribeHead(F); return; }   // the School Head: their card, then the PRs
+      if (isIncomingDevice()) { subscribeIncoming(F); return; }   // a new custodian waiting for Confirm
+      if (viewOnlyEnded()) return;
+      // The outgoing custodian: the school's records, read only, once the school still lists them
+      // as a viewer (onSchoolDoc → startViewOnlyRecords).
+      if (isViewOnly()) { subscribeSchoolDoc(F); return; }
       const onErr = err => { console.error('sync', err); cloud.error = cloudErrorText(err); renderRequestsEverywhere(); };
       const onRequests = snap => {
         reqList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
@@ -10766,6 +10804,8 @@
         subscribeHeads(F);
         subscribeTeam(F);
         subscribeInspections(F);
+        subscribeSchoolDoc(F);
+        reqUnsubs.push(listenTurnovers(F));
         startInventorySync();
         setTimeout(publishSchoolNo, 1500);   // lists the DepEd School ID (once, or when it changes)
         scheduleLowStockCheck(300);   // remember today's stock levels (primes low-stock notifications)
@@ -10803,7 +10843,7 @@
       catch (e) { invSync = { schoolId: null, synced: {}, lastAt: 0 }; }
     }
     function saveInvSync() { localStorage.setItem(INV_SYNC_KEY, JSON.stringify(invSync)); }
-    function inventorySyncActive() { return invReady && isCustodianDevice() && !!cloud.user; }
+    function inventorySyncActive() { return invReady && isCustodianDevice() && !!cloud.user && !isViewOnly(); }
 
     // Same text for the same data whatever the key order (Firestore returns maps sorted).
     function canonJSON(v) {
@@ -10912,6 +10952,9 @@
       stopInventorySync();
       if (!isCustodianDevice() || !cloud.db || !cloud.user) return;
       loadInvSync();
+      // View-only (after a turnover): this device keeps its copy as it was. A device that never had
+      // the school's inventory loads it once from the account, read only.
+      if (isViewOnly() && invSync.schoolId === reqRole.schoolId) return;
       const F = cloud.sdk;
       invRemote = {};
       const meta = {};
@@ -10935,6 +10978,17 @@
       if (!invRemote.inventory || !invRemote.catalog || !invRemote.settings) return;
       const metas = Object.values(meta);
       const fromCache = metas.some(m => m.fromCache);
+      if (isViewOnly()) {
+        if (fromCache) return;
+        const local = localInvDocs(), remote = remoteInvDocs();
+        const apply = Object.entries(remote).map(([k, r]) => [k, r.body]).filter(([k, b]) => (b ? invHash(b) : null) !== (local[k] ? invHash(local[k]) : null));
+        Object.keys(local).filter(k => !remote[k] && !INV_META_KEYS.has(k)).forEach(k => apply.push([k, null]));
+        if (apply.length) applyRemoteInventory(apply);
+        invSync = { schoolId: reqRole.schoolId, synced: {}, lastAt: Date.now() };
+        saveInvSync();
+        stopInventorySync();
+        return;
+      }
       if (!invReady) {
         const firstTime = invSync.schoolId !== reqRole.schoolId;
         // Never merge a brand-new phone against an empty offline cache: wait for the server.
@@ -10971,6 +11025,8 @@
       setInvStatus(metas.some(m => m.pending) ? 'saving' : fromCache ? (navigator.onLine ? 'syncing' : 'offline') : 'synced');
       linkTypedNamesToTeachers();
       applyCountReports();
+      applyTakeover();
+      tidySchoolDoc();
     }
 
     // Custom items are numbered per phone (CUSTOM-P2-114, -115 …), so two phones can create
@@ -11108,14 +11164,14 @@
 
     // Called after every local save; sends what changed since the last sync.
     function scheduleInventorySync() {
-      if (invApplying || !invReady) return;
+      if (invApplying || !invReady || isViewOnly()) return;
       if (!invSync.pendingSince) { invSync.pendingSince = Date.now(); saveInvSync(); }
       clearTimeout(invPushTimer);
       invPushTimer = setTimeout(() => pushInventory(), 600);
     }
 
     function pushInventory(all = false) {
-      if (!invReady || invApplying || !cloud.db || !isCustodianDevice()) return;
+      if (!invReady || invApplying || !cloud.db || !isCustodianDevice() || isViewOnly()) return;
       const F = cloud.sdk;
       const local = localInvDocs();
       const writes = [];
@@ -11218,6 +11274,7 @@
 
     function renderRequestsEverywhere() {
       renderLoginGate();
+      renderViewOnly();
       if (typeof renderNotifBell === 'function') renderNotifBell();
       renderHomeReqCard();
       if (activeMainView === 'REQUESTS') renderRequestsView();
@@ -11635,6 +11692,20 @@
       const email = user.email || '';
       const found = await F.getDocs(F.query(F.collection(cloud.db, 'schools'), F.where('custodians', 'array-contains', uid)));
       let schoolId, name;
+      if (!found.docs.length) {
+        // A custodian who turned the school over: view-only for 30 days, on any device.
+        const seen = await F.getDocs(F.query(F.collection(cloud.db, 'schools'), F.where('viewerUids', 'array-contains', uid)));
+        const was = seen.docs.find(d => (((d.data().viewOnly || {})[uid]) || {}).untilMs > Date.now());
+        if (was) {
+          const d = was.data();
+          reqRole = { role: 'custodian', schoolId: was.id, schoolName: d.name, email, viewOnly: { untilMs: d.viewOnly[uid].untilMs, toName: d.custodianName || '', atMs: d.turnoverMs || 0 } };
+          saveReqRole();
+          subscribeRequests();
+          renderRequestsEverywhere();
+          showToast(`${d.name}: view-only until ${msDate(d.viewOnly[uid].untilMs)}`, 'ph-eye');
+          return;
+        }
+      }
       if (found.docs.length) {
         schoolId = found.docs[0].id;
         name = found.docs[0].data().name;
@@ -11807,6 +11878,14 @@
     }
 
     function checkJoinLink() {
+      const to = location.hash.match(/[#&]turnover=([A-Za-z0-9_-]{6,64})/);   // a new property custodian's Turnover link
+      if (to) {
+        if (exploring()) { exploreRestore(); location.reload(); return; }
+        history.replaceState(null, '', location.pathname + location.search);
+        if (!reqRole) { gateStep = 'head'; renderLoginGate(); }
+        openTurnoverJoin(to[1]);
+        return;
+      }
       const h = location.hash.match(/[#&]head=([A-Za-z0-9_-]{6,64})/);   // the School Head's own link
       if (h) {
         if (exploring()) { exploreRestore(); location.reload(); return; }
@@ -13033,12 +13112,722 @@
       renderRequestsEverywhere();
     }
 
+    // ---- Custodian turnover ---------------------------------------------------------------
+    // A new property custodian takes over the school's property accountability (DepEd: on a
+    // change of custodian, the property is turned over and the slips are renewed).
+    //   schools/{id}/turnoverInvites/{code}  { active, createdMs, by }: the Turnover link, made by
+    //       the outgoing custodian, or by the School Head when the custodian has already left
+    //   schools/{id}/turnovers/{uid-code}   the incoming custodian's card: { uid, name, designation,
+    //       email, status: 'pending' | 'done' | 'declined', invite, joinedMs, fromUids, fromName,
+    //       fromDesig, assumedOn, confirmedBy { uid, name, role: 'custodian' | 'head' }, doneMs }
+    // Confirm (the outgoing custodian or the School Head) gives the school custodians [new uid],
+    // ownerUid, turnoverId and custodianName, and viewOnly { oldUid: { untilMs, name, sinceMs } } +
+    // viewerUids: the outgoing custodian may still read (never change) the school's records for
+    // 30 days, for their clearance, and then not at all. The rules enforce all of it.
+    var TURNOVER_VIEW_DAYS = 30;
+    var TO_INVITE_KEY = 'custodian_turnover_invite_v1';   // { [schoolId]: code } of the link made on this device
+    var turnList = [];          // custodian / head: the school's turnover cards
+    var turnLoaded = false;
+    var turnJoinCard = null, turnJoinLoaded = false;   // incoming custodian's phone: their own card
+    var turnRenewDone = null;   // slips made by Renew all, for printing
+    var lastSchoolDoc = null, schoolTidySent = '';
+    var viewOnlyNoticeAt = 0;
+    const turnCol = () => cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'turnovers');
+    function isIncomingDevice() { return !!(reqRole && reqRole.role === 'incoming'); }
+    function isViewOnly() { return !!(reqRole && reqRole.role === 'custodian' && reqRole.viewOnly); }
+    function viewOnlyEnded() { return isViewOnly() && !(reqRole.viewOnly.untilMs > Date.now()); }
+    const turnDone = () => turnList.filter(t => t.status === 'done').sort((a, b) => (b.doneMs || 0) - (a.doneMs || 0));
+    const turnPending = () => turnList.filter(t => t.status === 'pending').sort((a, b) => (b.joinedMs || 0) - (a.joinedMs || 0));
+    const msDate = ms => (ms ? formatShortDate(new Date(ms).toISOString()) : '');
+    function turnInviteMap() { try { return JSON.parse(localStorage.getItem(TO_INVITE_KEY) || '{}') || {}; } catch (e) { return {}; } }
+    const turnInviteCode = () => (reqRole && turnInviteMap()[reqRole.schoolId]) || '';
+    function setTurnInviteCode(code) { const m = turnInviteMap(); m[reqRole.schoolId] = code; localStorage.setItem(TO_INVITE_KEY, JSON.stringify(m)); }
+    const turnoverLink = () => `${location.origin}${location.pathname}#turnover=${reqRole.schoolId}-${turnInviteCode()}`;
+    const canHandOver = () => !!cloud.user && ((isCustodianDevice() && !isViewOnly()) || (isHeadDevice() && !!headMe && headMe.status === 'active'));
+    // The custodian who signed a slip: its own record, else whoever was custodian when it was made.
+    function slipCustodian(r) {
+      if (r && r.custName) return { name: r.custName, desig: r.custDesig || '' };
+      const at = (r && r.createdMs) || 0;
+      const t = turnList.filter(x => x.status === 'done' && (x.doneMs || 0) > at && x.fromName).sort((a, b) => a.doneMs - b.doneMs)[0];
+      return t ? { name: t.fromName, desig: t.fromDesig || '' } : { name: schoolInfo.custodian || '', desig: schoolInfo.position || '' };
+    }
+
+    // ---- Listeners ------------------------------------------------------------------------
+    function listenTurnovers(F) {
+      return F.onSnapshot(turnCol(), snap => {
+        turnList = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        turnLoaded = true;
+        if (!document.getElementById('turnoverModal').classList.contains('hidden')) renderTurnover();
+        if (isHeadDevice()) renderHeadView();
+        notifFromTurnovers(snap.metadata);
+      }, err => { console.warn('turnovers', err); turnLoaded = true; });
+    }
+    function notifFromTurnovers(meta) {
+      if (isViewOnly()) return;
+      notifCheck('turnovers', turnList.map(t => ({
+        key: 'to:' + t.id, sig: t.status || 'pending',
+        make: prev => (prev === undefined && t.status === 'pending')
+          ? { title: `${t.name || 'Someone'} is ready to take over as property custodian`, body: `${[t.designation, t.email].filter(Boolean).join(' · ')} · tap to confirm the turnover`, icon: 'ph-handshake', tone: 'brand', go: 'turnover' }
+          : null
+      })), fromCacheOf(meta));
+    }
+    // The custodian's devices watch the school: a turnover confirmed by the School Head (or on
+    // another device) turns this one view-only.
+    function subscribeSchoolDoc(F) {
+      reqUnsubs.push(F.onSnapshot(F.doc(cloud.db, 'schools', reqRole.schoolId), snap => {
+        if (snap.exists()) onSchoolDoc(snap.data());
+      }, err => console.warn('school', err)));
+    }
+    function onSchoolDoc(d) {
+      lastSchoolDoc = d;
+      const uid = cloud.user && cloud.user.uid;
+      if (!uid || !isCustodianDevice()) return;
+      if ((d.custodians || []).includes(uid)) {
+        if (isViewOnly()) {   // handed back to this custodian
+          delete reqRole.viewOnly;
+          saveReqRole();
+          subscribeRequests();
+          renderRequestsEverywhere();
+          return;
+        }
+        tidySchoolDoc();
+        return;
+      }
+      const v = (d.viewOnly || {})[uid];
+      const next = { untilMs: (v && v.untilMs) || 0, toName: d.custodianName || '', atMs: d.turnoverMs || 0 };
+      if (isViewOnly() && reqRole.viewOnly.untilMs === next.untilMs) { if (!viewOnlyEnded()) startViewOnlyRecords(); return; }
+      enterViewOnly(next);
+    }
+    var viewOnlyLive = false;
+    function startViewOnlyRecords() {
+      if (viewOnlyLive || !isViewOnly() || viewOnlyEnded() || !cloud.user) return;
+      viewOnlyLive = true;
+      const F = cloud.sdk;
+      reqUnsubs.push(listenTurnovers(F));
+      reqUnsubs.push(listenSynced(prCol(), ['createdAt', 'updatedAt'], snap => {
+        prList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+        prList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
+        renderRequestsEverywhere();
+      }, err => console.warn('prs', err)));
+      subscribeTeam(F);
+      subscribeInspections(F);
+      startInventorySync();
+    }
+    // The current custodian keeps their name on the school (the School Head's phone shows it when
+    // confirming a turnover), and drops view-only access that has ended.
+    function tidySchoolDoc() {
+      const d = lastSchoolDoc;
+      if (!d || !isCustodianDevice() || isViewOnly() || !cloud.user || !navigator.onLine || (reqRole && reqRole.takeover)) return;
+      if (!(d.custodians || []).includes(cloud.user.uid)) return;
+      const patch = {};
+      const name = String(schoolInfo.custodian || '').trim().slice(0, 80), desig = String(schoolInfo.position || '').trim().slice(0, 80);
+      if (name && (d.custodianName !== name || (d.custodianDesig || '') !== desig)) { patch.custodianName = name; patch.custodianDesig = desig; }
+      const vo = d.viewOnly || {};
+      const live = Object.fromEntries(Object.entries(vo).filter(([, v]) => v && v.untilMs > Date.now()));
+      if (Object.keys(live).length !== Object.keys(vo).length) { patch.viewOnly = live; patch.viewerUids = Object.keys(live); }
+      const sig = JSON.stringify(patch);
+      if (!Object.keys(patch).length || sig === schoolTidySent) return;
+      schoolTidySent = sig;
+      const F = cloud.sdk;
+      F.updateDoc(F.doc(cloud.db, 'schools', reqRole.schoolId), patch).catch(err => { schoolTidySent = ''; console.warn('school tidy', err); });
+    }
+
+    // ---- View-only (the outgoing custodian, 30 days) -----------------------------------------
+    function enterViewOnly(v) {
+      const first = !isViewOnly();
+      reqRole.viewOnly = v;
+      saveReqRole();
+      if (first) logHistory('system', `Property accountability turned over${v.toName ? ` to ${v.toName}` : ''}. This device is view-only${v.untilMs > Date.now() ? ` until ${msDate(v.untilMs)}` : ''}.`);
+      subscribeRequests();
+      renderRequestsEverywhere();
+      renderDashboard();
+      if (first && v.untilMs > Date.now() && !enterViewOnly.quiet) {
+        appAlert(`${v.toName || 'The new property custodian'} is now the property custodian.\n\nUntil ${msDate(v.untilMs)} this device is view-only: open and print your records, slips and Change History for your clearance. Nothing can be changed.`, { title: 'Turnover done', icon: 'ph-handshake' });
+      }
+    }
+    function renderViewOnly() {
+      const on = isViewOnly();
+      document.documentElement.classList.toggle('view-only', on);
+      // Buttons that would change something are hidden too (taps on any left are stopped below).
+      if (on && !document.getElementById('viewOnlyStyle')) {
+        const st = document.createElement('style');
+        st.id = 'viewOnlyStyle';
+        st.textContent = [...VIEW_ONLY_BLOCK].map(n => `html.view-only button[onclick^="${n}("]`).join(',') + '{display:none !important}';
+        document.head.appendChild(st);
+      }
+      const bar = document.getElementById('viewOnlyBar');
+      if (!bar) return;
+      bar.classList.toggle('hidden', !on);
+      if (on) {
+        const v = reqRole.viewOnly;
+        const text = `<b>View-only</b>${v.untilMs > Date.now() ? ` until ${escapeHTML(msDate(v.untilMs))}` : ''}<span class="hidden sm:inline"> · turned over${v.toName ? ` to ${escapeHTML(v.toName)}` : ''}. Open and print records; changes are off</span>`;
+        const p = document.getElementById('viewOnlyText');
+        if (p.innerHTML !== text) p.innerHTML = text;
+      }
+    }
+    function viewOnlyNotice() {
+      if (Date.now() - viewOnlyNoticeAt < 1500) return;
+      viewOnlyNoticeAt = Date.now();
+      showToast('View-only: this device can open and print records, not change them', 'ph-eye');
+    }
+    // Taps that would change something. (Saving is refused too, as a backstop.)
+    const VIEW_ONLY_BLOCK = new Set(['adjustQty', 'saveItemModal', 'saveItemEdit', 'saveEncode', 'saveDelivery', 'saveCustomItem', 'saveIcs', 'savePr',
+      'saveTook', 'saveSchoolInfo', 'savePriceCorrection', 'saveMemberEdit', 'confirmRelease', 'confirmTransfer', 'approveMember', 'declineMember',
+      'removeMember', 'addBackMember', 'resolveTeacherReport', 'declineTeacherReport', 'takeBackUnit', 'takeBackAll', 'relieveLost', 'markRepaired',
+      'markFound', 'markPrDelivered', 'generateUnitTags', 'addUnitTag', 'removeUnitTag', 'iarAccept', 'iarRelease', 'iarSendToPhone', 'iarSign',
+      'iarCancelAssigned', 'iarReinspect', 'recordPaperSign', 'undoPaperSign', 'submitPrAgain', 'cancelPr', 'editPr', 'reorderToPr', 'openPrFromPicked',
+      'newInviteLink', 'newHeadInvite', 'confirmHead', 'removeHead', 'openReview', 'loadSampleData', 'clearSampleData', 'applyImport', 'openImport',
+      'openEncodeSheet', 'homeAddCustom', 'openCustomItemModal', 'dlvNewFromFind', 'startReceive', 'startStockIn', 'startCount', 'finishCount',
+      'itemSheetCounted', 'stepModalCondition', 'openTransfer', 'openRelease', 'openReleaseFromRequest', 'openInspectPr', 'remindTeacher',
+      'removeTypedName', 'homeCountAction', 'openTook', 'openSamePerson', 'openRequestForm', 'requestFromStock', 'openIcsScanner', 'openDelivery',
+      'openSchoolModal', 'newTurnoverInvite', 'confirmTurnover', 'declineTurnover', 'renewAllSlips', 'openHeadPanel', 'openInvite', 'forgetMatch']);
+    document.addEventListener('click', e => {
+      if (!isViewOnly()) return;
+      const el = e.target && e.target.closest && e.target.closest('[onclick]');
+      if (!el) return;
+      const names = String(el.getAttribute('onclick') || '').match(/[A-Za-z_$][\w$]*(?=\s*\()/g) || [];
+      if (!names.some(n => VIEW_ONLY_BLOCK.has(n))) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      viewOnlyNotice();
+    }, true);
+
+    // ---- The panel (custodian, and the view-only device) --------------------------------------
+    async function openTurnover() {
+      if (!isCustodianDevice() || !cloud.user) { showToast('Sign in as the property custodian first', 'ph-info'); return; }
+      document.getElementById('turnoverModal').classList.remove('hidden');
+      renderTurnover();
+      if (canHandOver() && !turnInviteCode() && navigator.onLine) await newTurnoverInvite(true);
+    }
+    function closeTurnover() { document.getElementById('turnoverModal').classList.add('hidden'); }
+    function turnLinkBlockHTML() {
+      if (!turnInviteCode()) {
+        return `<p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-3 text-xs text-slate-600 text-center">${navigator.onLine
+          ? `<button onclick="newTurnoverInvite(true)" class="font-bold text-brand-700 underline">Make the Turnover link</button>`
+          : 'Connect to the internet to make the Turnover link.'}</p>`;
+      }
+      return `
+          <div class="text-center">
+            <div id="turnQr" class="keep-light mx-auto w-40 h-40 rounded-2xl border border-slate-200 p-2.5 bg-white flex items-center justify-center text-xs text-slate-500">QR code</div>
+          </div>
+          <div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Turnover link</p>
+            <p id="turnLinkText" class="text-[11px] font-mono text-slate-700 break-all leading-snug select-all">${escapeHTML(turnoverLink())}</p>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="copyTurnoverLink()" class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-copy"></i> Copy link</button>
+            <button onclick="shareTurnoverLink()" class="h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-share-network"></i> Share</button>
+          </div>
+          <button onclick="newTurnoverInvite()" class="w-full min-h-10 text-xs font-bold text-slate-500 hover:text-rose-600 flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrows-clockwise"></i> Make a new Turnover link</button>`;
+    }
+    function drawTurnQr() {
+      const box = document.getElementById('turnQr');
+      if (!box) return;
+      (typeof qrcode === 'function' ? Promise.resolve() : loadScript('assets/vendor/qrcode.js'))
+        .then(() => { box.innerHTML = qrSVG(turnoverLink()); })
+        .catch(() => { box.textContent = 'QR code needs the app to be opened online once.'; });
+    }
+    // A card waiting for Confirm (custodian's panel and the School Head's phone).
+    function turnPendingHTML(t) {
+      return `
+        <div class="rounded-2xl border-2 border-brand-200 bg-brand-50/40 p-3 space-y-2.5" data-turn-pending="${t.id}">
+          <div class="flex items-start gap-2.5">
+            <span class="w-9 h-9 shrink-0 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center"><i class="ph-bold ph-user-plus text-lg"></i></span>
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-slate-900">${escapeHTML(t.name)}</p>
+              <p class="text-[11px] text-slate-600">${escapeHTML([t.designation, t.email].filter(Boolean).join(' · '))}</p>
+              <p class="text-[11px] text-slate-500">Opened the Turnover link · ${escapeHTML(msDate(t.joinedMs))}</p>
+            </div>
+          </div>
+          <label class="block text-[11px] font-bold uppercase text-slate-500">Assumes accountability on
+            <input id="turnDate-${t.id}" type="date" value="${localISODate()}" max="${localISODate()}" class="pr-in">
+          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="declineTurnover('${t.id}')" class="h-11 rounded-xl bg-white border border-slate-300 hover:border-rose-300 text-sm font-bold text-slate-700">Not them</button>
+            <button onclick="confirmTurnover('${t.id}')" data-turn-confirm="${t.id}" class="h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-handshake"></i> Confirm</button>
+          </div>
+        </div>`;
+    }
+    function turnDoneHTML(t, print) {
+      const by = t.confirmedBy || {};
+      return `
+        <div class="rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-700 space-y-1" data-turn-done="${t.id}">
+          <p><b>${escapeHTML(t.fromName || 'Previous custodian')}</b> <i class="ph-bold ph-arrow-right text-slate-500"></i> <b>${escapeHTML(t.name)}</b></p>
+          <p class="text-[11px] text-slate-500">Assumed accountability on ${escapeHTML(prDateText(t.assumedOn))} · confirmed by ${escapeHTML(by.name || (by.role === 'head' ? 'the School Head' : 'the outgoing custodian'))}${by.role === 'head' ? ' (School Head)' : ''}</p>
+          ${print ? `<button onclick="printTurnoverReport('${t.id}')" class="min-h-8 text-[11px] font-bold text-brand-700 flex items-center gap-1"><i class="ph-bold ph-printer"></i> Turnover inventory</button>` : ''}
+        </div>`;
+    }
+    function renderTurnover() {
+      const body = document.getElementById('turnoverBody');
+      if (!body || !isCustodianDevice()) return;
+      const done = turnDone(), waiting = turnPending();
+      const mine = cloud.user ? done.find(t => t.uid === cloud.user.uid) : null;
+      const sec = text => `<p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">${text}</p>`;
+      let html = '';
+      if (isViewOnly()) {
+        const v = reqRole.viewOnly;
+        html += `<div class="rounded-2xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 flex gap-2.5"><i class="ph-bold ph-eye text-xl"></i><p>You turned over the school’s property${v.toName ? ` to <b>${escapeHTML(v.toName)}</b>` : ''}. Until <b>${escapeHTML(msDate(v.untilMs))}</b> you can open and print your records for your clearance. Nothing can be changed.</p></div>`;
+      } else if (mine && schoolInfo.renewedTurnover !== mine.id) {
+        const holders = renewHolders();
+        html += `
+          <div class="rounded-2xl bg-emerald-50 border border-emerald-200 p-3 space-y-2" data-renew-card>
+            <p class="text-sm font-extrabold text-emerald-900 flex items-center gap-1.5"><i class="ph-bold ph-files"></i> Teachers’ ICS and PAR</p>
+            <p class="text-xs text-emerald-900">The slips ${escapeHTML(mine.fromName || 'the previous custodian')} issued stay valid. When you are ready, renew them in your name: a new ICS or PAR for each teacher, and each teacher taps Received.</p>
+            <button onclick="renewAllSlips()" ${holders.length ? '' : 'disabled'} class="w-full h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:bg-slate-300 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrows-clockwise"></i> Renew all slips${holders.length ? ` · ${plural(holders.length, 'teacher')}` : ''}</button>
+          </div>`;
+      }
+      if (turnRenewDone && turnRenewDone.docs.length) {
+        html += `<div class="rounded-2xl bg-white border border-emerald-200 p-3 text-xs text-slate-700 space-y-2" data-renew-done>
+            <p><b>Renewed:</b> ${turnRenewDone.docs.map(d => `${escapeHTML(d.kind)} ${escapeHTML(d.no)} (${escapeHTML(d.teacherName)})`).join(', ')}</p>
+            <button onclick="printRenewedSlips()" class="h-10 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-800 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print the new slips</button>
+          </div>`;
+      }
+      if (!isViewOnly()) {
+        if (waiting.length) html += `<div class="space-y-2">${sec('Waiting for your Confirm')}${waiting.map(turnPendingHTML).join('')}</div>`;
+        html += `
+          <div class="space-y-3">
+            ${sec('Hand over to a new custodian')}
+            <p class="text-xs text-slate-600">The new property custodian opens this link on their own phone and signs in with their own Google account. Then you, or the School Head, tap <b>Confirm</b>. They get the school inventory, requests and records. You keep <b>view-only</b> access for ${TURNOVER_VIEW_DAYS} days to print records for your clearance.</p>
+            ${turnLinkBlockHTML()}
+          </div>
+          <div class="rounded-2xl bg-sky-50 border border-sky-200 p-3 text-xs text-sky-900 space-y-2">
+            <p class="flex gap-2"><i class="ph-bold ph-lightbulb text-base"></i><span><b>Suggested, not required:</b> count the property together before the handover, so the turnover inventory matches what is on hand.</span></p>
+            <button onclick="closeTurnover(); homeCountAction()" class="h-9 px-3 rounded-lg bg-white border border-sky-200 font-bold text-sky-800 flex items-center gap-1.5"><i class="ph-bold ph-scan"></i> Count first</button>
+          </div>`;
+      }
+      html += `
+        <button onclick="printTurnoverReport(${waiting.length && !isViewOnly() ? `'${waiting[0].id}'` : mine ? `'${mine.id}'` : isViewOnly() && done[0] ? `'${done[0].id}'` : 'null'})" data-turn-print class="w-full h-11 rounded-xl bg-white border-2 border-slate-200 hover:border-brand-300 text-sm font-extrabold text-slate-800 flex items-center justify-center gap-2"><i class="ph-bold ph-printer"></i> Print the turnover inventory</button>
+        <p class="text-[11px] text-slate-500 -mt-2">All property and supplies on hand as of today, for both custodians and the School Head to sign.</p>`;
+      if (done.length) html += `<div class="space-y-2">${sec('Turnovers')}${done.map(t => turnDoneHTML(t, true)).join('')}</div>`;
+      if (body.innerHTML !== html) {
+        body.innerHTML = html;
+        drawTurnQr();
+      }
+    }
+    async function copyTurnoverLink() {
+      const link = turnoverLink();
+      try { await navigator.clipboard.writeText(link); }
+      catch (e) { const el = document.getElementById('turnLinkText'); if (el) { const r = document.createRange(); r.selectNodeContents(el); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.execCommand('copy'); } }
+      showToast('Turnover link copied · send it to the new property custodian only', 'ph-copy');
+    }
+    async function shareTurnoverLink() {
+      const data = { title: `${reqRole.schoolName} · Custodian turnover`, text: `Take over as property custodian of ${reqRole.schoolName} in CustodianPro (sign in with your own Google account):`, url: turnoverLink() };
+      if (navigator.share) { try { await navigator.share(data); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+      copyTurnoverLink();
+    }
+    async function newTurnoverInvite(first = false) {
+      if (!canHandOver()) return;
+      if (!first && !await appConfirm('The old Turnover link stops working. Someone who already opened it still waits for your Confirm.', { title: 'Make a new Turnover link?', ok: 'New link', icon: 'ph-arrows-clockwise', tone: 'warn' })) return;
+      const F = cloud.sdk, now = Date.now();
+      const abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const code = [...crypto.getRandomValues(new Uint8Array(10))].map(b => abc[b % abc.length]).join('');
+      const old = turnInviteCode();
+      const batch = F.writeBatch(cloud.db);
+      batch.set(F.doc(cloud.db, 'schools', reqRole.schoolId, 'turnoverInvites', code), { active: true, createdMs: now, by: cloud.user.uid });
+      if (old) batch.set(F.doc(cloud.db, 'schools', reqRole.schoolId, 'turnoverInvites', old), { active: false, createdMs: 0, by: cloud.user.uid, endedMs: now });
+      try {
+        await batch.commit();
+      } catch (err) {
+        showToast(`Could not make the Turnover link: ${cloudErrorText(err)}`, 'ph-warning');
+        return;
+      }
+      setTurnInviteCode(code);
+      if (isHeadDevice()) renderHeadView(); else renderTurnover();
+      if (!first) showToast('New Turnover link ready', 'ph-arrows-clockwise');
+    }
+
+    // ---- Confirm / decline (the outgoing custodian, or the School Head) -----------------------
+    async function confirmTurnover(id) {
+      const t = turnList.find(x => x.id === id);
+      if (!t || t.status !== 'pending' || !canHandOver()) return;
+      const byHead = isHeadDevice();
+      if (!navigator.onLine) { appAlert('Connect to the internet to confirm the turnover.'); return; }
+      if (!byHead && invSync.pendingSince && invStatus.state !== 'synced') {
+        if (!await appConfirm('Some changes on this device may not be in the school account yet. The new custodian gets only what is in the account.\n\nWait until it says “Saved to your account”, or continue anyway.',
+          { title: 'Not everything is saved yet', ok: 'Continue anyway', tone: 'warn', focusCancel: true })) return;
+      }
+      const F = cloud.sdk, sid = reqRole.schoolId;
+      let school;
+      try { school = (await F.getDoc(F.doc(cloud.db, 'schools', sid))).data() || {}; }
+      catch (err) { showToast(cloudErrorText(err), 'ph-warning'); return; }
+      if (school.headUid && school.headUid === t.uid) { appAlert('This Google account is the School Head’s. The property custodian needs their own account, so nobody approves their own Purchase Request.'); return; }
+      const date = (document.getElementById(`turnDate-${id}`) || {}).value || localISODate();
+      if (date > localISODate()) { appAlert('The date can’t be in the future.'); return; }
+      const fromName = String((byHead ? school.custodianName : schoolInfo.custodian || school.custodianName) || '').slice(0, 80);
+      const fromDesig = String((byHead ? school.custodianDesig : schoolInfo.position || school.custodianDesig) || '').slice(0, 80);
+      const now = Date.now(), until = now + TURNOVER_VIEW_DAYS * 864e5;
+      if (!await appConfirm(`${t.name}${t.email ? ` (${t.email})` : ''} becomes the property custodian of ${reqRole.schoolName}, accountable from ${prDateText(date)}, and gets the school inventory, requests and records on their own phone.\n\n` +
+          `${byHead ? (fromName || 'The outgoing custodian') : 'You'} keep${byHead ? 's' : ''} view-only access until ${msDate(until)}, to print records for clearance. Then it ends.`,
+        { title: 'Confirm the turnover?', ok: 'Confirm', tone: 'good', icon: 'ph-handshake' })) return;
+      const fromUids = (school.custodians || []).filter(u => u !== t.uid);
+      const viewOnly = {};
+      Object.entries(school.viewOnly || {}).forEach(([u, v]) => { if (v && v.untilMs > now && u !== t.uid) viewOnly[u] = v; });
+      fromUids.forEach(u => { viewOnly[u] = { untilMs: until, name: fromName, sinceMs: now }; });
+      const me = byHead ? { name: (headMe && headMe.name) || '', role: 'head' } : { name: fromName, role: 'custodian' };
+      const batch = F.writeBatch(cloud.db);
+      batch.update(F.doc(turnCol(), id), { status: 'done', fromUids, fromName, fromDesig, assumedOn: date,
+        confirmedBy: { uid: cloud.user.uid, name: me.name, role: me.role }, doneMs: now, updatedAt: F.serverTimestamp() });
+      if (t.invite) batch.set(F.doc(cloud.db, 'schools', sid, 'turnoverInvites', t.invite), { active: false, createdMs: 0, by: cloud.user.uid, endedMs: now });
+      batch.update(F.doc(cloud.db, 'schools', sid), { custodians: [t.uid], ownerUid: t.uid, turnoverId: id, turnoverMs: now,
+        custodianName: String(t.name || '').slice(0, 80), custodianDesig: String(t.designation || '').slice(0, 80), viewOnly, viewerUids: Object.keys(viewOnly) });
+      showToast('Confirming the turnover…', 'ph-handshake');
+      try {
+        await batch.commit();
+      } catch (err) {
+        showToast(`Could not confirm the turnover: ${cloudErrorText(err)}`, 'ph-warning');
+        return;
+      }
+      Object.assign(t, { status: 'done', fromName, fromDesig, assumedOn: date, doneMs: now, confirmedBy: { uid: cloud.user.uid, ...me } });
+      if (byHead) {
+        renderHeadView();
+        showToast(`${t.name} is now the property custodian`, 'ph-handshake');
+        return;
+      }
+      logHistory('system', `Turned over property accountability to ${t.name}${t.designation ? `, ${t.designation}` : ''}, who assumed it on ${prDateText(date)}${t.email ? ` (${t.email})` : ''}`);
+      enterViewOnly.quiet = true;
+      try { enterViewOnly({ untilMs: until, toName: t.name, atMs: now }); } finally { enterViewOnly.quiet = false; }
+      renderTurnover();
+      showToast(`${t.name} is now the property custodian · this device is view-only until ${msDate(until)}`, 'ph-handshake');
+    }
+    async function declineTurnover(id) {
+      const t = turnList.find(x => x.id === id);
+      if (!t || t.status !== 'pending' || !canHandOver()) return;
+      if (!await appConfirm(`${t.name}${t.email ? ` (${t.email})` : ''} will not become the property custodian.`, { title: 'Not the new custodian?', ok: 'Decline', tone: 'danger', focusCancel: true })) return;
+      const F = cloud.sdk;
+      cloudWrite(F.updateDoc(F.doc(turnCol(), id), { status: 'declined', by: cloud.user.uid, doneMs: Date.now(), updatedAt: F.serverTimestamp() }), 'Declining');
+      t.status = 'declined';
+      if (isHeadDevice()) renderHeadView(); else renderTurnover();
+    }
+
+    // ---- The School Head's phone ----------------------------------------------------------
+    function headTurnoverHTML() {
+      if (!canHandOver()) return '';
+      const waiting = turnPending(), done = turnDone().slice(0, 3);
+      return `
+        <div class="space-y-2.5" data-head-turnover>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Property custodian turnover</h2>
+          ${waiting.map(turnPendingHTML).join('')}
+          <details ${waiting.length ? '' : ''} class="rounded-2xl bg-white border border-slate-200 p-3">
+            <summary class="text-xs font-bold text-slate-700 cursor-pointer">New property custodian? Make the Turnover link</summary>
+            <div class="mt-3 space-y-3">
+              <p class="text-xs text-slate-600">Use it when the outgoing custodian can’t (for example, they already left). The new custodian opens it on their own phone and signs in with their own Google account, then you tap Confirm here.</p>
+              ${turnLinkBlockHTML()}
+            </div>
+          </details>
+          ${done.map(t => turnDoneHTML(t, false)).join('')}
+        </div>`;
+    }
+
+    // ---- The new custodian's phone: open the link, wait, take over ----------------------------
+    function openTurnoverJoin(text) {
+      const parts = headLinkParts(text);
+      if (!parts) { showToast('That Turnover link does not look right', 'ph-warning'); return; }
+      if (isCustodianDevice() && !isViewOnly() && reqRole.schoolId === parts.schoolId) {
+        appAlert('This is your school’s Turnover link. Send it to the new property custodian: they open it on their own phone and sign in with their own Google account.', { title: 'Your Turnover link' });
+        return;
+      }
+      openHeadJoin(text, false, 'turnover');
+    }
+    async function turnoverJoinGo(st) {
+      const typedName = reqVal('hjName'), desig = reqVal('hjDesig');
+      const btn = document.getElementById('hjBtn'), label = document.getElementById('hjBtnLabel');
+      btn.disabled = true;
+      label.textContent = 'Signing in…';
+      try {
+        await cloudStart();
+        const F = cloud.sdk;
+        if (reqRole) {   // switching from another role on this device (confirmed when the link opened)
+          stopRequestSync();
+          reqRole = null;
+          saveReqRole();
+        }
+        const cur = cloud.auth.currentUser;
+        if (cur && (cur.isAnonymous || !(cur.providerData || []).some(pd => pd.providerId === 'google.com'))) await F.signOut(cloud.auth);
+        const user = await googleSignIn();
+        cloud.user = user;
+        if (headJoinState !== st) return;
+        const snap = await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId));
+        if (!snap.exists()) throw new Error('no-school');
+        const school = snap.data();
+        if ((school.custodians || []).includes(user.uid)) throw new Error('turnover-already-custodian');
+        if (school.headUid && school.headUid === user.uid) throw new Error('turnover-is-head');
+        st.schoolName = school.name || 'School';
+        document.getElementById('hjSchool').textContent = st.schoolName;
+        const turnId = `${user.uid}-${st.invite}`;
+        const mine = await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId, 'turnovers', turnId));
+        let me;
+        if (mine.exists()) {
+          const d = mine.data();
+          if (d.status === 'declined') throw new Error('turnover-declined');
+          me = { name: d.name, designation: d.designation || '' };
+        } else {
+          const name = (typedName || user.displayName || '').trim().slice(0, 80);
+          if (!name) { headJoinError('Type your name, then tap Continue again.'); document.getElementById('hjName').focus(); btn.disabled = false; label.textContent = 'Continue with Google'; return; }
+          me = { name, designation: desig.slice(0, 80) };
+          const inv = await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId, 'turnoverInvites', st.invite));
+          if (!inv.exists() || inv.data().active !== true) throw new Error('old-turnover-invite');
+          await F.setDoc(F.doc(cloud.db, 'schools', st.schoolId, 'turnovers', turnId), {
+            uid: user.uid, name: me.name, designation: me.designation, email: user.email || '', status: 'pending', invite: st.invite,
+            joinedMs: Date.now(), createdAt: F.serverTimestamp()
+          });
+        }
+        if (headJoinState !== st) return;
+        reqRole = { role: 'incoming', schoolId: st.schoolId, schoolName: st.schoolName, email: user.email || '', me, turnId };
+        saveReqRole();
+        closeHeadJoin();
+        subscribeRequests();
+        renderRequestsEverywhere();
+        showToast(`Hi ${(me.name || '').split(' ')[0]}! The outgoing custodian or the School Head confirms the turnover next.`, 'ph-hand-waving');
+      } catch (err) {
+        btn.disabled = false;
+        label.textContent = 'Continue with Google';
+        if (googleCancelled(err)) return;
+        headJoinError(cloudErrorText(err));
+      }
+    }
+    function subscribeIncoming(F) {
+      reqUnsubs.push(F.onSnapshot(F.doc(turnCol(), reqRole.turnId), snap => {
+        turnJoinCard = snap.exists() ? { ...snap.data(), id: snap.id } : null;
+        turnJoinLoaded = true;
+        cloud.error = '';
+        if (turnJoinCard && turnJoinCard.status === 'done') { becomeCustodian(turnJoinCard); return; }
+        renderRequestsEverywhere();
+      }, err => { console.warn('turnover card', err); cloud.error = cloudErrorText(err); turnJoinLoaded = true; renderRequestsEverywhere(); }));
+    }
+    function becomeCustodian(card) {
+      const r = reqRole;
+      reqRole = { role: 'custodian', schoolId: r.schoolId, schoolName: r.schoolName, email: r.email || '',
+        takeover: { turnId: card.id, name: card.name || (r.me && r.me.name) || '', designation: card.designation || (r.me && r.me.designation) || '',
+          fromName: card.fromName || '', assumedOn: card.assumedOn || localISODate() } };
+      saveReqRole();
+      turnJoinCard = null;
+      turnJoinLoaded = false;
+      gateStep = 'welcome';
+      subscribeRequests();
+      switchMainView('HOME');
+      updateSchoolHeader();
+      renderRequestsEverywhere();
+      showToast(`You are now the property custodian of ${r.schoolName}`, 'ph-handshake');
+    }
+    // The new custodian's phone, once the school inventory has arrived: their name on the forms.
+    function applyTakeover() {
+      const t = reqRole && reqRole.takeover;
+      if (!t || !invReady || !isCustodianDevice()) return;
+      delete reqRole.takeover;
+      saveReqRole();
+      schoolInfo.custodian = t.name;
+      if (t.designation) schoolInfo.position = t.designation;
+      localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+      scheduleInventorySync();
+      updateSchoolHeader();
+      tidySchoolDoc();
+      logHistory('system', `Assumed accountability as property custodian of ${reqRole.schoolName} on ${prDateText(t.assumedOn)}${t.fromName ? `, turned over by ${t.fromName}` : ''}`);
+      setTimeout(() => appAlert('The school’s inventory, requests and records are now on this device, in your name.\n\nNext: print the turnover inventory for both of you and the School Head to sign. Renew the teachers’ ICS and PAR in your name when you are ready. Both are in More → Custodian turnover.',
+        { title: 'Welcome, new property custodian', icon: 'ph-handshake' }), 300);
+    }
+    function incomingState() {
+      if (!cloud.user) return cloud.state === 'ready' ? 'signin' : 'connecting';
+      if (!turnJoinLoaded) return 'connecting';
+      if (!turnJoinCard) return 'missing';
+      return turnJoinCard.status === 'declined' ? 'declined' : 'pending';
+    }
+    function incomingGateHTML() {
+      const st = incomingState();
+      const r = reqRole, me = r.me || {};
+      const msg = {
+        connecting: ['ph-circle-notch animate-spin', 'Connecting…', 'Checking your turnover.'],
+        signin: ['ph-sign-in', 'Sign in again', `Use the Google account you opened the Turnover link with${r.email ? ` (${escapeHTML(r.email)})` : ''}.`],
+        pending: ['ph-hourglass-medium', 'Waiting for Confirm', 'The outgoing property custodian, or the School Head, confirms the turnover on their phone. The school’s inventory opens here on its own as soon as they do.'],
+        declined: ['ph-prohibit', 'The turnover was declined', 'Ask the outgoing custodian or the School Head for a new Turnover link if this is a mistake.'],
+        missing: ['ph-question', 'This account has not joined', 'Open the Turnover link again and sign in with the account you used.']
+      }[st];
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3" data-incoming="${st}">
+          <div class="flex items-center gap-3">
+            <span class="w-11 h-11 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-handshake text-2xl"></i></span>
+            <div class="min-w-0">
+              <p class="text-[11px] font-bold uppercase tracking-wider text-brand-600">New property custodian</p>
+              <p class="text-sm font-extrabold text-slate-900">${escapeHTML(r.schoolName || 'Your school')}</p>
+              <p class="text-xs text-slate-500">${escapeHTML([me.name, me.designation].filter(Boolean).join(' · '))}</p>
+            </div>
+          </div>
+          <div class="rounded-xl ${st === 'declined' ? 'bg-rose-50 text-rose-900' : 'bg-slate-50 text-slate-700'} px-3 py-2.5 text-xs flex gap-2.5">
+            <i class="ph-bold ${msg[0]} text-lg"></i><div><p class="font-extrabold">${msg[1]}</p><p class="mt-0.5">${msg[2]}</p></div>
+          </div>
+          ${st === 'signin' ? `<button onclick="headSignInAgain()" class="w-full h-12 rounded-xl bg-white border-2 border-slate-200 hover:border-brand-300 text-slate-800 text-sm font-extrabold flex items-center justify-center gap-2">${GOOGLE_G} Continue with Google</button>` : ''}
+          ${cloud.error ? `<p class="text-xs font-semibold text-rose-600">${escapeHTML(cloud.error)}</p>` : ''}
+          <button onclick="leaveIncoming()" class="w-full h-9 text-center text-xs font-bold text-slate-500 hover:text-slate-900">Cancel and start over</button>
+        </div>`;
+    }
+    async function leaveIncoming() {
+      if (!isIncomingDevice()) return;
+      if (turnJoinCard && turnJoinCard.status === 'pending' && !await appConfirm('You can open the Turnover link again later.', { title: 'Cancel the turnover on this phone?', ok: 'Start over', tone: 'warn' })) return;
+      stopRequestSync();
+      try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
+      cloud.user = null;
+      reqRole = null;
+      gateStep = 'welcome';
+      saveReqRole();
+      renderRequestsEverywhere();
+    }
+    function viewEndedGateHTML() {
+      const v = reqRole.viewOnly || {};
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3" data-view-ended>
+          <div class="flex items-center gap-3">
+            <span class="w-11 h-11 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="ph-bold ph-eye-slash text-2xl"></i></span>
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-slate-900">Your view-only access ended</p>
+              <p class="text-xs text-slate-500">${escapeHTML(reqRole.schoolName || 'The school')}${v.toName ? ` · turned over to ${escapeHTML(v.toName)}` : ''}${v.untilMs ? ` · ended ${escapeHTML(msDate(v.untilMs))}` : ''}</p>
+            </div>
+          </div>
+          <p class="text-xs text-slate-600">The forms you printed and signed stay valid. Your copy of the inventory is still on this device: Reset app removes it.</p>
+          <button onclick="gateStartOver(); renderLoginGate()" class="w-full h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold">Start over</button>
+          <button onclick="openResetApp()" class="w-full h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">Reset app…</button>
+        </div>`;
+    }
+
+    // ---- Turnover inventory report (all property and supplies on hand) -------------------------
+    function turnoverRows() {
+      const ppe = [], sep = [], sup = [];
+      items.slice().sort((a, b) => String(a.category || '').localeCompare(String(b.category || '')) || a.name.localeCompare(b.name)).forEach(item => {
+        if (relIsEquip(item)) {
+          const units = getUnits(item.code).slice().sort((a, b) => String(a.no).localeCompare(String(b.no), undefined, { numeric: true }));
+          units.forEach(unit => {
+            const holder = unitHolder(unit);
+            (isPPE(item, unit) ? ppe : sep).push({ item, unit, qty: 1, cost: unit.cost > 0 ? unit.cost : (item.price || 0),
+              where: [holder && `With ${holder}${unit.ics ? ` · ${unitDocLabel(unit)}` : ''}`, unit.loc, unit.lostMs && 'Reported lost'].filter(Boolean).join(' · '),
+              cond: (UNIT_COND[unit.cond || 'S'] || UNIT_COND.S).label });
+          });
+          const untagged = Math.max(0, (item.qty || 0) - units.length);
+          if (untagged) (isPPE(item) ? ppe : sep).push({ item, unit: null, qty: untagged, cost: item.price || 0, where: 'No property number yet', cond: '' });
+        } else if ((item.qty || 0) > 0) {
+          sup.push({ item, qty: item.qty, cost: item.price || 0 });
+        }
+      });
+      return { ppe, sep, sup };
+    }
+    function printTurnoverReport(id) {
+      if (!isCustodianDevice()) return;
+      const t = id ? turnList.find(x => x.id === id) : null;
+      const done = t && t.status === 'done';
+      const outName = done ? t.fromName : schoolInfo.custodian, outDesig = done ? t.fromDesig : schoolInfo.position;
+      const inName = t ? t.name : '', inDesig = t ? t.designation : '';
+      const asOf = done ? t.assumedOn : localISODate();
+      const { ppe, sep, sup } = turnoverRows();
+      const e = v => escapeHTML(v || '');
+      const school = prDefaults().entity || schoolInfo.school || reqRole.schoolName;
+      const blank = n => '&nbsp;'.repeat(n);
+      const eqTable = (title, rows) => {
+        const total = rows.reduce((n, r) => n + r.qty * r.cost, 0);
+        return `
+          <p style="margin:8pt 0 3pt"><b>${title}</b> · ${rows.reduce((n, r) => n + r.qty, 0)} unit(s) · ₱${peso2(total)}</p>
+          <table class="pr-table">
+            <colgroup><col style="width:4%"><col style="width:27%"><col style="width:14%"><col style="width:6%"><col style="width:5%"><col style="width:10%"><col style="width:11%"><col style="width:23%"></colgroup>
+            <tr><th>No.</th><th>Description</th><th>Property No.</th><th>Unit</th><th>Qty</th><th>Unit Value</th><th>Condition</th><th>Location / Accountable Person</th></tr>
+            ${rows.length ? rows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${e(r.item.name)}${r.unit && r.unit.serial ? `<br><span style="font-size:8pt">S/N: ${e(r.unit.serial)}</span>` : ''}</td>
+              <td class="pr-sn">${e(r.unit ? r.unit.no : '')}</td><td class="c">${e(r.item.unit)}</td><td class="c">${r.qty}</td><td class="r">${peso2(r.cost)}</td><td class="c" style="font-size:8.5pt">${e(r.cond)}</td><td style="font-size:8.5pt">${e(r.where)}</td></tr>`).join('')
+              : '<tr><td colspan="8" class="c">None</td></tr>'}
+          </table>`;
+      };
+      const supTotal = sup.reduce((n, r) => n + r.qty * r.cost, 0);
+      printFormHTML(`
+        <div class="pr-form pr-wide">
+          <h1 style="margin-bottom:2pt">INVENTORY OF PROPERTY AND SUPPLIES FOR THE TURNOVER OF ACCOUNTABILITY</h1>
+          <p style="text-align:center;margin:0 0 6pt">As at <b>${e(longDate(asOf))}</b></p>
+          <div class="pr-top"><span>Entity Name: <b>${e(school)}</b></span><span>Fund Cluster: <b>${e(prDefaults().fund)}</b></span></div>
+          <p style="margin:0 0 4pt">Turnover of property and supply accountability from <b><u>${e(outName) || blank(30)}</u></b>, <u>${e(outDesig) || blank(20)}</u>, outgoing property custodian,
+            to <b><u>${e(inName) || blank(30)}</u></b>, <u>${e(inDesig) || blank(20)}</u>, incoming property custodian, who assumed such accountability on <u>${e(longDate(done ? t.assumedOn : '')) || blank(24)}</u>.</p>
+          <p style="margin:0 0 4pt;font-size:8.5pt">Basis: &#9744; Physical count on ${blank(20)} &nbsp; &#9744; Property records kept in CustodianPro as at the date above</p>
+          ${eqTable('A. Property, Plant and Equipment (₱50,000 and up)', ppe)}
+          ${eqTable('B. Semi-expendable Property (below ₱50,000)', sep)}
+          <p style="margin:8pt 0 3pt"><b>C. Supplies on hand</b> · ${sup.length} item(s) · ₱${peso2(supTotal)}</p>
+          <table class="pr-table">
+            <colgroup><col style="width:5%"><col style="width:45%"><col style="width:10%"><col style="width:10%"><col style="width:15%"><col style="width:15%"></colgroup>
+            <tr><th>No.</th><th>Description</th><th>Unit</th><th>Qty</th><th>Unit Cost</th><th>Total Cost</th></tr>
+            ${sup.length ? sup.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${e(r.item.name)}</td><td class="c">${e(r.item.unit)}</td><td class="c">${r.qty}</td><td class="r">${peso2(r.cost)}</td><td class="r">${peso2(r.qty * r.cost)}</td></tr>`).join('')
+              : '<tr><td colspan="6" class="c">None</td></tr>'}
+          </table>
+          <p style="margin:8pt 0 0;font-size:9pt">I hereby turn over the property and supplies listed above, which were under my accountability. I hereby acknowledge receipt of the same and assume accountability for them.</p>
+          ${coaSignBlock([
+            { label: 'Turned over by:', names: [outName || ''], under: `Signature over Printed Name<br>${e(outDesig) || 'Outgoing Property Custodian'} · Date` },
+            { label: 'Received by:', names: [inName || ''], under: `Signature over Printed Name<br>${e(inDesig) || 'Incoming Property Custodian'} · Date` },
+            { label: 'Noted by:', names: [headName()], under: 'Signature over Printed Name<br>School Head · Date' }
+          ])}
+        </div>`);
+    }
+
+    // ---- Renew all slips (the new custodian, when ready) ---------------------------------------
+    // DepEd: ICS / PAR are renewed on a change of property custodian. One new ICS (or PAR, or the
+    // SPLV / SPHV ICS in COA numbering) per teacher, in the new custodian's name, for the units they
+    // hold; each teacher taps Received on it. The old slips stay on record.
+    function renewHolders() {
+      return accountabilityPeople().map(p => ({ ...p, equipment: p.equipment.filter(x => !x.unit.lostMs) })).filter(p => p.equipment.length && (p.uid || p.name));
+    }
+    async function renewAllSlips() {
+      if (!isCustodianDevice() || isViewOnly() || !cloud.user) return;
+      const mine = turnDone().find(t => t.uid === cloud.user.uid);
+      const holders = renewHolders();
+      if (!holders.length) { showToast('No teacher holds property right now', 'ph-info'); return; }
+      const units = holders.reduce((n, p) => n + p.equipment.length, 0);
+      if (!await appConfirm(`Makes a new ICS or PAR in your name for each of ${plural(holders.length, 'teacher')} (${plural(units, 'unit')} they hold now). The old slips stay on record, and each teacher taps Received on the new one.`,
+        { title: 'Renew all slips?', ok: 'Renew all', icon: 'ph-arrows-clockwise', tone: 'good' })) return;
+      const F = cloud.sdk, date = localISODate(), now = Date.now();
+      const coaIcs = numberingMode() === 'coa';
+      const docs = [];
+      const purpose = `Renewal on change of property custodian${mine && mine.fromName ? ` (from ${mine.fromName})` : ''}`.slice(0, 300);
+      holders.forEach(p => {
+        const groups = { PAR: [], ICS: [], SPLV: [], SPHV: [] };
+        p.equipment.forEach(x => {
+          const k = isPPE(x.item, x.unit) ? 'PAR' : coaIcs ? (isLowValued(x.item, x.unit) ? 'SPLV' : 'SPHV') : 'ICS';
+          groups[k].push(x);
+        });
+        Object.entries(groups).forEach(([k, list]) => {
+          if (!list.length) return;
+          const kind = k === 'PAR' ? 'PAR' : 'ICS';
+          const no = k === 'SPLV' || k === 'SPHV' ? nextCoaIcsNo(k, date) : nextReleaseNo(kind, date);
+          const byItem = new Map();
+          list.forEach(({ item, unit }) => { if (!byItem.has(item.code)) byItem.set(item.code, { item, units: [] }); byItem.get(item.code).units.push(unit); });
+          const lines = [...byItem.values()].map(({ item, units: us }) => relLine(item, us.length, us));
+          const doc = relBase(p, { kind, no, date, source: 'renewal', purpose, lines, total: relTotal(lines), renewOf: mine ? mine.id : '' });
+          releaseAll.push({ ...doc, id: 'tmp-' + docs.length });   // so the next number moves on
+          list.forEach(({ unit }) => {
+            unit.ics = no;
+            if (kind === 'PAR') unit.doc = 'PAR'; else delete unit.doc;
+            unit.icsDate = date;
+          });
+          docs.push(doc);
+        });
+      });
+      releaseAll = releaseAll.filter(r => !String(r.id).startsWith('tmp-'));
+      saveStateWith({ summary: { kind: 'release', text: `Renewed the slips of ${plural(holders.length, 'teacher')} on the change of property custodian: ${docs.map(x => `${x.kind} ${x.no}`).join(', ')}`.slice(0, 600) } });
+      const out = [];
+      for (let i = 0; i < docs.length; i += 400) {
+        const batch = F.writeBatch(cloud.db);
+        docs.slice(i, i + 400).forEach(x => { const ref = F.doc(relCol()); batch.set(ref, cleanJSON({ ...x, createdAt: F.serverTimestamp() })); out.push({ ...x, id: ref.id }); });
+        cloudWrite(batch.commit(), 'Saving the renewed slips');
+      }
+      if (mine) {
+        schoolInfo.renewedTurnover = mine.id;
+        localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+        scheduleInventorySync();
+      }
+      turnRenewDone = { docs: out };
+      renderTurnover();
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+      showToast(`Renewed ${plural(out.length, 'slip')} · teachers confirm on their phones`, 'ph-arrows-clockwise');
+    }
+    function printRenewedSlips() {
+      if (!turnRenewDone || !turnRenewDone.docs.length) return;
+      printFormHTML(`<div class="pr-pages">${turnRenewDone.docs.map(r => (r.kind === 'PAR' ? parPrintHTML : icsPrintHTML)(r)).join('')}</div>`);
+    }
+
     // ---- School Head's phone: join, approve, return --------------------------------------
     function headLinkParts(text) {
       const m = String(text || '').trim().match(/(?:^|[#&=\/])([A-Za-z0-9_]{6,40})-([A-Za-z0-9]{8,12})$/);
       return m ? { schoolId: m[1], invite: m[2] } : null;
     }
-    async function openHeadJoin(text, edit = false) {
+    async function openHeadJoin(text, edit = false, kind = 'head') {
       const err = document.getElementById('hjError');
       err.classList.add('hidden');
       const btn = document.getElementById('hjBtn');
@@ -13058,6 +13847,26 @@
       }
       const parts = headLinkParts(text);
       if (!parts) { showToast('That School Head link does not look right', 'ph-warning'); return; }
+      if (kind === 'turnover') {
+        if (reqRole && !await appConfirm(`This ${isCustodianDevice() ? 'device is signed in as the property custodian' : isHeadDevice() ? 'phone is signed in as the School Head' : isIncomingDevice() ? 'phone is waiting for another turnover' : 'phone is set up as a teacher'} of ${reqRole.schoolName}. Use it as the new property custodian instead?`,
+          { title: 'Take over as property custodian?', ok: 'Continue', tone: 'warn' })) return;
+        headJoinState = { ...parts, schoolName: '', kind: 'turnover' };
+        document.getElementById('hjName').value = '';
+        document.getElementById('hjDesig').value = '';
+        document.getElementById('hjDesig').placeholder = 'Designation, e.g. Administrative Officer II';
+        document.getElementById('hjKicker').textContent = 'New property custodian · turnover';
+        document.getElementById('hjSchool').textContent = 'Sign in with your Google account';
+        document.getElementById('hjSub').textContent = 'You take over the school’s property accountability. The outgoing custodian or the School Head confirms you, then the school inventory opens on this phone.';
+        document.getElementById('hjG').innerHTML = GOOGLE_G;
+        document.getElementById('hjBtnLabel').textContent = 'Continue with Google';
+        document.getElementById('hjNote').textContent = 'Use your own Google account, not the outgoing custodian’s or the School Head’s.';
+        document.getElementById('hjNote').classList.remove('hidden');
+        document.getElementById('headJoinModal').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('hjDesig').placeholder = 'Designation, e.g. School Principal I';
+      document.getElementById('hjSub').textContent = 'You approve or return the property custodian’s Purchase Requests. Your name, the date and the time are recorded with each one.';
+      document.getElementById('hjNote').textContent = 'Use your own Google account, not the property custodian’s. The custodian confirms you before you can approve.';
       if (isCustodianDevice() && reqRole.schoolId === parts.schoolId) {
         appAlert('This is your school’s School Head link. Send it to your School Head: they open it on their own phone and sign in with their own Google account.', { title: 'Your School Head link' });
         return;
@@ -13085,6 +13894,7 @@
       const st = headJoinState;
       if (!st) return;
       document.getElementById('hjError').classList.add('hidden');
+      if (st.kind === 'turnover') { await turnoverJoinGo(st); return; }
       const typedName = reqVal('hjName'), desig = reqVal('hjDesig');
       if (st.edit) {
         if (!typedName) { headJoinError('Type your name.'); return; }
@@ -13193,7 +14003,9 @@
       }, err => { console.warn('head card', err); cloud.error = cloudErrorText(err); headMeLoaded = true; renderRequestsEverywhere(); }));
       reqUnsubs.push(() => stopHeadPrs());
     }
+    let headTurnUnsub = null;
     function startHeadPrs(F) {
+      headTurnUnsub = listenTurnovers(F);
       headPrUnsub = listenSynced(prCol(), ['createdAt', 'updatedAt'], snap => {
         prList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
         prList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
@@ -13212,6 +14024,9 @@
     function stopHeadPrs() {
       if (headPrUnsub) { try { headPrUnsub(); } catch (e) {} }
       headPrUnsub = null;
+      if (headTurnUnsub) { try { headTurnUnsub(); } catch (e) {} }
+      headTurnUnsub = null;
+      turnList = [];
       if (isHeadDevice()) prList = [];
     }
 
@@ -13256,8 +14071,9 @@
           </div>
           ${done.length ? `<div class="space-y-2.5"><h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Recently decided</h2>${done.map(p => headPrCardHTML(p, false)).join('')}</div>` : ''}`;
       }
+      if (headMe && headMe.status === 'active') html += headTurnoverHTML();
       const body = document.getElementById('hdBody');
-      if (body.innerHTML !== html) body.innerHTML = html;
+      if (body.innerHTML !== html) { body.innerHTML = html; drawTurnQr(); }
     }
     function headPrCardHTML(pr, wait) {
       const a = prApproval(pr) || {};
@@ -13608,6 +14424,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       return {
         teacherUid: t.uid || null, teacherName: t.name, position: t.position || '', office: t.office || '',
         by: schoolInfo.custodian || reqRole.email || '', byUid: cloud.user ? cloud.user.uid : null, createdMs: Date.now(),
+        custName: schoolInfo.custodian || '', custDesig: schoolInfo.position || '',   // stays on the slip after a turnover
         ...extra
       };
     }
@@ -14567,8 +15384,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <colgroup><col style="width:16%"><col style="width:21%"><col style="width:21%"><col style="width:21%"><col style="width:21%"></colgroup>
             <tr><td></td><td><i>Requested by:</i></td><td><i>Approved by:</i></td><td><i>Issued by:</i></td><td><i>Received by:</i></td></tr>
             <tr><td>Signature:</td><td class="pr-sig"></td><td class="pr-sig"></td><td class="pr-sig"></td><td class="pr-sig"></td></tr>
-            <tr><td>Printed Name:</td><td class="c"><b>${e(r.teacherName).toUpperCase()}</b></td><td class="c"><b>${e(d.apprName || schoolInfo.principal).toUpperCase()}</b></td><td class="c"><b>${e(schoolInfo.custodian).toUpperCase()}</b></td><td class="c"><b>${e(r.teacherName).toUpperCase()}</b></td></tr>
-            <tr><td>Designation:</td><td class="c">${e(r.position)}</td><td class="c">${e(d.apprDesig || 'School Head')}</td><td class="c">${e(schoolInfo.position || 'Property Custodian')}</td><td class="c">${e(r.position)}</td></tr>
+            <tr><td>Printed Name:</td><td class="c"><b>${e(r.teacherName).toUpperCase()}</b></td><td class="c"><b>${e(d.apprName || schoolInfo.principal).toUpperCase()}</b></td><td class="c"><b>${e(slipCustodian(r).name).toUpperCase()}</b></td><td class="c"><b>${e(r.teacherName).toUpperCase()}</b></td></tr>
+            <tr><td>Designation:</td><td class="c">${e(r.position)}</td><td class="c">${e(d.apprDesig || 'School Head')}</td><td class="c">${e(slipCustodian(r).desig || 'Property Custodian')}</td><td class="c">${e(r.position)}</td></tr>
             <tr><td>Date:</td><td class="c">${e(longDate(r.date))}</td><td></td><td class="c">${e(longDate(r.date))}</td><td></td></tr>
           </table>
         </div>`;
@@ -14603,8 +15420,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
             <tr><td><i>Received from:</i></td><td><i>Received by:</i></td></tr>
             <tr><td class="pr-sig"></td><td class="pr-sig"></td></tr>
-            <tr><td class="c"><b>${e(r.from ? r.from.name : schoolInfo.custodian).toUpperCase()}</b><br><span style="font-size:8.5pt">Signature over Printed Name</span></td><td class="c"><b>${e(r.teacherName).toUpperCase()}</b><br><span style="font-size:8.5pt">Signature over Printed Name</span></td></tr>
-            <tr><td class="c">${e(r.from ? r.from.designation : (schoolInfo.position || 'Property Custodian'))}<br><span style="font-size:8.5pt">Position/Office</span></td><td class="c">${e([r.position, r.office].filter(Boolean).join(', '))}<br><span style="font-size:8.5pt">Position/Office</span></td></tr>
+            <tr><td class="c"><b>${e(r.from ? r.from.name : slipCustodian(r).name).toUpperCase()}</b><br><span style="font-size:8.5pt">Signature over Printed Name</span></td><td class="c"><b>${e(r.teacherName).toUpperCase()}</b><br><span style="font-size:8.5pt">Signature over Printed Name</span></td></tr>
+            <tr><td class="c">${e(r.from ? r.from.designation : (slipCustodian(r).desig || 'Property Custodian'))}<br><span style="font-size:8.5pt">Position/Office</span></td><td class="c">${e([r.position, r.office].filter(Boolean).join(', '))}<br><span style="font-size:8.5pt">Position/Office</span></td></tr>
             <tr><td class="c">${e(longDate(r.date))}<br><span style="font-size:8.5pt">Date</span></td><td class="c">${r.from ? e(longDate(r.date)) : ''}<br><span style="font-size:8.5pt">Date</span></td></tr>
           </table>
         </div>`;
@@ -16553,8 +17370,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
             <tr><td><i>Received by:</i></td><td><i>Issued by:</i></td></tr>
             <tr><td class="pr-sig"></td><td class="pr-sig"></td></tr>
-            <tr><td class="c"><b>${e(r.teacherName).toUpperCase()}</b><br><span style="font-size:8.5pt">Signature over Printed Name of End User</span></td><td class="c"><b>${e(schoolInfo.custodian).toUpperCase()}</b><br><span style="font-size:8.5pt">Signature over Printed Name of Supply and/or Property Custodian</span></td></tr>
-            <tr><td class="c">${e([r.position, r.office].filter(Boolean).join(', '))}<br><span style="font-size:8.5pt">Position/Office</span></td><td class="c">${e(schoolInfo.position || 'Property Custodian')}<br><span style="font-size:8.5pt">Position/Office</span></td></tr>
+            <tr><td class="c"><b>${e(r.teacherName).toUpperCase()}</b><br><span style="font-size:8.5pt">Signature over Printed Name of End User</span></td><td class="c"><b>${e(slipCustodian(r).name).toUpperCase()}</b><br><span style="font-size:8.5pt">Signature over Printed Name of Supply and/or Property Custodian</span></td></tr>
+            <tr><td class="c">${e([r.position, r.office].filter(Boolean).join(', '))}<br><span style="font-size:8.5pt">Position/Office</span></td><td class="c">${e(slipCustodian(r).desig || 'Property Custodian')}<br><span style="font-size:8.5pt">Position/Office</span></td></tr>
             <tr><td class="c"><br><span style="font-size:8.5pt">Date</span></td><td class="c">${e(longDate(r.date))}<br><span style="font-size:8.5pt">Date</span></td></tr>
           </table>
         </div>`;
@@ -16574,7 +17391,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const cols = ppe ? 5 : 6;
       const blanks = `<tr class="pr-blank">${'<td></td>'.repeat(cols)}</tr>`.repeat(Math.max(0, 8 - units.length));
       const type = XFER_TYPES.map(([k, label]) => `<span style="margin-right:12pt">${fBox(r.transferType === k)}${label}${k === 'others' && r.transferType === 'others' && r.transferOther ? `: <u>${e(r.transferOther)}</u>` : k === 'others' ? ' ______' : ''}</span>`).join('');
-      const toName = r.teacherName, fromName = r.fromName || schoolInfo.custodian;
+      const toName = r.teacherName, fromName = r.fromName || slipCustodian(r).name;
       return `
         <div class="pr-form">
           <div class="pr-appx">${ppe ? 'Appendix 76' : 'Annex A.5'}</div>
@@ -16600,7 +17417,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <tr><td></td><td><i>Approved by:</i></td><td><i>Released/Issued by:</i></td><td><i>Received by:</i></td></tr>
             <tr><td>Signature:</td><td class="pr-sig"></td><td class="pr-sig"></td><td class="pr-sig"></td></tr>
             <tr><td>Printed Name:</td><td class="c"><b>${e(headName()).toUpperCase()}</b></td><td class="c"><b>${e(fromName).toUpperCase()}</b></td><td class="c"><b>${e(toName).toUpperCase()}</b></td></tr>
-            <tr><td>Designation:</td><td class="c">${e(headDesig())}</td><td class="c">${e(r.fromName ? r.fromPosition : (schoolInfo.position || 'Property Custodian'))}</td><td class="c">${e(r.position)}</td></tr>
+            <tr><td>Designation:</td><td class="c">${e(headDesig())}</td><td class="c">${e(r.fromName ? r.fromPosition : (slipCustodian(r).desig || 'Property Custodian'))}</td><td class="c">${e(r.position)}</td></tr>
             <tr><td>Date:</td><td class="c"></td><td class="c">${e(longDate(r.date))}</td><td></td></tr>
           </table>
         </div>`;
@@ -16629,7 +17446,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
             <tr><td><i>Returned by:</i></td><td><i>Received by:</i></td></tr>
             <tr><td class="pr-sig"></td><td class="pr-sig"></td></tr>
-            <tr><td class="c"><b>${e(r.teacherName).toUpperCase()}</b><br><span style="font-size:8.5pt">End User</span></td><td class="c"><b>${e(schoolInfo.custodian).toUpperCase()}</b><br><span style="font-size:8.5pt">${e(schoolInfo.position || 'Head, Property and/or Supply Division/Unit')}</span></td></tr>
+            <tr><td class="c"><b>${e(r.teacherName).toUpperCase()}</b><br><span style="font-size:8.5pt">End User</span></td><td class="c"><b>${e(slipCustodian(r).name).toUpperCase()}</b><br><span style="font-size:8.5pt">${e(slipCustodian(r).desig || 'Head, Property and/or Supply Division/Unit')}</span></td></tr>
             <tr><td class="c"><br><span style="font-size:8.5pt">Date</span></td><td class="c">${e(longDate(r.date))}<br><span style="font-size:8.5pt">Date</span></td></tr>
           </table>
         </div>`;
@@ -17929,7 +18746,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Notifications belong to one school, role and account on one Firebase project.
     function notifScope() {
-      if (!reqRole || !cloud.user) return '';
+      if (!reqRole || !cloud.user || isViewOnly() || isIncomingDevice()) return '';
       const project = (window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.projectId) || '';
       return [project, reqRole.schoolId, reqRole.role, cloud.user.uid].join('|');
     }
@@ -18548,7 +19365,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       goToNotifTarget(n);
     }
     function goToNotifTarget(n) {
-      if (n.go === 'head') {                  // School Head: their approvals; custodian: the School Head panel
+      if (n.go === 'turnover') {              // custodian: the Turnover panel; School Head: their screen
+        if (isHeadDevice()) switchMainView('HEAD');
+        else openTurnover();
+      } else if (n.go === 'head') {                  // School Head: their approvals; custodian: the School Head panel
         if (isHeadDevice()) switchMainView('HEAD');
         else openHeadPanel();
       } else if (n.go === 'teacher-items' || n.go === 'teacher-requests') {
@@ -18720,6 +19540,13 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-custodian-turnover', date: 'Nov 2026', title: 'Hand over to a new property custodian', points: [
+        'New in More \u2192 Custodian turnover: send the new property custodian a Turnover link or QR code. They open it on their own phone and sign in with their own Google account.',
+        'You, or the School Head, tap Confirm. The School Head can do it from their phone when the outgoing custodian has already left. The new custodian then gets the school inventory, requests and records, in their name.',
+        'Print the turnover inventory: all property and supplies on hand as of the turnover date, for both custodians and the School Head to sign. Counting together first is suggested, not required.',
+        'The ICS and PAR already issued stay valid and keep the name of the custodian who signed them. The new custodian can tap Renew all slips when ready: a new ICS or PAR for each teacher, and each teacher taps Received.',
+        'The outgoing custodian keeps view-only access for 30 days, to open and print records and Change History for their clearance. Nothing can be changed, and then the access ends.'
+      ] },
       { id: '2026-11-fewer-reads', date: 'Nov 2026', title: 'Faster opening, fits the free cloud plan', points: [
         'Opening the app now downloads only what changed since you last opened it. Everything else is already saved on your phone, so the app is ready sooner and uses much less mobile data.',
         'This keeps the school well under the free Firebase plan\u2019s daily limit of 50,000 reads, even after years of releases, requests and reports. All your old records stay in the app.',
@@ -19170,6 +19997,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function loginGateNeeded() {
       if (!cloudConfigured()) return false;
       if (!reqRole) return !exploring();
+      if (isIncomingDevice() || viewOnlyEnded()) return true;
       return (isCustodianDevice() || isHeadDevice()) && cloud.state === 'ready' && !cloud.user;
     }
 
@@ -19256,6 +20084,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       }
       if (isCustodianDevice() && gateStep === 'welcome') gateStep = 'custodian';
       if (isHeadDevice() && gateStep === 'welcome') gateStep = 'head';
+      if (isIncomingDevice()) gateStep = 'incoming:' + incomingState() + (cloud.error ? ':err' : '');
+      else if (viewOnlyEnded()) gateStep = 'view-ended';
       const offline = document.getElementById('gateOffline');
       offline.classList.toggle('hidden', navigator.onLine);
       offline.classList.toggle('flex', !navigator.onLine);
@@ -19289,6 +20119,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <p class="mt-2 text-sm font-bold text-slate-700">Finishing sign-in…</p>
           </div>`;
       }
+      if (gateStep.startsWith('incoming:') && isIncomingDevice()) return incomingGateHTML();
+      if (gateStep === 'view-ended' && viewOnlyEnded()) return viewEndedGateHTML();
       if (gateStep === 'custodian') {
         const stale = isCustodianDevice();
         return `
@@ -19469,8 +20301,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     // so nothing syncs back. Typed RESET confirms; the page reloads clean.
     var resetScope = 'device';
     var resetBusy = false;
-    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites'];
-    const canEraseCloud = () => isCustodianDevice() && !!cloud.user && !!cloud.db && !!(reqRole && reqRole.schoolId);
+    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites', 'turnovers', 'turnoverInvites'];
+    const canEraseCloud = () => isCustodianDevice() && !isViewOnly() && !!cloud.user && !!cloud.db && !!(reqRole && reqRole.schoolId);
     function openResetApp() {
       if (typeof closeMoreMenu === 'function') { try { closeMoreMenu(); } catch (e) {} }
       resetScope = 'device';
