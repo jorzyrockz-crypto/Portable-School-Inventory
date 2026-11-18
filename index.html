@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="db41d504a857">
+  <meta name="app-version" content="2752bcf9ccfd">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -9558,7 +9558,127 @@
       if (/old-head-invite/.test(code)) return 'This School Head link was replaced by a newer one. Ask the property custodian for the new link.';
       if (/head-is-custodian/.test(code)) return 'This Google account is the property custodian’s. The School Head signs in with their own Google account, so nobody approves their own PR.';
       if (/head-removed/.test(code)) return 'The property custodian removed this account as School Head. Ask them to confirm you again with a new School Head link.';
+      if (/resource-exhausted|quota/i.test(code)) { scheduleQuotaRetry(); return `The school’s free daily cloud limit is used up. Your work is kept on this phone and syncs again after about ${quotaResetTime()}, when the limit resets.`; }
       return 'Something went wrong: ' + code.replace(/^Firebase:\s*/, '').slice(0, 140);
+    }
+
+    // The free (Spark) Firebase plan allows 50,000 document reads and 20,000 writes a day for the
+    // whole project; they reset at midnight Pacific time (about 3–4 PM in the Philippines).
+    function quotaResetAt(now = new Date()) {
+      try {
+        const la = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+        const left = 864e5 - ((la.getHours() * 60 + la.getMinutes()) * 60 + la.getSeconds()) * 1000;
+        return new Date(now.getTime() + left);
+      } catch (e) { return null; }
+    }
+    function quotaResetTime() {
+      const at = quotaResetAt();
+      if (!at) return '3–4 PM (Philippine time)';
+      return at.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }) + (at.toDateString() === new Date().toDateString() ? ' today' : ' tomorrow');
+    }
+    // Listeners stop on that error: start them again once the limit has reset.
+    let quotaTimer = null;
+    function scheduleQuotaRetry() {
+      if (quotaTimer) return;
+      const at = quotaResetAt();
+      const wait = at ? Math.max(60e3, at.getTime() - Date.now() + 3 * 60e3) : 3600e3;
+      quotaTimer = setTimeout(() => {
+        quotaTimer = null;
+        if (reqRole && cloud.db && cloud.user) { cloud.error = ''; subscribeRequests(); }
+      }, Math.min(wait, 864e5 + 6 * 60e3));
+    }
+
+    // ---- Fewer cloud reads: ask only for what changed ----------------------------------------
+    // Firestore bills every document a listener receives, and a listener that was closed for more
+    // than 30 minutes receives its whole collection again. The school's lists only grow
+    // (releases, requests, reports, inventory…), so opening the app each morning re-read all of
+    // them. After one full load, the custodian's lists come from the documents already saved on
+    // this phone (Firestore's offline cache, no charge) while the server sends only documents
+    // created or changed since the last visit (createdAt / updatedAt are server times, so a wrong
+    // phone clock does not matter). A count from the server (1 read per 1,000 documents) checks
+    // that the phone has every document; if not, or after a week, the whole list loads again.
+    // Every write to these collections sets createdAt (new) or updatedAt (changed).
+    // The newest time seen is kept exactly ([seconds, nanoseconds]) per field: a listener's answer
+    // holds every document saved up to that moment, so anything it has not seen is newer, and the
+    // last batch saved (e.g. 400 imported items, all with the same time) is not read again.
+    const DELTA_KEY = 'custodian_delta_sync_v1';
+    const DELTA_FULL_EVERY = 7 * 864e5;
+    const stampOf = v => (v && typeof v === 'object' && typeof v.seconds === 'number' ? [v.seconds, v.nanoseconds || 0] : null);
+    const stampAfter = (a, b) => !b || a[0] > b[0] || (a[0] === b[0] && a[1] > b[1]);
+    function deltaState() { try { return JSON.parse(localStorage.getItem(DELTA_KEY) || '{}') || {}; } catch (e) { return {}; } }
+    function saveDelta(key, patch) {
+      const all = deltaState();
+      all[key] = { ...(all[key] || {}), ...patch };
+      try { localStorage.setItem(DELTA_KEY, JSON.stringify(all)); } catch (e) {}
+    }
+    // next(snap) gets snapshots like F.onSnapshot's: snap.docs and snap.metadata (fromCache stays
+    // true until the server has answered and the count matched).
+    function listenSynced(col, fields, next, onError) {
+      const F = cloud.sdk, key = col.path;
+      let dead = false, offs = [];
+      const stopAll = () => { offs.forEach(off => { try { off(); } catch (e) {} }); offs = []; };
+      // Remember the newest server time seen per field (ignoring impossible future times).
+      const track = (snap, only) => {
+        if (snap.metadata.fromCache) return;
+        const st = deltaState()[key] || {};
+        const at = { ...(st.at && typeof st.at === 'object' ? st.at : {}) };
+        let changed = false;
+        const limit = Math.floor(Date.now() / 1000) + 86400;
+        (only ? [only] : fields).forEach(f => {
+          let max = at[f] || null;
+          snap.docs.forEach(d => {
+            if (d.metadata && d.metadata.hasPendingWrites) return;
+            const t = stampOf((d.data() || {})[f]);
+            if (t && t[0] < limit && stampAfter(t, max)) max = t;
+          });
+          if (!(f in at) || max !== at[f]) { at[f] = max; changed = true; }
+        });
+        if (changed) saveDelta(key, { at });
+      };
+      const fail = err => { if (dead) return; dead = true; stopAll(); onError(err); };   // like onSnapshot: stops on an error
+      function full() {
+        stopAll();
+        let saved = false;
+        offs.push(F.onSnapshot(col, { includeMetadataChanges: true }, snap => {
+          if (dead) return;
+          track(snap);
+          if (!snap.metadata.fromCache && !saved) { saved = true; saveDelta(key, { full: Date.now() }); }
+          next(snap);
+        }, fail));
+      }
+      function delta(since) {
+        let cacheSnap = null, verified = false;
+        const answered = new Set();
+        const emit = () => {
+          if (dead || !cacheSnap) return;
+          next({ docs: cacheSnap.docs, size: cacheSnap.docs.length, metadata: { hasPendingWrites: !!cacheSnap.metadata.hasPendingWrites, fromCache: !verified } });
+        };
+        offs.push(F.onSnapshot(col, { includeMetadataChanges: true, source: 'cache' }, snap => { cacheSnap = snap; emit(); }, fail));
+        fields.forEach(f => {
+          const t = since[f] || [0, 0];
+          offs.push(F.onSnapshot(F.query(col, F.where(f, '>', new F.Timestamp(t[0], t[1]))), { includeMetadataChanges: true }, snap => {
+            if (dead) return;
+            track(snap, f);
+            if (snap.metadata.fromCache || answered.has(f)) return;
+            answered.add(f);
+            if (answered.size === fields.length) verify();
+          }, fail));
+        });
+        async function verify() {
+          let n = null;
+          try { n = (await F.getCountFromServer(col)).data().count; } catch (e) { console.warn('count', key, e); }
+          if (dead) return;
+          const docs = cacheSnap ? cacheSnap.docs : [];
+          const sure = docs.filter(d => !(d.metadata && d.metadata.hasPendingWrites)).length;
+          if (n !== null && (n < sure || n > docs.length)) { console.info(`${key}: ${docs.length} on this phone, ${n} online · loading all`); full(); return; }
+          verified = true;
+          emit();
+        }
+      }
+      const st = deltaState()[key] || {};
+      if (!st.at || typeof st.at !== 'object' || !st.full || Date.now() - st.full > DELTA_FULL_EVERY || Date.now() < st.full || typeof F.getCountFromServer !== 'function' || !F.Timestamp) full();
+      else delta(st.at);
+      return () => { dead = true; stopAll(); };
     }
 
     // Loads the SDK (cached after first use) and restores the signed-in user.
@@ -9677,13 +9797,16 @@
     const schoolIcsNos = () => inspList.flatMap(x => (x.schoolIcs || []).map(s => String(s.no || '')));
 
     function subscribeInspections(F) {
-      const q = isCustodianDevice() ? inspCol() : F.query(inspCol(), F.where('inspectorUid', '==', cloud.user.uid));
-      reqUnsubs.push(F.onSnapshot(q, { includeMetadataChanges: true }, snap => {
+      const onInsp = snap => {
         inspList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
         renderRequestsEverywhere();
         if (iarDraft && iarDraft.inspId) renderIar();
         notifFromInspections(snap.metadata);
-      }, err => console.warn('inspections', err)));
+      };
+      const onErr = err => console.warn('inspections', err);
+      reqUnsubs.push(isCustodianDevice()
+        ? listenSynced(inspCol(), ['createdAt', 'updatedAt'], onInsp, onErr)
+        : F.onSnapshot(F.query(inspCol(), F.where('inspectorUid', '==', cloud.user.uid)), { includeMetadataChanges: true }, onInsp, onErr));
     }
 
     function notifFromInspections(meta) {
@@ -10621,18 +10744,20 @@
       if (!reqRole || !cloud.db || !cloud.user) return;
       const F = cloud.sdk;
       if (isHeadDevice()) { subscribeHead(F); return; }   // the School Head: their card, then the PRs
-      const q = isCustodianDevice() ? reqCol() : F.query(reqCol(), F.where('uid', '==', cloud.user.uid));
       const onErr = err => { console.error('sync', err); cloud.error = cloudErrorText(err); renderRequestsEverywhere(); };
-      reqUnsubs.push(F.onSnapshot(q, { includeMetadataChanges: true }, snap => {
+      const onRequests = snap => {
         reqList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
         reqList.sort((a, b) => reqTime(b) - reqTime(a));
         cloud.error = '';
         renderRequestsEverywhere();
         notifFromRequests(snap.metadata);
         if (!(snap.metadata && snap.metadata.fromCache)) notifReminders();
-      }, onErr));
+      };
+      reqUnsubs.push(isCustodianDevice()
+        ? listenSynced(reqCol(), ['createdAt', 'updatedAt'], onRequests, onErr)
+        : F.onSnapshot(F.query(reqCol(), F.where('uid', '==', cloud.user.uid)), { includeMetadataChanges: true }, onRequests, onErr));
       if (isCustodianDevice()) {
-        reqUnsubs.push(F.onSnapshot(prCol(), snap => {
+        reqUnsubs.push(listenSynced(prCol(), ['createdAt', 'updatedAt'], snap => {
           prList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
           prList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
           renderRequestsEverywhere();
@@ -10695,7 +10820,18 @@
     }
     const invHash = body => hashText(canonJSON(body));
     const invDocId = code => String(code).replace(/\//g, '∕').slice(0, 400);
-    const cleanJSON = v => JSON.parse(JSON.stringify(v)); // drops undefined (Firestore refuses it)
+    // Drops undefined (Firestore refuses it) like a JSON round trip, but keeps Firestore's own
+    // values (serverTimestamp() …) instead of turning them into plain maps.
+    const cleanJSON = v => {
+      if (v === null || typeof v !== 'object') return typeof v === 'number' && !isFinite(v) ? null : v;
+      if (typeof v.toJSON === 'function') return JSON.parse(JSON.stringify(v));
+      const proto = Object.getPrototypeOf(v);
+      if (Array.isArray(v)) return v.map(x => (x === undefined || typeof x === 'function' || typeof x === 'symbol' ? null : cleanJSON(x)));
+      if (proto !== Object.prototype && proto !== null) return v;   // a Firestore FieldValue
+      const o = {};
+      Object.keys(v).forEach(k => { const x = v[k]; if (x !== undefined && typeof x !== 'function' && typeof x !== 'symbol') o[k] = cleanJSON(x); });
+      return o;
+    };
 
     const INV_META_KEYS = new Set(['s:info', 'm:matches']);   // settings, not inventory items
     function invTarget(key) {
@@ -10781,7 +10917,7 @@
       const meta = {};
       setInvStatus('syncing');
       ['inventory', 'catalog', 'settings'].forEach(col => {
-        invUnsubs.push(F.onSnapshot(F.collection(cloud.db, 'schools', reqRole.schoolId, col), { includeMetadataChanges: true }, snap => {
+        invUnsubs.push(listenSynced(F.collection(cloud.db, 'schools', reqRole.schoolId, col), ['updatedAt'], snap => {
           const map = {};
           snap.docs.forEach(d => { map[d.id] = d.data(); });
           invRemote[col] = map;
@@ -13058,7 +13194,7 @@
       reqUnsubs.push(() => stopHeadPrs());
     }
     function startHeadPrs(F) {
-      headPrUnsub = F.onSnapshot(prCol(), snap => {
+      headPrUnsub = listenSynced(prCol(), ['createdAt', 'updatedAt'], snap => {
         prList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
         prList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
         cloud.error = '';
@@ -13489,7 +13625,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         onTeamChange();
         notifFromMembers(snap.metadata);
       }, soft('members')));
-      reqUnsubs.push(F.onSnapshot(relCol(), { includeMetadataChanges: true }, snap => {
+      reqUnsubs.push(listenSynced(relCol(), ['createdAt', 'updatedAt'], snap => {
         releaseAll = sampleList('releases', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) })));
         releaseAll.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
         releaseList = releaseAll.filter(r => !r.void);   // cancelled slips are hidden everywhere
@@ -13497,7 +13633,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         onTeamChange();
         notifReminders();
       }, soft('releases')));
-      reqUnsubs.push(F.onSnapshot(tReportCol(), { includeMetadataChanges: true }, snap => {
+      reqUnsubs.push(listenSynced(tReportCol(), ['createdAt', 'updatedAt'], snap => {
         tReports = sampleList('reports', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id })));
         if (!(snap.metadata && snap.metadata.fromCache)) tRepLoaded = true;
         applyCountReports();
@@ -13768,10 +13904,14 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
 
     // ---- School stock (supplies left) ------------------------------------------------------
-    // The custodian's devices publish each supply's quantity (no prices, no property numbers)
-    // to schools/{id}/stock/{code}; approved teachers see it, so they need not ask "meron pa
-    // ba?". "I took this" adds a hold that lowers the number for everyone until the custodian
-    // confirms it with an RIS (or corrects it).
+    // The custodian's devices publish each supply's quantity (no prices, no property numbers);
+    // approved teachers see it, so they need not ask "meron pa ba?". "I took this" adds a hold
+    // that lowers the number for everyone until the custodian confirms it with an RIS (or
+    // corrects it).
+    // All supplies are in ONE document, schools/{id}/stock/_all { gone: true, items: [...] }, so a
+    // teacher opening the app costs 1 read instead of one per supply (~400). (Older versions
+    // wrote stock/{code} per supply; teachers still read those until the custodian's phone has
+    // updated. "gone: true" makes older teacher apps skip the _all document.)
     var STOCK_SYNC_KEY = 'custodian_stock_sync_v1';
     var stockSync = null;
     var stockList = [], stockLoaded = false;     // teacher: the school's supplies
@@ -13782,37 +13922,29 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function holdCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'stockHolds'); }
     var stockDocOf = item => ({ code: item.code, name: item.name, unit: item.unit || '', qty: Math.max(0, item.qty || 0), low: Math.max(0, item.minQty || 0), cat: item.category || '' });
 
+    const STOCK_ALL = '_all';
     function pushStock() {
       if (!invReady || invApplying || !cloud.db || !cloud.user || !isCustodianDevice()) return;
       if (!stockSync || stockSync.schoolId !== reqRole.schoolId) {
         try { stockSync = JSON.parse(localStorage.getItem(STOCK_SYNC_KEY)) || null; } catch (e) { stockSync = null; }
         if (!stockSync || stockSync.schoolId !== reqRole.schoolId) stockSync = { schoolId: reqRole.schoolId, synced: {} };
       }
-      const writes = [];
-      items.forEach(item => {
-        if (relIsEquip(item) || (!(item.qty > 0) && stockSync.synced[item.code] === undefined)) return;
-        const body = stockDocOf(item);
-        const h = invHash(body);
-        if (stockSync.synced[item.code] !== h) writes.push([item.code, body, h]);
+      // Supplies in stock, and those that ran out after teachers saw them ("Out of stock").
+      // Items removed from the inventory, or turned into equipment, drop off the list.
+      const listed = stockSync.listed || Object.keys(stockSync.synced || {}).filter(c => stockSync.synced[c] !== 'gone');
+      const was = new Set(listed);
+      const list = items.filter(item => !relIsEquip(item) && (item.qty > 0 || was.has(item.code))).map(stockDocOf)
+        .sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
+      const h = invHash(list);
+      if (stockSync.allHash === h) return;
+      const F = cloud.sdk, prev = { allHash: stockSync.allHash, listed: stockSync.listed };
+      stockSync.allHash = h;
+      stockSync.listed = list.map(x => x.code);
+      stockSync.synced = {};
+      F.setDoc(F.doc(stockCol(), STOCK_ALL), { gone: true, items: cleanJSON(list), n: list.length, updatedMs: Date.now() }).catch(err => {
+        console.warn('stock', err);
+        if (stockSync.allHash === h) { stockSync.allHash = prev.allHash; localStorage.setItem(STOCK_SYNC_KEY, JSON.stringify(stockSync)); }
       });
-      // Items removed from the inventory, or turned into equipment: none left for teachers.
-      Object.keys(stockSync.synced).forEach(code => {
-        const item = items.find(i => i.code === code);
-        if ((!item || relIsEquip(item)) && stockSync.synced[code] !== 'gone') writes.push([code, { code, name: item ? item.name : '', unit: item ? item.unit || '' : '', qty: 0, low: 0, cat: '', gone: true }, 'gone']);
-      });
-      if (!writes.length) return;
-      const F = cloud.sdk, now = Date.now();
-      for (let i = 0; i < writes.length; i += 400) {
-        const chunk = writes.slice(i, i + 400);
-        const batch = F.writeBatch(cloud.db);
-        chunk.forEach(([code, body]) => batch.set(F.doc(stockCol(), code), { ...body, updatedMs: now }));
-        chunk.forEach(([code, , h]) => { stockSync.synced[code] = h; });
-        batch.commit().catch(err => {
-          console.warn('stock', err);
-          chunk.forEach(([code]) => { delete stockSync.synced[code]; });
-          localStorage.setItem(STOCK_SYNC_KEY, JSON.stringify(stockSync));
-        });
-      }
       localStorage.setItem(STOCK_SYNC_KEY, JSON.stringify(stockSync));
     }
 
@@ -13841,11 +13973,24 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       stockUnsubs = [];
       if (!on) { stockList = []; stockHolds = []; stockLoaded = false; return; }
       const F = cloud.sdk;
-      stockUnsubs.push(F.onSnapshot(stockCol(), snap => {
-        stockList = snap.docs.map(d => ({ ...d.data(), code: d.id })).filter(s => !s.gone);
-        stockLoaded = true;
-        if (activeMainView === 'REQUESTER') renderRequesterView();
-      }, err => { console.warn('stock', err); stopTeacherStock(); }));
+      const shown = () => { stockLoaded = true; if (activeMainView === 'REQUESTER') renderRequesterView(); };
+      const fail = err => { console.warn('stock', err); stopTeacherStock(); };
+      let oldUnsub = null;   // per-supply documents, until the custodian's phone has updated
+      const stopOld = () => { if (oldUnsub) { try { oldUnsub(); } catch (e) {} oldUnsub = null; } };
+      stockUnsubs.push(F.onSnapshot(F.doc(stockCol(), STOCK_ALL), snap => {
+        const d = snap.exists() ? snap.data() : null;
+        if (d && Array.isArray(d.items)) {
+          stopOld();
+          stockList = d.items.filter(s => s && s.code && !s.gone).map(s => ({ ...s, name: String(s.name || ''), updatedMs: d.updatedMs || 0 }));
+          shown();
+        } else if (!oldUnsub && !(snap.metadata && snap.metadata.fromCache)) {
+          oldUnsub = F.onSnapshot(stockCol(), s2 => {
+            stockList = s2.docs.filter(x => x.id !== STOCK_ALL).map(x => ({ ...x.data(), code: x.id })).filter(s => !s.gone && s.name);
+            shown();
+          }, fail);
+        }
+      }, fail));
+      stockUnsubs.push(stopOld);
       stockUnsubs.push(subscribeHolds(F));
     }
     function heldQty(code) { return stockHolds.reduce((n, h) => n + (h.lines || []).filter(l => l.code === code).reduce((m, l) => m + (l.qty || 0), 0), 0); }
@@ -15062,7 +15207,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         })));
         saveStateWith({ summary: { kind: 'release', text: `${x.name} returned ${lines.map(l => `${l.desc} (${nosText(l.units)})`).join(', ')}`, track: true } });
       }
-      batch.update(F.doc(tReportCol(), x.id), { status: 'done', resolution: 'returned', reply: 'Received back', resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '' });
+      batch.update(F.doc(tReportCol(), x.id), { status: 'done', resolution: 'returned', reply: 'Received back', resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '', updatedAt: F.serverTimestamp() });
       cloudWrite(batch.commit(), 'Saving the return');
       tReports = tReports.map(r => (r.id === id ? { ...r, status: 'done' } : r));
       renderRequestsEverywhere();
@@ -15103,7 +15248,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const reply = action === 'repair' ? 'Marked for repair' : action === 'unserv' ? 'Marked unserviceable'
         : action === 'lost' ? 'Lost report started · it stays under your name until you are relieved of accountability' : 'Noted';
       const patch = { status: 'done', resolution: action, reply, resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '' };
-      cloudWrite(F.updateDoc(F.doc(tReportCol(), x.id), patch), 'Updating');
+      cloudWrite(F.updateDoc(F.doc(tReportCol(), x.id), { ...patch, updatedAt: F.serverTimestamp() }), 'Updating');
       tReports = tReports.map(r => (r.id === id ? { ...r, ...patch } : r));
       renderRequestsEverywhere();
       if (action === 'lost' && touched.length) {
@@ -15154,7 +15299,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         .sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0))[0];
       if (!r) return;
       const F = cloud.sdk;
-      cloudWrite(F.updateDoc(F.doc(tReportCol(), r.id), patch), 'Updating');
+      cloudWrite(F.updateDoc(F.doc(tReportCol(), r.id), { ...patch, updatedAt: F.serverTimestamp() }), 'Updating');
       tReports = tReports.map(x => (x.id === r.id ? { ...x, ...patch } : x));
     }
     function markRepaired(unitId) {
@@ -15212,7 +15357,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const reason = await appPrompt(`${x.name} will see this.`, '', { title: 'Not accepting the return?', label: 'Reason', placeholder: 'e.g. Please have it repaired first', multiline: true, ok: 'Decline', tone: 'danger', icon: 'ph-x-circle', maxLength: 300 });
       if (reason === null) return;
       const F = cloud.sdk;
-      cloudWrite(F.updateDoc(F.doc(tReportCol(), x.id), { status: 'declined', reply: reason.trim().slice(0, 300) || 'Return not accepted', resolvedMs: Date.now() }), 'Updating');
+      cloudWrite(F.updateDoc(F.doc(tReportCol(), x.id), { status: 'declined', reply: reason.trim().slice(0, 300) || 'Return not accepted', resolvedMs: Date.now(), updatedAt: F.serverTimestamp() }), 'Updating');
       tReports = tReports.map(r => (r.id === id ? { ...r, status: 'declined' } : r));
       renderRequestsEverywhere();
     }
@@ -15859,7 +16004,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const patch = { void: true, voidedMs: now, voidedBy: schoolInfo.custodian || reqRole.email || '', voidedByUid: cloud.user.uid };
       const ids = new Set(p.records.map(r => r.id));
       const batch = F.writeBatch(cloud.db);
-      p.records.forEach(r => batch.update(F.doc(relCol(), r.id), patch));
+      p.records.forEach(r => batch.update(F.doc(relCol(), r.id), { ...patch, updatedAt: F.serverTimestamp() }));
       cloudWrite(batch.commit(), 'Removing the name');
       releaseList = releaseList.filter(r => !ids.has(r.id));
       releaseAll = releaseAll.map(r => (ids.has(r.id) ? { ...r, ...patch } : r));
@@ -15896,7 +16041,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         // 2. Slips and history under the typed name
         const patch = { teacherUid: target.uid, teacherName: target.name, position: target.position, office: target.office, mergedFrom: p.name };
         const ids = new Set(p.records.map(r => r.id));
-        p.records.forEach(r => batch.update(F.doc(relCol(), r.id), patch));
+        p.records.forEach(r => batch.update(F.doc(relCol(), r.id), { ...patch, updatedAt: F.serverTimestamp() }));
         releaseList = releaseList.map(r => (ids.has(r.id) ? { ...r, ...patch } : r));
         // 3. Units on no slip (typed under "Assigned to"): a linked ICS, so they show in My Items
         if (t.uid) {
@@ -15930,7 +16075,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const F = cloud.sdk;
       const now = Date.now();
       const batch = F.writeBatch(cloud.db);
-      p.toConfirm.forEach(r => batch.update(F.doc(relCol(), r.id), { remindMs: now }));
+      p.toConfirm.forEach(r => batch.update(F.doc(relCol(), r.id), { remindMs: now, updatedAt: F.serverTimestamp() }));
       cloudWrite(batch.commit(), 'Sending the reminder');
       const ids = new Set(p.toConfirm.map(r => r.id));
       releaseList = releaseList.map(r => (ids.has(r.id) ? { ...r, remindMs: now } : r));
@@ -16054,8 +16199,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         });
         const done = !countFlags(x).length;
         batch.update(F.doc(tReportCol(), x.id), done
-          ? { applied: true, status: 'done', resolution: 'counted', reply: 'Counted', resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '' }
-          : { applied: true });
+          ? { applied: true, status: 'done', resolution: 'counted', reply: 'Counted', resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '', updatedAt: F.serverTimestamp() }
+          : { applied: true, updatedAt: F.serverTimestamp() });
       });
       if (changed) saveStateWith({ summary: { kind: 'count', track: true, text: `${listJoin([...who])} counted ${plural(changed, 'unit')} on their phone (year-end count)` } });
       cloudWrite(batch.commit(), 'Saving the count');
@@ -18575,6 +18720,13 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-fewer-reads', date: 'Nov 2026', title: 'Faster opening, fits the free cloud plan', points: [
+        'Opening the app now downloads only what changed since you last opened it. Everything else is already saved on your phone, so the app is ready sooner and uses much less mobile data.',
+        'This keeps the school well under the free Firebase plan\u2019s daily limit of 50,000 reads, even after years of releases, requests and reports. All your old records stay in the app.',
+        'Teachers\u2019 School stock now loads as one small download instead of one for each supply.',
+        'If the free daily limit is ever used up, the app says so and tells you the time it resets (about 3\u20134 PM in the Philippines). Your work stays on your phone, and syncing starts again on its own.',
+        'Once a week, and whenever something looks missing, the app downloads the full list again to stay complete.'
+      ] },
       { id: '2026-11-school-head', date: 'Nov 2026', title: 'School Head approves every Purchase Request', points: [
         'Every new Purchase Request now waits for the School Head\u2019s approval. Until it is approved, the print and Excel file say FOR APPROVAL, and Inspect delivery and Items delivered stay closed.',
         'Invite your School Head from Supply requests \u2192 Invite \u2192 School Head. They open their own link, sign in with their own Google account, and you tap Confirm.',

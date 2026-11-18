@@ -10,8 +10,10 @@ export function createBackend({ autoApprove = true } = {}) {
   const denied = [];
   const writes = [];
   let uidSeq = 0;
+  const clock = { offset: 0, last: 0 };   // server time = now + offset (a suite can make writes look older)
+  const serverNow = () => (clock.last = Math.max(Date.now() + clock.offset, clock.last + 1));   // always later than the last write
   const resolveTS = v => {
-    if (v && typeof v === 'object' && v.__ts) return { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 };
+    if (v && typeof v === 'object' && v.__ts) { const ms = serverNow(); return { seconds: Math.floor(ms / 1000), nanoseconds: (ms % 1000) * 1e6 }; }
     if (Array.isArray(v)) return v.map(resolveTS);
     if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, resolveTS(x)]));
     return v;
@@ -309,7 +311,7 @@ export function createBackend({ autoApprove = true } = {}) {
       const depth = parts(path).length + 1;
       return [...store.entries()]
         .filter(([p]) => p.startsWith(path + '/') && parts(p).length === depth)
-        .filter(([, d]) => filters.every(f => f.op === '==' ? d[f.field] === f.value : f.op === 'array-contains' ? (d[f.field] || []).includes(f.value) : true))
+        .filter(([, d]) => filters.every(f => matches(d, f)))
         .map(([p, d]) => ({ id: p.split('/').pop(), data: d }));
     },
     batch: ({ ops: list, ctx }) => {
@@ -320,10 +322,27 @@ export function createBackend({ autoApprove = true } = {}) {
     }
   };
 
+  // where() as Firestore compares: == / array-contains, and < <= > >= on numbers or times
+  // (a Date in a query arrives as { __date: ms }; stored times are { seconds, nanoseconds }).
+  function matches(d, f) {
+    const x = d[f.field];
+    if (f.op === '==') return x === f.value;
+    if (f.op === 'array-contains') return (x || []).includes(f.value);
+    if (['>', '>=', '<', '<='].includes(f.op)) {
+      const ms = v => (v && typeof v === 'object' ? (typeof v.seconds === 'number' ? v.seconds * 1000 + (v.nanoseconds || 0) / 1e6 : typeof v.__date === 'number' ? v.__date : NaN) : v);
+      const isTime = v => v && typeof v === 'object' && (typeof v.seconds === 'number' || typeof v.__date === 'number');
+      if (x === undefined || x === null || isTime(x) !== isTime(f.value)) return false;   // types must match
+      const a = ms(x), b = ms(f.value);
+      if (typeof a !== 'number' || typeof b !== 'number' || isNaN(a) || isNaN(b)) return false;
+      return f.op === '>' ? a > b : f.op === '>=' ? a >= b : f.op === '<' ? a < b : a <= b;
+    }
+    return true;
+  }
+
   const handler = async (op, json) => {
     try { return JSON.stringify({ result: ops[op](JSON.parse(json)) }); }
     catch (e) { return JSON.stringify({ error: e.message }); }
   };
   const docs = prefix => [...store.entries()].filter(([p]) => p.startsWith(prefix)).map(([p, d]) => ({ path: p, ...d }));
-  return { store, denied, writes, handler, docs };
+  return { store, denied, writes, handler, docs, clock };
 }

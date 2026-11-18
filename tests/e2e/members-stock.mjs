@@ -26,7 +26,8 @@ async function joinAsTeacher(page, code, name, position, office) {
   return ev(page, () => cloud.user.uid);
 }
 const PAPER = '14111507-PP-M02', ALCOHOL = '12191601-AL-E04';
-const stockDoc = code => docs(new RegExp(`/stock/${code}$`))[0];
+// All supplies are in one document, stock/_all { gone: true, items: [...] } (1 read per teacher).
+const stockDoc = code => { const all = docs(/\/stock\/_all$/)[0]; return all && (all.items || []).find(i => i.code === code); };
 const leftOn = (page, code) => ev(page, c => { const el = document.querySelector(`[data-stock="${c}"] [data-left]`); return el ? +el.textContent : null; }, code);
 
 try {
@@ -43,7 +44,7 @@ try {
   const sid = await ev(a, () => reqRole.schoolId);
   await waitNode(() => stockDoc(PAPER) && stockDoc(PAPER).qty === 85, 'stock published', 10000);
   const paper = stockDoc(PAPER);
-  check(paper && paper.qty === 85 && paper.unit && !('price' in paper) && !docs(/\/stock\/43211507-DSK001$/).length, `supplies published: bond paper ${paper && paper.qty} ${paper && paper.unit}, no prices, no equipment`);
+  check(paper && paper.qty === 85 && paper.unit && !('price' in paper) && !stockDoc('43211507-DSK001') && !docs(/\/stock\/(?!_all$)/).length, `supplies published: bond paper ${paper && paper.qty} ${paper && paper.unit}, no prices, no equipment`);
   await ev(a, () => openInvite());
   await sleep(300);
   await until(a, () => /^School ID 114656/.test(document.getElementById('inviteSchoolNo').textContent), 'school id line', 4000);
