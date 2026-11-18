@@ -212,6 +212,17 @@ A teacher’s phone only shows that teacher’s own requests, slips and items. I
 
 Teachers who joined before approvals existed stay active; only new joins need **Approve**.
 
+### School Head approval of Purchase Requests
+
+Every Purchase Request needs the School Head's approval or signature.
+
+- **Waiting for approval.** A new PR is saved as *waiting for approval*. Until it is approved, the print, Excel and CSV say **FOR APPROVAL** and the *Approved by* signature is blank. **Inspect delivery** and **Items delivered** stay closed. PRs saved before this update count as approved.
+- **No School Head in the app yet.** Print the PR, have the head sign it, then tap **Signed on paper…** on the PR card and enter the date they signed. Change History shows it as a paper signature. If you recorded it by mistake, **Recorded by mistake?** removes it.
+- **Inviting the School Head.** Go to **Supply requests → Invite → School Head (approves PRs)**. Send the head their own link or QR code (it is not the teachers' link). On their phone, they open it (or choose **School Head** on the sign-in screen and paste it), then sign in with **their own Google account**. Anonymous sign-in and the custodian's account are refused. You get a notification, and you tap **Confirm** in the School Head panel. **Make a new School Head link** stops the old link from working.
+- **Approving.** The head's phone shows only *For your approval*: each PR waiting for them, with its items, purpose and total. They tap **Approve**, or **Return** with a note saying what to change. Their name, designation, date and time are saved on the PR. You are notified, and Change History records it. The final print shows *Approved in CustodianPro by …* under the head's signature.
+- **Returned PRs.** **Change it** (Edit) or **Send again as is** sends the PR back to the head. Changing an approved PR also sends it back for approval (the app asks first).
+- **Once a head is confirmed, only they can approve.** The rules then refuse paper signatures from the custodian. Approval and Return by the custodian are always refused, and so is any change to an approved PR that doesn't send it back. The head can read the PRs but change nothing except their decision on a PR that is waiting. A custodian of the school can never be its School Head, so nobody approves their own PR. **Remove as School Head** ends the head's access. PRs that are still waiting go back to paper signatures until a new head is confirmed.
+
 ### School stock and “I took this” (teachers)
 
 Teachers kept asking *“Sir, meron pa ba nito?”*. The teacher's phone now has a third tab, **Stock**:
@@ -244,7 +255,7 @@ The app is connected to the Firebase project **russapps-custodianpro** (settings
    - **Email/Password** (optional: custodians without a Google account).
 2. **Authentication → Settings → Authorized domains**: add `jorzyrockz-crypto.github.io`. Without it, Google sign-in shows “This website is not on the Firebase authorized domains list”.
 3. **Build → Firestore Database → Create database**: pick a location near you (e.g. `asia-southeast1`, Singapore) and start in **production mode**.
-4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school. Nothing can be deleted, except by the school's custodian through **Reset app** (below). **Publish again after updating the app** when `firestore.rules` changed (latest: `inspections`, so a teacher can sign an inspection sent to their phone).
+4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school. Nothing can be deleted, except by the school's custodian through **Reset app** (below). **Publish again after updating the app** when `firestore.rules` changed (latest: `heads`, `headInvites` and the `purchaseRequests` approval rules for the School Head).
 
 The config values are not secret; access is controlled by the published rules. To use a different project, replace the object in `firebase-config.js` (or set it to `null` to hide Supply requests).
 

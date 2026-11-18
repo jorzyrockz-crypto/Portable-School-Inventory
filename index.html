@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="ed5d092a3ee7">
+  <meta name="app-version" content="db41d504a857">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -417,6 +417,8 @@
     .pr-table .c { text-align: center; } .pr-table .r { text-align: right; }
     .pr-table .pr-blank td { height: 15pt; }
     .pr-table .pr-sig { height: 28pt; }
+    .pr-draft { border: 1.5pt solid #000; text-align: center; font-weight: 700; letter-spacing: 1pt; padding: 3pt; margin: 2pt 0 2pt; font-size: 11pt; }
+    .pr-esign { display: block; text-align: center; font-size: 8pt; font-style: italic; padding-top: 9pt; }
     .pr-table .pr-purpose { height: 40pt; }
     /* ---- Light / dark ---------------------------------------------------------------
        html.dark is set by the <head> script (System / Light / Dark in More). The Tailwind
@@ -1247,6 +1249,22 @@
     </div>
   </section>
 
+  <!-- SCHOOL HEAD (head's phone): approve or return Purchase Requests -->
+  <section id="viewHead" class="hidden max-w-xl mx-auto px-4 pt-5 space-y-5 no-print">
+    <div>
+      <p id="hdHello" class="text-sm text-slate-500"></p>
+      <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">For your approval</h1>
+      <p id="hdSchool" class="text-xs text-slate-500"></p>
+    </div>
+    <p id="hdSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
+    <div id="hdBody" class="space-y-5"></div>
+    <div id="hdAccount" class="text-[11px] -mb-2"></div>
+    <div class="flex items-center justify-between gap-3 text-xs pb-6">
+      <button onclick="editHeadDetails()" class="min-h-10 px-1 font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-user-circle"></i> Change my name or designation</button>
+      <button onclick="leaveHead()" class="min-h-10 px-1 font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1"><i class="ph-bold ph-sign-out"></i> Sign out</button>
+    </div>
+  </section>
+
   <section id="printReportSection" class="print-only max-w-4xl mx-auto p-6 text-black">
     <div class="text-center border-b-2 border-black pb-4 mb-4">
       <p class="text-xs uppercase tracking-widest font-semibold">Republic of the Philippines</p>
@@ -1802,7 +1820,48 @@
       </div>
       <button id="invitePoster" onclick="printInvitePoster()" class="w-full h-11 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print a poster for the faculty room</button>
       <p class="text-[11px] text-slate-500 text-center">Paste it in your faculty group chat. New teachers wait for your <b>Approve</b> on the Teachers page; they only see their own requests and items, plus the supplies left.</p>
+      <button id="inviteHeadBtn" onclick="closeInvite(); openHeadPanel()" class="w-full min-h-11 rounded-xl bg-violet-50 hover:bg-violet-100 border border-violet-200 text-sm font-bold text-violet-800 flex items-center justify-center gap-1.5"><i class="ph-bold ph-seal-check"></i> School Head (approves PRs)</button>
       <button id="inviteNewLink" onclick="newInviteLink()" class="w-full min-h-10 text-xs font-bold text-slate-500 hover:text-rose-600 flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrows-clockwise"></i> Link shared too widely? Make a new invite link</button>
+    </div>
+  </div>
+
+  <!-- SCHOOL HEAD (custodian): invite, confirm or remove the head who approves PRs -->
+  <div id="headModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeHeadPanel()">
+    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="ph-bold ph-seal-check text-xl"></i></span>
+          <div class="min-w-0">
+            <h3 class="font-extrabold text-base text-slate-900 leading-tight">School Head</h3>
+            <p class="text-xs font-semibold text-slate-500">Approves every Purchase Request</p>
+          </div>
+        </div>
+        <button onclick="closeHeadPanel()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="headPanelBody" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- SCHOOL HEAD JOINS (head opens their invite link) -->
+  <div id="headJoinModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print">
+    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p id="hjKicker" class="text-[11px] font-bold uppercase tracking-wider text-violet-600">School Head · join your school</p>
+          <h3 id="hjSchool" class="font-extrabold text-lg text-slate-900 leading-snug">Sign in with your Google account</h3>
+          <p id="hjSub" class="text-xs text-slate-500">You approve or return the property custodian’s Purchase Requests. Your name, the date and the time are recorded with each one.</p>
+        </div>
+        <button onclick="closeHeadJoin()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div class="space-y-2">
+        <input id="hjName" type="text" maxlength="80" autocomplete="name" placeholder="Your full name (or leave it to Google)" class="w-full h-12 px-3 rounded-xl border-2 border-slate-200 focus:border-violet-500 text-sm font-semibold outline-none">
+        <input id="hjDesig" type="text" maxlength="80" placeholder="Designation, e.g. School Principal I" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm focus:border-violet-500 outline-none">
+      </div>
+      <p id="hjError" class="hidden text-xs font-semibold text-rose-600"></p>
+      <button id="hjBtn" onclick="headJoinGo()" class="w-full h-12 rounded-xl bg-white border-2 border-slate-200 hover:border-violet-300 disabled:opacity-50 text-slate-800 font-extrabold text-sm flex items-center justify-center gap-2">
+        <span id="hjG"></span> <span id="hjBtnLabel">Continue with Google</span>
+      </button>
+      <p id="hjNote" class="text-[11px] text-slate-500 text-center">Use your own Google account, not the property custodian’s. The custodian confirms you before you can approve.</p>
     </div>
   </div>
 
@@ -3167,20 +3226,22 @@
     // =========================================================================
     // 4. VIEW NAVIGATION (DASHBOARD <-> CATALOG)
     // =========================================================================
-    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester', TEACHERS: 'viewTeachers' };
+    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester', TEACHERS: 'viewTeachers', HEAD: 'viewHead' };
 
     function switchMainView(viewName) {
       if (viewName === 'DASHBOARD') viewName = 'REPORTS'; // old name
       if (!MAIN_VIEWS[viewName]) viewName = 'HOME';
       if (isTeacherDevice()) viewName = 'REQUESTER'; // a teacher's phone: supply requests only
-      else if (viewName === 'REQUESTER') viewName = 'HOME';
-      document.getElementById('tabBar').classList.toggle('hidden', viewName === 'REQUESTER');
-      document.documentElement.classList.toggle('no-tabs', viewName === 'REQUESTER');
-      document.getElementById('moreMenuBtn').classList.toggle('hidden', viewName === 'REQUESTER');
-      const ab = document.getElementById('appearBtn'); // a teacher has no More menu: Appearance gets its own button
-      ab.classList.toggle('hidden', viewName !== 'REQUESTER');
-      ab.classList.toggle('flex', viewName === 'REQUESTER');
-      if (viewName !== 'REQUESTER') closeAppearPanel();
+      else if (isHeadDevice()) viewName = 'HEAD';    // the School Head's phone: PR approvals only
+      else if (viewName === 'REQUESTER' || viewName === 'HEAD') viewName = 'HOME';
+      const solo = viewName === 'REQUESTER' || viewName === 'HEAD';
+      document.getElementById('tabBar').classList.toggle('hidden', solo);
+      document.documentElement.classList.toggle('no-tabs', solo);
+      document.getElementById('moreMenuBtn').classList.toggle('hidden', solo);
+      const ab = document.getElementById('appearBtn'); // a teacher or head has no More menu: Appearance gets its own button
+      ab.classList.toggle('hidden', !solo);
+      ab.classList.toggle('flex', solo);
+      if (!solo) closeAppearPanel();
       activeMainView = viewName;
       if (coaIsPage()) closeCoa(); // leaving the Forms page (computer sidebar)
       Object.entries(MAIN_VIEWS).forEach(([key, id]) =>
@@ -3190,6 +3251,7 @@
       else renderDashboard();
       if (viewName === 'REQUESTS') renderRequestsView();
       if (viewName === 'REQUESTER') renderRequesterView();
+      if (viewName === 'HEAD') renderHeadView();
       if (viewName === 'TEACHERS') renderTeachersView();
       syncPageArt();
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -9234,6 +9296,7 @@
       const sugg = o.kind === 'prompt' && !o.multiline && Array.isArray(o.suggestions) ? o.suggestions : [];
       document.getElementById('appDialogList').innerHTML = sugg.map(v => `<option value="${escapeHTML(v)}"></option>`).join('');
       if (sugg.length) input.setAttribute('list', 'appDialogList'); else input.removeAttribute('list');
+      input.type = o.inputType || 'text';   // e.g. 'date'
       if (o.kind === 'prompt') {
         box.value = o.value;
         box.placeholder = o.placeholder || '';
@@ -9492,6 +9555,9 @@
       if (/invite-only/.test(code)) return 'This school only accepts its invite link. Ask your property custodian for it.';
       if (/no-school/.test(code)) return 'This invite link is not valid. Ask the property custodian for a new one.';
       if (/old-invite/.test(code)) return 'This invite link was replaced by a newer one. Ask the property custodian for the new link.';
+      if (/old-head-invite/.test(code)) return 'This School Head link was replaced by a newer one. Ask the property custodian for the new link.';
+      if (/head-is-custodian/.test(code)) return 'This Google account is the property custodian’s. The School Head signs in with their own Google account, so nobody approves their own PR.';
+      if (/head-removed/.test(code)) return 'The property custodian removed this account as School Head. Ask them to confirm you again with a new School Head link.';
       return 'Something went wrong: ' + code.replace(/^Firebase:\s*/, '').slice(0, 140);
     }
 
@@ -9638,6 +9704,7 @@
       if (!pr || pr.status === 'cancelled' || !isCustodianDevice()) return;
       const open = prOpenInsp(pr);
       if (open) { openInspection(open.id); return; }
+      if (!prApproved(pr)) { showToast(`PR No. ${pr.prNo} is not approved by the School Head yet`, 'ph-hourglass-medium'); return; }
       const left = prLeftLines(pr);
       if (!left.length) { showToast('Everything on this PR was received already', 'ph-info'); return; }
       const d = iarDefaults();
@@ -10545,6 +10612,7 @@
       myReleases = []; tReports = [];
       myRelLoaded = false; tRepLoaded = false;
       inspList = [];
+      headList = []; headsLoaded = false; headMe = null; headMeLoaded = false;
       stopInventorySync();
     }
 
@@ -10552,6 +10620,7 @@
       stopRequestSync();
       if (!reqRole || !cloud.db || !cloud.user) return;
       const F = cloud.sdk;
+      if (isHeadDevice()) { subscribeHead(F); return; }   // the School Head: their card, then the PRs
       const q = isCustodianDevice() ? reqCol() : F.query(reqCol(), F.where('uid', '==', cloud.user.uid));
       const onErr = err => { console.error('sync', err); cloud.error = cloudErrorText(err); renderRequestsEverywhere(); };
       reqUnsubs.push(F.onSnapshot(q, { includeMetadataChanges: true }, snap => {
@@ -10567,7 +10636,9 @@
           prList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
           prList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
           renderRequestsEverywhere();
+          notifFromPrs(snap.metadata);
         }, onErr));
+        subscribeHeads(F);
         subscribeTeam(F);
         subscribeInspections(F);
         startInventorySync();
@@ -10978,6 +11049,7 @@
       window.addEventListener('offline', renderInvStatus);
       window.addEventListener('hashchange', checkJoinLink);
       if (isTeacherDevice()) switchMainView('REQUESTER');
+      else if (isHeadDevice()) switchMainView('HEAD');
       renderRequestsEverywhere();
       if (cloudProjectChanged) setTimeout(() => showToast('The app moved to a new cloud account. Sign in again to link your school', 'ph-cloud-arrow-up'), 600);
       checkJoinLink();
@@ -11014,6 +11086,7 @@
       renderHomeReqCard();
       if (activeMainView === 'REQUESTS') renderRequestsView();
       if (activeMainView === 'REQUESTER') renderRequesterView();
+      if (activeMainView === 'HEAD') renderHeadView();
       if (activeMainView === 'TEACHERS') renderTeachersView();
     }
 
@@ -11135,6 +11208,7 @@
           ${stockOnly.map(r => reqCardHTML(r, { supply: true })).join('')}` : '';
         if (!approved.length) html += reqEmptyHTML('ph-shopping-cart', 'Nothing to purchase', 'Approved requests wait here until you put them on a Purchase Request.');
       } else if (reqTab === 'prs') {
+        html += prHeadBannerHTML();
         html += prList.length ? prList.map(prCardHTML).join('')
           : reqEmptyHTML('ph-file-text', 'No Purchase Requests yet', 'Approve requests, then prepare a PR from the To purchase tab.');
       } else {
@@ -11280,8 +11354,10 @@
       const delivered = !cancelled && (pr.deliveredMs || (!waiting && mine.length && mine.every(r => ['closed', 'released'].includes(r.status))));
       const open = prOpenInsp(pr);
       const partly = prPartlyReceived(pr);
-      const canInspect = !delivered && !open && prLeftLines(pr).length > 0;
+      const approved = prApproved(pr);   // the School Head approved it (or signed it on paper)
+      const canInspect = approved && !delivered && !open && prLeftLines(pr).length > 0;
       const canChange = !cancelled && !delivered && !open && !partly;
+      const canDeliver = approved && waiting && !partly && !open;
       const small = 'h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5';
       if (cancelled) return `
         <div class="rounded-2xl bg-slate-50 border border-dashed border-slate-300 p-3">
@@ -11308,14 +11384,15 @@
           </div>
           <p class="mt-1 text-[11px] text-slate-500 line-clamp-2">${escapeHTML(pr.purpose || '')}</p>
           ${pr.editedMs ? `<p class="mt-0.5 text-[11px] text-slate-500 flex items-center gap-1"><i class="ph-bold ph-pencil-simple"></i> Changed ${escapeHTML(formatShortDate(new Date(pr.editedMs).toISOString()))}</p>` : ''}
+          ${prApprovalHTML(pr)}
           <div class="mt-2 flex flex-wrap gap-2">
             <button onclick="printPrById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print</button>
             <button onclick="exportPrXlsxById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-file-xls text-emerald-700"></i> Excel</button>
             <button onclick="exportPrCSVById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-file-csv"></i> CSV</button>
             ${canChange ? `<button onclick="editPr('${pr.id}')" class="${small}"><i class="ph-bold ph-pencil-simple"></i> Edit</button>
             <button onclick="cancelPr('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-rose-50 text-xs font-bold text-rose-700 flex items-center gap-1.5"><i class="ph-bold ph-x-circle"></i> Cancel PR</button>` : ''}
-            ${canInspect || (waiting && !partly && !open) ? `<span class="ml-auto flex flex-wrap justify-end gap-2">
-              ${waiting && !partly && !open ? `<button onclick="markPrDelivered('${pr.id}')" class="${small}" title="Add everything to stock without an IAR"><i class="ph-bold ph-package"></i> Items delivered</button>` : ''}
+            ${canInspect || canDeliver ? `<span class="ml-auto flex flex-wrap justify-end gap-2">
+              ${canDeliver ? `<button onclick="markPrDelivered('${pr.id}')" class="${small}" title="Add everything to stock without an IAR"><i class="ph-bold ph-package"></i> Items delivered</button>` : ''}
               ${canInspect ? `<button data-inspect-pr="${pr.id}" onclick="openInspectPr('${pr.id}')" class="h-9 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-xs font-bold text-white flex items-center gap-1.5"><i class="ph-bold ph-clipboard-text"></i> ${partly ? 'Inspect next delivery' : 'Inspect delivery'}</button>` : ''}
             </span>`
               : delivered ? `<span class="ml-auto h-9 px-2 text-xs font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Delivered</span>` : ''}
@@ -11594,6 +11671,14 @@
     }
 
     function checkJoinLink() {
+      const h = location.hash.match(/[#&]head=([A-Za-z0-9_-]{6,64})/);   // the School Head's own link
+      if (h) {
+        if (exploring()) { exploreRestore(); location.reload(); return; }
+        history.replaceState(null, '', location.pathname + location.search);
+        if (!reqRole) { gateStep = 'head'; renderLoginGate(); }
+        openHeadJoin(h[1]);
+        return;
+      }
       const m = location.hash.match(/[#&]join=([A-Za-z0-9_-]{6,64})/);
       if (!m) return;
       if (exploring()) { exploreRestore(); location.reload(); return; } // join with the real phone data
@@ -12176,6 +12261,7 @@
     async function markPrDelivered(prId) {
       const pr = prList.find(p => p.id === prId);
       if (!pr || prLocked(pr)) return;
+      if (!prApproved(pr)) { showToast(`PR No. ${pr.prNo} is not approved by the School Head yet`, 'ph-hourglass-medium'); return; }
       const open = reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr');
       const plan = prStockInPlan(pr);
       const fresh = plan.filter(x => !x.item).length;
@@ -12345,9 +12431,16 @@
         requestIds: prDraft.requestIds, requesters: prDraft.requesters,
         requestedBy: { name: reqVal('prReqName'), designation: reqVal('prReqDesig') },
         approvedBy: { name: reqVal('prApprName'), designation: reqVal('prApprDesig') },
+        approval: { status: 'pending', submittedMs: Date.now() },   // every PR waits for the School Head
         createdMs: Date.now(), createdAt: F.serverTimestamp(), createdBy: cloud.user.uid
       };
-      if (editing) { savePrEdit(editing, data); return; }
+      if (editing) {
+        const a = prApproval(editing);
+        if (prApprStatus(editing) === 'approved' && !await appConfirm(`PR No. ${editing.prNo} was ${a.via === 'paper' ? 'signed on paper' : 'approved'} by ${a.byName || 'the School Head'}. After this change it needs the School Head’s approval again.`,
+          { title: 'Change an approved PR?', ok: 'Change and send again', tone: 'warn' })) return;
+        savePrEdit(editing, data);
+        return;
+      }
       localStorage.setItem(PR_DEFAULTS_KEY, JSON.stringify({
         entity: data.entity, fund: data.fund, office: data.office, rcc: data.rcc,
         reqName: data.requestedBy.name, reqDesig: data.requestedBy.designation, apprName: data.approvedBy.name, apprDesig: data.approvedBy.designation
@@ -12396,8 +12489,11 @@
     }
     function savePrEdit(pr, data) {
       const F = cloud.sdk;
-      const { createdMs, createdAt, createdBy, requestIds, requesters, ...changes } = data;
-      void createdMs; void createdAt; void createdBy; void requestIds; void requesters;
+      const { createdMs, createdAt, createdBy, requestIds, requesters, approval, ...changes } = data;
+      void createdMs; void createdAt; void createdBy; void requestIds; void requesters; void approval;
+      // Approved or returned: the changed PR goes back to the School Head. Still waiting: it stays waiting.
+      const sendAgain = ['approved', 'returned'].includes(prApprStatus(pr));
+      if (sendAgain) changes.approval = { status: 'pending', submittedMs: Date.now(), resubmitted: true };
       const batch = F.writeBatch(cloud.db);
       batch.update(F.doc(prCol(), pr.id), { ...changes, editedMs: Date.now(), updatedAt: F.serverTimestamp() });
       if (changes.prNo !== pr.prNo) {
@@ -12408,7 +12504,7 @@
       const what = prLineChanges(pr.lines, changes.lines);
       if (changes.prNo !== pr.prNo) what.unshift(`PR No. ${pr.prNo} → ${changes.prNo}`);
       if (Math.abs((Number(pr.total) || 0) - changes.total) > 0.004) what.push(`total ₱${peso2(pr.total)} → ₱${peso2(changes.total)}`);
-      logHistory('system', `Changed Purchase Request ${changes.prNo}${what.length ? `: ${what.slice(0, 8).join(', ')}${what.length > 8 ? ` and ${what.length - 8} more` : ''}` : ' (header or signatories)'}`);
+      logHistory('system', `Changed Purchase Request ${changes.prNo}${what.length ? `: ${what.slice(0, 8).join(', ')}${what.length > 8 ? ` and ${what.length - 8} more` : ''}` : ' (header or signatories)'}${sendAgain ? ' · sent to the School Head for approval again' : ''}`);
       const merged = { ...pr, ...changes };
       const at = prList.findIndex(p => p.id === pr.id);
       if (at >= 0) prList[at] = merged;   // shown now; the cloud snapshot follows
@@ -12456,6 +12552,7 @@
       return `
         <div class="pr-form">
           <div class="pr-appx">Appendix 60</div>
+          ${prApproved(pr) ? '' : '<div class="pr-draft">FOR APPROVAL · not yet approved by the School Head</div>'}
           <h1>PURCHASE REQUEST</h1>
           <div class="pr-top"><span>Entity Name: <b>${e(pr.entity)}</b></span><span>Fund Cluster: <b>${e(pr.fund)}</b></span></div>
           <table class="pr-table">
@@ -12467,7 +12564,7 @@
             <tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(pr.total)}</b></td></tr>
             <tr><td colspan="6" class="pr-purpose">Purpose: ${e(pr.purpose)}</td></tr>
             <tr><td></td><td colspan="2"><i>Requested by:</i></td><td colspan="3"><i>Approved by:</i></td></tr>
-            <tr><td>Signature:</td><td colspan="2" class="pr-sig"></td><td colspan="3" class="pr-sig"></td></tr>
+            <tr><td>Signature:</td><td colspan="2" class="pr-sig"></td><td colspan="3" class="pr-sig">${prApprStatus(pr) === 'approved' && (prApproval(pr).via === 'app') ? `<span class="pr-esign">${e(prApprovalText(pr))}</span>` : ''}</td></tr>
             <tr><td>Printed Name:</td><td colspan="2" class="c"><b>${e(pr.requestedBy && pr.requestedBy.name).toUpperCase()}</b></td><td colspan="3" class="c"><b>${e(pr.approvedBy && pr.approvedBy.name).toUpperCase()}</b></td></tr>
             <tr><td>Designation:</td><td colspan="2" class="c">${e(pr.requestedBy && pr.requestedBy.designation)}</td><td colspan="3" class="c">${e(pr.approvedBy && pr.approvedBy.designation)}</td></tr>
           </table>
@@ -12484,6 +12581,609 @@
     }
     function printPrById(id) { const pr = prList.find(p => p.id === id); if (pr) printPr(pr); }
 
+    // ---- School Head: approves every Purchase Request ----------------------------------------
+    // The head joins from their own invite link (#head=<school code>-<invite code>) with their
+    // own Google account and waits for the custodian to confirm them. Once confirmed, their uid
+    // is kept on the school (headUid) and they approve or return the PRs waiting for approval.
+    // Until a head is confirmed, the custodian records the date the head signed the printed PR.
+    //   schools/{id}/heads/{uid}        { uid, name, designation, email, status: 'pending' | 'active' |
+    //                                     'removed', invite, joinedMs, approvedMs, removedMs, by }
+    //   schools/{id}/headInvites/{code} { active, createdMs, by }
+    //   PR approval { status: 'pending' | 'approved' | 'returned', via: 'app' | 'paper', byUid, byName,
+    //                 byDesig, atMs, note, paperDate, recordedByUid, submittedMs, resubmitted }
+    // PRs saved before approvals existed have no approval and count as approved.
+    let headList = [];          // custodian: the head cards of the school
+    let headsLoaded = false;
+    let headMe = null;          // head's phone: their own card
+    let headMeLoaded = false;
+    let headPrUnsub = null;
+    let headJoinState = null;
+    function isHeadDevice() { return !!(reqRole && reqRole.role === 'head'); }
+    const headCol = () => cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'heads');
+    const currentHead = () => headList.find(h => h.status === 'active') || null;
+    const pendingHeads = () => headList.filter(h => h.status === 'pending');
+    const prApproval = pr => (pr && pr.approval) || null;
+    const prApprStatus = pr => (prApproval(pr) ? prApproval(pr).status || 'pending' : 'legacy');
+    const prApproved = pr => ['legacy', 'approved'].includes(prApprStatus(pr));
+    const prDateText = iso => (iso ? formatShortDate(iso + 'T00:00:00') : '');
+    // One line for prints, Excel and CSV: '' for PRs from before approvals existed.
+    function prApprovalText(pr) {
+      const st = prApprStatus(pr), a = prApproval(pr) || {};
+      if (st === 'legacy') return '';
+      if (st === 'approved' && a.via === 'paper') return `Signed on paper by ${a.byName || 'the School Head'} on ${prDateText(a.paperDate)}`;
+      if (st === 'approved') return `Approved in CustodianPro by ${a.byName || 'the School Head'} · ${iarStamp(a.atMs)}`;
+      return 'FOR APPROVAL · not yet approved by the School Head';
+    }
+
+    // ---- Custodian: the head cards, and what the head decided on each PR ------------------
+    function subscribeHeads(F) {
+      reqUnsubs.push(F.onSnapshot(headCol(), snap => {
+        headList = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        headsLoaded = true;
+        renderRequestsEverywhere();
+        if (!document.getElementById('headModal').classList.contains('hidden')) renderHeadPanel();
+        notifFromHeads(snap.metadata);
+      }, err => console.warn('heads', err)));
+    }
+    function notifFromHeads(meta) {
+      notifCheck('heads', headList.map(h => ({
+        key: 'hd:' + h.id, sig: h.status || 'pending',
+        make: prev => (prev === undefined && h.status === 'pending')
+          ? { title: `${h.name || 'Someone'} wants to join as School Head`, body: `${[h.designation, h.email].filter(Boolean).join(' · ')} · tap to confirm`, icon: 'ph-seal-check', tone: 'brand', go: 'head' }
+          : null
+      })), fromCacheOf(meta));
+    }
+    function notifFromPrs(meta) {
+      if (isCustodianDevice()) {
+        notifCheck('prApprovals', prList.filter(p => prApproval(p) && p.status !== 'cancelled').map(p => {
+          const a = prApproval(p);
+          return {
+            key: 'pa:' + p.id, sig: `${a.status}|${a.atMs || a.submittedMs || 0}`,
+            make: prev => {
+              if (prev === undefined || a.via !== 'app') return null;
+              const who = a.byName || 'The School Head';
+              if (a.status === 'approved') {
+                logHistory('system', `${who} approved Purchase Request ${p.prNo} (₱${peso2(p.total)}) in the app · ${iarStamp(a.atMs)}`);
+                return { title: `${who} approved PR No. ${p.prNo}`, body: `₱${peso2(p.total)} · you can go ahead with the purchase`, icon: 'ph-seal-check', tone: 'emerald', go: 'prs' };
+              }
+              if (a.status === 'returned') {
+                logHistory('system', `${who} returned Purchase Request ${p.prNo} (₱${peso2(p.total)}) · ${iarStamp(a.atMs)}${a.note ? ` – ${a.note}` : ''}`);
+                return { title: `${who} returned PR No. ${p.prNo}`, body: a.note || 'Tap to see it', icon: 'ph-arrow-u-up-left', tone: 'rose', go: 'prs' };
+              }
+              return null;
+            }
+          };
+        }), fromCacheOf(meta));
+      } else if (isHeadDevice()) {
+        notifCheck('prApprovals', prList.filter(p => prApprStatus(p) === 'pending' && p.status !== 'cancelled').map(p => ({
+          key: 'hp:' + p.id, sig: String(prApproval(p).submittedMs || 0),
+          make: () => ({ title: `PR No. ${p.prNo} waits for your approval`, body: `₱${peso2(p.total)} · ${String(p.purpose || '').slice(0, 90)}`, icon: 'ph-seal-check', tone: 'brand', go: 'head' })
+        })), fromCacheOf(meta));
+      }
+    }
+
+    // On the custodian's PR card: where the approval stands, and what to do next.
+    function prApprovalHTML(pr) {
+      const st = prApprStatus(pr);
+      if (st === 'legacy' || pr.status === 'cancelled') return '';
+      const a = prApproval(pr);
+      const head = currentHead();
+      const box = (tone, icon, html, extra = '') => `
+          <div class="mt-2 rounded-xl ${tone} px-3 py-2 text-[11px] leading-snug space-y-1.5" data-pr-approval="${st}">
+            <p class="flex items-start gap-1.5"><i class="ph-bold ${icon} text-sm leading-none mt-px"></i><span class="min-w-0">${html}</span></p>${extra}
+          </div>`;
+      const btn = 'h-8 px-2.5 rounded-lg bg-white border text-[11px] font-bold flex items-center gap-1';
+      if (st === 'approved' && a.via === 'paper') {
+        return box('bg-emerald-50 text-emerald-800', 'ph-signature', `<b>Signed on paper</b> by ${escapeHTML(a.byName || 'the School Head')} · ${escapeHTML(prDateText(a.paperDate))}`,
+          prLocked(pr) ? '' : `<button onclick="undoPaperSign('${pr.id}')" class="text-[11px] font-bold text-emerald-700 hover:text-rose-600 underline">Recorded by mistake?</button>`);
+      }
+      if (st === 'approved') {
+        return box('bg-emerald-50 text-emerald-800', 'ph-seal-check', `<b>Approved</b> by ${escapeHTML(a.byName || 'the School Head')}${a.byDesig ? `, ${escapeHTML(a.byDesig)}` : ''} · ${escapeHTML(iarStamp(a.atMs))}`);
+      }
+      if (st === 'returned') {
+        return box('bg-rose-50 text-rose-800', 'ph-arrow-u-up-left', `<b>Returned</b> by ${escapeHTML(a.byName || 'the School Head')} · ${escapeHTML(iarStamp(a.atMs))}${a.note ? `<br><span class="font-semibold">“${escapeHTML(a.note)}”</span>` : ''}`,
+          `<div class="flex flex-wrap gap-1.5">
+              ${prLocked(pr) ? '' : `<button onclick="editPr('${pr.id}')" class="${btn} border-rose-200 text-rose-800"><i class="ph-bold ph-pencil-simple"></i> Change it</button>`}
+              <button onclick="submitPrAgain('${pr.id}')" data-pr-resubmit="${pr.id}" class="${btn} border-rose-200 text-rose-800"><i class="ph-bold ph-paper-plane-tilt"></i> Send again as is</button>
+            </div>`);
+      }
+      if (head) {
+        return box('bg-amber-50 text-amber-800', 'ph-hourglass-medium', `<b>Waiting for approval</b> · ${escapeHTML(head.name)}, School Head${a.resubmitted ? ' · sent again' : ''}. Delivery steps open once it is approved.`);
+      }
+      return box('bg-amber-50 text-amber-800', 'ph-signature', `<b>Needs the School Head’s signature.</b> Print it for signing, then record the date it was signed. Delivery steps open after that.`,
+        `<div class="flex flex-wrap gap-1.5">
+            <button onclick="recordPaperSign('${pr.id}')" data-paper-sign="${pr.id}" class="${btn} border-amber-300 text-amber-900"><i class="ph-bold ph-signature"></i> Signed on paper…</button>
+            <button onclick="openHeadPanel()" class="${btn} border-amber-200 text-amber-800"><i class="ph-bold ph-seal-check"></i> Invite the School Head</button>
+          </div>`);
+    }
+
+    // Top of the Purchase requests tab: who approves.
+    function prHeadBannerHTML() {
+      if (!headsLoaded || !isCustodianDevice()) return '';
+      const head = currentHead(), waiting = pendingHeads();
+      if (waiting.length) {
+        return `
+          <div class="rounded-2xl bg-violet-50 border border-violet-200 p-3 flex items-center gap-3">
+            <i class="ph-bold ph-seal-check text-2xl text-violet-600"></i>
+            <p class="flex-1 min-w-0 text-xs text-violet-900"><b>${escapeHTML(waiting[0].name)}</b> asked to join as School Head${waiting.length > 1 ? ` (+${waiting.length - 1} more)` : ''}.</p>
+            <button onclick="openHeadPanel()" class="shrink-0 h-9 px-3 rounded-lg bg-violet-700 hover:bg-violet-800 text-white text-xs font-extrabold">Review</button>
+          </div>`;
+      }
+      if (head) {
+        return `<button onclick="openHeadPanel()" class="w-full text-left rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[11px] text-slate-600 flex items-center gap-2">
+            <i class="ph-bold ph-seal-check text-base text-violet-600"></i><span class="flex-1 min-w-0"><b class="text-slate-800">${escapeHTML(head.name)}</b>, School Head, approves PRs in the app</span><span class="font-bold text-slate-500">Manage</span></button>`;
+      }
+      return `
+        <div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[11px] text-slate-600 flex items-center gap-2">
+          <i class="ph-bold ph-seal-check text-base text-slate-500"></i>
+          <span class="flex-1 min-w-0">Every PR needs the School Head’s approval. Until they join the app, record the date they signed the printed PR.</span>
+          <button onclick="openHeadPanel()" class="shrink-0 h-8 px-2.5 rounded-lg bg-white border border-slate-200 hover:border-violet-300 font-bold text-violet-700">Invite</button>
+        </div>`;
+    }
+
+    function setPrApproval(pr, approval, history) {
+      const F = cloud.sdk;
+      cloudWrite(F.updateDoc(F.doc(prCol(), pr.id), { approval, updatedAt: F.serverTimestamp() }), 'Saving the approval');
+      pr.approval = approval;   // shown now; the cloud snapshot follows
+      if (history) logHistory('system', history);
+      renderRequestsEverywhere();
+    }
+    // Returned by the head: send it back unchanged (or change it with Edit, which sends it too).
+    function submitPrAgain(id) {
+      const pr = prList.find(p => p.id === id);
+      if (!pr || !isCustodianDevice() || prApprStatus(pr) !== 'returned') return;
+      setPrApproval(pr, { status: 'pending', submittedMs: Date.now(), resubmitted: true }, `Sent Purchase Request ${pr.prNo} back to the School Head for approval`);
+      showToast(`PR No. ${pr.prNo} sent again for approval`, 'ph-paper-plane-tilt');
+    }
+    // No head in the app yet: the date the head signed the printed PR.
+    async function recordPaperSign(id) {
+      const pr = prList.find(p => p.id === id);
+      if (!pr || !isCustodianDevice() || prApprStatus(pr) !== 'pending') return;
+      const head = currentHead();
+      if (head) { appAlert(`${head.name} approves Purchase Requests in the app, so only they can approve PR No. ${pr.prNo}.`, { title: 'The School Head approves in the app' }); return; }
+      const who = (pr.approvedBy && pr.approvedBy.name) || schoolInfo.head || 'the School Head';
+      const v = await appPrompt(`Record that ${who} signed the printed PR No. ${pr.prNo} (₱${peso2(pr.total)}). Keep the signed paper. Change History shows it as a paper signature.`,
+        localISODate(), { title: 'Signed on paper', label: 'Date signed', inputType: 'date', ok: 'Record signature', icon: 'ph-signature' });
+      if (v === null) return;
+      const date = String(v).trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > localISODate()) { appAlert('Enter the date the School Head signed the PR (not a future date).'); return; }
+      const cur = prList.find(p => p.id === id);
+      if (!cur || prApprStatus(cur) !== 'pending' || currentHead()) return;
+      setPrApproval(cur, {
+        ...prApproval(cur), status: 'approved', via: 'paper', byName: who, byDesig: (cur.approvedBy && cur.approvedBy.designation) || '',
+        paperDate: date, atMs: Date.now(), recordedByUid: cloud.user.uid
+      }, `Recorded the School Head’s signature on paper for Purchase Request ${cur.prNo}: signed by ${who} on ${prDateText(date)}`);
+      showToast(`PR No. ${cur.prNo}: paper signature recorded`, 'ph-signature');
+    }
+    async function undoPaperSign(id) {
+      const pr = prList.find(p => p.id === id);
+      if (!pr || !isCustodianDevice() || prApprStatus(pr) !== 'approved' || prApproval(pr).via !== 'paper' || prLocked(pr)) return;
+      if (!await appConfirm(`PR No. ${pr.prNo} goes back to Needs the School Head’s signature.`, { title: 'Remove the paper signature?', ok: 'Remove', tone: 'warn', focusCancel: true })) return;
+      setPrApproval(pr, { status: 'pending', submittedMs: Date.now() }, `Removed the paper signature recorded for Purchase Request ${pr.prNo} (recorded by mistake)`);
+    }
+
+    // ---- Custodian: School Head panel (invite, confirm, remove) -----------------------------
+    const headInviteText = () => `${reqRole.schoolId}-${schoolInfo.headInvite}`;
+    const headInviteLink = () => `${location.origin}${location.pathname}#head=${headInviteText()}`;
+    async function openHeadPanel() {
+      if (!isCustodianDevice() || !cloud.user) { showToast('Sign in as the property custodian first', 'ph-info'); return; }
+      document.getElementById('headModal').classList.remove('hidden');
+      renderHeadPanel();
+      if (!schoolInfo.headInvite && navigator.onLine) await newHeadInvite(true);
+    }
+    function closeHeadPanel() { document.getElementById('headModal').classList.add('hidden'); }
+    function renderHeadPanel() {
+      const body = document.getElementById('headPanelBody');
+      if (!body || !isCustodianDevice()) return;
+      const head = currentHead(), waiting = pendingHeads();
+      const since = ms => (ms ? formatShortDate(new Date(ms).toISOString()) : '');
+      const card = (h, extra) => `
+        <div class="rounded-2xl border ${h.status === 'active' ? 'border-emerald-200 bg-emerald-50/50' : 'border-violet-200 bg-violet-50/50'} p-3 space-y-2" data-head-card="${h.id}">
+          <div class="flex items-start gap-2.5">
+            <span class="w-9 h-9 shrink-0 rounded-full bg-white border border-slate-200 flex items-center justify-center text-sm font-extrabold text-slate-700">${escapeHTML((h.name || '?').trim()[0] || '?').toUpperCase()}</span>
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-slate-900 truncate">${escapeHTML(h.name || '')}</p>
+              <p class="text-[11px] text-slate-600 truncate">${escapeHTML([h.designation, h.email].filter(Boolean).join(' · '))}</p>
+              <p class="text-[11px] font-semibold ${h.status === 'active' ? 'text-emerald-700' : 'text-violet-700'}">${h.status === 'active' ? `Approves PRs in the app · since ${escapeHTML(since(h.approvedMs))}` : `Asked to join · ${escapeHTML(since(h.joinedMs))}`}</p>
+            </div>
+          </div>
+          ${extra}
+        </div>`;
+      let html = '';
+      waiting.forEach(h => {
+        html += card(h, `
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="removeHead('${h.id}')" class="h-10 rounded-xl bg-white border border-slate-200 hover:border-rose-300 text-xs font-bold text-slate-700">Not them</button>
+            <button onclick="confirmHead('${h.id}')" data-confirm-head="${h.id}" class="h-10 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-xs font-extrabold flex items-center justify-center gap-1"><i class="ph-bold ph-check"></i> Confirm</button>
+          </div>
+          <p class="text-[11px] text-slate-500">Confirm only if this is your School Head’s own Google account.</p>`);
+      });
+      if (head) html += card(head, `<button onclick="removeHead('${head.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600">Remove as School Head</button>`);
+      const invite = schoolInfo.headInvite ? `
+          <div class="text-center">
+            <div id="headQr" class="keep-light mx-auto w-40 h-40 rounded-2xl border border-slate-200 p-2.5 bg-white flex items-center justify-center text-xs text-slate-500">QR code</div>
+            <p class="mt-2 text-[11px] text-slate-500">Your School Head scans this with their phone camera, or opens the link you send them, and signs in with their own Google account.</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">School Head link</p>
+            <p id="headLinkText" class="text-[11px] font-mono text-slate-700 break-all leading-snug select-all">${escapeHTML(headInviteLink())}</p>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="copyHeadInvite()" class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-copy"></i> Copy link</button>
+            <button onclick="shareHeadInvite()" class="h-11 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-share-network"></i> Share</button>
+          </div>
+          <button onclick="newHeadInvite()" class="w-full min-h-10 text-xs font-bold text-slate-500 hover:text-rose-600 flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrows-clockwise"></i> Make a new School Head link</button>`
+        : `<p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-3 text-xs text-slate-600 text-center">${navigator.onLine ? '<i class="ph-bold ph-circle-notch animate-spin"></i> Making the School Head link…' : 'Connect to the internet to make the School Head link.'}</p>`;
+      html += head ? `<details class="rounded-2xl border border-slate-200 p-3"><summary class="text-xs font-bold text-slate-700 cursor-pointer">Invite a different School Head</summary><div class="mt-3 space-y-3">${invite}</div></details>` : invite;
+      html += `<p class="text-[11px] text-slate-500">${head
+        ? `Only ${escapeHTML(head.name)} can approve Purchase Requests now. Each approval keeps their name, the date and the time.`
+        : 'Every Purchase Request needs the School Head’s approval. Until your School Head joins, print each PR for signing and tap <b>Signed on paper</b> on it with the date it was signed.'}</p>`;
+      body.innerHTML = html;
+      const box = document.getElementById('headQr');
+      if (box) {
+        (typeof qrcode === 'function' ? Promise.resolve() : loadScript('assets/vendor/qrcode.js'))
+          .then(() => { box.innerHTML = qrSVG(headInviteLink()); })
+          .catch(() => { box.textContent = 'QR code needs the app to be opened online once.'; });
+      }
+    }
+    async function copyHeadInvite() {
+      const link = headInviteLink();
+      try { await navigator.clipboard.writeText(link); }
+      catch (e) { const r = document.createRange(); r.selectNodeContents(document.getElementById('headLinkText')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.execCommand('copy'); }
+      showToast('School Head link copied · send it to your School Head only', 'ph-copy');
+    }
+    async function shareHeadInvite() {
+      const data = { title: `${reqRole.schoolName} · School Head`, text: `Approve ${reqRole.schoolName}'s Purchase Requests in CustodianPro (sign in with your own Google account):`, url: headInviteLink() };
+      if (navigator.share) { try { await navigator.share(data); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+      copyHeadInvite();
+    }
+    async function newHeadInvite(first = false) {
+      if (!isCustodianDevice() || !cloud.user) return;
+      if (!first && !await appConfirm('The old School Head link stops working. A School Head who already joined is not affected.', { title: 'Make a new School Head link?', ok: 'New link', icon: 'ph-arrows-clockwise', tone: 'warn' })) return;
+      const F = cloud.sdk, now = Date.now();
+      const abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const code = [...crypto.getRandomValues(new Uint8Array(10))].map(b => abc[b % abc.length]).join('');
+      const old = schoolInfo.headInvite;
+      const batch = F.writeBatch(cloud.db);
+      batch.set(F.doc(cloud.db, 'schools', reqRole.schoolId, 'headInvites', code), { active: true, createdMs: now, by: cloud.user.uid });
+      if (old) batch.set(F.doc(cloud.db, 'schools', reqRole.schoolId, 'headInvites', old), { active: false, createdMs: 0, by: cloud.user.uid, endedMs: now });
+      try {
+        await batch.commit();
+      } catch (err) {
+        showToast(`Could not make the School Head link: ${cloudErrorText(err)}`, 'ph-warning');
+        return;
+      }
+      schoolInfo.headInvite = code;
+      localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo));
+      scheduleInventorySync();
+      renderHeadPanel();
+      if (!first) showToast('New School Head link ready', 'ph-arrows-clockwise');
+    }
+    async function confirmHead(uid) {
+      const h = headList.find(x => x.id === uid);
+      if (!h || h.status !== 'pending' || !isCustodianDevice() || uid === cloud.user.uid) return;
+      const old = currentHead();
+      if (!await appConfirm(`${h.name}${h.email ? ` (${h.email})` : ''} will approve or return every Purchase Request in the app.${old ? ` ${old.name} will no longer be the School Head.` : ''} Paper signatures can no longer be recorded after this.`,
+        { title: 'Confirm the School Head?', ok: 'Confirm', tone: 'good', icon: 'ph-seal-check' })) return;
+      const F = cloud.sdk, now = Date.now();
+      const batch = F.writeBatch(cloud.db);
+      batch.update(F.doc(headCol(), uid), { status: 'active', approvedMs: now, by: cloud.user.uid, updatedAt: F.serverTimestamp() });
+      if (old) batch.update(F.doc(headCol(), old.id), { status: 'removed', removedMs: now, by: cloud.user.uid, updatedAt: F.serverTimestamp() });
+      batch.update(F.doc(cloud.db, 'schools', reqRole.schoolId), { headUid: uid, headName: String(h.name || '').slice(0, 80) });
+      cloudWrite(batch.commit(), 'Confirming the School Head');
+      Object.assign(h, { status: 'active', approvedMs: now });
+      if (old) old.status = 'removed';
+      logHistory('system', `Confirmed ${h.name}${h.designation ? `, ${h.designation}` : ''} as School Head: approves Purchase Requests in the app${h.email ? ` (${h.email})` : ''}`);
+      renderHeadPanel();
+      renderRequestsEverywhere();
+      showToast(`${h.name} is now the School Head in the app`, 'ph-seal-check');
+    }
+    async function removeHead(uid) {
+      const h = headList.find(x => x.id === uid);
+      if (!h || !isCustodianDevice()) return;
+      const active = h.status === 'active';
+      if (!await appConfirm(active
+          ? `${h.name} can no longer approve Purchase Requests. PRs waiting for approval keep waiting until a new School Head joins, or you record paper signatures.`
+          : `${h.name}${h.email ? ` (${h.email})` : ''} will not become the School Head.`,
+        { title: active ? 'Remove the School Head?' : 'Not your School Head?', ok: 'Remove', tone: 'danger', focusCancel: true })) return;
+      const F = cloud.sdk, now = Date.now();
+      const batch = F.writeBatch(cloud.db);
+      batch.update(F.doc(headCol(), uid), { status: 'removed', removedMs: now, by: cloud.user.uid, updatedAt: F.serverTimestamp() });
+      if (active) batch.update(F.doc(cloud.db, 'schools', reqRole.schoolId), { headUid: '', headName: '' });
+      cloudWrite(batch.commit(), 'Removing the School Head');
+      h.status = 'removed';
+      logHistory('system', active ? `Removed ${h.name} as School Head (no longer approves Purchase Requests)` : `Declined ${h.name}${h.email ? ` (${h.email})` : ''} as School Head`);
+      renderHeadPanel();
+      renderRequestsEverywhere();
+    }
+
+    // ---- School Head's phone: join, approve, return --------------------------------------
+    function headLinkParts(text) {
+      const m = String(text || '').trim().match(/(?:^|[#&=\/])([A-Za-z0-9_]{6,40})-([A-Za-z0-9]{8,12})$/);
+      return m ? { schoolId: m[1], invite: m[2] } : null;
+    }
+    async function openHeadJoin(text, edit = false) {
+      const err = document.getElementById('hjError');
+      err.classList.add('hidden');
+      const btn = document.getElementById('hjBtn');
+      btn.disabled = false;
+      if (edit) {
+        if (!isHeadDevice()) return;
+        headJoinState = { edit: true };
+        document.getElementById('hjName').value = (reqRole.me && reqRole.me.name) || '';
+        document.getElementById('hjDesig').value = (reqRole.me && reqRole.me.designation) || '';
+        document.getElementById('hjKicker').textContent = 'Your details';
+        document.getElementById('hjSchool').textContent = reqRole.schoolName;
+        document.getElementById('hjG').innerHTML = '';
+        document.getElementById('hjBtnLabel').textContent = 'Save';
+        document.getElementById('hjNote').classList.add('hidden');
+        document.getElementById('headJoinModal').classList.remove('hidden');
+        return;
+      }
+      const parts = headLinkParts(text);
+      if (!parts) { showToast('That School Head link does not look right', 'ph-warning'); return; }
+      if (isCustodianDevice() && reqRole.schoolId === parts.schoolId) {
+        appAlert('This is your school’s School Head link. Send it to your School Head: they open it on their own phone and sign in with their own Google account.', { title: 'Your School Head link' });
+        return;
+      }
+      if (isHeadDevice() && reqRole.schoolId === parts.schoolId) { showToast('This phone is already signed in as the School Head', 'ph-info'); return; }
+      if (reqRole && !await appConfirm(`This ${isCustodianDevice() ? 'device is signed in as the property custodian' : isHeadDevice() ? 'phone is signed in as the School Head' : 'phone is set up as a teacher'} of ${reqRole.schoolName}. Use it as a School Head instead?`,
+        { title: 'Sign in as School Head?', ok: 'Continue', tone: 'warn' })) return;
+      headJoinState = { ...parts, schoolName: '' };
+      document.getElementById('hjName').value = '';
+      document.getElementById('hjDesig').value = '';
+      document.getElementById('hjKicker').textContent = 'School Head · join your school';
+      document.getElementById('hjSchool').textContent = 'Sign in with your Google account';
+      document.getElementById('hjG').innerHTML = GOOGLE_G;
+      document.getElementById('hjBtnLabel').textContent = 'Continue with Google';
+      document.getElementById('hjNote').classList.remove('hidden');
+      document.getElementById('headJoinModal').classList.remove('hidden');
+    }
+    function closeHeadJoin() { headJoinState = null; document.getElementById('headJoinModal').classList.add('hidden'); }
+    function headJoinError(text) {
+      const err = document.getElementById('hjError');
+      err.textContent = text;
+      err.classList.remove('hidden');
+    }
+    async function headJoinGo() {
+      const st = headJoinState;
+      if (!st) return;
+      document.getElementById('hjError').classList.add('hidden');
+      const typedName = reqVal('hjName'), desig = reqVal('hjDesig');
+      if (st.edit) {
+        if (!typedName) { headJoinError('Type your name.'); return; }
+        reqRole.me = { name: typedName, designation: desig };
+        saveReqRole();
+        if (cloud.user && cloud.db) {
+          const F = cloud.sdk;
+          cloudWrite(F.updateDoc(F.doc(headCol(), cloud.user.uid), { name: typedName, designation: desig, updatedAt: F.serverTimestamp() }), 'Saving your details');
+        }
+        closeHeadJoin();
+        renderHeadView();
+        showToast('Saved', 'ph-check-circle');
+        return;
+      }
+      const btn = document.getElementById('hjBtn'), label = document.getElementById('hjBtnLabel');
+      btn.disabled = true;
+      label.textContent = 'Signing in…';
+      try {
+        await cloudStart();
+        const F = cloud.sdk;
+        if (reqRole) {   // switching from another role on this device (confirmed above)
+          stopRequestSync();
+          reqRole = null;
+          saveReqRole();
+        }
+        // Approvals belong to the head's own Google account, never a shared or anonymous one.
+        const cur = cloud.auth.currentUser;
+        if (cur && (cur.isAnonymous || !(cur.providerData || []).some(pd => pd.providerId === 'google.com'))) await F.signOut(cloud.auth);
+        const user = await googleSignIn();
+        cloud.user = user;
+        if (headJoinState !== st) return;
+        const snap = await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId));
+        if (!snap.exists()) throw new Error('no-school');
+        const school = snap.data();
+        if ((school.custodians || []).includes(user.uid)) throw new Error('head-is-custodian');
+        st.schoolName = school.name || 'School';
+        document.getElementById('hjSchool').textContent = st.schoolName;
+        const mine = await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId, 'heads', user.uid));
+        let me;
+        if (mine.exists()) {
+          const d = mine.data();
+          if (d.status === 'removed') throw new Error('head-removed');
+          me = { name: d.name || typedName || user.displayName || '', designation: d.designation || desig };
+        } else {
+          const name = (typedName || user.displayName || '').trim().slice(0, 80);
+          if (!name) { headJoinError('Type your name, then tap Continue again.'); document.getElementById('hjName').focus(); btn.disabled = false; label.textContent = 'Continue with Google'; return; }
+          me = { name, designation: desig.slice(0, 80) };
+          const inv = await F.getDoc(F.doc(cloud.db, 'schools', st.schoolId, 'headInvites', st.invite));
+          if (!inv.exists() || inv.data().active !== true) throw new Error('old-head-invite');
+          await F.setDoc(F.doc(cloud.db, 'schools', st.schoolId, 'heads', user.uid), {
+            uid: user.uid, name: me.name, designation: me.designation, email: user.email || '', status: 'pending', invite: st.invite, joinedMs: Date.now()
+          });
+        }
+        if (headJoinState !== st) return;
+        reqRole = { role: 'head', schoolId: st.schoolId, schoolName: st.schoolName, schoolNo: school.schoolNo || '', email: user.email || '', me };
+        saveReqRole();
+        closeHeadJoin();
+        subscribeRequests();
+        switchMainView('HEAD');
+        updateSchoolHeader();
+        const first = (me.name || '').split(' ')[0];
+        showToast(mine.exists() ? `Welcome back, ${first}` : `Hi ${first}! The property custodian will confirm you shortly.`, 'ph-hand-waving');
+      } catch (err) {
+        btn.disabled = false;
+        label.textContent = 'Continue with Google';
+        if (googleCancelled(err)) return;
+        headJoinError(cloudErrorText(err));
+      }
+    }
+    // Back on a phone whose sign-in ended.
+    async function headSignInAgain() {
+      try {
+        await cloudStart();
+        cloud.user = await googleSignIn();
+        subscribeRequests();
+        renderRequestsEverywhere();
+      } catch (err) {
+        if (!googleCancelled(err)) showToast(cloudErrorText(err), 'ph-warning');
+      }
+    }
+    function editHeadDetails() { if (isHeadDevice()) openHeadJoin(null, true); }
+    async function leaveHead() {
+      if (!isHeadDevice()) return;
+      if (!await appConfirm(`The Purchase Requests you approved or returned stay recorded at ${reqRole.schoolName}. Open your School Head link again to sign back in.`,
+        { title: 'Sign out of this phone?', ok: 'Sign out', icon: 'ph-sign-out', tone: 'danger', focusCancel: true })) return;
+      stopRequestSync();
+      try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
+      cloud.user = null;
+      reqRole = null;
+      saveReqRole();
+      prList = [];
+      switchMainView('HOME');
+      updateSchoolHeader();
+    }
+
+    function subscribeHead(F) {
+      const uid = cloud.user.uid;
+      reqUnsubs.push(F.onSnapshot(F.doc(headCol(), uid), snap => {
+        headMe = snap.exists() ? { ...snap.data(), id: snap.id } : null;
+        headMeLoaded = true;
+        cloud.error = '';
+        const active = !!(headMe && headMe.status === 'active');
+        if (active && !headPrUnsub) startHeadPrs(F);
+        else if (!active && headPrUnsub) stopHeadPrs();
+        renderRequestsEverywhere();
+      }, err => { console.warn('head card', err); cloud.error = cloudErrorText(err); headMeLoaded = true; renderRequestsEverywhere(); }));
+      reqUnsubs.push(() => stopHeadPrs());
+    }
+    function startHeadPrs(F) {
+      headPrUnsub = F.onSnapshot(prCol(), snap => {
+        prList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+        prList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
+        cloud.error = '';
+        renderRequestsEverywhere();
+        notifFromPrs(snap.metadata);
+      }, err => {
+        console.warn('head prs', err);
+        headPrUnsub = null;
+        prList = [];
+        // Refused when the custodian removes the head: their card says so, no error needed.
+        if (!/permission-denied/.test(String(err && (err.code || err.message)))) cloud.error = cloudErrorText(err);
+        renderRequestsEverywhere();
+      });
+    }
+    function stopHeadPrs() {
+      if (headPrUnsub) { try { headPrUnsub(); } catch (e) {} }
+      headPrUnsub = null;
+      if (isHeadDevice()) prList = [];
+    }
+
+    function renderHeadView() {
+      if (!isHeadDevice()) return;
+      const me = reqRole.me || {};
+      document.getElementById('hdHello').textContent = `Good day${me.name ? `, ${me.name.split(' ')[0]}` : ''}`;
+      document.getElementById('hdSchool').textContent = `School Head · ${reqRole.schoolName}`;
+      document.getElementById('headerSchoolName').textContent = reqRole.schoolName;
+      const sync = document.getElementById('hdSync');
+      const msg = cloud.error || (!navigator.onLine ? 'You are offline. Approvals are sent when you reconnect.' : '');
+      sync.innerHTML = msg ? `<i class="ph-bold ${cloud.error ? 'ph-warning text-rose-500' : 'ph-cloud-slash'}"></i> ${escapeHTML(msg)}` : '';
+      sync.classList.toggle('hidden', !msg);
+      sync.classList.toggle('flex', !!msg);
+      const u = cloud.user;
+      document.getElementById('hdAccount').innerHTML = u && u.email ? `<span class="flex items-center gap-1.5 text-slate-500">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} ${escapeHTML(u.email)}</span>` : '';
+      const note = (icon, tone, title, text) => `
+        <div class="rounded-2xl ${tone} p-4 flex items-start gap-3">
+          <i class="ph-bold ${icon} text-2xl"></i>
+          <div class="min-w-0"><p class="text-sm font-extrabold">${title}</p><p class="text-xs mt-0.5">${text}</p></div>
+        </div>`;
+      let html;
+      if (!u || !headMeLoaded) html = note('ph-circle-notch animate-spin', 'bg-slate-50 border border-slate-200 text-slate-700', 'Connecting…', 'Getting the Purchase Requests of your school.');
+      else if (!headMe) html = note('ph-question', 'bg-amber-50 border border-amber-200 text-amber-900', 'This Google account has not joined', `Open the School Head link from the property custodian of ${escapeHTML(reqRole.schoolName)} again, and sign in with the account you used.`);
+      else if (headMe.status === 'removed') html = note('ph-prohibit', 'bg-rose-50 border border-rose-200 text-rose-900', 'Your School Head access was removed', 'The property custodian removed it. Ask them if this is a mistake.');
+      else if (headMe.status !== 'active') html = note('ph-hourglass-medium', 'bg-violet-50 border border-violet-200 text-violet-900', 'Waiting for the property custodian to confirm you', 'They see your name on their phone (Supply requests → Invite → School Head). Purchase Requests show up here once they tap Confirm.');
+      else {
+        const live = prList.filter(p => p.status !== 'cancelled');
+        const waiting = live.filter(p => prApprStatus(p) === 'pending')
+          .sort((a, b) => ((a.approval.submittedMs || a.createdMs || 0) - (b.approval.submittedMs || b.createdMs || 0)));
+        const done = live.filter(p => ['approved', 'returned'].includes(prApprStatus(p)) && prApproval(p).via === 'app')
+          .sort((a, b) => (prApproval(b).atMs || 0) - (prApproval(a).atMs || 0)).slice(0, 15);
+        html = `
+          <div class="space-y-2.5">
+            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Waiting for you · ${waiting.length}</h2>
+            ${waiting.length ? waiting.map(p => headPrCardHTML(p, true)).join('') : `
+              <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
+                <i class="ph-bold ph-seal-check text-3xl text-slate-300"></i>
+                <p class="mt-1 font-bold text-slate-700 text-sm">Nothing to approve</p>
+                <p>New Purchase Requests from the property custodian show up here.</p>
+              </div>`}
+          </div>
+          ${done.length ? `<div class="space-y-2.5"><h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Recently decided</h2>${done.map(p => headPrCardHTML(p, false)).join('')}</div>` : ''}`;
+      }
+      const body = document.getElementById('hdBody');
+      if (body.innerHTML !== html) body.innerHTML = html;
+    }
+    function headPrCardHTML(pr, wait) {
+      const a = prApproval(pr) || {};
+      const lines = pr.lines || [];
+      const rows = lines.map(l => `
+        <li class="flex justify-between gap-3"><span class="min-w-0">${escapeHTML(l.desc)}</span><span class="shrink-0 font-mono text-slate-600">${Number(l.qty) || 0} ${escapeHTML(l.unit || '')} × ₱${peso2(l.unitCost)}</span></li>`).join('');
+      const by = (pr.requestedBy && pr.requestedBy.name) || 'the property custodian';
+      const status = a.status === 'approved'
+        ? `<p class="text-[11px] font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-seal-check"></i> You approved it · ${escapeHTML(iarStamp(a.atMs))}</p>`
+        : `<p class="text-[11px] font-bold text-rose-700 flex items-start gap-1"><i class="ph-bold ph-arrow-u-up-left mt-px"></i><span>You returned it · ${escapeHTML(iarStamp(a.atMs))}${a.note ? ` · “${escapeHTML(a.note)}”` : ''}</span></p>`;
+      return `
+        <div class="rounded-2xl bg-white border ${wait ? 'border-violet-200' : 'border-slate-200'} shadow-sm p-3 space-y-2" data-head-pr="${pr.id}">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-slate-900">PR No. <span class="font-mono">${escapeHTML(pr.prNo)}</span></p>
+              <p class="text-[11px] text-slate-500">${escapeHTML(prDateText(pr.date))} · ${plural(lines.length, 'item')} · ${escapeHTML(by)}</p>
+            </div>
+            <p class="shrink-0 text-base font-extrabold font-mono text-slate-900">₱${peso2(pr.total)}</p>
+          </div>
+          ${pr.purpose ? `<p class="text-xs text-slate-600"><b>Purpose:</b> ${escapeHTML(pr.purpose)}</p>` : ''}
+          ${wait && a.resubmitted ? '<p class="text-[11px] font-semibold text-amber-700 flex items-center gap-1"><i class="ph-bold ph-arrows-clockwise"></i> Sent again by the property custodian</p>' : ''}
+          <details ${wait && lines.length <= 6 ? 'open' : ''} class="rounded-xl bg-slate-50 px-3 py-2">
+            <summary class="text-xs font-bold text-slate-700 cursor-pointer">Items (${lines.length})</summary>
+            <ul class="mt-1.5 text-xs text-slate-800 space-y-1">${rows}</ul>
+          </details>
+          ${wait ? `
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="headDecide('${pr.id}', false)" data-head-return="${pr.id}" class="h-11 rounded-xl bg-white border border-slate-300 hover:border-rose-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrow-u-up-left"></i> Return</button>
+              <button onclick="headDecide('${pr.id}', true)" data-head-approve="${pr.id}" class="h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-seal-check"></i> Approve</button>
+            </div>` : status}
+          <button onclick="printPrById('${pr.id}')" class="min-h-9 text-[11px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-printer"></i> See the printed form</button>
+        </div>`;
+    }
+    async function headDecide(id, ok) {
+      const pr = prList.find(p => p.id === id);
+      if (!isHeadDevice() || !pr || prApprStatus(pr) !== 'pending' || !headMe || headMe.status !== 'active') return;
+      const me = reqRole.me || {};
+      const name = me.name || headMe.name || '';
+      let note = '';
+      if (ok) {
+        if (!await appConfirm(`PR No. ${pr.prNo} · ₱${peso2(pr.total)} · ${plural((pr.lines || []).length, 'item')}.\n\nYour name (${name}), the date and the time are recorded, and the property custodian is told.`,
+          { title: 'Approve this Purchase Request?', ok: 'Approve', tone: 'good', icon: 'ph-seal-check' })) return;
+      } else {
+        const why = await appPrompt(`PR No. ${pr.prNo} goes back to the property custodian to change and send again.`, '',
+          { title: 'Return this Purchase Request?', ok: 'Return', tone: 'warn', label: 'What should be changed?', placeholder: 'e.g. Remove the printer ink; check the unit costs', multiline: true, maxLength: 300 });
+        if (why === null) return;
+        note = String(why).trim().slice(0, 300);
+        if (!note) { appAlert('Write what should be changed, so the property custodian knows.'); return; }
+      }
+      const cur = prList.find(p => p.id === id);
+      if (!cur || prApprStatus(cur) !== 'pending') return;
+      const F = cloud.sdk;
+      const approval = {
+        ...prApproval(cur), status: ok ? 'approved' : 'returned', via: 'app', byUid: cloud.user.uid,
+        byName: name, byDesig: me.designation || headMe.designation || '', atMs: Date.now(), note
+      };
+      cloudWrite(F.updateDoc(F.doc(prCol(), id), { approval, updatedAt: F.serverTimestamp() }), ok ? 'Approving' : 'Returning');
+      cur.approval = approval;   // shown now; the cloud snapshot follows
+      renderHeadView();
+      showToast(ok ? `PR No. ${pr.prNo} approved` : `PR No. ${pr.prNo} returned to the property custodian`, ok ? 'ph-seal-check' : 'ph-arrow-u-up-left');
+    }
+
     function exportPrCSV(pr) {
       const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
       const rows = [
@@ -12498,7 +13198,8 @@
         [],
         ['Purpose', pr.purpose],
         ['Requested by', pr.requestedBy && pr.requestedBy.name, pr.requestedBy && pr.requestedBy.designation],
-        ['Approved by', pr.approvedBy && pr.approvedBy.name, pr.approvedBy && pr.approvedBy.designation]
+        ['Approved by', pr.approvedBy && pr.approvedBy.name, pr.approvedBy && pr.approvedBy.designation],
+        ...(prApprovalText(pr) ? [['Approval', prApprovalText(pr)]] : [])
       ];
       downloadText('\ufeff' + rows.map(r => r.map(q).join(',')).join('\n'), `Purchase_Request_${String(pr.prNo).replace(/[^\w-]+/g, '_')}.csv`, 'text/csv;charset=utf-8;');
     }
@@ -12622,7 +13323,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const rows = [], merges = [];
       const row = (cells, h) => { rows.push({ cells, h }); return rows.length; };
       row([null, null, null, null, null, { v: 'Appendix 60', st: { i: 1, h: 'right' } }]);
-      row([]);
+      if (prApproved(pr)) row([]);
+      else { const fa = row([{ v: 'FOR APPROVAL · not yet approved by the School Head', st: { b: 1, h: 'center', border: B } }, ...[1, 2, 3, 4, 5].map(() => ({ st: { border: B } }))]); merges.push(`A${fa}:F${fa}`); }
       const t = row([{ v: 'PURCHASE REQUEST', st: { b: 1, sz: 12, h: 'center' } }], 20); merges.push(`A${t}:F${t}`);
       row([]);
       const en = row([{ v: `Entity Name: ${pr.entity || ''}`, st: { b: 1 } }, null, null, null, { v: `Fund Cluster: ${pr.fund || ''}`, st: { b: 1 } }]);
@@ -12654,7 +13356,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const L = { l: 1 }, R = { r: 1 };
       const rb = row([{ st: { border: { t: 1, l: 1 } } }, { v: 'Requested by:', st: { h: 'center', border: { t: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1 } } }, { v: 'Approved by:', st: { h: 'center', border: { t: 1 } } }, { st: { border: { t: 1, r: 1 } } }]);
       merges.push(`B${rb}:C${rb}`, `E${rb}:F${rb}`);
-      row([{ v: 'Signature :', st: { border: L } }, null, null, null, null, { st: { border: R } }], 24);
+      const esign = prApprStatus(pr) === 'approved' && prApproval(pr).via === 'app' ? prApprovalText(pr) : '';
+      const sg = row([{ v: 'Signature :', st: { border: L } }, null, null, null, esign ? { v: esign, st: { i: 1, sz: 8, h: 'center', v: 'bottom', wrap: 1 } } : null, { st: { border: R } }], 24);
+      if (esign) merges.push(`E${sg}:F${sg}`);
       const pn = row([{ v: 'Printed Name :', st: { border: L } }, { v: String((pr.requestedBy && pr.requestedBy.name) || '').toUpperCase(), st: { b: 1, u: 1, h: 'center' } }, null, null,
         { v: String((pr.approvedBy && pr.approvedBy.name) || '').toUpperCase(), st: { b: 1, u: 1, h: 'center' } }, { st: { border: R } }]);
       merges.push(`B${pn}:C${pn}`, `E${pn}:F${pn}`);
@@ -17650,14 +18354,14 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (!body) return;
       const items = notifScope() ? loadNotifs().items : [];
       document.getElementById('notifReadAll').classList.toggle('hidden', !items.some(n => !n.read));
-      const empty = isTeacherDevice() ? 'Approvals and items released to you will show up here.' : 'Supply requests, teacher reports, new teachers and low stock will show up here.';
+      const empty = isTeacherDevice() ? 'Approvals and items released to you will show up here.' : isHeadDevice() ? 'Purchase Requests waiting for your approval will show up here.' : 'Supply requests, teacher reports, new teachers and low stock will show up here.';
       const sw = (key, label, sub) => `
         <div class="px-3 py-2.5 flex items-center gap-3">
           <span class="flex-1 min-w-0"><span class="block text-xs font-bold text-slate-800">${label}</span><span class="block text-[11px] text-slate-600 leading-snug">${sub}</span></span>
           <button role="switch" aria-checked="${notifPrefs[key] !== false}" aria-label="${label}" data-notif-pref="${key}" onclick="setNotifPref('${key}', ${notifPrefs[key] === false})"
             class="notif-sw shrink-0 w-11 h-6 rounded-full p-0.5 transition ${notifPrefs[key] !== false ? 'bg-brand-600' : 'bg-slate-300'}"><span class="block w-5 h-5 rounded-full bg-white shadow transition ${notifPrefs[key] !== false ? 'translate-x-5' : ''}"></span></button>
         </div>`;
-      const prefs = isTeacherDevice()
+      const prefs = isHeadDevice() ? '' : isTeacherDevice()
         ? sw('reminders', 'Reminders to tap Received', '2 and 7 days after items are released to you')
           + sw('count', 'Year-end count', 'Once a week in December and January: check the items you hold')
         : sw('lowStock', 'Low stock', 'When an item falls to its alert level or runs out')
@@ -17678,10 +18382,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           </button>`).join('')}</div>`
           : `<div class="text-center py-10 text-slate-500"><i class="ph-duotone ph-bell text-4xl block mb-2"></i>
               <p class="text-sm font-semibold text-slate-500">No notifications yet</p><p class="text-xs mt-1 px-6">${empty}</p></div>`}
-        <div>
+        ${prefs ? `<div>
           <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 px-1">Also tell me about</p>
           <div id="notifPrefs" class="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">${prefs}</div>
-        </div>`;
+        </div>` : ''}`;
     }
     function setNotifPref(key, on) {
       notifPrefs[key] = !!on;
@@ -17699,7 +18403,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       goToNotifTarget(n);
     }
     function goToNotifTarget(n) {
-      if (n.go === 'teacher-items' || n.go === 'teacher-requests') {
+      if (n.go === 'head') {                  // School Head: their approvals; custodian: the School Head panel
+        if (isHeadDevice()) switchMainView('HEAD');
+        else openHeadPanel();
+      } else if (n.go === 'teacher-items' || n.go === 'teacher-requests') {
         switchMainView('REQUESTER');
         setTeacherTab(n.go === 'teacher-items' ? 'items' : 'requests');
       } else if (n.go === 'prs') {
@@ -17868,6 +18575,13 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-school-head', date: 'Nov 2026', title: 'School Head approves every Purchase Request', points: [
+        'Every new Purchase Request now waits for the School Head\u2019s approval. Until it is approved, the print and Excel file say FOR APPROVAL, and Inspect delivery and Items delivered stay closed.',
+        'Invite your School Head from Supply requests \u2192 Invite \u2192 School Head. They open their own link, sign in with their own Google account, and you tap Confirm.',
+        'The School Head sees the PRs waiting for them on their phone and taps Approve, or Return with a note. You are notified, and Change History keeps their name, the date and the time.',
+        'Returned PRs can be changed and sent again. Changing an approved PR sends it back for approval.',
+        'No School Head in the app yet? Print the PR for signing, then tap Signed on paper on it and enter the date they signed.'
+      ] },
       { id: '2026-11-shared-address', date: 'Nov 2026', title: 'Fixes: Reset leaves your other apps alone', points: [
         'Fixes: on an address shared with other web apps (like username.github.io), Reset app now erases only CustodianPro\u2019s data and sign-in. Before, it also cleared the other apps\u2019 saved data on that address.',
         'Reading paper forms (scan ICS, PO, IAR) keeps its language file only in CustodianPro\u2019s own offline storage.'
@@ -18304,7 +19018,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function loginGateNeeded() {
       if (!cloudConfigured()) return false;
       if (!reqRole) return !exploring();
-      return isCustodianDevice() && cloud.state === 'ready' && !cloud.user;
+      return (isCustodianDevice() || isHeadDevice()) && cloud.state === 'ready' && !cloud.user;
     }
 
     // ---- Explore without an account -------------------------------------------------------
@@ -18389,6 +19103,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         return;
       }
       if (isCustodianDevice() && gateStep === 'welcome') gateStep = 'custodian';
+      if (isHeadDevice() && gateStep === 'welcome') gateStep = 'head';
       const offline = document.getElementById('gateOffline');
       offline.classList.toggle('hidden', navigator.onLine);
       offline.classList.toggle('flex', !navigator.onLine);
@@ -18402,7 +19117,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function gateGo(step) {
       gateStep = step;
       renderLoginGate();
-      const first = step === 'custodian' ? (document.getElementById('rcSchool').value ? 'rcEmail' : 'rcSchool') : step === 'teacher' ? 'gateCode' : '';
+      const first = step === 'custodian' ? (document.getElementById('rcSchool').value ? 'rcEmail' : 'rcSchool') : step === 'teacher' ? 'gateCode' : step === 'head' && !isHeadDevice() ? 'gateHeadCode' : '';
       if (first && matchMedia('(hover: hover)').matches) setTimeout(() => document.getElementById(first)?.focus(), 50);
     }
 
@@ -18452,6 +19167,41 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <p class="text-[11px] text-slate-500">Got the link in a message? Open it on this phone and it brings you straight to the next step.</p>
           </div>`;
       }
+      if (gateStep === 'head' && isHeadDevice()) {
+        return `
+          <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3">
+            <div class="flex items-center gap-3">
+              <span class="w-11 h-11 shrink-0 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="ph-bold ph-seal-check text-2xl"></i></span>
+              <div>
+                <p class="text-sm font-extrabold text-slate-900">Sign in again</p>
+                <p class="text-xs text-slate-500">School Head of ${escapeHTML(reqRole.schoolName || 'your school')}${reqRole.email ? ` · ${escapeHTML(reqRole.email)}` : ''}</p>
+              </div>
+            </div>
+            <button onclick="headSignInAgain()" class="w-full h-12 rounded-xl bg-white border-2 border-slate-200 hover:border-violet-300 text-slate-800 text-sm font-extrabold flex items-center justify-center gap-2">${GOOGLE_G} Continue with Google</button>
+          </div>
+          <button onclick="gateStartOver()" class="mt-3 w-full text-center text-xs font-bold text-slate-600 hover:text-slate-900">Not ${escapeHTML(reqRole.email || 'you')}? Start over</button>`;
+      }
+      if (gateStep === 'head') {
+        return `
+          ${back}
+          <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3">
+            <div class="flex items-center gap-3">
+              <span class="w-11 h-11 shrink-0 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="ph-bold ph-seal-check text-2xl"></i></span>
+              <div>
+                <p class="text-sm font-extrabold text-slate-900">School Head</p>
+                <p class="text-xs text-slate-500">Your property custodian sends you a School Head link. You sign in with your own Google account.</p>
+              </div>
+            </div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500">School Head link
+              <input id="gateHeadCode" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"
+                placeholder="Paste the link from the property custodian" onkeydown="if (event.key === 'Enter') gateHeadJoin()"
+                class="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium normal-case tracking-normal text-slate-900 focus:border-violet-500 outline-none">
+            </label>
+            <p id="gateHeadError" class="hidden text-xs font-semibold text-rose-600"></p>
+            <button onclick="gateHeadJoin()" class="w-full h-12 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-sign-in"></i> Continue</button>
+            <p class="text-[11px] text-slate-500">Got the link in a message? Open it on this phone and it brings you straight to the next step.</p>
+          </div>`;
+      }
       const role = (step, icon, tint, title, sub) => `
         <button onclick="gateGo('${step}')" data-gate-role="${step}" class="w-full rounded-2xl border border-slate-200 bg-white hover:border-brand-300 hover:bg-slate-50 p-3.5 flex items-center gap-3 text-left active:scale-[0.99] transition">
           <span class="w-11 h-11 shrink-0 rounded-xl ${tint} flex items-center justify-center"><i class="ph-bold ${icon} text-2xl"></i></span>
@@ -18466,6 +19216,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           </div>
           ${role('custodian', 'ph-identification-badge', 'bg-brand-50 text-brand-600', 'Property custodian', 'School inventory, physical count, teachers’ requests and purchase requests')}
           ${role('teacher', 'ph-chalkboard-teacher', 'bg-teal-50 text-teal-600', 'Teacher', 'Request supplies and see the items released to you')}
+          ${role('head', 'ph-seal-check', 'bg-violet-50 text-violet-600', 'School Head', 'Approve or return the property custodian’s Purchase Requests')}
           ${gateLocalNote()}
         </div>
         <button id="gateExplore" onclick="startExplore()" class="mt-3 w-full min-h-14 rounded-2xl bg-white/85 hover:bg-white backdrop-blur-xl border border-white/80 shadow-lg px-4 py-2.5 flex items-center justify-center gap-2.5 active:scale-[0.99] transition">
@@ -18473,6 +19224,18 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           <span class="text-left"><span class="block text-sm font-extrabold text-slate-900">Explore without an account</span>
             <span class="block text-[11px] font-medium text-slate-600">Look around with sample data · nothing is saved</span></span>
         </button>`;
+    }
+
+    function gateHeadJoin() {
+      const input = document.getElementById('gateHeadCode');
+      const errEl = document.getElementById('gateHeadError');
+      if (!headLinkParts(input && input.value)) {
+        errEl.textContent = 'Paste the whole School Head link from your property custodian.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      errEl.classList.add('hidden');
+      openHeadJoin(input.value);
     }
 
     // Inventory already on this phone (from before sign-in was required) is never lost.
@@ -18529,7 +19292,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
     function syncPageArt() {
       const gated = document.documentElement.classList.contains('gated');
-      document.body.classList.toggle('page-art', !gated && artPages().includes(activeMainView));
+      document.body.classList.toggle('page-art', !gated && artPages().includes(activeMainView === 'HEAD' ? 'REQUESTER' : activeMainView));
     }
     function renderArtSwitches() {
       const on = artPages();
@@ -18554,7 +19317,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     // so nothing syncs back. Typed RESET confirms; the page reloads clean.
     var resetScope = 'device';
     var resetBusy = false;
-    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members'];
+    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites'];
     const canEraseCloud = () => isCustodianDevice() && !!cloud.user && !!cloud.db && !!(reqRole && reqRole.schoolId);
     function openResetApp() {
       if (typeof closeMoreMenu === 'function') { try { closeMoreMenu(); } catch (e) {} }
