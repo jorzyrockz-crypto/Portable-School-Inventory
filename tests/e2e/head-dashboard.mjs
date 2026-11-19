@@ -110,10 +110,10 @@ try {
   await sleep(300);
   const cols = await ev(h, () => getComputedStyle(document.getElementById('hdBody')).gridTemplateColumns.split(' ').length);
   check(cols === 2, `laptop: two columns (${cols})`);
-  await h.screenshot({ path: '/home/user/Portable-School-Inventory/.arena/head_laptop.png' });
+  await h.screenshot({ path: '/tmp/head_laptop.png' });
   await h.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await sleep(300);
-  await h.screenshot({ path: '/home/user/Portable-School-Inventory/.arena/head_phone.png', fullPage: true });
+  await h.screenshot({ path: '/tmp/head_phone.png', fullPage: true });
   check(errors.length === 0, `no errors (${errors.join(' | ')})`);
 } catch (e) {
   check(false, 'suite crashed: ' + (e && e.stack || e));
