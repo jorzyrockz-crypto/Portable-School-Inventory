@@ -161,7 +161,8 @@ export function createBackend({ autoApprove = true } = {}) {
         return;
       }
       const ch = changedKeys(before, data);
-      const own = ctx.uid === p[3] && ch.every(k => ['name', 'designation', 'email', 'updatedAt'].includes(k)) && headCardOk(data, p[3]);
+      const gPhotoOk = d => (d.photo ?? '') === '' || (typeof d.photo === 'string' && d.photo.length <= 300 && /^https:\/\/lh[0-9]\.googleusercontent\.com\/[^ ]+$/.test(d.photo));
+      const own = ctx.uid === p[3] && ch.every(k => ['name', 'designation', 'email', 'updatedAt', 'photo'].includes(k)) && headCardOk(data, p[3]) && gPhotoOk({ ...before, ...data });
       const cust = isCust(ctx, sid) && ch.every(k => ['name', 'designation', 'status', 'approvedMs', 'removedMs', 'by', 'updatedAt'].includes(k)) &&
         ['pending', 'active', 'removed'].includes(data.status) && headCardOk(data, p[3]);
       if (!own && !cust) deny('head update', { path, data, ch });
@@ -186,7 +187,8 @@ export function createBackend({ autoApprove = true } = {}) {
         return;
       }
       const ch = changedKeys(before, data);
-      const own = ctx.uid === p[3] && ch.every(k => ['name', 'designation', 'email', 'updatedAt'].includes(k)) && okCard(data);
+      const gPhotoOk = d => (d.photo ?? '') === '' || (typeof d.photo === 'string' && d.photo.length <= 300 && /^https:\/\/lh[0-9]\.googleusercontent\.com\/[^ ]+$/.test(d.photo));
+      const own = ctx.uid === p[3] && ch.every(k => ['name', 'designation', 'email', 'updatedAt', 'photo'].includes(k)) && okCard(data) && gPhotoOk({ ...before, ...data });
       const again = ctx.uid === p[3] && before.status === 'removed' && data.status === 'pending' && !isStaff(ctx, sid) &&
         ch.every(k => ['name', 'designation', 'email', 'status', 'invite', 'joinedMs', 'updatedAt'].includes(k)) && invOk(data) && okCard(data);
       const cust = isCust(ctx, sid) && ch.every(k => ['status', 'approvedMs', 'removedMs', 'by', 'updatedAt'].includes(k)) && ['pending', 'active', 'removed'].includes(data.status);

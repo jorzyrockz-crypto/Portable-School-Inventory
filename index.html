@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="2bc5c9f8c957">
+  <meta name="app-version" content="d7a303aa7f7c">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -585,6 +585,7 @@
       <button onclick="openMoreMenu()" id="moreMenuBtn" class="h-10 px-3 shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-slate-700" aria-label="More">
         <i class="ph-bold ph-list text-lg"></i>
         <span class="hidden sm:inline">More</span>
+        <span id="moreAv" class="hidden -mr-1.5 rounded-full ring-2 ring-white"></span>
       </button>
       </div>
     </div>
@@ -1271,10 +1272,13 @@
 
   <!-- SCHOOL HEAD (head's phone): approve or return Purchase Requests -->
   <section id="viewHead" class="hidden max-w-xl mx-auto px-4 pt-5 space-y-5 no-print">
-    <div>
-      <p id="hdHello" class="text-sm text-slate-500"></p>
-      <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">For your approval</h1>
-      <p id="hdSchool" class="text-xs text-slate-500"></p>
+    <div class="flex items-start gap-3">
+      <div class="min-w-0 flex-1">
+        <p id="hdHello" class="text-sm text-slate-500"></p>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">For your approval</h1>
+        <p id="hdSchool" class="text-xs text-slate-500"></p>
+      </div>
+      <span id="hdAvatar" class="hidden shrink-0 mt-1 rounded-full ring-2 ring-white shadow-sm"></span>
     </div>
     <p id="hdSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
     <div id="hdBody" class="space-y-5"></div>
@@ -1569,7 +1573,7 @@
           <input id="rfOffice" type="text" maxlength="80" placeholder="Office / grade &amp; section" class="h-10 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
         </div>
         <div>
-          <label for="rfSearch" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Add items</label>
+          <label id="rfAddLabel" for="rfSearch" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Add items</label>
           <div class="relative">
             <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
             <input id="rfSearch" type="text" inputmode="search" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="Search, e.g. bond paper, chalk, ballpen"
@@ -1577,6 +1581,8 @@
               class="w-full h-12 pl-9 pr-3 rounded-xl border-2 border-slate-200 focus:border-amber-500 text-sm font-semibold outline-none">
           </div>
           <div id="rfResults" class="hidden mt-1.5 rounded-xl border border-slate-200 overflow-hidden divide-y divide-slate-100"></div>
+          <button id="rfBrowseBtn" type="button" onclick="toggleReqBrowse()" class="hidden mt-2 w-full min-h-10 px-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/60 hover:bg-amber-50 text-xs font-bold text-amber-800 flex items-center justify-center gap-1.5"><i class="ph-bold ph-list-checks"></i> <span id="rfBrowseLabel">Pick from the school’s supplies</span></button>
+          <div id="rfBrowse" class="hidden mt-1.5 max-h-72 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 divide-y divide-slate-100"></div>
         </div>
         <div id="rfLines" class="space-y-2"></div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -1970,6 +1976,7 @@
         </div>
         <button onclick="closeJoin()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
+      <div id="joinMe" class="hidden rounded-2xl bg-slate-50 border border-slate-200 px-3 py-2.5 flex items-center gap-3"></div>
       <div class="space-y-2">
         <input id="joinName" type="text" maxlength="80" autocomplete="name" placeholder="Your full name" class="w-full h-12 px-3 rounded-xl border-2 border-slate-200 focus:border-amber-500 text-sm font-semibold outline-none">
         <input id="joinPosition" type="text" maxlength="80" placeholder="Position, e.g. Teacher III" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
@@ -11391,6 +11398,7 @@
       renderLoginGate();
       renderViewOnly();
       renderAssistantMode();
+      renderMyAvatars();
       if (typeof renderNotifBell === 'function') renderNotifBell();
       renderHomeReqCard();
       if (activeMainView === 'REQUESTS') renderRequestsView();
@@ -11703,9 +11711,9 @@
             <button onclick="exportPrCSVById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-file-csv"></i> CSV</button>
             ${canChange ? `<button onclick="editPr('${pr.id}')" class="${small}"><i class="ph-bold ph-pencil-simple"></i> Edit</button>
             <button onclick="cancelPr('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-rose-50 text-xs font-bold text-rose-700 flex items-center gap-1.5"><i class="ph-bold ph-x-circle"></i> Cancel PR</button>` : ''}
-            ${canInspect || canDeliver ? `<span class="ml-auto flex flex-wrap justify-end gap-2">
-              ${canDeliver ? `<button onclick="markPrDelivered('${pr.id}')" class="${small}" title="Add everything to stock without an IAR"><i class="ph-bold ph-package"></i> Items delivered</button>` : ''}
-              ${canInspect ? `<button data-inspect-pr="${pr.id}" onclick="openInspectPr('${pr.id}')" class="h-9 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-xs font-bold text-white flex items-center gap-1.5"><i class="ph-bold ph-clipboard-text"></i> ${partly ? 'Inspect next delivery' : 'Inspect delivery'}</button>` : ''}
+            ${canInspect || canDeliver ? `<span class="ml-auto flex flex-col items-end gap-1">
+              ${canInspect ? `<button data-inspect-pr="${pr.id}" onclick="openInspectPr('${pr.id}')" class="h-9 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-xs font-bold text-white flex items-center gap-1.5" title="When the supplier delivers: inspect (IAR), then accept into stock"><i class="ph-bold ph-clipboard-text"></i> ${partly ? 'Inspect next delivery' : 'Delivery came · Inspect'}</button>` : ''}
+              ${canDeliver ? `<button onclick="markPrDelivered('${pr.id}')" data-no-iar class="min-h-7 px-1 text-[11px] font-bold text-slate-500 hover:text-slate-800 underline underline-offset-2 flex items-center gap-1" title="Add everything to stock without the app’s IAR"><i class="ph-bold ph-package"></i> Inspected on paper? Stock in without IAR</button>` : ''}
             </span>`
               : delivered ? `<span class="ml-auto h-9 px-2 text-xs font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Delivered</span>` : ''}
           </div>
@@ -12107,6 +12115,7 @@
       document.getElementById('joinGoogleWrap').classList.toggle('hidden', edit);
       document.getElementById('joinSchool').textContent = edit ? reqRole.schoolName : 'Connecting…';
       joinShowNo(edit ? (reqRole.schoolNo || schoolNoOf(reqRole.schoolName)) : '');
+      renderJoinMe(edit);
       document.getElementById('joinModal').classList.remove('hidden');
       if (edit) return;
       const btn = document.getElementById('joinBtn');
@@ -12299,6 +12308,21 @@
     }
 
     function editMyDetails() { if (isTeacherDevice()) openJoin(reqRole.schoolId, true); }
+    function renderJoinMe(edit) {
+      const box = document.getElementById('joinMe');
+      if (!box) return;
+      box.classList.toggle('hidden', !edit);
+      if (!edit) { box.innerHTML = ''; return; }
+      const me = reqRole.me || {}, u = cloud.user, photo = googlePhotoOf(u);
+      const google = !!(u && !u.isAnonymous);
+      box.innerHTML = `${avatarHTML(me.name || 'Teacher', photo, 'w-14 h-14 text-lg', 'bg-teal-50 text-teal-700', 'data-join-av')}
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-bold text-slate-800">${photo ? 'Your photo' : 'No photo yet'}</p>
+          <p class="text-[11px] text-slate-500 leading-snug">${photo ? `From your Google account${u.email ? ` · ${escapeHTML(u.email)}` : ''}. Change it in Google and it updates here.`
+            : google ? 'Your Google account has no profile photo. Add one in Google and it shows here.' : 'Sign in with Google to show your Google photo to the property custodian.'}</p>
+          ${!photo && !google ? `<button onclick="closeJoin(); teacherLinkGoogle()" data-join-google class="mt-1.5 h-8 px-2.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-1.5">${GOOGLE_G.replace('w-5 h-5', 'w-4 h-4')} Sign in with Google</button>` : ''}
+        </div>`;
+    }
 
     async function leaveSchool() {
       if (!await appConfirm(`Your sent requests stay with the custodian of ${reqRole.schoolName}.`, { title: 'Leave this school on this phone?', ok: 'Leave', icon: 'ph-sign-out', tone: 'danger', focusCancel: true })) return;
@@ -12400,7 +12424,8 @@
         return;
       }
       if (isTeacherDevice() && !teacherMayAct()) return;
-      reqDraft = { lines: [], forOther: isCustodianDevice() };
+      const forOther = isCustodianDevice();
+      reqDraft = { lines: forOther ? [] : loadReqCart().map(l => ({ ...l })), forOther, browse: false };
       const me = (isTeacherDevice() && reqRole.me) || {};
       document.getElementById('rfWho').classList.toggle('hidden', !reqDraft.forOther);
       document.getElementById('rfWho').classList.toggle('grid', reqDraft.forOther);
@@ -12410,22 +12435,80 @@
       ['rfName', 'rfPosition', 'rfOffice', 'rfSearch', 'rfPurpose', 'rfNeeded'].forEach(id => { document.getElementById(id).value = ''; });
       renderReqSearch();
       renderReqLines();
+      renderReqBrowse();
       document.getElementById('reqFormModal').classList.remove('hidden');
       const first = document.getElementById(reqDraft.forOther ? 'rfName' : 'rfSearch');
       setTimeout(() => { if (reqDraft) first.focus(); }, 60);
     }
-    function closeRequestForm() { reqDraft = null; document.getElementById('reqFormModal').classList.add('hidden'); }
+    function closeRequestForm() {
+      reqDraft = null;
+      document.getElementById('reqFormModal').classList.add('hidden');
+      if (isTeacherDevice() && activeMainView === 'REQUESTER') renderTeacherStock();   // the Stock tab's "in your request"
+    }
+    // A teacher's unsent request (items picked on the Stock tab, or a form closed before Send):
+    // kept on this phone until it is sent, so several items go in one request.
+    const REQ_CART_KEY = 'cp_req_cart_v1';
+    const REQ_MAX_LINES = 50;   // the rules allow up to 50 lines in one request
+    function loadReqCart() {
+      try {
+        const c = JSON.parse(localStorage.getItem(REQ_CART_KEY) || 'null');
+        return c && reqRole && cloud.user && c.sid === reqRole.schoolId && c.uid === cloud.user.uid && Array.isArray(c.lines) ? c.lines.filter(l => l && l.desc && l.qty > 0) : [];
+      } catch (e) { return []; }
+    }
+    function saveReqCart(lines) {
+      try {
+        const keep = (lines || []).filter(l => l && l.qty > 0 && String(l.desc || '').trim()).slice(0, REQ_MAX_LINES);
+        if (keep.length && reqRole && cloud.user) localStorage.setItem(REQ_CART_KEY, JSON.stringify({ sid: reqRole.schoolId, uid: cloud.user.uid, lines: keep }));
+        else localStorage.removeItem(REQ_CART_KEY);
+      } catch (e) {}
+    }
+    function keepReqDraft() { if (reqDraft && !reqDraft.forOther) saveReqCart(reqDraft.lines); }
+    // An item to request, by code: the catalog, else (teacher) the school's stock list.
+    function reqItemByCode(code) {
+      const it = code && items.find(i => i.code === code);
+      if (it) return { code: it.code, name: it.name, unit: it.unit };
+      const st = code && isTeacherDevice() && stockList.find(x => x.code === code);
+      return st ? { code: st.code, name: st.name, unit: st.unit || 'piece' } : null;
+    }
+    // "Pick from the school's supplies": teachers see the shared stock, the custodian their supplies on hand.
+    function reqBrowseList() {
+      if (isTeacherDevice()) return [...stockList].sort((a, b) => a.name.localeCompare(b.name)).map(x => ({ code: x.code, name: x.name, unit: x.unit || '', left: stockLeft(x) }));
+      return items.filter(i => i.type === 'CONSUMABLE' && i.qty > 0).sort((a, b) => a.name.localeCompare(b.name)).map(i => ({ code: i.code, name: i.name, unit: i.unit || '', left: i.qty }));
+    }
+    function toggleReqBrowse() { if (!reqDraft) return; reqDraft.browse = !reqDraft.browse; renderReqBrowse(); }
+    function reqPickedHTML(code) {
+      const l = reqDraft && reqDraft.lines.find(x => x.code === code);
+      return l ? `<span class="shrink-0 h-7 px-2 rounded-lg bg-amber-100 text-amber-900 text-[11px] font-extrabold flex items-center gap-1" data-picked><i class="ph-bold ph-check"></i> ${l.qty}</span>`
+        : '<span class="shrink-0 w-7 h-7 rounded-lg bg-amber-700 text-white flex items-center justify-center"><i class="ph-bold ph-plus"></i></span>';
+    }
+    function renderReqBrowse() {
+      const btn = document.getElementById('rfBrowseBtn'), box = document.getElementById('rfBrowse');
+      if (!btn || !box) return;
+      const list = reqDraft ? reqBrowseList() : [];
+      btn.classList.toggle('hidden', !list.length);
+      const open = !!(reqDraft && reqDraft.browse && list.length);
+      document.getElementById('rfBrowseLabel').textContent = open ? 'Hide the list' : `Pick from the school’s supplies (${list.length})`;
+      box.classList.toggle('hidden', !open);
+      if (!open) { box.innerHTML = ''; return; }
+      const top = box.scrollTop;
+      box.innerHTML = list.map(x => `
+        <button type="button" onclick="addReqLine('${escapeHTML(x.code)}', true)" data-browse="${escapeHTML(x.code)}" class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-amber-50 ${x.left > 0 ? '' : 'opacity-60'}">
+          <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-slate-800 truncate">${escapeHTML(x.name)}</span><span class="block text-[11px] ${x.left > 0 ? 'text-slate-500' : 'text-rose-700 font-bold'}">${x.left > 0 ? `${x.left} ${escapeHTML(x.unit)} left` : 'Out of stock · you can still ask'}</span></span>
+          ${reqPickedHTML(x.code)}
+        </button>`).join('');
+      box.scrollTop = top;
+    }
 
     function renderReqSearch() {
       const q = reqVal('rfSearch');
       const box = document.getElementById('rfResults');
       box.classList.toggle('hidden', !q);
       if (!q) { box.innerHTML = ''; return; }
-      const { list } = homeSearchItems(q, 6);
+      const { list } = homeSearchItems(q, 8);
       box.innerHTML = list.map(item => `
-        <button onclick="addReqLine('${item.code}')" class="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-amber-50">
-          <i class="ph-bold ph-plus-circle text-amber-500 shrink-0"></i>
+        <button onclick="addReqLine('${item.code}', true)" data-result="${escapeHTML(item.code)}" class="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-amber-50">
           <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-slate-800 truncate">${escapeHTML(item.name)}</span><span class="block text-[11px] text-slate-500">${escapeHTML(item.unit)}</span></span>
+          ${reqPickedHTML(item.code)}
         </button>`).join('') + `
         <button onclick="addReqLine(null)" class="w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs font-bold text-slate-600 hover:bg-amber-50">
           <i class="ph-bold ph-pencil-simple text-slate-500"></i> ${list.length ? 'Not listed? ' : ''}Add “${escapeHTML(q.slice(0, 60))}” as typed
@@ -12441,18 +12524,22 @@
       addReqLine(first ? first.code : null);
     }
 
-    function addReqLine(code) {
+    // keep = tapped in a list: the list stays open so more can be tapped (tap again = one more).
+    function addReqLine(code, keep = false) {
       if (!reqDraft) return;
       const typed = reqVal('rfSearch');
-      const item = code ? items.find(i => i.code === code) : null;
+      const item = code ? reqItemByCode(code) : null;
       const existing = item && reqDraft.lines.find(l => l.code === item.code);
-      if (existing) existing.qty += 1;
-      else if (item) reqDraft.lines.push({ id: newReqLineId(), code: item.code, desc: item.name, unit: item.unit, qty: 1 });
+      if (!existing && (item || typed) && reqDraft.lines.length >= REQ_MAX_LINES) { showToast(`Up to ${REQ_MAX_LINES} items in one request · send this one, then start another`, 'ph-info'); return; }
+      if (existing) existing.qty = Math.min(9999, existing.qty + 1);
+      else if (item) reqDraft.lines.push({ id: newReqLineId(), code: item.code, desc: item.name, unit: item.unit || 'piece', qty: 1 });
       else if (typed) reqDraft.lines.push({ id: newReqLineId(), code: null, desc: typed.slice(0, 160), unit: 'piece', qty: 1 });
-      const input = document.getElementById('rfSearch');
-      input.value = '';
+      keepReqDraft();
+      if (!keep || !item) document.getElementById('rfSearch').value = '';
       renderReqSearch();
       renderReqLines();
+      renderReqBrowse();
+      if (keep && item) return;
       const last = existing || reqDraft.lines[reqDraft.lines.length - 1];
       const qty = last && document.getElementById(`rfq-${last.id}`);
       if (qty) { qty.focus(); qty.select(); }
@@ -12473,7 +12560,10 @@
             class="w-14 h-9 shrink-0 text-center rounded-lg border border-slate-300 font-mono font-bold text-sm focus:border-amber-500 outline-none">
           <button onclick="stepReqLine('${l.id}', 1)" class="w-9 h-9 shrink-0 rounded-lg bg-amber-700 text-white flex items-center justify-center" aria-label="Plus one"><i class="ph-bold ph-plus"></i></button>
           <button onclick="removeReqLine('${l.id}')" class="w-8 h-9 shrink-0 text-slate-300 hover:text-rose-500 flex items-center justify-center" aria-label="Remove"><i class="ph-bold ph-trash"></i></button>
-        </div>`).join('') : `<p class="text-xs text-slate-500 text-center py-2">Search above and tap an item to add it.</p>`;
+        </div>`).join('') + `<p class="text-[11px] text-slate-500 text-center" data-req-more><i class="ph-bold ph-plus"></i> Add more above · up to ${REQ_MAX_LINES} items in one request</p>`
+        : `<p class="text-xs text-slate-500 text-center py-2">Search above, or pick from the school’s supplies. Add as many items as you need.</p>`;
+      const label = document.getElementById('rfAddLabel');
+      if (label) label.textContent = lines.length ? `Add more items · ${lines.length} in this request` : 'Add items';
       const n = lines.reduce((s, l) => s + (l.qty > 0 ? 1 : 0), 0);
       document.getElementById('rfSendLabel').textContent = n ? `Send request · ${plural(n, 'item')}` : 'Send request';
     }
@@ -12483,16 +12573,23 @@
       if (!l) return;
       if (key === 'qty') l.qty = Math.max(0, Math.min(9999, parseInt(value, 10) || 0));
       else l[key] = String(value).trim().slice(0, 20) || 'piece';
+      keepReqDraft();
     }
     function stepReqLine(id, d) {
       const l = reqDraft && reqDraft.lines.find(x => x.id === id);
       if (!l) return;
       l.qty = Math.max(1, Math.min(9999, l.qty + d));
       document.getElementById(`rfq-${id}`).value = l.qty;
+      keepReqDraft();
+      renderReqSearch();
+      renderReqBrowse();
     }
     function removeReqLine(id) {
       reqDraft.lines = reqDraft.lines.filter(l => l.id !== id);
+      keepReqDraft();
       renderReqLines();
+      renderReqSearch();
+      renderReqBrowse();
     }
 
     function sendRequest() {
@@ -12512,6 +12609,7 @@
         status: 'pending', createdAt: F.serverTimestamp(), clientAt: Date.now(), via: reqDraft.forOther ? 'custodian' : 'teacher'
       };
       cloudWrite(F.setDoc(ref, data), 'Sending the request');
+      if (!reqDraft.forOther) saveReqCart([]);
       closeRequestForm();
       showToast(navigator.onLine ? (isCustodianDevice() ? `Request from ${me.name} added for review` : 'Request sent to the property custodian')
         : 'Saved · it will be sent when you are back online', 'ph-paper-plane-tilt');
@@ -12715,9 +12813,9 @@
       const open = reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr');
       const plan = prStockInPlan(pr);
       const fresh = plan.filter(x => !x.item).length;
-      if (!await appConfirm(`Items on PR No. ${pr.prNo} were delivered?\n\n` +
+      if (!await appConfirm(`Stock in PR No. ${pr.prNo} without the app’s IAR?\n\nUse this only if the delivery was already inspected and accepted on a paper IAR. Otherwise, tap Delivery came · Inspect: the inspector checks the items first, then you accept them into stock.\n\n` +
         `Adds ${plural(plan.length, 'item')} to your inventory${fresh ? ` (${fresh} new)` : ''}.` +
-        (open.length ? `\n${plural(open.length, 'request')} will show as ready to release (${open.map(r => r.name).join(', ')}).` : ''), { ok: 'Mark delivered', tone: 'good', icon: 'ph-package' })) return;
+        (open.length ? `\n${plural(open.length, 'request')} will show as ready to release (${open.map(r => r.name).join(', ')}).` : ''), { title: 'Stock in without IAR?', ok: 'Stock in', tone: 'warn', icon: 'ph-package' })) return;
       if (pr.deliveredMs) return;
       const { added } = stockInPr(pr);
       const F = cloud.sdk;
@@ -13231,7 +13329,7 @@
       const card = (h, extra) => `
         <div class="rounded-2xl border ${h.status === 'active' ? 'border-emerald-200 bg-emerald-50/50' : 'border-violet-200 bg-violet-50/50'} p-3 space-y-2" data-head-card="${h.id}">
           <div class="flex items-start gap-2.5">
-            <span class="w-9 h-9 shrink-0 rounded-full bg-white border border-slate-200 flex items-center justify-center text-sm font-extrabold text-slate-700">${escapeHTML((h.name || '?').trim()[0] || '?').toUpperCase()}</span>
+            ${avatarHTML(h.name, h.photo, 'w-9 h-9 text-xs', 'bg-white border border-slate-200 text-slate-700', 'data-head-av')}
             <div class="min-w-0">
               <p class="text-sm font-extrabold text-slate-900 truncate">${escapeHTML(h.name || '')}</p>
               <p class="text-[11px] text-slate-600 truncate">${escapeHTML([h.designation, h.email].filter(Boolean).join(' · '))}</p>
@@ -13846,6 +13944,7 @@
           turnJoinCard = snap.exists() ? { ...snap.data(), id: snap.id } : null;
           turnJoinLoaded = true;
           cloud.error = '';
+          if (turnJoinCard && turnJoinCard.status === 'pending') syncCardPhoto(F.doc(staffCol(), cloud.user.uid), turnJoinCard, 'staff');
           if (turnJoinCard && turnJoinCard.status === 'active') { becomeAssistant(turnJoinCard); return; }
           renderRequestsEverywhere();
         }, err => { console.warn('staff card', err); cloud.error = cloudErrorText(err); turnJoinLoaded = true; renderRequestsEverywhere(); }));
@@ -14313,6 +14412,8 @@
       reqUnsubs.push(F.onSnapshot(staffCol(), snap => {
         staffList = snap.docs.map(d => ({ ...d.data(), id: d.id }));
         staffLoaded = true;
+        const mine = isAssistant() && cloud.user && staffList.find(x => x.id === cloud.user.uid);
+        if (mine && mine.status === 'active') syncCardPhoto(F.doc(staffCol(), cloud.user.uid), mine, 'staff');
         if (!document.getElementById('assistModal').classList.contains('hidden')) renderAssistPanel();
         if (!isAssistant()) notifFromStaff(snap.metadata);
       }, err => console.warn('staff', err)));
@@ -14342,7 +14443,7 @@
       const card = (s, extra) => `
         <div class="rounded-2xl border ${s.status === 'active' ? 'border-emerald-200 bg-emerald-50/50' : 'border-brand-200 bg-brand-50/50'} p-3 space-y-2" data-staff-card="${s.id}">
           <div class="flex items-start gap-2.5">
-            <span class="w-9 h-9 shrink-0 rounded-full bg-white border border-slate-200 flex items-center justify-center text-sm font-extrabold text-slate-700">${escapeHTML(((s.name || '?').trim()[0] || '?').toUpperCase())}</span>
+            ${avatarHTML(s.name, s.photo, 'w-9 h-9 text-xs', 'bg-white border border-slate-200 text-slate-700', 'data-staff-av')}
             <div class="min-w-0">
               <p class="text-sm font-extrabold text-slate-900 truncate">${escapeHTML(s.name || '')}</p>
               <p class="text-[11px] text-slate-600 truncate">${escapeHTML([s.designation, s.email].filter(Boolean).join(' · '))}</p>
@@ -15379,6 +15480,7 @@
       reqUnsubs.push(F.onSnapshot(F.doc(headCol(), uid), snap => {
         headMe = snap.exists() ? { ...snap.data(), id: snap.id } : null;
         headMeLoaded = true;
+        if (headMe && headMe.status !== 'removed') syncCardPhoto(F.doc(headCol(), uid), headMe, 'head');
         cloud.error = '';
         const active = !!(headMe && headMe.status === 'active');
         if (active && !headPrUnsub) startHeadPrs(F);
@@ -15424,6 +15526,7 @@
       const me = reqRole.me || {};
       document.getElementById('hdHello').textContent = `Good day${me.name ? `, ${me.name.split(' ')[0]}` : ''}`;
       document.getElementById('hdSchool').textContent = `School Head · ${reqRole.schoolName}`;
+      setAvatarSlot(document.getElementById('hdAvatar'), me.name || 'School Head', googlePhotoOf(cloud.user), 'w-12 h-12 text-base', 'bg-violet-50 text-violet-700');
       document.getElementById('headerSchoolName').textContent = reqRole.schoolName;
       const sync = document.getElementById('hdSync');
       const msg = cloud.error || (!navigator.onLine ? 'You are offline. Approvals are sent when you reconnect.' : '');
@@ -16260,6 +16363,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const list = all.filter(s => (stockFilter === 'all' || stockLevel(s) === stockFilter) && (!q || s.name.toLowerCase().includes(q) || String(s.cat || '').toLowerCase().includes(q)));
       const updated = all.reduce((m, s) => Math.max(m, s.updatedMs || 0), 0);
       const chip = (key, label) => `<button type="button" data-stf="${key}" onclick="setStockFilter('${key}')" aria-pressed="${stockFilter === key}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${stockFilter === key ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-600'}">${label} <span class="opacity-70">${counts[key]}</span></button>`;
+      const cart = loadReqCart(), cartQty = {};
+      cart.forEach(l => { if (l.code) cartQty[l.code] = l.qty; });
       const row = s => {
         const left = stockLeft(s), held = heldQty(s.code), lvl = stockLevel(s);
         const tag = lvl === 'out' ? '<span class="px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold">Out of stock</span>'
@@ -16278,7 +16383,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             </div>
             ${held ? `<p class="mt-1.5 text-[11px] text-slate-500"><i class="ph-bold ph-hourglass-medium"></i> ${held} taken · waiting for the custodian to confirm</p>` : ''}
             <div class="mt-2 grid grid-cols-2 gap-2">
-              <button onclick="requestFromStock('${escapeHTML(s.code)}')" class="h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-paper-plane-tilt"></i> Request</button>
+              ${cartQty[s.code] ? `<button onclick="requestFromStock('${escapeHTML(s.code)}')" data-in-cart="${cartQty[s.code]}" class="h-10 rounded-xl bg-amber-50 border border-amber-300 hover:bg-amber-100 text-xs font-extrabold text-amber-900 flex items-center justify-center gap-1.5"><i class="ph-bold ph-check"></i> ${cartQty[s.code]} in request · +1</button>`
+                : `<button onclick="requestFromStock('${escapeHTML(s.code)}')" class="h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-paper-plane-tilt"></i> Request</button>`}
               <button onclick="openTook('${escapeHTML(s.code)}')" ${left > 0 ? '' : 'disabled'} class="h-10 rounded-xl bg-amber-700 hover:bg-amber-800 disabled:bg-slate-200 disabled:text-slate-500 text-white text-xs font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-hand-grabbing"></i> I took this</button>
             </div>
           </div>`;
@@ -16295,18 +16401,27 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           <div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('low', 'Low')}${chip('out', 'Out')}</div>
           <p class="text-[11px] text-slate-500 px-1">${updated ? `Updated ${escapeHTML(formatTimeAgo(updated))} · ` : ''}from the property custodian’s inventory</p>
         </div>
-        <div id="stList" class="space-y-2">${listHTML}</div>`;
+        <div id="stList" class="space-y-2">${listHTML}</div>
+        ${cart.length ? `<div class="sticky bottom-3 z-10 pt-1" data-req-cart>
+          <button onclick="openRequestForm()" class="w-full h-12 rounded-2xl bg-amber-700 hover:bg-amber-800 text-white text-sm font-extrabold shadow-lg flex items-center justify-center gap-2"><i class="ph-bold ph-paper-plane-tilt"></i> Review &amp; send · ${plural(cart.length, 'item')}</button>
+        </div>` : ''}`;
     }
     function setStockQuery(v) { stockQuery = v; renderTeacherStock(); }
     function setStockFilter(f) { stockFilter = stockFilter === f ? 'all' : f; renderTeacherStock(); }
 
+    // "Request" on a supply adds it to one request (tap again = one more); the bar at the
+    // bottom opens it to check the amounts and send everything at once.
     function requestFromStock(code) {
       const s = stockList.find(x => x.code === code);
       if (!s || !teacherMayAct()) return;
-      openRequestForm();
-      if (!reqDraft) return;
-      reqDraft.lines.push({ id: newReqLineId(), code: s.code, desc: s.name, unit: s.unit || 'piece', qty: 1 });
-      renderReqLines();
+      const lines = loadReqCart();
+      const l = lines.find(x => x.code === s.code);
+      if (!l && lines.length >= REQ_MAX_LINES) { showToast(`Up to ${REQ_MAX_LINES} items in one request · send this one first`, 'ph-info'); return; }
+      if (l) l.qty = Math.min(9999, l.qty + 1);
+      else lines.push({ id: newReqLineId(), code: s.code, desc: s.name, unit: s.unit || 'piece', qty: 1 });
+      saveReqCart(lines);
+      renderTeacherStock();
+      showToast(l ? `${s.name} · ${l.qty} in your request` : `Added to your request · ${plural(lines.length, 'item')}`, 'ph-paper-plane-tilt', { label: 'Review', onClick: () => openRequestForm() });
     }
 
     // "I took this": the amount comes off the stock for everyone at once; the custodian confirms.
@@ -17964,6 +18079,33 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       return `<span ${attrs} data-avatar="${src ? 'photo' : 'initials'}" class="${cls} shrink-0 rounded-full ${tone} flex items-center justify-center font-extrabold overflow-hidden relative">${escapeHTML(personInitials(name))}${src ? `<img src="${escapeHTML(src)}" alt="" referrerpolicy="no-referrer" loading="lazy" decoding="async" onerror="this.parentNode.dataset.avatar='initials'; this.remove()" class="absolute inset-0 w-full h-full object-cover">` : ''}</span>`;
     }
     function memberPhoto(uid) { return uid ? ((memberList.find(m => m.uid === uid) || {}).photo || '') : ''; }
+    // Draws an avatar into a slot only when it changed (no flicker on every render).
+    function setAvatarSlot(el, name, photo, cls, tone, show = true) {
+      if (!el) return;
+      const html = show ? avatarHTML(name, photo, cls, tone) : '';
+      if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html; }
+      el.classList.toggle('hidden', !show);
+    }
+    // The name behind this custodian device: the assistant's own name, else the custodian's.
+    function myStaffName() {
+      if (isAssistant()) return reqRole.assistant.name || reqRole.email || 'Assistant';
+      return (reqRole && reqRole.takeover && reqRole.takeover.name) || schoolInfo.custodian || (reqRole && reqRole.email) || 'Property custodian';
+    }
+    // Custodian and assistant devices: their Google photo on the More button (only with a photo).
+    function renderMyAvatars() {
+      const photo = isCustodianDevice() ? googlePhotoOf(cloud.user) : '';
+      setAvatarSlot(document.getElementById('moreAv'), myStaffName(), photo, 'w-7 h-7 text-[11px]', 'bg-brand-50 text-brand-700', !!photo);
+    }
+    // Head and assistant cards: their own Google photo (one write when it changes).
+    var cardPhotoSent = {};
+    function syncCardPhoto(ref, card, key) {
+      if (!ref || !card || !cloud.user || !cloud.sdk) return;
+      const want = googlePhotoOf(cloud.user);
+      const sig = cloud.user.uid + '|' + want;
+      if ((card.photo || '') === want || cardPhotoSent[key] === sig) return;
+      cardPhotoSent[key] = sig;
+      cloud.sdk.updateDoc(ref, { photo: want, updatedAt: cloud.sdk.serverTimestamp() }).catch(err => console.warn('my photo', err));
+    }
     const personTone = p => (p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500');
 
     function personInitials(name) {
@@ -23749,6 +23891,16 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-request-many', date: 'Nov 2026', title: 'Several items in one request, and inspection before stock in', points: [
+        'Teachers: Request on the Stock tab now adds the supply to one request. Tap it again for one more. Review & send at the bottom sends everything together, up to 50 items.',
+        'In New supply request, search results stay open so you can tap several in a row. Pick from the school\u2019s supplies lists everything in stock. Items you haven\u2019t sent stay on your phone if you close the form.',
+        'Purchase Requests: the button is now Delivery came \u00b7 Inspect, because the inspection comes first and stock in comes after. The old Items delivered button is now a small link, Inspected on paper? Stock in without IAR, for deliveries already inspected on a paper IAR.'
+      ] },
+      { id: '2026-11-photos-everyone', date: 'Nov 2026', title: 'Profile photos for everyone', points: [
+        'The School Head sees their Google photo at the top of For your approval. The property custodian sees the head\u2019s photo in the School Head panel when confirming them.',
+        'Assistant custodians\u2019 photos show in the Assistant panel. The custodian\u2019s and assistants\u2019 own photos show on the More button and in More \u2192 Account.',
+        'Teachers see their photo in Your details (tap your photo on My items). Without Google, it shows your initials and a Sign in with Google button to add your photo.'
+      ] },
       { id: '2026-11-invite-people', date: 'Nov 2026', title: 'Invite people: everyone in one place', points: [
         'More \u2192 Invite people (at the top of More) is now the one place to invite or confirm people. The Invite buttons on Supply requests and on the Teachers page open the same sheet.',
         'At the top, choose who you are inviting: Teachers (the link, QR code and poster), School Head, Assistant custodian or Librarian. Each one shows how far along it is, for example 3 joined or To confirm, with a count when someone is waiting for you.',
@@ -24810,9 +24962,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       el.innerHTML = `
         <p class="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Account</p>
         <div class="px-2 py-1.5 flex items-center gap-3">
-          <span class="w-9 h-9 shrink-0 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-user"></i></span>
+          ${avatarHTML(myStaffName(), googlePhotoOf(cloud.user), 'w-9 h-9 text-xs', 'bg-brand-50 text-brand-700', 'data-more-av')}
           <span class="min-w-0 flex-1"><span class="block text-sm font-bold text-slate-800 truncate">${escapeHTML(reqRole.email || 'Property custodian')}</span>
-            <span class="block text-[11px] text-slate-500 truncate">Property custodian · ${escapeHTML(reqRole.schoolName || '')}</span></span>
+            <span class="block text-[11px] text-slate-500 truncate">${isAssistant() ? 'Assistant custodian' : isViewOnly() ? 'View only' : 'Property custodian'} · ${escapeHTML(reqRole.schoolName || '')}</span></span>
         </div>
         <button id="moreSignOut" onclick="closeMoreMenu(); custodianSignOut()" class="more-item"><i class="ph-bold ph-sign-out text-rose-600"></i> Sign out</button>`;
     }

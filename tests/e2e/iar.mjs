@@ -76,6 +76,9 @@ try {
   a.dialogs.prompt = '';
   const card = await ev(a, id => ({ inspect: !!document.querySelector(`[data-inspect-pr="${id}"]`), delivered: !!document.querySelector(`button[onclick="markPrDelivered('${id}')"]`) }), prId);
   check(card.inspect && card.delivered, 'PR card: Inspect delivery (and Items delivered without an IAR)');
+  const order = await ev(a, id => { const i = document.querySelector(`[data-inspect-pr="${id}"]`), d = document.querySelector(`button[onclick="markPrDelivered('${id}')"]`);
+    return { first: !!(i && d && (i.compareDocumentPosition(d) & Node.DOCUMENT_POSITION_FOLLOWING)), label: i && i.textContent.trim(), alt: d && d.textContent.trim() }; }, prId);
+  check(order.first && /Delivery came · Inspect/.test(order.label) && /Stock in without IAR/.test(order.alt), `inspection comes first: “${order.label}”, then the paper-IAR shortcut “${order.alt}”`);
 
   // The PO was scanned under Deliveries (Expected) with the awarded prices
   await ev(a, () => {

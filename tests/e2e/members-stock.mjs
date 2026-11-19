@@ -95,8 +95,9 @@ try {
   await ev(t, () => setStockFilter('all'));
   await ev(t, c => requestFromStock(c), ALCOHOL);
   await sleep(300);
-  check(await ev(t, c => !document.getElementById('reqFormModal').classList.contains('hidden') && reqDraft.lines.some(l => l.code === c), ALCOHOL), 'Request on a stock line opens the form with that item');
-  await ev(t, () => { closeRequestForm(); setTeacherTab('stock'); });
+  await ev(t, () => document.querySelector('[data-req-cart] button').click());
+  check(await ev(t, c => !document.getElementById('reqFormModal').classList.contains('hidden') && reqDraft.lines.some(l => l.code === c), ALCOHOL), 'Request on a stock line adds it; Review & send opens the form with that item');
+  await ev(t, () => { closeRequestForm(); saveReqCart([]); setTeacherTab('stock'); });
   await ev(t, () => setStockQuery('alcohol'));
   check(await ev(t, c => [...document.querySelectorAll('[data-stock]')].every(x => /alcohol/i.test(x.innerText)) && !!document.querySelector(`[data-stock="${c}"]`), ALCOHOL), 'search “alcohol”');
   await ev(t, () => setStockQuery(''));
