@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="ef86eaa5b9c7">
+  <meta name="app-version" content="05cf74207587">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -18625,15 +18625,15 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     const BK_SHARD = 1000;            // titles per catalogue document (about 250 KB)
     const BK_LOG_MAX = 40;
     const BK_KINDS = {
-      TX:  { label: 'Textbook', short: 'Textbook', icon: 'ph-book-open', lend: false, acc: false },
-      TM:  { label: 'Teacher’s Manual', short: 'TM', icon: 'ph-chalkboard-teacher', lend: false, acc: false },
-      LF:  { label: 'Library · Fiction', short: 'Fiction', icon: 'ph-book-bookmark', lend: true, acc: true },
-      LN:  { label: 'Library · Non-fiction', short: 'Non-fiction', icon: 'ph-books', lend: true, acc: true },
-      REF: { label: 'Reference', short: 'Reference', icon: 'ph-book', lend: true, acc: true },
-      BIG: { label: 'Big Book', short: 'Big Book', icon: 'ph-book-open-text', lend: true, acc: false },
-      SLM: { label: 'SLM / Activity sheets', short: 'SLM', icon: 'ph-files', lend: false, acc: false },
-      PER: { label: 'Periodical', short: 'Periodical', icon: 'ph-newspaper', lend: true, acc: false },
-      OTH: { label: 'Other', short: 'Other', icon: 'ph-book', lend: true, acc: false }
+      TX:  { label: 'Textbook', short: 'Textbook', icon: 'ph-book-open', tone: 'bg-blue-50 text-blue-600', lend: false, acc: false },
+      TM:  { label: 'Teacher’s Manual', short: 'TM', icon: 'ph-chalkboard-teacher', tone: 'bg-teal-50 text-teal-600', lend: false, acc: false },
+      LF:  { label: 'Library · Fiction', short: 'Fiction', icon: 'ph-book-bookmark', tone: 'bg-violet-50 text-violet-600', lend: true, acc: true },
+      LN:  { label: 'Library · Non-fiction', short: 'Non-fiction', icon: 'ph-books', tone: 'bg-indigo-50 text-indigo-600', lend: true, acc: true },
+      REF: { label: 'Reference', short: 'Reference', icon: 'ph-book', tone: 'bg-amber-50 text-amber-600', lend: true, acc: true },
+      BIG: { label: 'Big Book', short: 'Big Book', icon: 'ph-book-open-text', tone: 'bg-pink-50 text-pink-600', lend: true, acc: false },
+      SLM: { label: 'SLM / Activity sheets', short: 'SLM', icon: 'ph-files', tone: 'bg-slate-100 text-slate-600', lend: false, acc: false },
+      PER: { label: 'Periodical', short: 'Periodical', icon: 'ph-newspaper', tone: 'bg-emerald-50 text-emerald-600', lend: true, acc: false },
+      OTH: { label: 'Other', short: 'Other', icon: 'ph-book', tone: 'bg-stone-100 text-stone-600', lend: true, acc: false }
     };
     const BK_AREAS = ['Mother Tongue', 'Filipino', 'English', 'Reading & Literacy', 'Mathematics', 'Science', 'Araling Panlipunan', 'Makabansa',
       'GMRC / Values Education', 'MAPEH', 'EPP / TLE', 'Kindergarten', 'Senior High School', 'General'];
@@ -19183,7 +19183,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const flags = [(b.lost || 0) ? `<span class="text-rose-600">${b.lost} lost</span>` : '', bkUnserv(b) ? `<span class="text-amber-700">${bkUnserv(b)} unserviceable</span>` : ''].filter(Boolean).join(' · ');
       return `
         <button type="button" onclick="openBkTitle('${b.id}')" data-bk-title="${b.id}" class="w-full text-left rounded-2xl bg-white border border-slate-200 hover:border-violet-300 shadow-sm p-3 flex items-start gap-3 active:scale-[0.99] transition">
-          <span class="w-10 h-10 shrink-0 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="ph-bold ${k.icon} text-xl"></i></span>
+          <span class="w-10 h-10 shrink-0 rounded-xl ${k.tone} flex items-center justify-center" data-bk-kind-icon="${escapeHTML(b.kind || 'OTH')}"><i class="ph-bold ${k.icon} text-xl"></i></span>
           <span class="min-w-0 flex-1">
             <span class="block text-sm font-extrabold text-slate-900 leading-snug line-clamp-2">${escapeHTML(b.title)}</span>
             <span class="block text-[11px] text-slate-500 truncate">${escapeHTML(sub)}</span>
@@ -19439,7 +19439,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const logRows = (b.log || []).slice().reverse().map(x => `<li class="flex gap-2"><span class="shrink-0 text-slate-500">${escapeHTML(formatShortDate(x.at))}</span><span class="min-w-0">${escapeHTML(x.x)}${x.by ? ` <span class="text-slate-400">· ${escapeHTML(x.by)}</span>` : ''}</span></li>`).join('');
       const accOut = new Set(bk.loans.filter(bkLoanOut).flatMap(l => l.acc || []));
       return `
-        ${bkHeadHTML(k.icon, escapeHTML(b.title), escapeHTML([k.label, bkGradeText(bkGrades(b)), b.area].filter(Boolean).join(' · ')))}
+        ${bkHeadHTML(k.icon, escapeHTML(b.title), escapeHTML([k.label, bkGradeText(bkGrades(b)), b.area].filter(Boolean).join(' · ')), k.tone)}
         ${meta.length ? `<p class="text-xs text-slate-600">${escapeHTML(meta.join(' · '))}</p>` : ''}
         ${b.note ? `<p class="text-xs text-slate-600 rounded-xl bg-slate-50 px-3 py-2">${escapeHTML(b.note)}</p>` : ''}
         <div class="grid grid-cols-4 gap-2">
@@ -20073,7 +20073,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         const sub = [k.short, e.g && bkGradeText(String(e.g).split(',')), e.a, e.au].filter(Boolean).join(' · ');
         return `
           <button type="button" onclick="openLibTitle('${escapeHTML(e.i)}')" data-lib-title="${escapeHTML(e.i)}" class="w-full text-left rounded-2xl bg-white border border-slate-200 hover:border-violet-300 shadow-sm p-3 flex items-start gap-3 active:scale-[0.99] transition">
-            <span class="w-10 h-10 shrink-0 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="ph-bold ${k.icon} text-xl"></i></span>
+            <span class="w-10 h-10 shrink-0 rounded-xl ${k.tone} flex items-center justify-center" data-bk-kind-icon="${escapeHTML(e.k || 'OTH')}"><i class="ph-bold ${k.icon} text-xl"></i></span>
             <span class="min-w-0 flex-1">
               <span class="block text-sm font-extrabold text-slate-900 leading-snug line-clamp-2">${escapeHTML(e.t)}</span>
               <span class="block text-[11px] text-slate-500 truncate">${escapeHTML(sub)}</span>
@@ -20105,7 +20105,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         </div>`;
       }).join('');
       return `
-        ${bkHeadHTML(k.icon, escapeHTML(e.t), escapeHTML([k.label, e.g && bkGradeText(String(e.g).split(',')), e.a].filter(Boolean).join(' · ')))}
+        ${bkHeadHTML(k.icon, escapeHTML(e.t), escapeHTML([k.label, e.g && bkGradeText(String(e.g).split(',')), e.a].filter(Boolean).join(' · ')), k.tone)}
         ${e.au || e.y || e.s ? `<p class="text-xs text-slate-600">${escapeHTML([e.au, e.y && `© ${e.y}`, e.s && `ISBN ${e.s}`].filter(Boolean).join(' · '))}</p>` : ''}
         <div>
           <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 px-1">Where the copies are</h4>
@@ -23232,6 +23232,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-book-colors', date: 'Nov 2026', title: 'A colour for each kind of book', points: [
+        'In Books & Library and on the teachers\u2019 Library tab, each kind of book now has its own colour as well as its own icon: textbooks blue, teacher\u2019s manuals teal, fiction violet, non-fiction indigo, reference amber, Big Books pink, periodicals green, and SLMs grey.'
+      ] },
       { id: '2026-11-class-books', date: 'Nov 2026', title: 'Textbooks for each class', points: [
         'Issue textbooks to an adviser from Books & Library. The app prints a Book Issuance List, and the adviser taps Received on their phone.',
         'Advisers record on their phone how many books the learners have, returned, damaged or lost. Learner names are optional (names only). Only the adviser and you see them, and they are erased when the school year ends.',

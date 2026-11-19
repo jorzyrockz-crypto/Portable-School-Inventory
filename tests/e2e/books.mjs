@@ -72,6 +72,7 @@ try {
   await ev(t, () => setTeacherTab('library'));
   await until(t, () => document.querySelectorAll('[data-lib-title]').length === 3, 'Ana sees 3 titles');
   check(await ev(t, () => /Library/.test(rqTitle.textContent) && !rqLibraryPane.classList.contains('hidden')), 'Library tab (4th tab)');
+  check(await ev(t, () => { const c = k => (document.querySelector(`#libList [data-bk-kind-icon="${k}"]`) || {}).className || ''; return /bg-blue-50/.test(c('TX')) && /bg-violet-50/.test(c('LF')) && /bg-pink-50/.test(c('BIG')); }), 'each kind has its own colour (textbook blue, fiction violet, Big Book pink)');
   await ev(t, () => setLibQuery('ampalaya'));
   check(await ev(t, () => document.querySelectorAll('[data-lib-title]').length === 1 && /Library corner 4\/4/.test(document.getElementById('libList').textContent)), 'search: 1 match, “Library corner 4/4” (free/total)');
   check(await refused(t, (F, sid) => F.getDocs(F.collection(cloud.db, 'schools', sid, 'books')), sid), 'rules: a teacher can’t read the books themselves (only the catalogue)');
