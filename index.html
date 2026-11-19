@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="27c7e40fb858">
+  <meta name="app-version" content="19083cc35f92">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -250,6 +250,7 @@
       html:not(.no-tabs) #tvDetailPane .rv-track { margin-inline: 0; padding-inline: 0; scroll-padding-inline: 0; }
       html:not(.no-tabs) #tvDetailPane .rv-track > .rv-card:only-child { flex-basis: min(100%, 28rem); flex-grow: 0; }
       html:not(.no-tabs) #tvChips { flex-wrap: wrap; margin-inline: 0; padding-inline: 0; overflow: visible; }
+      #tvDetailPane .tv-board { grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
       /* Government forms open as a page beside the sidebar instead of a pop-up. The page itself
          scrolls (no box scrolling inside the card), and a form's Back / Print bar sticks to the bottom. */
       html:not(.no-tabs) #coaModal.coa-page { left: var(--side-w); top: var(--hdr-h, 3.75rem); z-index: 30; padding: 1rem 1.5rem 0;
@@ -19075,6 +19076,19 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       requestAnimationFrame(rvScrolled);   // also when it just became visible (sizes known now)
       review.classList.toggle('hidden', !html || !!teachersSel);
       const { joins, reports, total } = teachersToReview();
+      if (wide && !total) {   // nothing to review: the row brings back Needs your attention
+        const n = teachersAttentionBoard(accountabilityPeople()).length;
+        row.classList.toggle('hidden', !n);
+        if (!n) { row.innerHTML = ''; return; }
+        const on = !teachersSel;
+        row.innerHTML = `
+          <button type="button" onclick="openTeachersView(null)" data-tvatt-row="${n}" ${on ? 'aria-current="true"' : ''} class="w-full text-left rounded-2xl border px-3 py-2.5 flex items-center gap-3 transition ${on ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200 hover:bg-slate-50'}">
+            <span class="w-9 h-9 shrink-0 rounded-xl ${on ? 'bg-white' : 'bg-amber-50'} text-amber-600 flex items-center justify-center"><i class="ph-bold ph-list-checks text-lg"></i></span>
+            <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">Needs your attention</span><span class="block text-xs text-slate-600 truncate">${plural(n, 'person')} with something due</span></span>
+            <span class="shrink-0 min-w-6 h-6 px-1.5 rounded-full bg-amber-500 text-white text-xs font-extrabold flex items-center justify-center">${n}</span>
+          </button>`;
+        return;
+      }
       row.classList.toggle('hidden', !(wide && total));
       if (!(wide && total)) { row.innerHTML = ''; return; }
       const on = !teachersSel;
@@ -19203,6 +19217,86 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
 
     // Computers and tablets held sideways: nothing picked yet on the right.
+    // ---- Teachers: Needs your attention, per person and for everyone (Nov 2026) ----------------
+    // From what this device already has. full = also the slips and reports the person's page
+    // already shows in its own boxes (for the overview on a computer).
+    function personAttention(p, full = false, now = Date.now()) {
+      const out = [];
+      const add = (tone, icon, text, key, rank) => out.push({ tone, icon, text, key, rank });
+      const eq = p.equipment;
+      const lost = eq.filter(x => x.unit.lostMs).sort((a, b) => a.unit.lostMs - b.unit.lostMs);
+      if (lost.length) {
+        const left = reliefLeft(lost[0].unit, now);
+        add(left <= 7 ? 'rose' : 'amber', 'ph-question', `${lost.length === 1 ? `Lost: ${lost[0].unit.no || lost[0].item.name}` : `${lost.length} lost units`} · ${left < 0 ? `relief ${plural(-left, 'day')} overdue` : `${plural(left, 'day')} left to apply for relief`}`, 'lost', left <= 7 ? 0 : 2);
+      }
+      if (p.removed && eq.filter(x => !x.unit.lostMs).length) add('rose', 'ph-user-minus', `Removed from the school but still holds ${plural(eq.filter(x => !x.unit.lostMs).length, 'unit')} · Clearance`, 'removed', 1);
+      if (full && p.open.length) add('amber', 'ph-chalkboard-teacher', `${plural(p.open.length, 'report')} waiting for you`, 'open', 1);
+      if (full && p.toConfirm.length) {
+        const d = p.oldest ? daysSince(p.oldest) : 0;
+        add(d >= 3 ? 'amber' : 'slate', 'ph-hand-arrow-down', `${plural(p.toConfirm.length, 'slip')} not marked Received${d ? ` · ${plural(d, 'day')}` : ''}`, 'unconf', d >= 3 ? 3 : 6);
+      }
+      const asked = eq.filter(x => !x.unit.lostMs && unitAskBack(x.unit));
+      if (asked.length) {
+        const ms = Math.min(...asked.map(x => unitAskBack(x.unit).ms || now));
+        add('amber', 'ph-bell-ringing', `Asked to return ${plural(asked.length, 'unit')} · ${daysSince(ms) ? `${plural(daysSince(ms), 'day')} ago` : 'today'}`, 'askback', 3);
+      }
+      const since = countSince(now);
+      const live = eq.filter(x => !x.unit.lostMs);
+      if (since.season && live.length) {
+        const done = live.filter(x => (x.unit.seen || 0) >= since.ms).length;
+        if (done < live.length) add('brand', 'ph-clipboard-text', `Year-end count ${since.year}: ${done} of ${live.length} counted`, 'count', 4);
+      }
+      const cut = icsRenewCutoff(now);
+      const old = live.filter(x => x.unit.icsDate && x.unit.icsDate <= cut);
+      if (old.length) add('slate', 'ph-arrows-clockwise', `${plural(old.length, 'unit')} on an ICS / PAR older than ${ICS_RENEW_YEARS} years`, 'renew', 5);
+      const unserv = live.filter(x => x.unit.cond === 'U').length, repair = live.filter(x => x.unit.cond === 'R').length;
+      if (unserv) add('amber', 'ph-trash', `${plural(unserv, 'unserviceable unit')} still with them · take back for the IIRUP`, 'unserv', 4);
+      if (repair) add('slate', 'ph-wrench', `${plural(repair, 'unit')} in Needs repair`, 'repair', 6);
+      if (p.uid && bk.loansLoaded) {
+        const late = bk.loans.filter(l => l.borrowerUid === p.uid && bkOverdue(l)).length;
+        if (late) add('amber', 'ph-books', `${plural(late, 'library book')} overdue`, 'books', 5);
+      }
+      return out.sort((a, b) => a.rank - b.rank);
+    }
+    const PA_TONE = { rose: 'text-rose-600', amber: 'text-amber-600', brand: 'text-brand-600', green: 'text-emerald-600', slate: 'text-slate-500' };
+    function personAttentionHTML(list) {
+      if (!list.length) return '';
+      return `
+        <div id="tvPersonAtt" data-tvatt="${list.length}" class="rounded-2xl bg-white border border-amber-200 shadow-sm px-3 py-2.5 space-y-1.5">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-amber-800">Needs attention · ${list.length}</p>
+          ${list.map(x => `<p class="flex items-start gap-2 text-xs text-slate-800" data-tvatt-item="${x.key}"><i class="ph-bold ${x.icon} ${PA_TONE[x.tone] || PA_TONE.slate} text-sm mt-px"></i><span class="min-w-0">${escapeHTML(x.text)}</span></p>`).join('')}
+        </div>`;
+    }
+    // Everyone with something due, most urgent first: on a computer, what the right side shows
+    // while nobody is picked (under To review). Tap a name to open them.
+    function teachersAttentionBoard(people) {
+      return people.map(p => ({ p, list: personAttention(p, true) })).filter(x => x.list.length)
+        .sort((a, b) => a.list[0].rank - b.list[0].rank || b.list.length - a.list.length || a.p.name.localeCompare(b.p.name));
+    }
+    var tvBoardAll = false;
+    function teachersBoardHTML(people) {
+      const board = teachersAttentionBoard(people);
+      if (!board.length) return `<div class="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-xs font-bold text-emerald-800 flex items-center gap-2" data-tvboard="0"><i class="ph-bold ph-check-circle text-lg"></i> All clear · nothing due for any teacher</div>`;
+      const SHOW = 12;
+      const shown = tvBoardAll ? board : board.slice(0, SHOW);
+      return `
+        <div class="space-y-2" data-tvboard="${board.length}">
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Needs your attention · ${plural(board.length, 'person')}</h2>
+          <div class="grid gap-2 tv-board">${shown.map(({ p, list }) => `
+            <button type="button" onclick="openTeachersView('${qk(p.key)}')" data-tvboard-person="${escapeHTML(p.key)}" class="text-left rounded-2xl bg-white border border-slate-200 hover:border-brand-300 shadow-sm p-3 flex items-start gap-3">
+              ${avatarHTML(p.name, memberPhoto(p.uid), 'w-9 h-9 text-xs', personTone(p))}
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(p.name)}</span>
+                ${list.slice(0, 3).map(x => `<span class="flex items-start gap-1.5 text-[11px] text-slate-700"><i class="ph-bold ${x.icon} ${PA_TONE[x.tone] || PA_TONE.slate} mt-px"></i><span class="min-w-0">${escapeHTML(x.text)}</span></span>`).join('')}
+                ${list.length > 3 ? `<span class="block text-[11px] text-slate-500">+ ${list.length - 3} more</span>` : ''}
+              </span>
+              <i class="ph-bold ph-caret-right text-slate-400 mt-2"></i>
+            </button>`).join('')}
+          </div>
+          ${board.length > SHOW ? `<button type="button" id="tvBoardMore" onclick="tvBoardAll = !tvBoardAll; renderTeachersView()" class="w-full min-h-10 text-xs font-bold text-brand-600 hover:underline">${tvBoardAll ? 'Show less' : `Show all ${board.length}`}</button>` : ''}
+        </div>`;
+    }
+
     function renderTeachersNone(people) {
       document.getElementById('tvHead').innerHTML = '';
       const withItems = people.filter(p => p.equipment.length);
@@ -19211,10 +19305,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const counted = withItems.reduce((n, p) => n + p.counted, 0);
       const toConfirm = people.filter(p => p.toConfirm.length).length;
       const below = sidebarLayout() && teachersToReview().total;   // To review is above it
-      document.getElementById('tvBody').innerHTML = `
-        <div class="rounded-2xl bg-white border border-slate-200 ${below ? 'p-5' : 'p-8'} text-center">
-          ${below ? '' : '<i class="ph-bold ph-cursor-click text-3xl text-slate-300"></i>'}
-          <p class="mt-1 text-sm font-bold text-slate-700">${below ? 'Or pick someone on the left' : 'Pick someone on the left'}</p>
+      const board = sidebarLayout() && people.length ? teachersBoardHTML(people) : '';
+      document.getElementById('tvBody').innerHTML = `${board}
+        <div class="rounded-2xl bg-white border border-slate-200 ${below || board ? 'p-5' : 'p-8'} text-center">
+          ${below || board ? '' : '<i class="ph-bold ph-cursor-click text-3xl text-slate-300"></i>'}
+          <p class="mt-1 text-sm font-bold text-slate-700">${below || board ? 'Or pick someone on the left' : 'Pick someone on the left'}</p>
           <p class="text-xs text-slate-500">Their equipment, supplies and history show here.</p>
           ${units ? `<div class="mt-4 grid grid-cols-3 gap-2 text-center max-w-md mx-auto">
             <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${withItems.length}</p><p class="text-[11px] font-bold uppercase text-slate-500">With items</p></div>
@@ -19335,6 +19430,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
       let html = '';
       if (teachersClear === p.key) html += clearanceHTML(p, connected);
+      html += personAttentionHTML(personAttention(p));
       if (p.open.length) html += `<div class="rounded-2xl bg-white border border-rose-200 shadow-sm overflow-hidden">${p.open.map(x => teacherReportCardHTML(x)).join('')}</div>`;
       const unconfirmedIssue = p.toConfirm.slice().sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
       if (unconfirmedIssue.length) {
@@ -25062,6 +25158,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-teachers-attention', date: 'Nov 2026', title: 'Teachers: who needs your attention', points: [
+        'On a computer, the Teachers page now shows everyone with something due on the right while nobody is picked, most urgent first: lost items with the days left to apply for relief, slips not marked Received, items you asked back, old ICS / PAR, the count, unserviceable items, repairs and overdue library books. Tap a name to open them.',
+        'A Needs your attention row in the list brings that view back. When nothing is due, it says All clear.',
+        'Each teacher\u2019s page now starts with a short Needs attention card listing what is due for them, on phones too.'
+      ] },
       { id: '2026-11-head-tabs', date: 'Nov 2026', title: 'School Head: tabs, less scrolling', points: [
         'The School Head\u2019s screen now has four tabs, like a teacher\u2019s: Approve, School, People and History. Approve opens first and shows how many are waiting.',
         'School has the property, spending, trends, supplies and the monthly summary. People has who holds what, with a name search, and the custodian turnover. History has your past decisions, with the search, and School history.',

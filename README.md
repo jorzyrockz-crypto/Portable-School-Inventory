@@ -684,6 +684,8 @@ In Inventory, an item's sheet lists who has its units (*Ana Reyes · 1 unit · I
 
 **Finding people.** Filter chips narrow the list: *Has items*, *To confirm*, *Open reports*, *Not counted yet*, *No account* (typed names) and *Hasn't joined* (holds items but never opened the invite link). **Sort** by name, value, units or the oldest unconfirmed slip. A row shows *1 for repair · 1 unserviceable* when units need attention; tapping it opens the IIRUP.
 
+**Needs your attention** (since November 2026). A person's page starts with a *Needs attention* card when something is due for them: lost units with the days left to apply for relief, units asked back, the count not done yet, ICS / PAR older than 3 years, unserviceable units still with them (take back for the IIRUP), units in repair, overdue library books, and *removed but still holds items*. On a computer, with nobody picked, the right side lists **everyone** with something due (including slips not marked Received and open reports), most urgent first, three lines each; tap a name to open them. A *Needs your attention* row in the list brings it back, and it says *All clear* when nothing is due. Phones keep the list screen as it was; the card shows on each person's page.
+
 **Not confirmed yet.** A person's page says *ICS 2026-11-003 not confirmed for 12 days*. **Remind** puts a notification in the teacher's bell (*Reminder from the property custodian*).
 
 **Property clearance** (transfer, retirement, resignation, leave). **Clearance** on a person's page:
@@ -849,6 +851,7 @@ node custodian-login.mjs              # custodian sign-in: school found by accou
 node teacher-remove.mjs             # Remove from the school / Add back with the teacher's page open (laptop and phone): page, list and Removed list change at once, no refresh; the teacher's phone follows
 node release-serials.mjs            # Release form: Useful life per equipment line (saved on units, the release and the ICS), serial numbers required for items that have them (missing, typed twice, already on another unit), Has serial numbers untick remembered per item
 node head-dashboard.mjs             # School Head screen: Needs your attention, Waiting N days + reminder, Approve all, search decisions, spending, condition, trends, supply usage, who holds what (tap, print), monthly summary print, tabs (Approve · School · People · History), two columns inside each tab on a laptop
+node teachers-attention.mjs         # Teachers page: Needs your attention for everyone on a computer (lost + relief days, unconfirmed, asked back, old ICS, unserviceable), each person's card, the list row, All clear, phone width
 node teacher-dashboard.mjs          # teacher's My Items: tiles, Needs your attention (slips, asked back, reports, repair, old slips, overdue books), Clearance: Return everything, then nothing under their name
 node home-attention.mjs             # custodian Home: Needs your attention (lost + relief days, waiting requests/reports, unconfirmed slips, ICS renewal, bond, repairs, stock), Show all, taps, hidden for teachers
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)

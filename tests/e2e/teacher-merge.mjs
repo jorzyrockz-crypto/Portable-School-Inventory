@@ -124,7 +124,7 @@ try {
   out('7 the merged card has no records left: Delete entirely');
   check(await ev(a, u => canDeleteMember(u), dup), 'the merged card can be deleted');
   await ev(a, () => { const d = document.getElementById('tvRemoved'); if (d) d.open = true; });
-  await a.click(`[data-tvdelete="${dup}"]`);
+  await ev(a, u => document.querySelector(`[data-tvdelete="${u}"]`).click(), dup);   // the toast can sit over it
   await waitNode(() => !member(sid, dup));
   check(!member(sid, dup), 'deleted');
 
