@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="9a4306d0be45">
+  <meta name="app-version" content="d7a303aa7f7c">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1573,7 +1573,7 @@
           <input id="rfOffice" type="text" maxlength="80" placeholder="Office / grade &amp; section" class="h-10 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
         </div>
         <div>
-          <label for="rfSearch" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Add items</label>
+          <label id="rfAddLabel" for="rfSearch" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Add items</label>
           <div class="relative">
             <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
             <input id="rfSearch" type="text" inputmode="search" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="Search, e.g. bond paper, chalk, ballpen"
@@ -1581,6 +1581,8 @@
               class="w-full h-12 pl-9 pr-3 rounded-xl border-2 border-slate-200 focus:border-amber-500 text-sm font-semibold outline-none">
           </div>
           <div id="rfResults" class="hidden mt-1.5 rounded-xl border border-slate-200 overflow-hidden divide-y divide-slate-100"></div>
+          <button id="rfBrowseBtn" type="button" onclick="toggleReqBrowse()" class="hidden mt-2 w-full min-h-10 px-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/60 hover:bg-amber-50 text-xs font-bold text-amber-800 flex items-center justify-center gap-1.5"><i class="ph-bold ph-list-checks"></i> <span id="rfBrowseLabel">Pick from the school’s supplies</span></button>
+          <div id="rfBrowse" class="hidden mt-1.5 max-h-72 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 divide-y divide-slate-100"></div>
         </div>
         <div id="rfLines" class="space-y-2"></div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -11709,9 +11711,9 @@
             <button onclick="exportPrCSVById('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-file-csv"></i> CSV</button>
             ${canChange ? `<button onclick="editPr('${pr.id}')" class="${small}"><i class="ph-bold ph-pencil-simple"></i> Edit</button>
             <button onclick="cancelPr('${pr.id}')" class="h-9 px-3 rounded-lg bg-slate-100 hover:bg-rose-50 text-xs font-bold text-rose-700 flex items-center gap-1.5"><i class="ph-bold ph-x-circle"></i> Cancel PR</button>` : ''}
-            ${canInspect || canDeliver ? `<span class="ml-auto flex flex-wrap justify-end gap-2">
-              ${canDeliver ? `<button onclick="markPrDelivered('${pr.id}')" class="${small}" title="Add everything to stock without an IAR"><i class="ph-bold ph-package"></i> Items delivered</button>` : ''}
-              ${canInspect ? `<button data-inspect-pr="${pr.id}" onclick="openInspectPr('${pr.id}')" class="h-9 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-xs font-bold text-white flex items-center gap-1.5"><i class="ph-bold ph-clipboard-text"></i> ${partly ? 'Inspect next delivery' : 'Inspect delivery'}</button>` : ''}
+            ${canInspect || canDeliver ? `<span class="ml-auto flex flex-col items-end gap-1">
+              ${canInspect ? `<button data-inspect-pr="${pr.id}" onclick="openInspectPr('${pr.id}')" class="h-9 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-xs font-bold text-white flex items-center gap-1.5" title="When the supplier delivers: inspect (IAR), then accept into stock"><i class="ph-bold ph-clipboard-text"></i> ${partly ? 'Inspect next delivery' : 'Delivery came · Inspect'}</button>` : ''}
+              ${canDeliver ? `<button onclick="markPrDelivered('${pr.id}')" data-no-iar class="min-h-7 px-1 text-[11px] font-bold text-slate-500 hover:text-slate-800 underline underline-offset-2 flex items-center gap-1" title="Add everything to stock without the app’s IAR"><i class="ph-bold ph-package"></i> Inspected on paper? Stock in without IAR</button>` : ''}
             </span>`
               : delivered ? `<span class="ml-auto h-9 px-2 text-xs font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Delivered</span>` : ''}
           </div>
@@ -12422,7 +12424,8 @@
         return;
       }
       if (isTeacherDevice() && !teacherMayAct()) return;
-      reqDraft = { lines: [], forOther: isCustodianDevice() };
+      const forOther = isCustodianDevice();
+      reqDraft = { lines: forOther ? [] : loadReqCart().map(l => ({ ...l })), forOther, browse: false };
       const me = (isTeacherDevice() && reqRole.me) || {};
       document.getElementById('rfWho').classList.toggle('hidden', !reqDraft.forOther);
       document.getElementById('rfWho').classList.toggle('grid', reqDraft.forOther);
@@ -12432,22 +12435,80 @@
       ['rfName', 'rfPosition', 'rfOffice', 'rfSearch', 'rfPurpose', 'rfNeeded'].forEach(id => { document.getElementById(id).value = ''; });
       renderReqSearch();
       renderReqLines();
+      renderReqBrowse();
       document.getElementById('reqFormModal').classList.remove('hidden');
       const first = document.getElementById(reqDraft.forOther ? 'rfName' : 'rfSearch');
       setTimeout(() => { if (reqDraft) first.focus(); }, 60);
     }
-    function closeRequestForm() { reqDraft = null; document.getElementById('reqFormModal').classList.add('hidden'); }
+    function closeRequestForm() {
+      reqDraft = null;
+      document.getElementById('reqFormModal').classList.add('hidden');
+      if (isTeacherDevice() && activeMainView === 'REQUESTER') renderTeacherStock();   // the Stock tab's "in your request"
+    }
+    // A teacher's unsent request (items picked on the Stock tab, or a form closed before Send):
+    // kept on this phone until it is sent, so several items go in one request.
+    const REQ_CART_KEY = 'cp_req_cart_v1';
+    const REQ_MAX_LINES = 50;   // the rules allow up to 50 lines in one request
+    function loadReqCart() {
+      try {
+        const c = JSON.parse(localStorage.getItem(REQ_CART_KEY) || 'null');
+        return c && reqRole && cloud.user && c.sid === reqRole.schoolId && c.uid === cloud.user.uid && Array.isArray(c.lines) ? c.lines.filter(l => l && l.desc && l.qty > 0) : [];
+      } catch (e) { return []; }
+    }
+    function saveReqCart(lines) {
+      try {
+        const keep = (lines || []).filter(l => l && l.qty > 0 && String(l.desc || '').trim()).slice(0, REQ_MAX_LINES);
+        if (keep.length && reqRole && cloud.user) localStorage.setItem(REQ_CART_KEY, JSON.stringify({ sid: reqRole.schoolId, uid: cloud.user.uid, lines: keep }));
+        else localStorage.removeItem(REQ_CART_KEY);
+      } catch (e) {}
+    }
+    function keepReqDraft() { if (reqDraft && !reqDraft.forOther) saveReqCart(reqDraft.lines); }
+    // An item to request, by code: the catalog, else (teacher) the school's stock list.
+    function reqItemByCode(code) {
+      const it = code && items.find(i => i.code === code);
+      if (it) return { code: it.code, name: it.name, unit: it.unit };
+      const st = code && isTeacherDevice() && stockList.find(x => x.code === code);
+      return st ? { code: st.code, name: st.name, unit: st.unit || 'piece' } : null;
+    }
+    // "Pick from the school's supplies": teachers see the shared stock, the custodian their supplies on hand.
+    function reqBrowseList() {
+      if (isTeacherDevice()) return [...stockList].sort((a, b) => a.name.localeCompare(b.name)).map(x => ({ code: x.code, name: x.name, unit: x.unit || '', left: stockLeft(x) }));
+      return items.filter(i => i.type === 'CONSUMABLE' && i.qty > 0).sort((a, b) => a.name.localeCompare(b.name)).map(i => ({ code: i.code, name: i.name, unit: i.unit || '', left: i.qty }));
+    }
+    function toggleReqBrowse() { if (!reqDraft) return; reqDraft.browse = !reqDraft.browse; renderReqBrowse(); }
+    function reqPickedHTML(code) {
+      const l = reqDraft && reqDraft.lines.find(x => x.code === code);
+      return l ? `<span class="shrink-0 h-7 px-2 rounded-lg bg-amber-100 text-amber-900 text-[11px] font-extrabold flex items-center gap-1" data-picked><i class="ph-bold ph-check"></i> ${l.qty}</span>`
+        : '<span class="shrink-0 w-7 h-7 rounded-lg bg-amber-700 text-white flex items-center justify-center"><i class="ph-bold ph-plus"></i></span>';
+    }
+    function renderReqBrowse() {
+      const btn = document.getElementById('rfBrowseBtn'), box = document.getElementById('rfBrowse');
+      if (!btn || !box) return;
+      const list = reqDraft ? reqBrowseList() : [];
+      btn.classList.toggle('hidden', !list.length);
+      const open = !!(reqDraft && reqDraft.browse && list.length);
+      document.getElementById('rfBrowseLabel').textContent = open ? 'Hide the list' : `Pick from the school’s supplies (${list.length})`;
+      box.classList.toggle('hidden', !open);
+      if (!open) { box.innerHTML = ''; return; }
+      const top = box.scrollTop;
+      box.innerHTML = list.map(x => `
+        <button type="button" onclick="addReqLine('${escapeHTML(x.code)}', true)" data-browse="${escapeHTML(x.code)}" class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-amber-50 ${x.left > 0 ? '' : 'opacity-60'}">
+          <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-slate-800 truncate">${escapeHTML(x.name)}</span><span class="block text-[11px] ${x.left > 0 ? 'text-slate-500' : 'text-rose-700 font-bold'}">${x.left > 0 ? `${x.left} ${escapeHTML(x.unit)} left` : 'Out of stock · you can still ask'}</span></span>
+          ${reqPickedHTML(x.code)}
+        </button>`).join('');
+      box.scrollTop = top;
+    }
 
     function renderReqSearch() {
       const q = reqVal('rfSearch');
       const box = document.getElementById('rfResults');
       box.classList.toggle('hidden', !q);
       if (!q) { box.innerHTML = ''; return; }
-      const { list } = homeSearchItems(q, 6);
+      const { list } = homeSearchItems(q, 8);
       box.innerHTML = list.map(item => `
-        <button onclick="addReqLine('${item.code}')" class="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-amber-50">
-          <i class="ph-bold ph-plus-circle text-amber-500 shrink-0"></i>
+        <button onclick="addReqLine('${item.code}', true)" data-result="${escapeHTML(item.code)}" class="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-amber-50">
           <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-slate-800 truncate">${escapeHTML(item.name)}</span><span class="block text-[11px] text-slate-500">${escapeHTML(item.unit)}</span></span>
+          ${reqPickedHTML(item.code)}
         </button>`).join('') + `
         <button onclick="addReqLine(null)" class="w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs font-bold text-slate-600 hover:bg-amber-50">
           <i class="ph-bold ph-pencil-simple text-slate-500"></i> ${list.length ? 'Not listed? ' : ''}Add “${escapeHTML(q.slice(0, 60))}” as typed
@@ -12463,18 +12524,22 @@
       addReqLine(first ? first.code : null);
     }
 
-    function addReqLine(code) {
+    // keep = tapped in a list: the list stays open so more can be tapped (tap again = one more).
+    function addReqLine(code, keep = false) {
       if (!reqDraft) return;
       const typed = reqVal('rfSearch');
-      const item = code ? items.find(i => i.code === code) : null;
+      const item = code ? reqItemByCode(code) : null;
       const existing = item && reqDraft.lines.find(l => l.code === item.code);
-      if (existing) existing.qty += 1;
-      else if (item) reqDraft.lines.push({ id: newReqLineId(), code: item.code, desc: item.name, unit: item.unit, qty: 1 });
+      if (!existing && (item || typed) && reqDraft.lines.length >= REQ_MAX_LINES) { showToast(`Up to ${REQ_MAX_LINES} items in one request · send this one, then start another`, 'ph-info'); return; }
+      if (existing) existing.qty = Math.min(9999, existing.qty + 1);
+      else if (item) reqDraft.lines.push({ id: newReqLineId(), code: item.code, desc: item.name, unit: item.unit || 'piece', qty: 1 });
       else if (typed) reqDraft.lines.push({ id: newReqLineId(), code: null, desc: typed.slice(0, 160), unit: 'piece', qty: 1 });
-      const input = document.getElementById('rfSearch');
-      input.value = '';
+      keepReqDraft();
+      if (!keep || !item) document.getElementById('rfSearch').value = '';
       renderReqSearch();
       renderReqLines();
+      renderReqBrowse();
+      if (keep && item) return;
       const last = existing || reqDraft.lines[reqDraft.lines.length - 1];
       const qty = last && document.getElementById(`rfq-${last.id}`);
       if (qty) { qty.focus(); qty.select(); }
@@ -12495,7 +12560,10 @@
             class="w-14 h-9 shrink-0 text-center rounded-lg border border-slate-300 font-mono font-bold text-sm focus:border-amber-500 outline-none">
           <button onclick="stepReqLine('${l.id}', 1)" class="w-9 h-9 shrink-0 rounded-lg bg-amber-700 text-white flex items-center justify-center" aria-label="Plus one"><i class="ph-bold ph-plus"></i></button>
           <button onclick="removeReqLine('${l.id}')" class="w-8 h-9 shrink-0 text-slate-300 hover:text-rose-500 flex items-center justify-center" aria-label="Remove"><i class="ph-bold ph-trash"></i></button>
-        </div>`).join('') : `<p class="text-xs text-slate-500 text-center py-2">Search above and tap an item to add it.</p>`;
+        </div>`).join('') + `<p class="text-[11px] text-slate-500 text-center" data-req-more><i class="ph-bold ph-plus"></i> Add more above · up to ${REQ_MAX_LINES} items in one request</p>`
+        : `<p class="text-xs text-slate-500 text-center py-2">Search above, or pick from the school’s supplies. Add as many items as you need.</p>`;
+      const label = document.getElementById('rfAddLabel');
+      if (label) label.textContent = lines.length ? `Add more items · ${lines.length} in this request` : 'Add items';
       const n = lines.reduce((s, l) => s + (l.qty > 0 ? 1 : 0), 0);
       document.getElementById('rfSendLabel').textContent = n ? `Send request · ${plural(n, 'item')}` : 'Send request';
     }
@@ -12505,16 +12573,23 @@
       if (!l) return;
       if (key === 'qty') l.qty = Math.max(0, Math.min(9999, parseInt(value, 10) || 0));
       else l[key] = String(value).trim().slice(0, 20) || 'piece';
+      keepReqDraft();
     }
     function stepReqLine(id, d) {
       const l = reqDraft && reqDraft.lines.find(x => x.id === id);
       if (!l) return;
       l.qty = Math.max(1, Math.min(9999, l.qty + d));
       document.getElementById(`rfq-${id}`).value = l.qty;
+      keepReqDraft();
+      renderReqSearch();
+      renderReqBrowse();
     }
     function removeReqLine(id) {
       reqDraft.lines = reqDraft.lines.filter(l => l.id !== id);
+      keepReqDraft();
       renderReqLines();
+      renderReqSearch();
+      renderReqBrowse();
     }
 
     function sendRequest() {
@@ -12534,6 +12609,7 @@
         status: 'pending', createdAt: F.serverTimestamp(), clientAt: Date.now(), via: reqDraft.forOther ? 'custodian' : 'teacher'
       };
       cloudWrite(F.setDoc(ref, data), 'Sending the request');
+      if (!reqDraft.forOther) saveReqCart([]);
       closeRequestForm();
       showToast(navigator.onLine ? (isCustodianDevice() ? `Request from ${me.name} added for review` : 'Request sent to the property custodian')
         : 'Saved · it will be sent when you are back online', 'ph-paper-plane-tilt');
@@ -12737,9 +12813,9 @@
       const open = reqList.filter(r => (pr.requestIds || []).includes(r.id) && r.status === 'pr');
       const plan = prStockInPlan(pr);
       const fresh = plan.filter(x => !x.item).length;
-      if (!await appConfirm(`Items on PR No. ${pr.prNo} were delivered?\n\n` +
+      if (!await appConfirm(`Stock in PR No. ${pr.prNo} without the app’s IAR?\n\nUse this only if the delivery was already inspected and accepted on a paper IAR. Otherwise, tap Delivery came · Inspect: the inspector checks the items first, then you accept them into stock.\n\n` +
         `Adds ${plural(plan.length, 'item')} to your inventory${fresh ? ` (${fresh} new)` : ''}.` +
-        (open.length ? `\n${plural(open.length, 'request')} will show as ready to release (${open.map(r => r.name).join(', ')}).` : ''), { ok: 'Mark delivered', tone: 'good', icon: 'ph-package' })) return;
+        (open.length ? `\n${plural(open.length, 'request')} will show as ready to release (${open.map(r => r.name).join(', ')}).` : ''), { title: 'Stock in without IAR?', ok: 'Stock in', tone: 'warn', icon: 'ph-package' })) return;
       if (pr.deliveredMs) return;
       const { added } = stockInPr(pr);
       const F = cloud.sdk;
@@ -16287,6 +16363,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const list = all.filter(s => (stockFilter === 'all' || stockLevel(s) === stockFilter) && (!q || s.name.toLowerCase().includes(q) || String(s.cat || '').toLowerCase().includes(q)));
       const updated = all.reduce((m, s) => Math.max(m, s.updatedMs || 0), 0);
       const chip = (key, label) => `<button type="button" data-stf="${key}" onclick="setStockFilter('${key}')" aria-pressed="${stockFilter === key}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${stockFilter === key ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-600'}">${label} <span class="opacity-70">${counts[key]}</span></button>`;
+      const cart = loadReqCart(), cartQty = {};
+      cart.forEach(l => { if (l.code) cartQty[l.code] = l.qty; });
       const row = s => {
         const left = stockLeft(s), held = heldQty(s.code), lvl = stockLevel(s);
         const tag = lvl === 'out' ? '<span class="px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold">Out of stock</span>'
@@ -16305,7 +16383,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             </div>
             ${held ? `<p class="mt-1.5 text-[11px] text-slate-500"><i class="ph-bold ph-hourglass-medium"></i> ${held} taken · waiting for the custodian to confirm</p>` : ''}
             <div class="mt-2 grid grid-cols-2 gap-2">
-              <button onclick="requestFromStock('${escapeHTML(s.code)}')" class="h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-paper-plane-tilt"></i> Request</button>
+              ${cartQty[s.code] ? `<button onclick="requestFromStock('${escapeHTML(s.code)}')" data-in-cart="${cartQty[s.code]}" class="h-10 rounded-xl bg-amber-50 border border-amber-300 hover:bg-amber-100 text-xs font-extrabold text-amber-900 flex items-center justify-center gap-1.5"><i class="ph-bold ph-check"></i> ${cartQty[s.code]} in request · +1</button>`
+                : `<button onclick="requestFromStock('${escapeHTML(s.code)}')" class="h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-paper-plane-tilt"></i> Request</button>`}
               <button onclick="openTook('${escapeHTML(s.code)}')" ${left > 0 ? '' : 'disabled'} class="h-10 rounded-xl bg-amber-700 hover:bg-amber-800 disabled:bg-slate-200 disabled:text-slate-500 text-white text-xs font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-hand-grabbing"></i> I took this</button>
             </div>
           </div>`;
@@ -16322,18 +16401,27 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           <div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('low', 'Low')}${chip('out', 'Out')}</div>
           <p class="text-[11px] text-slate-500 px-1">${updated ? `Updated ${escapeHTML(formatTimeAgo(updated))} · ` : ''}from the property custodian’s inventory</p>
         </div>
-        <div id="stList" class="space-y-2">${listHTML}</div>`;
+        <div id="stList" class="space-y-2">${listHTML}</div>
+        ${cart.length ? `<div class="sticky bottom-3 z-10 pt-1" data-req-cart>
+          <button onclick="openRequestForm()" class="w-full h-12 rounded-2xl bg-amber-700 hover:bg-amber-800 text-white text-sm font-extrabold shadow-lg flex items-center justify-center gap-2"><i class="ph-bold ph-paper-plane-tilt"></i> Review &amp; send · ${plural(cart.length, 'item')}</button>
+        </div>` : ''}`;
     }
     function setStockQuery(v) { stockQuery = v; renderTeacherStock(); }
     function setStockFilter(f) { stockFilter = stockFilter === f ? 'all' : f; renderTeacherStock(); }
 
+    // "Request" on a supply adds it to one request (tap again = one more); the bar at the
+    // bottom opens it to check the amounts and send everything at once.
     function requestFromStock(code) {
       const s = stockList.find(x => x.code === code);
       if (!s || !teacherMayAct()) return;
-      openRequestForm();
-      if (!reqDraft) return;
-      reqDraft.lines.push({ id: newReqLineId(), code: s.code, desc: s.name, unit: s.unit || 'piece', qty: 1 });
-      renderReqLines();
+      const lines = loadReqCart();
+      const l = lines.find(x => x.code === s.code);
+      if (!l && lines.length >= REQ_MAX_LINES) { showToast(`Up to ${REQ_MAX_LINES} items in one request · send this one first`, 'ph-info'); return; }
+      if (l) l.qty = Math.min(9999, l.qty + 1);
+      else lines.push({ id: newReqLineId(), code: s.code, desc: s.name, unit: s.unit || 'piece', qty: 1 });
+      saveReqCart(lines);
+      renderTeacherStock();
+      showToast(l ? `${s.name} · ${l.qty} in your request` : `Added to your request · ${plural(lines.length, 'item')}`, 'ph-paper-plane-tilt', { label: 'Review', onClick: () => openRequestForm() });
     }
 
     // "I took this": the amount comes off the stock for everyone at once; the custodian confirms.
@@ -23803,6 +23891,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-request-many', date: 'Nov 2026', title: 'Several items in one request, and inspection before stock in', points: [
+        'Teachers: Request on the Stock tab now adds the supply to one request. Tap it again for one more. Review & send at the bottom sends everything together, up to 50 items.',
+        'In New supply request, search results stay open so you can tap several in a row. Pick from the school\u2019s supplies lists everything in stock. Items you haven\u2019t sent stay on your phone if you close the form.',
+        'Purchase Requests: the button is now Delivery came \u00b7 Inspect, because the inspection comes first and stock in comes after. The old Items delivered button is now a small link, Inspected on paper? Stock in without IAR, for deliveries already inspected on a paper IAR.'
+      ] },
       { id: '2026-11-photos-everyone', date: 'Nov 2026', title: 'Profile photos for everyone', points: [
         'The School Head sees their Google photo at the top of For your approval. The property custodian sees the head\u2019s photo in the School Head panel when confirming them.',
         'Assistant custodians\u2019 photos show in the Assistant panel. The custodian\u2019s and assistants\u2019 own photos show on the More button and in More \u2192 Account.',
