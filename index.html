@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="42790d5c6955">
+  <meta name="app-version" content="053bb337b879">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -15976,6 +15976,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function myMemberStatus() {
       if (!isTeacherDevice()) return 'active';
       if (reqRole.schoolGone) return 'gone';
+      if (!myMember && reqRole.memberDeleted) return 'deleted';
       if (!myMemberLoaded) return 'active';    // not known yet: let it try (the rules decide)
       return myMember ? memberStatus(myMember) : 'pending';
     }
@@ -15983,6 +15984,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const st = myMemberStatus();
       if (st === 'active') return true;
       if (st === 'gone') appAlert(`The property custodian reset ${reqRole.schoolName} and erased its records. Tap Leave, then join again with the new invite link or School ID.`, { title: 'This school was reset', icon: 'ph-arrow-counter-clockwise', tone: 'warn' });
+      else if (st === 'deleted') appAlert(`The property custodian deleted your name from ${reqRole.schoolName}’s list of teachers. If this is a mistake, tap Ask to join again on Supply requests.`, { title: 'Your name was deleted', icon: 'ph-user-minus', tone: 'warn' });
       else if (st === 'removed') appAlert(`The property custodian of ${reqRole.schoolName} removed you from the school. Your past requests and items stay here. If this is a mistake, ask them to add you back.`, { title: 'You were removed', icon: 'ph-user-minus', tone: 'warn' });
       else appAlert(`Your property custodian has not approved you yet. You can send requests and see the school's stock once they tap Approve.`, { title: 'Waiting for approval', icon: 'ph-hourglass-medium', tone: 'info' });
       return false;
@@ -15991,8 +15993,20 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const st = myMemberStatus();
       if (st === 'pending') return `<div id="rqPending" class="rounded-2xl bg-sky-50 border border-sky-200 p-3 flex items-start gap-3"><i class="ph-bold ph-hourglass-medium text-xl text-sky-700 mt-0.5"></i><div class="min-w-0"><p class="text-sm font-extrabold text-slate-900">Waiting for approval</p><p class="text-xs text-slate-600">Your property custodian has to approve you first. Then you can send requests and see what the school has in stock.</p></div></div>`;
       if (st === 'gone') return `<div id="rqGone" class="rounded-2xl bg-amber-50 border border-amber-200 p-3 flex items-start gap-3"><i class="ph-bold ph-arrow-counter-clockwise text-xl text-amber-700 mt-0.5"></i><div class="min-w-0 flex-1"><p class="text-sm font-extrabold text-slate-900">${escapeHTML(reqRole.schoolName)} was reset</p><p class="text-xs text-slate-600">The property custodian erased the school’s records. Leave, then join again with the new invite link or School ID.</p><button onclick="leaveSchool()" class="mt-2 h-9 px-3 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-sign-out"></i> Leave</button></div></div>`;
+      if (st === 'deleted') return `<div id="rqDeleted" class="rounded-2xl bg-amber-50 border border-amber-200 p-3 flex items-start gap-3"><i class="ph-bold ph-user-minus text-xl text-amber-700 mt-0.5"></i><div class="min-w-0 flex-1"><p class="text-sm font-extrabold text-slate-900">Your name was deleted from ${escapeHTML(reqRole.schoolName)}</p><p class="text-xs text-slate-600">The property custodian deleted it from the list of teachers. If this is a mistake, ask to join again: they approve you like the first time.</p><button id="rqJoinAgain" onclick="askToJoinAgain()" class="mt-2 h-9 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-user-plus"></i> Ask to join again</button></div></div>`;
       if (st === 'removed') return `<div id="rqRemoved" class="rounded-2xl bg-amber-50 border border-amber-200 p-3 flex items-start gap-3"><i class="ph-bold ph-user-minus text-xl text-amber-700 mt-0.5"></i><div class="min-w-0"><p class="text-sm font-extrabold text-slate-900">Removed from ${escapeHTML(reqRole.schoolName)}</p><p class="text-xs text-slate-600">You can still see your past requests and items. Ask the property custodian if this is a mistake.</p></div></div>`;
       return '';
+    }
+
+    function askToJoinAgain() {
+      if (!reqRole || !reqRole.memberDeleted) return;
+      reqRole.memberDeleted = false;
+      reqRole.memberSig = null;
+      saveReqRole();
+      myMember = null;
+      upsertMyMember();
+      renderRequestsEverywhere();
+      showToast('Asked to join again · your property custodian will approve you', 'ph-user-plus');
     }
 
     // Teacher: my own card (status, and details the custodian corrected).
@@ -16009,13 +16023,26 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         saveReqRole();
       }
       // No card: first make sure the school still exists (it may have been erased), then
-      // create the card (pending).
-      if (myMember) upsertMyMember();
-      else if (!reqRole.schoolGone) checkSchoolGone().then(gone => { if (!gone) upsertMyMember(); });
+      // create the card (pending). A card this phone had and the custodian deleted ("Delete
+      // entirely") is not made again by itself: the teacher taps Ask to join again.
+      if (myMember) {
+        if (!reqRole.memberSeen || reqRole.memberDeleted) { reqRole.memberSeen = true; reqRole.memberDeleted = false; saveReqRole(); }
+        upsertMyMember();
+      } else if (!reqRole.schoolGone && !reqRole.memberDeleted) checkSchoolGone().then(gone => {
+        if (gone || !reqRole) return;
+        if (reqRole.memberSeen && !(snap.metadata && snap.metadata.fromCache)) {
+          reqRole.memberDeleted = true;
+          saveReqRole();
+          if (notifScope()) addNotif({ title: `Your name was deleted from ${reqRole.schoolName}`, body: 'The property custodian deleted it from the list of teachers · tap Ask to join again if this is a mistake', icon: 'ph-user-minus', tone: 'amber', go: 'teacher-requests' });
+          renderRequestsEverywhere();
+          return;
+        }
+        upsertMyMember();
+      });
       const now = myMemberStatus();
       if (before && myMemberSrv && before !== now && notifScope()) {
         if (now === 'active' && before === 'pending') addNotif({ title: 'You’re in!', body: `${reqRole.schoolName} approved you · you can now send requests and see the stock`, icon: 'ph-user-check', tone: 'emerald', go: 'teacher-requests' });
-        if (now === 'removed') addNotif({ title: `Removed from ${reqRole.schoolName}`, body: 'Your past requests and items stay on your phone', icon: 'ph-user-minus', tone: 'amber', go: 'teacher-requests' });
+        if (now === 'removed') addNotif({ title: `Removed from ${reqRole.schoolName}`, body: myMember && myMember.mergedInto ? `Your records moved to your other account${myMember.mergedIntoName ? ` (${myMember.mergedIntoName})` : ''}. Sign in with that Google account to see them` : 'Your past requests and items stay on your phone', icon: 'ph-user-minus', tone: 'amber', go: 'teacher-requests' });
       }
       syncTeacherStock();
       bkRoleCheck();
@@ -17786,8 +17813,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           <summary class="min-h-11 px-4 flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer"><i class="ph-bold ph-user-minus"></i> Removed from the school · ${gone.length}</summary>
           ${gone.map(m => `
             <div class="px-4 py-2.5 border-t border-slate-100 flex items-center gap-3" data-tvgone="${escapeHTML(m.uid)}">
-              <div class="min-w-0 flex-1"><p class="text-sm font-bold text-slate-800 truncate">${escapeHTML(m.name)}</p><p class="text-[11px] text-slate-500 truncate">${escapeHTML([m.position, m.office].filter(Boolean).join(' · ') || 'Teacher')}${m.removedMs ? ` · removed ${escapeHTML(formatTimeAgo(m.removedMs))}` : ''}</p></div>
-              <button onclick="addBackMember('${escapeHTML(m.uid)}')" class="shrink-0 h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-user-plus"></i> Add back</button>
+              <div class="min-w-0 flex-1"><p class="text-sm font-bold text-slate-800 truncate">${escapeHTML(m.name)}</p><p class="text-[11px] text-slate-500 truncate">${escapeHTML([m.position, m.office].filter(Boolean).join(' · ') || 'Teacher')}${m.mergedInto ? ` · merged into ${escapeHTML(m.mergedIntoName || 'another account')}` : m.removedMs ? ` · removed ${escapeHTML(formatTimeAgo(m.removedMs))}` : ''}</p></div>
+              ${m.mergedInto ? '' : `<button onclick="addBackMember('${escapeHTML(m.uid)}')" class="shrink-0 h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-user-plus"></i> Add back</button>`}
+              ${canDeleteMember(m.uid) ? `<button onclick="deleteMemberEntirely('${escapeHTML(m.uid)}')" data-tvdelete="${escapeHTML(m.uid)}" title="Delete entirely (no records)" aria-label="Delete ${escapeHTML(m.name)} entirely" class="shrink-0 w-9 h-9 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 flex items-center justify-center"><i class="ph-bold ph-trash"></i></button>` : ''}
             </div>`).join('')}
         </details>`;
     }
@@ -17840,6 +17868,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <button id="tvEditMember" onclick="openMemberEdit('${escapeHTML(p.uid)}')" title="Edit name, position or office" aria-label="Edit name, position or office" class="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-600 flex items-center justify-center"><i class="ph-bold ph-pencil-simple"></i></button>
             ${p.removed ? `<button id="tvAddBack" onclick="addBackMember('${escapeHTML(p.uid)}')" title="Add back to the school" aria-label="Add back to the school" class="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 text-emerald-700 flex items-center justify-center"><i class="ph-bold ph-user-plus"></i></button>`
               : `<button id="tvRemoveMember" onclick="removeMember('${escapeHTML(p.uid)}')" title="Remove from the school" aria-label="Remove from the school" class="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-600 flex items-center justify-center"><i class="ph-bold ph-user-minus"></i></button>`}
+            ${canDeleteMember(p.uid) ? `<button id="tvDeleteMember" onclick="deleteMemberEntirely('${escapeHTML(p.uid)}')" title="Delete entirely (no records)" aria-label="Delete entirely (no records)" class="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-600 flex items-center justify-center"><i class="ph-bold ph-trash"></i></button>` : ''}
           </div>` : ''}
           ${!p.uid && !p.equipment.length && p.records.length && connected ? `
           <button id="tvRemoveName" onclick="removeTypedName('${k}')" title="Remove from the list" aria-label="Remove from the list" class="shrink-0 w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-600 flex items-center justify-center"><i class="ph-bold ph-trash"></i></button>` : ''}
@@ -17855,7 +17884,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           <button id="tvClearBtn" onclick="toggleClearance('${k}')" aria-expanded="${teachersClear === p.key}" class="h-10 px-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-seal-check"></i> Clearance</button>
           ${connected ? `<button onclick="openRelease({ teacherUid: ${p.uid ? `'${p.uid}'` : 'null'} })" class="h-10 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-up"></i> Release more</button>` : ''}
           ${connected && p.equipment.length ? `<button id="tvTransfer" onclick="openTransfer({ fromKey: '${k}' })" class="h-10 px-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>` : ''}
-          ${!p.uid && others.length ? `<button id="tvMergeBtn" onclick="openSamePerson('${k}')" class="h-10 px-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-git-merge"></i> Same person as…</button>` : ''}
+          ${(!p.uid && others.length) || (p.uid && connected && !isAssistant() && !String(p.uid).startsWith('sample-') && mergeTargets(p, people).length) ? `<button id="tvMergeBtn" onclick="openSamePerson('${k}')" class="h-10 px-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-git-merge"></i> Same person as…</button>` : ''}
         </div>`;
 
       const condChip = u => {
@@ -18172,13 +18201,15 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     async function openSamePerson(key) {
       const people = accountabilityPeople();
       const p = people.find(x => x.key === key);
-      if (!p || p.uid) return;
+      if (!p) return;
       const last = s => (personKey(s).split(' ').pop() || '');
-      const options = people.filter(x => x.key !== key)
+      const options = (p.uid ? mergeTargets(p, people) : people.filter(x => x.key !== key))
         .sort((a, b) => (last(b.name) === last(p.name)) - (last(a.name) === last(p.name)) || !!b.uid - !!a.uid || a.name.localeCompare(b.name))
         .map(x => ({ value: x.key, label: x.name, badge: personInitials(x.name), tone: x.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500',
           sub: [x.uid ? ([x.position, x.office].filter(Boolean).join(' · ') || 'Has the app') : 'No account · typed name', x.equipment.length && plural(x.equipment.length, 'unit')].filter(Boolean).join(' · ') }));
-      const to = await appPick({ title: `Same person as “${p.name}”?`, message: 'Pick who this really is. Units, slips and history move over; with an account, the items show in their My Items.', options });
+      const to = await appPick({ title: `Same person as “${p.name}”?`, message: p.uid
+        ? 'Two accounts for one teacher (e.g. a personal and a DepEd Google account)? Pick the account to KEEP. Everything under this one moves there: items, slips, requests, reports and books.'
+        : 'Pick who this really is. Units, slips and history move over; with an account, the items show in their My Items.', options });
       if (to) await mergePerson(key, to);
     }
 
@@ -18227,7 +18258,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const people = accountabilityPeople();
       const p = people.find(x => x.key === fromKey);
       const t = people.find(x => x.key === toKey);
-      if (!p || !t || p.uid || p.key === t.key) return;
+      if (!p || !t || p.key === t.key) return;
+      if (p.uid) { if (t.uid) await mergeAccounts(p, t); return; }
       const nU = p.equipment.length, nS = p.records.length;
       const what = [nU && plural(nU, 'unit'), nS && plural(nS, 'slip')].filter(Boolean).join(' and ') || 'The name';
       if (!await appConfirm(`${what} under “${p.name}” move to ${t.name}.${t.uid ? ` ${t.name.split(' ')[0]} sees the items under My Items.` : ''}`,
@@ -18267,6 +18299,151 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       refreshTeacherNameList();
       renderTeachersView();
       showToast(`“${p.name}” is now ${t.name}`, 'ph-git-merge');
+    }
+
+    // ---- Same teacher, two accounts / a teacher with no records ----------------------------
+    // Everything a teacher's account is on: slips (also cancelled ones, and transfers FROM them),
+    // units, requests, reports, and books (loans, issuance, class sheet, a room they keep).
+    function accountRecords(uid) {
+      const none = { rel: [], from: [], units: [], reqs: [], reports: [], loans: [], moves: [], classes: [], places: [], total: 0 };
+      if (!uid) return none;
+      const rels = [...new Map([...releaseAll, ...releaseList].map(r => [r.id, r])).values()];
+      const units = [];
+      items.forEach(item => getUnits(item.code).forEach(unit => { if (unit.toUid === uid) units.push({ item, unit }); }));
+      const a = {
+        rel: rels.filter(r => r.teacherUid === uid),
+        from: rels.filter(r => r.fromUid === uid && r.teacherUid !== uid),
+        units,
+        reqs: reqList.filter(r => r.uid === uid && !r.sample),
+        reports: tReports.filter(x => x.uid === uid && !x.sample),
+        loans: (bk.loans || []).filter(l => l.borrowerUid === uid || l.keeperUid === uid),
+        moves: (bk.moves || []).filter(m => m.toUid === uid),
+        classes: (bk.classes || []).filter(c => c.uid === uid),
+        places: bkPlaces().filter(x => x.keeperUid === uid)
+      };
+      a.total = a.rel.length + a.from.length + a.units.length + a.reqs.length + a.reports.length + a.loans.length + a.moves.length + a.classes.length + a.places.length;
+      return a;
+    }
+    const accountRecordsText = a => [
+      a.units.length && plural(a.units.length, 'unit'), (a.rel.length + a.from.length) && plural(a.rel.length + a.from.length, 'slip'),
+      a.reqs.length && plural(a.reqs.length, 'request'), a.reports.length && plural(a.reports.length, 'report'),
+      (a.loans.length + a.moves.length + a.classes.length + a.places.length) && 'books'
+    ].filter(Boolean);
+    // "Delete entirely": only a card with nothing on it (e.g. a test join, a wrong account).
+    // Everything else is an accountability record: Remove keeps it, Same person as… moves it.
+    function canDeleteMember(uid) {
+      if (!uid || !memberList.some(m => m.uid === uid)) return false;
+      const sample = String(uid).startsWith('sample-');
+      if (!sample && !(isCustodianDevice() && cloud.user && releasesLoaded && !isAssistant())) return false;
+      return accountRecords(uid).total === 0;
+    }
+    async function deleteMemberEntirely(uid) {
+      const m = memberList.find(x => x.uid === uid);
+      if (!m || !canDeleteMember(uid)) return;
+      const first = String(m.name || 'Teacher').split(' ')[0];
+      if (!await appConfirm(`${m.name} has no slips, items, requests, reports or books, so nothing is lost: the name is deleted from the school, not just hidden.\n\nIf they open the app again with this account, they show up as a new join request.`,
+        { title: `Delete ${first} entirely?`, ok: 'Delete', tone: 'danger', icon: 'ph-trash', focusCancel: true })) return;
+      if (String(uid).startsWith('sample-')) {
+        const st = sampleStore();
+        if (st) { st.members = (st.members || []).filter(x => x.uid !== uid); saveSampleStore(st); refreshSample(); }
+      } else {
+        const F = cloud.sdk;
+        const batch = F.writeBatch(cloud.db);
+        batch.delete(F.doc(memberCol(), uid));
+        if (bkLibrarians().includes(uid)) {
+          const list = bkLibrarians().filter(x => x !== uid);
+          batch.update(F.doc(cloud.db, 'schools', reqRole.schoolId), { librarians: list });
+          if (lastSchoolDoc) lastSchoolDoc.librarians = list;
+        }
+        cloudWrite(batch.commit(), 'Deleting the teacher');
+        logHistory('system', `Deleted ${m.name} from Teachers (no records)`);
+      }
+      memberList = memberList.filter(x => x.uid !== uid);
+      if (teachersSel === uid) { teachersSel = null; teachersClear = null; tvLastPerson = null; }
+      onTeamChange();
+      renderRequestsEverywhere();
+      showToast(`${m.name} deleted`, 'ph-trash');
+    }
+    // Accounts a joined teacher can be merged into: other joined accounts, not removed.
+    function mergeTargets(p, people = accountabilityPeople()) {
+      return people.filter(x => x.uid && x.uid !== p.uid && !x.removed && !String(x.uid).startsWith('sample-'));
+    }
+    // One teacher, two accounts: everything moves to the account kept (t); the other card is
+    // marked removed with mergedInto, so signing in with it says where the records went.
+    // Slips keep their numbers and dates (mergedFrom says where they came from).
+    async function mergeAccounts(p, t) {
+      if (!(isCustodianDevice() && cloud.user) || isAssistant()) { showToast('Only the property custodian can merge accounts', 'ph-info'); return; }
+      if ([p.uid, t.uid].some(u => String(u).startsWith('sample-'))) { showToast('Sample teachers can’t be merged', 'ph-info'); return; }
+      const a = accountRecords(p.uid);
+      const what = accountRecordsText(a);
+      const tFirst = t.name.split(' ')[0];
+      const fromCard = memberList.find(m => m.uid === p.uid);
+      if (!await appConfirm(`${what.length ? `${listJoin(what)} under “${p.name}” move to ${t.name}.` : `Nothing is under “${p.name}” yet.`} ${tFirst} sees them on the phone signed in as ${t.name}. Slip numbers and dates stay the same.` +
+        (fromCard ? `\n\n“${p.name}” is then removed from the school (Removed list says “merged into ${t.name}”).` : ''),
+        { title: `Merge “${p.name}” into ${t.name}?`, ok: 'Merge', tone: 'write', icon: 'ph-git-merge' })) return;
+      const F = cloud.sdk;
+      const now = Date.now();
+      const ops = [];
+      const ts = () => F.serverTimestamp();
+      // 1. Slips: to them, and transfers from them
+      const relPatch = { teacherUid: t.uid, teacherName: t.name, position: t.position || '', office: t.office || '', mergedFrom: p.name, mergedFromUid: p.uid };
+      const fromPatch = { fromUid: t.uid, fromName: t.name };
+      const relIds = new Set(a.rel.map(r => r.id).filter(id => !String(id).startsWith('tmp-')));
+      const fromIds = new Set(a.from.map(r => r.id).filter(id => !String(id).startsWith('tmp-')));
+      relIds.forEach(id => ops.push(b => b.update(F.doc(relCol(), id), { ...relPatch, updatedAt: ts() })));
+      fromIds.forEach(id => ops.push(b => b.update(F.doc(relCol(), id), { ...fromPatch, updatedAt: ts() })));
+      const relMap = r => (relIds.has(r.id) ? { ...r, ...relPatch } : fromIds.has(r.id) ? { ...r, ...fromPatch } : r);
+      releaseList = releaseList.map(relMap);
+      releaseAll = releaseAll.map(relMap);
+      // 2. Requests and reports (the rules let the custodian move them, stamped mergedFrom = old uid)
+      const reqPatch = { uid: t.uid, name: t.name, position: t.position || '', office: t.office || '', mergedFrom: p.uid };
+      const repPatch = { uid: t.uid, name: t.name, mergedFrom: p.uid };
+      const reqIds = new Set(a.reqs.map(r => r.id)), repIds = new Set(a.reports.map(x => x.id));
+      reqIds.forEach(id => ops.push(b => b.update(F.doc(reqCol(), id), { ...reqPatch, updatedAt: ts() })));
+      repIds.forEach(id => ops.push(b => b.update(F.doc(tReportCol(), id), { ...repPatch, updatedAt: ts() })));
+      reqList = reqList.map(r => (reqIds.has(r.id) ? { ...r, ...reqPatch } : r));
+      tReports = tReports.map(x => (repIds.has(x.id) ? { ...x, ...repPatch } : x));
+      // 3. The librarian role goes with them
+      if (bkLibrarians().includes(p.uid)) {
+        const list = [...new Set(bkLibrarians().map(u => (u === p.uid ? t.uid : u)))];
+        ops.push(b => b.update(F.doc(cloud.db, 'schools', reqRole.schoolId), { librarians: list }));
+        ops.push(b => b.update(F.doc(memberCol(), t.uid), { librarian: true, librarianMs: now, updatedAt: ts() }));
+        if (lastSchoolDoc) lastSchoolDoc.librarians = list;
+        memberList = memberList.map(m => (m.uid === t.uid ? { ...m, librarian: true, librarianMs: now } : m));
+      }
+      for (let i = 0; i < ops.length; i += 400) {
+        const batch = F.writeBatch(cloud.db);
+        ops.slice(i, i + 400).forEach(f => f(batch));
+        cloudWrite(batch.commit(), 'Merging');
+      }
+      // 4. Books: loans, issuance lists, the rooms they keep, their class sheet
+      a.loans.forEach(l => bkPatch('loans', l.id, {
+        ...(l.borrowerUid === p.uid ? { borrowerUid: t.uid, borrowerName: t.name.slice(0, 80) } : {}),
+        ...(l.keeperUid === p.uid ? { keeperUid: t.uid, keeperName: t.name.slice(0, 80) } : {})
+      }));
+      a.moves.forEach(m => bkPatch('bookMoves', m.id, { toUid: t.uid, teacher: t.name.slice(0, 80) }));
+      if (a.places.length) bkPutMeta({ places: bkPlaces().map(x => (x.keeperUid === p.uid ? { ...x, keeperUid: t.uid, keeperName: t.name } : x)) });
+      a.classes.forEach(c => {
+        const sy = c.sy || String(c.id).split('_')[0];
+        const id = `${sy}_${t.uid}`;
+        if ((bk.classes || []).some(x => x.id === id)) return;   // they already have a sheet for that year: keep both
+        const { createdAt, updatedAt, ...rest } = c;
+        bkPut('classBooks', { ...rest, id, sy, uid: t.uid, name: t.name.slice(0, 80), mergedFrom: p.uid }, true);
+        bk.classes = bk.classes.filter(x => x.id !== c.id);
+        { const b = F.writeBatch(cloud.db); b.delete(F.doc(bkCol('classBooks'), c.id)); cloudWrite(b.commit(), 'Merging'); }
+      });
+      // 5. Units in Inventory, then the old card
+      a.units.forEach(({ unit }) => { unit.to = t.name; unit.toUid = t.uid; });
+      if (fromCard) patchMember(p.uid, { status: 'removed', removedMs: now, mergedInto: t.uid, mergedIntoName: t.name.slice(0, 80), mergedMs: now, ...(fromCard.librarian ? { librarian: false, librarianMs: now } : {}) });
+      saveStateWith({ summary: { kind: 'release', text: `Merged account “${p.name}” into ${t.name}${what.length ? ` (${listJoin(what)})` : ''}`, track: a.units.length > 0 } });
+      teachersSel = t.key;
+      teachersClear = null;
+      tvLastPerson = null;
+      refreshTeacherNameList();
+      onTeamChange();
+      renderTeachersView();
+      renderRequestsEverywhere();
+      showToast(`“${p.name}” merged into ${t.name}`, 'ph-git-merge');
     }
 
     // ---- "ICS not confirmed for N days" → a bell notification on the teacher's phone ----------
@@ -22595,7 +22772,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (!isTeacherDevice()) return;
       notifCheck('releases', myReleases.map(r => ({
         key: 'rl:' + r.id, sig: 'seen',
-        make: () => r.sameHolder ? null : (r.kind === 'ITR' || r.kind === 'PTR')
+        make: () => r.sameHolder || r.mergedFromUid ? null : (r.kind === 'ITR' || r.kind === 'PTR')
           ? { title: 'Items transferred to you', body: `${r.kind} ${r.no || ''}${r.fromName ? ` · from ${r.fromName}` : ''} · ${relNotifSummary(r)} · tap Received when you have them`, icon: 'ph-arrows-left-right', tone: 'teal', go: 'teacher-items' }
           : (isIssueKind(r.kind) || r.kind === 'RIS')
           ? { title: 'New items released to you', body: `${r.kind} ${r.no || ''} · ${relNotifSummary(r)} · tap Received when you have them`, icon: 'ph-hand-arrow-down', tone: 'teal', go: 'teacher-items' }
@@ -23346,6 +23523,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-teacher-merge', date: 'Nov 2026', title: 'Merge a teacher\u2019s two accounts, delete unused names', points: [
+        'A teacher who joined twice (for example with a personal and a DepEd Google account): open the account you don\u2019t want on the Teachers page, tap Same person as\u2026 and pick the account to keep. Their items, slips, requests, reports and books move there. The slip numbers and dates stay the same.',
+        'Delete entirely (the bin icon) removes a teacher with no records at all, such as a test join or a wrong account. It is deleted from the school, not just hidden. Teachers with records are kept for audit: use Remove or Same person as\u2026 instead.',
+        'If your name is deleted while you are signed in, your phone says so and shows Ask to join again.'
+      ] },
       { id: '2026-11-follow-ups', date: 'Nov 2026', title: 'Ask back, partly supplied, and more reminders', points: [
         'Ask back: on the Teachers page, tap Ask back on a unit and add why or by when. The teacher gets a notification and sees it on My Items, with the Return button.',
         'Teachers are told when a request is approved or supplied with fewer items than they asked for, for example Supplied 3 of 5 box Chalk.',

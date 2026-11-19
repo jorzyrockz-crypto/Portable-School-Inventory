@@ -206,7 +206,10 @@ service cloud.firestore {
           && (resource.data.uid == request.auth.uid || canView(schoolId));
 
         // Custodian: review, approve, decline, put on a PR. Teacher: cancel while pending.
+        // Same teacher, two accounts: the custodian moves the request to the account they keep
+        // (stamped mergedFrom = the old account).
         allow update: if (isStaff(schoolId) && request.resource.data.uid == resource.data.uid)
+          || (isCustodian(schoolId) && request.resource.data.get('mergedFrom', '') == resource.data.uid)
           || (signedIn() && resource.data.uid == request.auth.uid
               && resource.data.status == 'pending'
               && request.resource.data.status == 'cancelled'
@@ -316,10 +319,11 @@ service cloud.firestore {
           || (isCustodian(schoolId)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'position', 'office', 'status',
                                                                                  'approvedMs', 'removedMs', 'editedMs', 'by', 'updatedAt',
-                                                                                 'librarian', 'librarianMs'])
+                                                                                 'librarian', 'librarianMs', 'mergedInto', 'mergedIntoName', 'mergedMs'])
             && request.resource.data.get('status', 'active') in ['pending', 'active', 'removed']
             && cardOk());
-        allow delete: if isCustodian(schoolId);   // Reset app only
+        // Reset app, and "Delete entirely" for a teacher with no records at all.
+        allow delete: if isCustodian(schoolId);
       }
 
       // The current invite link's code (the school document only says inviteOnly: true).
@@ -659,7 +663,8 @@ service cloud.firestore {
           && request.resource.data.units is list && request.resource.data.units.size() <= 50;
         allow get, list: if signedIn()
           && (resource.data.uid == request.auth.uid || canView(schoolId));
-        allow update: if isStaff(schoolId) && request.resource.data.uid == resource.data.uid;
+        allow update: if (isStaff(schoolId) && request.resource.data.uid == resource.data.uid)
+          || (isCustodian(schoolId) && request.resource.data.get('mergedFrom', '') == resource.data.uid);
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
     }
