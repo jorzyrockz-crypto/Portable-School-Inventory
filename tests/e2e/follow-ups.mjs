@@ -29,7 +29,7 @@ try {
   await waitNode(() => (reqs(sid).find(r => r.id === rq) || {}).status === 'approved');
   await until(t, () => loadNotifs().items.some(n => /approved, with fewer items/.test(n.title)), 'Ana: approved with fewer items', 10000);
   check(await notified(t, /Approved 3 of 5/), 'Ana: “approved, with fewer items · Approved 3 of 5 …”');
-  await ev(a, id => { openReleaseFromRequest(id); confirmRelease(); closeRelease(); }, rq);
+  await ev(a, id => { openReleaseFromRequest(id); __fillSerials(); confirmRelease(); closeRelease(); }, rq);
   await waitNode(() => (reqs(sid).find(r => r.id === rq) || {}).status === 'released');
   const r1 = reqs(sid).find(r => r.id === rq);
   check(r1.short && r1.short.length === 1 && r1.short[0].asked === 5 && r1.short[0].got === 3, `request: short ${JSON.stringify(r1.short)}`);
@@ -42,7 +42,7 @@ try {
 
   out('3 Ask back (T4)');
   const equip = await ev(a, () => { const i = items.find(x => relIsEquip(x) && relMax(x) >= 3 && !isPPE(x)); return { code: i.code, name: i.name }; });
-  await ev(a, (uid, code) => { openRelease({ teacherUid: uid, lines: [{ code, qty: 2 }], purpose: 'Classroom use' }); confirmRelease(); closeRelease(); }, anaUid, equip.code);
+  await ev(a, (uid, code) => { openRelease({ teacherUid: uid, lines: [{ code, qty: 2 }], purpose: 'Classroom use' }); __fillSerials(); confirmRelease(); closeRelease(); }, anaUid, equip.code);
   await waitNode(() => rel(sid).some(r => r.teacherUid === anaUid && r.kind === 'ICS'));
   const ics = rel(sid).find(r => r.teacherUid === anaUid && r.kind === 'ICS');
   const [u1, u2] = ics.lines[0].units;

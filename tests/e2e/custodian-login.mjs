@@ -73,7 +73,7 @@ try {
   check(await ev(a, () => !cloud.auth.currentUser), 'Use a different account signs out');
 
   out('4 email: Create account needs the School ID');
-  const b = await openPhone('custodian-email', backend);
+  const b = await openPhone('custodian-email', backend, { tour: true });
   await b.goto(BASE_URL, { waitUntil: 'networkidle0' });
   await toCustodian(b);
   await ev(b, () => { rcEmail.value = 'ben@deped.gov.ph'; rcPass.value = 'secret12'; rcSchool.value = 'Rizal ES'; rcSchoolNo.value = ''; });
@@ -85,6 +85,18 @@ try {
   await b.click('#rcCreate');
   await until(b, () => reqRole && reqRole.role === 'custodian', 'ben in', 8000);
   check(await ev(b, () => reqRole.schoolName) === '120001 - Rizal ES' && (backend.store.get('schoolIds/120001') || {}).hint === 'b***n@deped.gov.ph · email and password', 'email account: school + masked hint “email and password”');
+
+  out('4b welcome tour: Invite people now');
+  await until(b, () => !document.getElementById('tourModal').classList.contains('hidden'), 'tour', 8000);
+  await ev(b, () => tourNext());
+  await until(b, () => !!document.querySelector('[data-tour-pick="invite"]'), 'add-items step');
+  check(await ev(b, () => /Invite people now/.test(document.querySelector('[data-tour-pick="invite"]').textContent)), 'Add your items offers “Invite people now”');
+  await b.click('[data-tour-pick="invite"]');
+  check(/Invite now/.test(await ev(b, () => document.getElementById('tourNext').textContent)), 'picking it turns the button into “Invite now”');
+  await b.click('#tourNext');
+  await until(b, () => !document.getElementById('inviteModal').classList.contains('hidden'), 'invite sheet', 6000);
+  check(await ev(b, () => document.getElementById('tourModal').classList.contains('hidden') && !document.getElementById('inviteModal').classList.contains('hidden') && localStorage.getItem('cp_welcome_tour_v1') === 'done'), 'Invite people opens right away; the tour is done');
+  await ev(b, () => closeInvite());
 
   out('5 a Google account left signed in from another role is not reused');
   const c = await openPhone('shared-phone', backend);

@@ -47,7 +47,7 @@ so the app stays the local-only inventory with no sign-in screen.
 After a property custodian's first sign-in (a new school), a three-step welcome replaces the bare invite sheet:
 
 1. **Your school:** school name, the custodian's name and position, and the school head. These go on every printed form.
-2. **Add your items:** import Excel/CSV, scan a printed ICS, pick from the catalog, or look around with sample data. The choice opens when the tour ends.
+2. **Add your items:** import Excel/CSV, scan a printed ICS, pick from the catalog, or look around with sample data. The choice opens when the tour ends. Or pick **Invite people now**: **Invite now** ends the tour and opens **Invite people** straight away (teachers, School Head, assistant, librarian), and items can be added later from More.
 3. **Invite your teachers:** the QR code and school code, **Share link** and **Print poster**: an A4 poster with a big QR code and three steps for the faculty room (also in the invite sheet).
 
 It is shown once per phone. **More → Welcome tour** opens it again.
@@ -268,6 +268,13 @@ Once a School Head is confirmed, more goes to their phone than PRs.
 - **RIS approval (optional).** In **More → School Head** (the School Head panel), turn on **Supply requests (RIS) need approval too**. After you approve a teacher's request, it waits for the head (*Waiting for the School Head's approval*), and **Release** stays closed until they approve. If they **Return** it with a note, change it and tap **Send again**. The RIS then prints their name under *Approved by*, with *Approved in the app*. Requests a teacher already took ("I took this") and releases without a request don't wait.
 - **Write-offs.** **Relieve** (lost property) and **Remove unit** with *keep it under Written off* go to the head first. Once they approve, the unit leaves the inventory on the device that sent it (or on any custodian device a day later). It stays under *Written off*, and the reference notes *approved by …*. If they return it, the unit stays and shows their note. With no head in the app, these work as before (signed on paper).
 - **The count report.** See *Year-end & reminders* below.
+- **Needs your attention** (top of their screen): lost units with days left to apply for relief, the count's progress (and the year-end report due date), ICS / PAR older than 3 years, slips teachers haven't marked Received, overdue library books, supplies out of stock, approved PRs not delivered after 30 days, items waiting for the head more than 3 days, and a note when the summary is more than 3 days old.
+- **Waiting cards** show *Waiting N days*; after 3 days the head gets one reminder per item. **Approve all** approves the waiting Purchase Requests and supply requests (RIS) together after one confirm; write-offs and count reports are left for a look each. **Recently decided** shows the latest 5 and searches all of the head's decisions (PR no., item, purpose, note).
+- **Cards:** Purchase Requests approved this month / quarter / year (by approval date), delivered, waiting and the head's average time to decide (from the PRs and approvals the head already reads); condition of tagged units with the repair and unserviceable value (waiting for disposal, IIRUP); 12-month bars of supplies issued (RIS ₱) and property value (recorded at the start of each month, `valueTrend` in the school info); who uses the most supplies this month / this year (top items and people).
+- **Who holds what:** tap a name to see their units (property no., serial no., ICS / PAR, condition, lost) and **Print their list** for a clearance. Up to 2,500 units in all are carried in the summary.
+- **Print the monthly summary:** one page with the property figures, PRs approved this month, supplies issued, what needs attention and who holds the most.
+- **Laptop / landscape tablet:** two columns (attention, waiting and decisions on the left; the school's property on the right). Phones are unchanged.
+- Everything comes from `dashboard/summary` (one document the custodian's devices keep current) and the PRs and approvals the head already reads, so it adds no reads. No rules change.
 - **Rules.** These items are kept in `approvals`. Only the confirmed head approves or returns one, and only while it is waiting. The custodian and assistants can send, send again or cancel, never decide. A teacher can't read them.
 
 ### Lost property
@@ -566,6 +573,8 @@ Teachers who join with the invite link are listed automatically (their phone sen
 - **Equipment worth ₱50,000 or more** (PPE under COA Circular 2022-004) goes on a **PAR** (Property Acknowledgment Receipt, Appendix 71) instead. One release can create an ICS and a PAR; each line says which slip it goes on, and the unit shows *With Ana Reyes · PAR 2026-11-001*.
 - Numbers run per month (`2026-11-001`, …), separately for RIS, ICS, PAR, ITR, PTR and RRSP. The slips print from the done screen.
 - Someone without an account (e.g. utility staff) can be typed in. The slip still prints.
+- **Useful life** on each equipment line: what you type (e.g. `7` becomes *7 years*) is saved on every unit released and prints on the ICS. The box starts with the units' useful life if they all have the same one.
+- **Serial numbers:** items that have them need the serial number of each unit before **Release** goes through. A number typed twice, or already on another unit of the item, is refused. *Has serial numbers* is ticked for ICT equipment, audio-visual equipment and consumer electronics, or when a unit of the item already has a serial number. Untick it for items without one; the choice is remembered for that item (`serials` in its saved state).
 
 **Items delivered** on a Purchase Request now adds the items to the stock in Inventory. Items that weren't in Inventory yet are added as new items. The requests then show *Ready* to the teacher until you release them.
 
@@ -818,6 +827,9 @@ node photos-everyone.mjs              # photos for every user: custodian/assista
 node request-many.mjs                 # several items in one request: Stock tab Request adds to one request + Review & send bar (kept after reload), multi-tap search results, Pick from the school's supplies, 50-item cap, cleared on send
 node teacher-return.mjs               # Continue with Google on the Teacher and School Head sign-in: back to the school with no code (same phone, new phone, pick among schools), private teacherSchools list, Leave explains, school name typed in the code box
 node custodian-login.mjs              # custodian sign-in: school found by account (not name), new school set up once by 6-digit School ID, ID already set up refused with a masked account hint, Use a different account, last account on this phone, no reuse of a Google account left signed in
+node teacher-remove.mjs             # Remove from the school / Add back with the teacher's page open (laptop and phone): page, list and Removed list change at once, no refresh; the teacher's phone follows
+node release-serials.mjs            # Release form: Useful life per equipment line (saved on units, the release and the ICS), serial numbers required for items that have them (missing, typed twice, already on another unit), Has serial numbers untick remembered per item
+node head-dashboard.mjs             # School Head screen: Needs your attention, Waiting N days + reminder, Approve all, search decisions, spending, condition, trends, supply usage, who holds what (tap, print), monthly summary print, two columns on a laptop
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

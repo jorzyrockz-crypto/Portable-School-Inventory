@@ -58,7 +58,7 @@ try {
   await until(t, () => reqRole && reqRole.role === 'teacher' && myMemberLoaded && myMemberStatus() === 'active', 'teacher joined', 8000);
   const anaUid = await ev(t, () => cloud.user.uid);
   await until(a, uid => teacherRoster().some(x => x.uid === uid && x.joined), 'Ana in the roster', 8000, anaUid);
-  await ev(a, (uid, code) => { openRelease({ teacherUid: uid, lines: [{ code, qty: 1 }], purpose: 'Grade 4 classroom' }); confirmRelease(); closeRelease(); }, anaUid, equip.code);
+  await ev(a, (uid, code) => { openRelease({ teacherUid: uid, lines: [{ code, qty: 1 }], purpose: 'Grade 4 classroom' }); __fillSerials(); confirmRelease(); closeRelease(); }, anaUid, equip.code);
   await waitNode(() => rel().some(r => r.kind === 'ICS' && r.teacherUid === anaUid), 'ICS in the cloud');
   const ics1 = rel().find(r => r.kind === 'ICS' && r.teacherUid === anaUid);
   check(ics1.custName === 'Rhealyn B. Nadado' && ics1.custDesig === 'Administrative Officer II', 'a new slip keeps the name of the custodian who signed it');

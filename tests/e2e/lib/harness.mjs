@@ -76,6 +76,19 @@ export async function openPhone(name, backend, { width = 390, height = 844, dial
     HTMLAnchorElement.prototype.click = function () { if (this.download) window.__downloads.push(this.download); };
     URL.createObjectURL = b => orig.call(URL, b);
   });
+  // Release asks for the serial number of each unit of items that have them (laptops,
+  // projectors…). Suites about other things fill them in with __fillSerials() before Release.
+  await page.evaluateOnNewDocument(() => {
+    let n = 0;
+    window.__fillSerials = () => {
+      if (typeof releaseDraft === 'undefined' || !releaseDraft) return;
+      releaseDraft.lines.forEach(l => {
+        const item = items.find(i => i.code === l.code);
+        if (!item || !l.equip || !l.hasSerials) return;
+        relSerialList(l, item).forEach(x => { if (!x.value.trim()) setRelSerial(l.code, x.key, `SN-T${Date.now().toString(36).toUpperCase()}-${++n}`); });
+      });
+    };
+  });
   // The welcome tour (first custodian sign-in) would cover the screen in every suite; only
   // suites that test it pass { tour: true }.
   if (!tour) await page.evaluateOnNewDocument(() => { try { if (!localStorage.getItem('cp_welcome_tour_v1')) localStorage.setItem('cp_welcome_tour_v1', 'test'); } catch (e) {} });

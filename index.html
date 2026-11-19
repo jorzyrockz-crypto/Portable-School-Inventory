@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="0a5d57cfcf58">
+  <meta name="app-version" content="d85b66d8896b">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -200,6 +200,9 @@
     @media (pointer: coarse) { .rv-arrows { display: none !important; } }
     @media screen and (min-width: 1024px) and (not (pointer: coarse)), screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1000px) and (min-height: 600px) {
       html:not(.no-tabs) body { padding-left: var(--side-w); padding-bottom: 2.5rem; }
+      #viewHead { max-width: 72rem; }
+      #hdBody.hd-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 1.25rem; align-items: start; }
+      #hdBody.hd-two > * { margin-top: 0 !important; }
       html:not(.no-tabs) body > header { margin-left: calc(-1 * var(--side-w)); }
       html body > header > div.max-w-4xl { max-width: none; padding-left: 1.5rem; padding-right: 1.5rem; }
       #tabBar { top: var(--hdr-h, 3.75rem); bottom: 0; right: auto; width: var(--side-w); padding: 1rem 0.75rem; overflow-y: auto;
@@ -405,6 +408,7 @@
     .pr-in { display: block; width: 100%; height: 2.5rem; margin-top: 0.25rem; padding: 0 0.75rem; border: 1px solid #cbd5e1;
       border-radius: 0.75rem; font-size: 0.875rem; font-weight: 500; color: #0f172a; text-transform: none; letter-spacing: normal; outline: none; background: #fff; }
     .pr-in:focus { border-color: #6366f1; }
+    input.rel-sn-empty { border-color: #fcd34d; background: #fffbeb; }
     .pr-form { font-family: Arial, Helvetica, sans-serif; color: #000; font-size: 10.5pt; max-width: 190mm; margin: 0 auto; }
     .pr-appx { text-align: right; font-style: italic; font-size: 10pt; }
     .pr-form h1 { text-align: center; font-size: 14pt; font-weight: 700; margin: 4pt 0 10pt; letter-spacing: 0.5pt; }
@@ -444,6 +448,7 @@
       html.dark .cat-row:not(.is-on) .cat-step .cat-qty { color: #64748b; }
       html.dark .more-item:hover, html.dark .more-item:active { background: #1c2638; }
       html.dark .pr-in { background: #0e1626; border-color: #334155; color: #f1f5f9; }
+      html.dark input.rel-sn-empty { border-color: #b45309; background: #2a1d0a; }
       html.dark :where(input:not([type=checkbox], [type=radio], [type=range], [type=color]), select, textarea) { background-color: #0e1626; }
       html.dark .bg-\[\#eef3fb\] { background-color: #1b2747; }
       /* QR codes must stay dark-on-white to scan */
@@ -11769,9 +11774,9 @@
           <details id="rcNewBox" class="rounded-xl border border-slate-200 px-3 py-2 [&[open]]:pb-3">
             <summary class="cursor-pointer text-xs font-bold text-slate-600 py-1">Setting up a new school? (first time only)</summary>
             <p class="mt-1 text-[11px] text-slate-500 leading-snug">Each school is set up once, by its DepEd School ID. Already set up? Just sign in above with the same account.</p>
-            <div class="mt-2 grid grid-cols-[7.5rem_1fr] gap-2">
-              <input id="rcSchoolNo" type="text" inputmode="numeric" maxlength="6" value="${startNo}" placeholder="School ID" aria-label="6-digit School ID" class="h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium tracking-wider focus:border-brand-500 outline-none">
-              <input id="rcSchool" type="text" value="${school}" placeholder="School name" aria-label="School name" class="h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
+            <div class="mt-2 grid grid-cols-[6.5rem_minmax(0,1fr)] gap-2">
+              <input id="rcSchoolNo" type="text" inputmode="numeric" maxlength="6" value="${startNo}" placeholder="School ID" aria-label="6-digit School ID" class="w-full min-w-0 h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium tracking-wider focus:border-brand-500 outline-none">
+              <input id="rcSchool" type="text" value="${school}" placeholder="School name" aria-label="School name" class="w-full min-w-0 h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
             </div>
           </details>
         </div>
@@ -11825,9 +11830,9 @@
           <button id="nsOther" onclick="custodianOtherAccount()" class="w-full h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-user-switch"></i> Use a different account</button>
           <div class="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider text-slate-500"><span class="flex-1 h-px bg-slate-200"></span>or set up a new school<span class="flex-1 h-px bg-slate-200"></span></div>
           <p class="text-[11px] text-slate-500 leading-snug">Only if your school is not in CustodianPro yet. The School ID makes sure it is set up once.</p>
-          <div class="grid grid-cols-[7.5rem_1fr] gap-2">
-            <input id="nsNo" type="text" inputmode="numeric" maxlength="6" value="${escapeHTML(pre.no || '')}" placeholder="School ID" aria-label="6-digit School ID" class="h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium tracking-wider focus:border-brand-500 outline-none">
-            <input id="nsName" type="text" value="${escapeHTML(String(pre.name || '').replace(/^\d{6}\s*[-–·]?\s*/, ''))}" placeholder="School name" aria-label="School name" class="h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
+          <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-2">
+            <input id="nsNo" type="text" inputmode="numeric" maxlength="6" value="${escapeHTML(pre.no || '')}" placeholder="School ID" aria-label="6-digit School ID" class="w-full min-w-0 h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium tracking-wider focus:border-brand-500 outline-none">
+            <input id="nsName" type="text" value="${escapeHTML(String(pre.name || '').replace(/^\d{6}\s*[-–·]?\s*/, ''))}" placeholder="School name" aria-label="School name" class="w-full min-w-0 h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
           </div>
           <p id="nsError" class="hidden text-xs font-semibold text-rose-600 leading-snug"></p>
           <button id="nsCreate" onclick="custodianCreateSchool()" class="w-full h-11 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-800 text-sm font-bold flex items-center justify-center gap-2"><i class="ph-bold ph-plus-circle"></i> Set up this school</button>
@@ -15166,20 +15171,84 @@
       const low = stock.filter(i => i.qty > 0 && i.minQty > 0 && i.qty <= i.minQty).map(i => ({ n: i.name, q: i.qty, u: i.unit || '' }));
       const out = stock.filter(i => i.qty <= 0 && userState[i.code] && userState[i.code].qty !== undefined).map(i => ({ n: i.name, u: i.unit || '' }));
       const units = allTaggedUnits();
-      const holders = accountabilityPeople().filter(p => p.equipment.length)
-        .map(p => ({ n: p.name, p: p.position || '', u: p.equipment.length, v: Math.round(p.value * 100) / 100 }))
-        .sort((a, b) => b.v - a.v || a.n.localeCompare(b.n));
+      const people = accountabilityPeople();
+      // Who holds what, each person with their units (the head taps a name: clearances). At most
+      // DASH_UNIT_BUDGET units in all, so the summary stays one small document.
+      let budget = DASH_UNIT_BUDGET;
+      const holding = people.filter(p => p.equipment.length);
+      const holders = holding.map(p => ({ p, v: round2(p.value) }))
+        .sort((a, b) => b.v - a.v || a.p.name.localeCompare(b.p.name)).slice(0, 80)
+        .map(({ p, v }) => {
+          const e = p.equipment.slice(0, Math.max(0, Math.min(100, budget))).map(({ item, unit }) => ({
+            no: unit.no || '', n: String(item.name || '').slice(0, 80), s: String(unit.serial || '').slice(0, 60), c: unit.cond || 'S',
+            v: round2(unit.cost > 0 ? unit.cost : item.price), k: unitDocLabel(unit), ...(unit.lostMs ? { l: 1 } : {})
+          }));
+          budget -= e.length;
+          return { n: p.name, p: p.position || '', u: p.equipment.length, v, e };
+        });
       const lost = units.filter(x => x.unit.lostMs).map(x => ({ n: x.item.name, no: x.unit.no || '', w: unitHolder(x.unit) || '', d: localISODate(new Date(reliefDueMs(x.unit))) }));
       const reqs = reqList.filter(r => !r.sending);
+      const unitCost = x => (x.unit.cost > 0 ? x.unit.cost : Number(x.item.price) || 0);
+      const condValue = c => round2(units.filter(x => x.unit.cond === c).reduce((n, x) => n + unitCost(x), 0));
+      const period = countPeriod();
+      const live = units.filter(x => !x.unit.lostMs);
+      const renew = icsRenewDue();
+      const unconf = people.filter(p => p.toConfirm.length);
+      const since = unconf.reduce((m, p) => Math.min(m, p.oldest || Infinity), Infinity);
       return {
-        v: 1, items: inInv.length, value: Math.round(inInv.reduce((n, i) => n + (Number(i.price) || 0) * (i.qty || 0), 0) * 100) / 100,
+        v: 2, items: inInv.length, value: Math.round(inInv.reduce((n, i) => n + (Number(i.price) || 0) * (i.qty || 0), 0) * 100) / 100,
         units: units.length, held: units.filter(x => x.unit.to || x.unit.toUid).length,
         low: low.slice(0, 40), out: out.slice(0, 40), nLow: low.length, nOut: out.length,
-        holders: holders.slice(0, 80), nHolders: holders.length,
+        holders, nHolders: holding.length,
         repair: units.filter(x => x.unit.cond === 'R').length, unserv: units.filter(x => x.unit.cond === 'U').length, lost: lost.slice(0, 40),
+        rv: condValue('R'), uv: condValue('U'),
         req: { pending: reqs.filter(r => (r.status || 'pending') === 'pending').length, approved: reqs.filter(r => r.status === 'approved').length, pr: reqs.filter(r => r.status === 'pr').length },
+        cnt: { label: period.label, asAt: period.asAt, open: !!period.open, start: period.start, done: live.filter(x => (x.unit.seen || 0) >= period.start).length, of: live.length },
+        renew: { u: renew.length, p: new Set(renew.map(x => personId(x.unit.toUid, x.unit.to))).size },
+        unconf: { s: unconf.reduce((n, p) => n + p.toConfirm.length, 0), p: unconf.length, since: since === Infinity ? 0 : since },
+        trend: dashTrend(), use: dashUse(),
         ...(bkDashSummary() ? { books: bkDashSummary() } : {})
       };
+    }
+    const DASH_UNIT_BUDGET = 2500;
+    // The last 12 months, oldest first: ['2025-12', …, '2026-11'].
+    function dashMonths(n = 12, now = new Date()) {
+      const out = [];
+      for (let i = n - 1; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`); }
+      return out;
+    }
+    const dashRis = () => releaseList.filter(r => r.kind === 'RIS' && r.date && !r.sending);
+    const relAmount = r => Number(r.total) || relTotal(r.lines || []);
+    // Supplies issued (RIS, ₱) per month for the trend bars.
+    function dashTrend() {
+      const months = new Set(dashMonths());
+      const ris = {};
+      dashRis().forEach(r => { const m = r.date.slice(0, 7); if (months.has(m)) ris[m] = round2((ris[m] || 0) + relAmount(r)); });
+      return { ris };
+    }
+    // Who uses the most supplies: top items and people this month and this year (RIS).
+    function dashUse() {
+      const ym = localISODate().slice(0, 7), y = ym.slice(0, 4);
+      const agg = list => {
+        const byItem = new Map(), byPerson = new Map();
+        list.forEach(r => {
+          (r.lines || []).forEach(l => {
+            const k = `${l.code || l.desc}|${l.unit || ''}`;
+            const x = byItem.get(k) || { n: String(l.desc || '').slice(0, 80), u: l.unit || '', q: 0, a: 0 };
+            x.q += Number(l.qty) || 0; x.a = round2(x.a + (Number(l.qty) || 0) * (l.unitCost || 0));
+            byItem.set(k, x);
+          });
+          const pk = personId(r.teacherUid, r.teacherName);
+          const x = byPerson.get(pk) || { n: String(r.teacherName || '').slice(0, 80), p: r.position || '', a: 0, k: 0 };
+          x.a = round2(x.a + relAmount(r)); x.k += 1;
+          byPerson.set(pk, x);
+        });
+        const people = [...byPerson.values()];
+        return { items: [...byItem.values()].sort((a, b) => b.a - a.a || b.q - a.q).slice(0, 8), people: people.sort((a, b) => b.a - a.a).slice(0, 8),
+          total: round2(people.reduce((n, x) => n + x.a, 0)), slips: list.length };
+      };
+      const ris = dashRis();
+      return { m: ym, mo: agg(ris.filter(r => r.date.slice(0, 7) === ym)), yr: agg(ris.filter(r => r.date.slice(0, 4) === y)) };
     }
     function scheduleDash(ms = 4000) {
       if (!isCustodianDevice() || isViewOnly() || !cloud.user || !currentHead()) return;
@@ -15189,6 +15258,14 @@
     function publishDash() {
       if (!isCustodianDevice() || isViewOnly() || !cloud.user || !currentHead() || !invReady || !releasesLoaded) return;
       const body = dashSummary();
+      // Property value at the start of each month (kept with the school info; one save a month)
+      const ym = localISODate().slice(0, 7);
+      if (!schoolInfo.valueTrend || schoolInfo.valueTrend[ym] == null) {
+        const vt = { ...(schoolInfo.valueTrend || {}), [ym]: body.value };
+        schoolInfo.valueTrend = Object.fromEntries(Object.keys(vt).sort().slice(-13).map(k => [k, vt[k]]));
+        localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo)); scheduleInventorySync();
+      }
+      body.vt = { ...schoolInfo.valueTrend, [ym]: body.value };
       const h = invHash(body);
       if (h === dashSentHash) return;
       dashSentHash = h;
@@ -15196,11 +15273,227 @@
       F.setDoc(dashRef(), cleanJSON({ ...body, updatedMs: Date.now(), by: actorName(), updatedAt: F.serverTimestamp() })).catch(err => { dashSentHash = ''; console.warn('dashboard', err); });
     }
 
+    // ---- The School Head's screen (Nov 2026): needs your attention, spending, property health,
+    // trends, supply usage, who holds what (tap a name), monthly summary, laptop columns. All of
+    // it comes from dashboard/summary (one document, kept current by the custodian's devices)
+    // and the PRs and approvals the head already reads, so opening the screen costs no more reads.
+    const HEAD_LATE_DAYS = 3;
+    let headUseYr = false;
+    let headSearch = '';
+    const COND_TEXT = { S: 'Serviceable', R: 'Needs repair', U: 'Unserviceable' };
+    const COND_TONE = { S: 'text-emerald-700', R: 'text-amber-700', U: 'text-rose-700' };
+    // ₱1.23M / ₱456.7K / ₱980 for the small tiles
+    function pesoShort(n) {
+      const v = Number(n) || 0;
+      if (Math.abs(v) >= 1e6) return `₱${+(v / 1e6).toFixed(2)}M`;
+      if (Math.abs(v) >= 1e4) return `₱${+(v / 1e3).toFixed(1)}K`;
+      return `₱${peso2(v)}`;
+    }
+    const monthShort = ym => new Date(`${ym}-01T00:00:00`).toLocaleDateString('en-PH', { month: 'short' });
+    const headDays = (ms, now = Date.now()) => Math.floor((now - ms) / DAY_MS);
+    // Everything waiting for the head, oldest first, with when it was sent.
+    function headWaitList() {
+      const prs = prList.filter(p => p.status !== 'cancelled' && prApprStatus(p) === 'pending')
+        .map(p => ({ since: prApproval(p).submittedMs || p.createdMs || 0, label: `PR No. ${p.prNo}`, total: Number(p.total) || 0, kind: 'pr', id: p.id }));
+      const aps = apPending().map(a => ({ since: a.submittedMs || 0, label: `${AP_KIND[a.kind] || 'Approval'}: ${a.title || ''}`, total: Number(a.total) || 0, kind: a.kind, id: a.id }));
+      return [...prs, ...aps].sort((a, b) => a.since - b.since);
+    }
+    function headAgeChip(ms) {
+      if (!ms) return '';
+      const n = headDays(ms);
+      if (n < 1) return '';
+      return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-bold ${n >= HEAD_LATE_DAYS ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-slate-100 text-slate-600'}" data-head-age="${n}"><i class="ph-bold ph-hourglass-medium"></i> Waiting ${plural(n, 'day')}</span>`;
+    }
+
+    // Deadlines and overdue things, most urgent first.
+    function headAttention(d, waits, now = Date.now()) {
+      const out = [];
+      const add = (tone, icon, text, sub, key) => out.push({ tone, icon, text, sub: sub || '', key });
+      const late = waits.filter(w => w.since && now - w.since >= HEAD_LATE_DAYS * DAY_MS);
+      if (late.length) add('rose', 'ph-hourglass-high', `${plural(late.length, 'item')} waiting for you more than ${HEAD_LATE_DAYS} days`,
+        late.slice(0, 3).map(w => `${w.label} (${plural(headDays(w.since, now), 'day')})`).join(' · ') + (late.length > 3 ? ` · + ${late.length - 3} more` : ''), 'late');
+      if (d) {
+        (d.lost || []).slice().sort((a, b) => String(a.d).localeCompare(String(b.d))).forEach(x => {
+          const left = daysTo(x.d);
+          add(left <= 7 ? 'rose' : 'amber', 'ph-question', `Lost: ${x.no || x.n}${x.w ? ` (with ${x.w})` : ''}`,
+            left < 0 ? `The relief application is ${plural(-left, 'day')} overdue (COA: within 30 days)` : `${plural(left, 'day')} left to apply for relief (COA: within 30 days)`, 'lost');
+        });
+        if (d.updatedMs && now - d.updatedMs >= 3 * DAY_MS) add('amber', 'ph-cloud-slash', `The numbers below were last updated ${plural(headDays(d.updatedMs, now), 'day')} ago`,
+          'Ask the property custodian to open the app so they are current.', 'stale');
+        const c = d.cnt;
+        if (c && c.open && c.of) {
+          const pct = Math.min(100, Math.round(c.done / c.of * 100));
+          const due = /year-end/i.test(c.label) ? ` · report due ${formatShortDate(`${Number(String(c.asAt).slice(0, 4)) + 1}-01-31T00:00:00`)}` : '';
+          add(pct >= 100 ? 'green' : 'brand', 'ph-clipboard-text', `${c.label}: ${pct}% counted (${c.done} of ${c.of} units)`, `As at ${formatShortDate(c.asAt + 'T00:00:00')}${due}`, 'count');
+        } else if (c && !c.open && c.start > now && c.start - now <= 14 * DAY_MS) {
+          add('slate', 'ph-calendar', `${c.label} starts ${formatShortDate(c.start)}`, `As at ${formatShortDate(c.asAt + 'T00:00:00')}`, 'count');
+        }
+        if (d.renew && d.renew.u) add('amber', 'ph-arrows-clockwise', `${plural(d.renew.u, 'unit')} on an ICS / PAR older than 3 years`,
+          `${plural(d.renew.p, 'person')} · the property custodian renews them in Year-end & reminders`, 'renew');
+        if (d.unconf && d.unconf.s) add('amber', 'ph-hand-arrow-down', `${plural(d.unconf.s, 'slip')} not yet marked Received`,
+          `${plural(d.unconf.p, 'teacher')}${d.unconf.since ? ` · the oldest from ${formatShortDate(d.unconf.since)}` : ''}`, 'unconf');
+        if (d.books && d.books.od) add('amber', 'ph-books', `${plural(d.books.od, 'library book')} overdue`, 'Books & Library', 'books');
+        if (d.nOut) add('slate', 'ph-package', `${d.nOut === 1 ? '1 supply' : `${d.nOut} supplies`} out of stock`, (d.out || []).slice(0, 3).map(x => x.n).join(' · '), 'out');
+      }
+      const latePrs = prsNotDelivered(now);
+      if (latePrs.length) add('amber', 'ph-truck', `${plural(latePrs.length, 'approved Purchase Request')} not delivered after ${PR_LATE_DAYS} days`,
+        latePrs.slice(0, 3).map(x => `PR No. ${x.pr.prNo} (${x.days} days)`).join(' · '), 'late-prs');
+      return out;
+    }
+    const ATT_TONE = {
+      rose: 'bg-rose-50 text-rose-600', amber: 'bg-amber-50 text-amber-600', brand: 'bg-brand-50 text-brand-600',
+      green: 'bg-emerald-50 text-emerald-600', slate: 'bg-slate-100 text-slate-500'
+    };
+    function headAttentionHTML(list) {
+      return `
+        <div class="space-y-2" data-head-attention="${list.length}">
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Needs your attention${list.length ? ` · ${list.length}` : ''}</h2>
+          ${list.length ? `<ul class="rounded-2xl bg-white border border-slate-200 divide-y divide-slate-100 overflow-hidden">${list.map(x => `
+            <li class="flex items-start gap-2.5 px-3 py-2.5" data-att="${x.key}">
+              <span class="w-8 h-8 shrink-0 rounded-lg ${ATT_TONE[x.tone] || ATT_TONE.slate} flex items-center justify-center"><i class="ph-bold ${x.icon} text-base"></i></span>
+              <span class="min-w-0"><span class="block text-xs font-bold text-slate-900">${escapeHTML(x.text)}</span>${x.sub ? `<span class="block text-[11px] text-slate-500">${escapeHTML(x.sub)}</span>` : ''}</span>
+            </li>`).join('')}</ul>`
+          : `<div class="rounded-2xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-xs font-bold text-emerald-800 flex items-center gap-2" data-att="clear"><i class="ph-bold ph-check-circle text-lg"></i> All clear · no deadlines or overdue items</div>`}
+        </div>`;
+    }
+
+    // Purchase Requests: approved this month / quarter / year (by the approval date), delivered,
+    // waiting, and how long the head takes to decide.
+    function headSpend(now = Date.now()) {
+      const live = prList.filter(p => p.status !== 'cancelled');
+      const d = new Date(now), y = d.getFullYear(), m = d.getMonth(), q = Math.floor(m / 3);
+      const at = p => new Date(prSinceMs(p));
+      const sum = list => round2(list.reduce((n, p) => n + (Number(p.total) || 0), 0));
+      const yr = live.filter(p => prApproved(p) && at(p).getFullYear() === y);
+      const qt = yr.filter(p => Math.floor(at(p).getMonth() / 3) === q), mo = yr.filter(p => at(p).getMonth() === m);
+      const deliv = yr.filter(p => p.deliveredMs);
+      const pend = live.filter(p => prApprStatus(p) === 'pending');
+      const times = [
+        ...live.map(prApproval).filter(a => a && a.via === 'app' && ['approved', 'returned'].includes(a.status) && a.submittedMs && a.atMs).map(a => a.atMs - a.submittedMs),
+        ...apList.filter(a => a.decision && a.decision.atMs && a.submittedMs).map(a => a.decision.atMs - a.submittedMs)
+      ].filter(x => x >= 0);
+      return {
+        year: y, q: q + 1, mo: sum(mo), nMo: mo.length, qt: sum(qt), nQt: qt.length, yr: sum(yr), nYr: yr.length,
+        deliv: sum(deliv), nDeliv: deliv.length, pend: sum(pend), nPend: pend.length,
+        avgDays: times.length ? times.reduce((n, x) => n + x, 0) / times.length / DAY_MS : null, nTimes: times.length
+      };
+    }
+    function headSpendHTML() {
+      const sp = headSpend();
+      const mini = (v, label, n) => `<div class="rounded-xl bg-slate-50 px-1.5 py-2 text-center min-w-0"><p class="text-sm font-extrabold font-mono text-slate-900 truncate">${pesoShort(v)}</p><p class="text-[11px] font-bold uppercase text-slate-500 leading-tight">${label}</p><p class="text-[11px] text-slate-500">${plural(n, 'PR')}</p></div>`;
+      const pct = sp.yr ? Math.min(100, Math.round(sp.deliv / sp.yr * 100)) : 0;
+      const avg = sp.avgDays == null ? '' : sp.avgDays < 1 ? `${Math.max(1, Math.round(sp.avgDays * 24))} h` : `${+sp.avgDays.toFixed(1)} days`;
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5 space-y-2" data-head-spend>
+          <p class="text-xs font-bold text-slate-800 flex items-center gap-1.5"><i class="ph-bold ph-wallet text-emerald-600"></i> Purchase Requests approved</p>
+          <div class="grid grid-cols-3 gap-2">${mini(sp.mo, 'This month', sp.nMo)}${mini(sp.qt, `Q${sp.q}`, sp.nQt)}${mini(sp.yr, String(sp.year), sp.nYr)}</div>
+          <div class="text-xs text-slate-700 space-y-1">
+            <p class="flex justify-between gap-3"><span>Delivered (${sp.year})</span><b class="font-mono" data-spend-deliv>₱${peso2(sp.deliv)} · ${pct}%</b></p>
+            <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-emerald-500" style="width:${pct}%"></div></div>
+            <p class="flex justify-between gap-3"><span>Waiting for your approval</span><b class="font-mono">₱${peso2(sp.pend)} · ${sp.nPend}</b></p>
+            ${avg ? `<p class="flex justify-between gap-3" data-spend-avg><span>Your average time to decide</span><b class="font-mono">${avg}</b></p>` : ''}
+          </div>
+        </div>`;
+    }
+
+    function headHealthHTML(d) {
+      const n = d.units || 0;
+      if (!n) return '';
+      const R = d.repair || 0, U = d.unserv || 0, S = Math.max(0, n - R - U);
+      const w = x => `${(x / n * 100).toFixed(1)}%`;
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5 space-y-2" data-head-health>
+          <p class="text-xs font-bold text-slate-800 flex items-center gap-1.5"><i class="ph-bold ph-heartbeat text-rose-500"></i> Condition of tagged units · ${n}</p>
+          <div class="h-2.5 rounded-full bg-slate-100 overflow-hidden flex"><div class="h-full bg-emerald-500" style="width:${w(S)}"></div><div class="h-full bg-amber-400" style="width:${w(R)}"></div><div class="h-full bg-rose-500" style="width:${w(U)}"></div></div>
+          <div class="grid grid-cols-3 gap-2 text-[11px]">
+            <p><span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span> <b class="text-slate-900">${S}</b> serviceable</p>
+            <p><span class="inline-block w-2 h-2 rounded-full bg-amber-400"></span> <b class="text-slate-900">${R}</b> need repair${d.rv ? `<br><span class="font-mono text-slate-500">${pesoShort(d.rv)}</span>` : ''}</p>
+            <p><span class="inline-block w-2 h-2 rounded-full bg-rose-500"></span> <b class="text-slate-900">${U}</b> unserviceable${d.uv ? `<br><span class="font-mono text-slate-500">${pesoShort(d.uv)}</span>` : ''}</p>
+          </div>
+          ${U ? `<p class="text-[11px] text-slate-500" data-health-disposal>Unserviceable property waiting for disposal (IIRUP): <b class="font-mono text-slate-700">₱${peso2(d.uv || 0)}</b></p>` : ''}
+        </div>`;
+    }
+
+    function headBarsHTML(months, vals, color, fmt) {
+      const max = Math.max(1, ...vals.map(v => v || 0));
+      return `<div class="flex items-end gap-1 h-14">${vals.map((v, i) => `<div class="flex-1 rounded-t ${v == null ? 'bg-slate-100' : color}" style="height:${v == null ? 6 : Math.max(6, Math.round((v || 0) / max * 100))}%" title="${monthShort(months[i])} · ${v == null ? 'no data' : fmt(v)}"></div>`).join('')}</div>
+        <div class="flex gap-1 mt-0.5">${months.map(m => `<span class="flex-1 text-center text-[10px] text-slate-500">${monthShort(m).slice(0, 1)}</span>`).join('')}</div>`;
+    }
+    function headTrendHTML(d) {
+      const months = dashMonths();
+      const ris = months.map(m => (d.trend && d.trend.ris && d.trend.ris[m]) || 0);
+      const vt = d.vt || {};
+      const val = months.map(m => (vt[m] != null ? vt[m] : null));
+      const first = months.find(m => vt[m] != null);
+      const cur = months[months.length - 1];
+      const prev = months.slice(0, -1).reverse().find(m => vt[m] != null);
+      const change = prev && vt[prev] ? Math.round((d.value - vt[prev]) / vt[prev] * 1000) / 10 : null;
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5 space-y-3" data-head-trend>
+          <div>
+            <p class="text-xs font-bold text-slate-800 flex items-center justify-between gap-2"><span class="flex items-center gap-1.5"><i class="ph-bold ph-chart-bar text-brand-600"></i> Supplies issued (RIS)</span><span class="font-mono font-semibold text-slate-600">${pesoShort(ris[ris.length - 1])} in ${monthShort(cur)}</span></p>
+            <div class="mt-1.5">${headBarsHTML(months, ris, 'bg-brand-500', v => `₱${peso2(v)}`)}</div>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-slate-800 flex items-center justify-between gap-2"><span class="flex items-center gap-1.5"><i class="ph-bold ph-chart-line-up text-emerald-600"></i> Property value</span><span class="font-mono font-semibold text-slate-600">${pesoShort(d.value || 0)}${change != null ? ` <span class="${change >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${change >= 0 ? '+' : ''}${change}%</span>` : ''}</span></p>
+            <div class="mt-1.5">${headBarsHTML(months, val, 'bg-emerald-500', v => `₱${peso2(v)}`)}</div>
+            <p class="text-[11px] text-slate-500 mt-1">${first && first !== cur ? `Start of each month since ${monthShort(first)} ${first.slice(0, 4)}` : 'Recorded at the start of each month from now on'}</p>
+          </div>
+        </div>`;
+    }
+
+    function headUseHTML(d) {
+      const u = d.use;
+      if (!u) return '';
+      const cur = u.m === localISODate().slice(0, 7);
+      const x = headUseYr ? u.yr : (cur ? u.mo : null);
+      const tab = (yr, label) => `<button onclick="setHeadUse(${yr})" data-head-use="${yr ? 'yr' : 'mo'}" class="h-7 px-2.5 rounded-lg text-[11px] font-bold ${headUseYr === yr ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}">${label}</button>`;
+      const rows = (list, f) => (list && list.length ? `<ul class="text-xs text-slate-800 space-y-1">${list.map(f).join('')}</ul>` : '<p class="text-[11px] text-slate-500">None issued yet.</p>');
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5 space-y-2" data-head-usage>
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-xs font-bold text-slate-800 flex items-center gap-1.5"><i class="ph-bold ph-package text-indigo-600"></i> Who uses the most supplies</p>
+            <div class="flex bg-slate-100 rounded-lg p-0.5">${tab(false, 'This month')}${tab(true, 'This year')}</div>
+          </div>
+          ${x ? `
+            <p class="text-[11px] text-slate-500">${plural(x.slips || 0, 'RIS')} · <b class="font-mono text-slate-700">₱${peso2(x.total || 0)}</b></p>
+            <p class="text-[11px] font-bold uppercase text-slate-500">Top items</p>
+            ${rows(x.items, i => `<li class="flex justify-between gap-3"><span class="min-w-0">${escapeHTML(i.n)}</span><span class="shrink-0 font-mono text-slate-600">${i.q.toLocaleString()} ${escapeHTML(i.u)} · ₱${peso2(i.a)}</span></li>`)}
+            <p class="text-[11px] font-bold uppercase text-slate-500 pt-1">By person</p>
+            ${rows(x.people, p => `<li class="flex justify-between gap-3"><span class="min-w-0">${escapeHTML(p.n)}${p.p ? ` <span class="text-slate-500">· ${escapeHTML(p.p)}</span>` : ''}</span><span class="shrink-0 font-mono text-slate-600">${plural(p.k, 'slip')} · ₱${peso2(p.a)}</span></li>`)}`
+          : '<p class="text-[11px] text-slate-500">Nothing issued this month yet.</p>'}
+        </div>`;
+    }
+    function setHeadUse(yr) { headUseYr = !!yr; renderHeadView(); }
+
+    function headHoldersHTML(d) {
+      const holders = d.holders || [];
+      return `
+          <details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-dash-holders>
+            <summary class="text-xs font-bold text-slate-800 cursor-pointer">Who holds what · ${plural(d.nHolders || 0, 'person')}</summary>
+            ${holders.length ? `<p class="text-[11px] text-slate-500 mt-1">Tap a name to see their items, for clearances.</p>
+            <div class="mt-1.5 space-y-1.5">${holders.map((x, i) => `
+              <details class="rounded-xl border border-slate-200 px-2.5 py-1.5" data-dash-holder="${i}">
+                <summary class="flex justify-between gap-3 text-xs cursor-pointer"><span class="min-w-0 font-semibold text-slate-800">${escapeHTML(x.n)}${x.p ? ` <span class="font-normal text-slate-500">· ${escapeHTML(x.p)}</span>` : ''}</span><span class="shrink-0 font-mono text-slate-600">${plural(x.u, 'unit')} · ₱${peso2(x.v)}</span></summary>
+                ${x.e ? `<ul class="mt-1.5 divide-y divide-slate-100 text-[11px]">${x.e.map(u => `
+                  <li class="py-1.5">
+                    <p class="flex justify-between gap-2"><span class="min-w-0 font-semibold text-slate-800">${escapeHTML(u.n)}</span><span class="shrink-0 font-mono text-slate-600">₱${peso2(u.v)}</span></p>
+                    <p class="text-slate-500"><span class="font-mono break-all">${escapeHTML([u.no, u.s && `S/N ${u.s}`, u.k].filter(Boolean).join(' · '))}</span> <b class="${u.l ? 'text-rose-700' : COND_TONE[u.c] || ''}">${u.l ? 'Lost' : COND_TEXT[u.c] || ''}</b></p>
+                  </li>`).join('')}</ul>
+                ${x.u > x.e.length ? `<p class="text-[11px] text-slate-500">+ ${x.u - x.e.length} more · the property custodian can print the full list</p>` : ''}
+                <button onclick="headPrintHolder(${i})" data-head-print-holder="${i}" class="mt-1 min-h-9 text-[11px] font-bold text-brand-700 hover:text-brand-900 flex items-center gap-1"><i class="ph-bold ph-printer"></i> Print their list</button>`
+                : '<p class="text-[11px] text-slate-500 mt-1">Their items show here after the property custodian’s app updates.</p>'}
+              </details>`).join('')}</div>
+            ${(d.nHolders || 0) > holders.length ? `<p class="text-[11px] text-slate-500 mt-1">+ ${d.nHolders - holders.length} more</p>` : ''}` : '<p class="mt-1.5 text-xs text-slate-500">No equipment is issued to anyone yet.</p>'}
+          </details>`;
+    }
+
     function headDashHTML() {
-      if (!dashLoaded) return '';
+      const spend = headSpendHTML();
+      if (!dashLoaded) return spend;
       const d = dashDoc;
-      if (!d) return `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600" data-head-dash="none"><p class="font-bold text-slate-800 text-sm flex items-center gap-1.5"><i class="ph-bold ph-chart-bar"></i> School property</p><p class="mt-1">The summary shows up here the next time the property custodian’s phone is online.</p></div>`;
-      const tile = (v, label, tone = 'text-slate-900') => `<div class="rounded-xl bg-white border border-slate-200 px-2 py-2 text-center"><p class="text-lg font-extrabold font-mono ${tone}">${v}</p><p class="text-[11px] font-bold uppercase text-slate-500 leading-tight">${label}</p></div>`;
+      if (!d) return `${spend}<div class="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600" data-head-dash="none"><p class="font-bold text-slate-800 text-sm flex items-center gap-1.5"><i class="ph-bold ph-chart-bar"></i> School property</p><p class="mt-1">The summary shows up here the next time the property custodian’s phone is online.</p></div>`;
+      const tile = (v, label, tone = 'text-slate-900') => `<div class="rounded-xl bg-white border border-slate-200 px-2 py-2 text-center min-w-0"><p class="text-lg font-extrabold font-mono ${tone} truncate">${v}</p><p class="text-[11px] font-bold uppercase text-slate-500 leading-tight">${label}</p></div>`;
       const list = (rows, empty) => (rows.length ? `<ul class="mt-1.5 text-xs text-slate-800 space-y-1">${rows.join('')}</ul>` : `<p class="mt-1.5 text-xs text-slate-500">${empty}</p>`);
       const li = (a, b) => `<li class="flex justify-between gap-3"><span class="min-w-0">${a}</span><span class="shrink-0 font-mono text-slate-600">${b}</span></li>`;
       const more = (n, shown) => (n > shown ? `<p class="text-[11px] text-slate-500 mt-1">+ ${n - shown} more</p>` : '');
@@ -15210,27 +15503,26 @@
           <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">School property</h2>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
             ${tile(d.items || 0, 'Items')}
-            ${tile(`₱${peso2(d.value || 0)}`, 'Value')}
+            ${tile(pesoShort(d.value || 0), 'Value')}
             ${tile((d.nLow || 0) + (d.nOut || 0), 'Low / out', (d.nLow || d.nOut) ? 'text-amber-600' : 'text-slate-900')}
             ${tile(`${d.held || 0}/${d.units || 0}`, 'Units with staff')}
           </div>
+          ${headHealthHTML(d)}
+          ${spend}
+          ${headTrendHTML(d)}
+          ${headUseHTML(d)}
           <details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-dash-stock>
             <summary class="text-xs font-bold text-slate-800 cursor-pointer">Stock levels · ${d.nLow || 0} low, ${d.nOut || 0} out</summary>
             ${list([...(d.out || []).map(x => li(escapeHTML(x.n), '<span class="text-rose-600 font-bold">Out</span>')), ...(d.low || []).map(x => li(escapeHTML(x.n), `${x.q} ${escapeHTML(x.u)}`))], 'All supplies above their alert levels.')}
             ${more((d.nLow || 0) + (d.nOut || 0), (d.low || []).length + (d.out || []).length)}
           </details>
-          <details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-dash-holders>
-            <summary class="text-xs font-bold text-slate-800 cursor-pointer">Who holds what · ${plural(d.nHolders || 0, 'person')}</summary>
-            ${list((d.holders || []).map(x => li(`${escapeHTML(x.n)}${x.p ? ` <span class="text-slate-500">· ${escapeHTML(x.p)}</span>` : ''}`, `${plural(x.u, 'unit')} · ₱${peso2(x.v)}`)), 'No equipment is issued to anyone yet.')}
-            ${more(d.nHolders || 0, (d.holders || []).length)}
-          </details>
+          ${headHoldersHTML(d)}
           <div class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5 text-xs text-slate-700 space-y-1" data-dash-status>
             <p class="flex justify-between"><span>Supply requests waiting for the custodian</span><b class="font-mono">${r.pending || 0}</b></p>
             <p class="flex justify-between"><span>Approved, not yet released</span><b class="font-mono">${r.approved || 0}</b></p>
             <p class="flex justify-between"><span>On a Purchase Request</span><b class="font-mono">${r.pr || 0}</b></p>
             <p class="flex justify-between"><span>Needs repair · unserviceable</span><b class="font-mono">${d.repair || 0} · ${d.unserv || 0}</b></p>
             <p class="flex justify-between"><span>Reported lost</span><b class="font-mono ${(d.lost || []).length ? 'text-rose-600' : ''}">${(d.lost || []).length}</b></p>
-            ${(d.lost || []).length ? `<ul class="pt-1 text-[11px] text-rose-700 space-y-0.5">${d.lost.map(x => `<li>${escapeHTML(x.no || x.n)}${x.w ? ` · ${escapeHTML(x.w)}` : ''} · relief due ${escapeHTML(formatShortDate(x.d + 'T00:00:00'))}</li>`).join('')}</ul>` : ''}
           </div>
           ${d.books ? `<div class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5 text-xs text-slate-700 space-y-1" data-dash-books>
             <p class="font-bold text-slate-800 flex items-center gap-1.5"><i class="ph-bold ph-books text-violet-600"></i> Books &amp; Library</p>
@@ -15239,9 +15531,147 @@
             <p class="flex justify-between"><span>Lost this school year · unserviceable</span><b class="font-mono">${d.books.l || 0} · ${d.books.u || 0}</b></p>
             ${d.books.r != null ? `<p class="flex justify-between" data-dash-books-ratio><span>Learners with their textbooks (class sheets)</span><b class="font-mono ${d.books.r < 90 ? 'text-amber-700' : ''}">${d.books.r}%</b></p>` : ''}
           </div>` : ''}
+          <button onclick="headPrintMonth()" data-head-print-month class="w-full h-11 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print the monthly summary</button>
           <p class="text-[11px] text-slate-500 px-1">As of ${escapeHTML(iarStamp(d.updatedMs))}${d.by ? ` · ${escapeHTML(d.by)}` : ''}</p>
         </div>`;
     }
+
+    // Recently decided, with search over everything the head decided.
+    function headDecided(u) {
+      const q = headSearch.trim().toLowerCase();
+      const prs = prList.filter(p => p.status !== 'cancelled' && ['approved', 'returned'].includes(prApprStatus(p)) && prApproval(p).via === 'app');
+      const aps = apList.filter(a => ['approved', 'returned'].includes(a.status) && a.decision && a.decision.byUid === u.uid);
+      const has = parts => parts.filter(Boolean).join(' ').toLowerCase().includes(q);
+      const cards = [
+        ...prs.filter(p => !q || has([`PR ${p.prNo}`, p.purpose, prApproval(p).note, prApprStatus(p), ...(p.lines || []).map(l => l.desc)]))
+          .map(p => ({ t: prApproval(p).atMs || 0, h: () => headPrCardHTML(p, false) })),
+        ...aps.filter(a => !q || has([AP_KIND[a.kind], a.title, a.summary, a.decision.note, a.status, ...(a.lines || []).map(l => `${l.desc} ${l.no || ''}`)]))
+          .map(a => ({ t: a.decision.atMs || 0, h: () => headApCardHTML(a, false) }))
+      ].sort((a, b) => b.t - a.t);
+      const shown = cards.slice(0, q ? 30 : 5);
+      const html = shown.map(c => c.h()).join('') + (cards.length > shown.length
+        ? `<p class="text-[11px] text-slate-500 px-1">${q ? `The first ${shown.length} of ${cards.length}` : `${plural(cards.length - shown.length, 'more decision')} · search to find them`}</p>`
+        : (q && !cards.length ? '<p class="text-xs text-slate-500 px-1" data-head-nomatch>Nothing matches.</p>' : ''));
+      return { all: prs.length + aps.length, html };
+    }
+    function setHeadSearch(v) {
+      headSearch = String(v || '');
+      const box = document.getElementById('hdDecided');
+      if (box && cloud.user) box.innerHTML = headDecided(cloud.user).html;
+    }
+
+    // Routine approvals the head can approve together: PRs and supply requests (not write-offs
+    // or count reports, which need a look each).
+    function headRoutine() {
+      return { prs: prList.filter(p => p.status !== 'cancelled' && prApprStatus(p) === 'pending'), ris: apPending().filter(a => a.kind === 'ris') };
+    }
+    async function headApproveAll() {
+      if (!isHeadDevice() || !headMe || headMe.status !== 'active' || !cloud.user) return;
+      const { prs, ris } = headRoutine();
+      const n = prs.length + ris.length;
+      if (n < 2) return;
+      const total = round2([...prs, ...ris].reduce((t, x) => t + (Number(x.total) || 0), 0));
+      const other = apPending().filter(a => a.kind !== 'ris').length;
+      const name = (reqRole.me || {}).name || headMe.name || '';
+      const parts = listJoin([prs.length && plural(prs.length, 'Purchase Request'), ris.length && plural(ris.length, 'supply request')].filter(Boolean));
+      const left = other ? `\n\n${other === 1 ? '1 write-off or count report is' : `${other} write-offs or count reports are`} not included: open each one.` : '';
+      if (!await appConfirm(`${parts}${total ? ` · ₱${peso2(total)} in all` : ''}.${left}\n\nYour name (${name}), the date and the time are recorded on each, and the property custodian is told.`,
+        { title: `Approve all ${n}?`, ok: `Approve ${n}`, tone: 'good', icon: 'ph-checks' })) return;
+      let done = 0;
+      prs.forEach(p => { const cur = prList.find(x => x.id === p.id); if (cur && prApprStatus(cur) === 'pending') { headApplyPr(cur, true, ''); done += 1; } });
+      ris.forEach(a => { const cur = apList.find(x => x.id === a.id); if (cur && cur.status === 'pending') { headApplyAp(cur, true, ''); done += 1; } });
+      renderHeadView();
+      showToast(`Approved ${done} · the property custodian is told`, 'ph-seal-check');
+    }
+
+    // Printed: one person's property (for clearances), and the monthly summary.
+    function headPrintHolder(i) {
+      const h = dashDoc && (dashDoc.holders || [])[i];
+      if (!h) return;
+      const e = v => escapeHTML(v == null ? '' : String(v));
+      const list = h.e || [];
+      const me = reqRole.me || {};
+      const rows = list.map((u, k) => `<tr><td class="c">${k + 1}</td><td>${e(u.n)}</td><td class="pr-sn">${e(u.no)}</td><td class="pr-sn">${e(u.s)}</td><td class="pr-sn">${e(u.k)}</td><td class="c">${u.l ? 'Lost' : e(COND_TEXT[u.c] || '')}</td><td class="r">${peso2(u.v)}</td></tr>`).join('');
+      printFormHTML(`
+        <div class="pr-form">
+          <h1>PROPERTY ACCOUNTABILITY</h1>
+          <div class="pr-top"><span>Entity Name: <b>${e(reqRole.schoolName)}</b></span><span>As of: <b>${e(longDate(localISODate(new Date(dashDoc.updatedMs || Date.now()))))}</b></span></div>
+          <p style="margin:0 0 4pt">Accountable person: <b>${e(h.n).toUpperCase()}</b>${h.p ? `, ${e(h.p)}` : ''}</p>
+          <table class="pr-table">
+            <colgroup><col style="width:5%"><col style="width:30%"><col style="width:16%"><col style="width:13%"><col style="width:14%"><col style="width:10%"><col style="width:12%"></colgroup>
+            <tr><th>No.</th><th>Description</th><th>Property No.</th><th>Serial No.</th><th>ICS / PAR</th><th>Condition</th><th>Amount</th></tr>
+            ${rows}
+            <tr><td colspan="6" class="r"><b>TOTAL · ${plural(h.u, 'unit')}</b></td><td class="r"><b>${peso2(h.v)}</b></td></tr>
+          </table>
+          <p style="font-size:8pt;margin:4pt 0 0">From the property custodian’s records in CustodianPro${h.u > list.length ? ` · the first ${list.length} of ${h.u} units are listed` : ''}.</p>
+          ${coaSignBlock([
+            { label: 'Prepared by:', names: [''], under: 'Property Custodian · Date' },
+            { label: 'Noted by:', names: [me.name || headMe && headMe.name || ''], under: `${e(me.designation || 'School Head')} · Date` }
+          ])}
+        </div>`);
+    }
+    function headPrintMonth() {
+      if (!isHeadDevice()) return;
+      const d = dashDoc || {};
+      const e = v => escapeHTML(v == null ? '' : String(v));
+      const me = reqRole.me || {};
+      const ym = localISODate().slice(0, 7);
+      const month = new Date(`${ym}-01T00:00:00`).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
+      const sp = headSpend();
+      const prs = prList.filter(p => p.status !== 'cancelled' && prApproved(p) && localISODate(new Date(prSinceMs(p))).slice(0, 7) === ym)
+        .sort((a, b) => prSinceMs(a) - prSinceMs(b));
+      const use = d.use && d.use.m === ym ? d.use.mo : null;
+      const att = headAttention(dashLoaded ? dashDoc : null, headWaitList());
+      const R = d.repair || 0, U = d.unserv || 0;
+      const kv = rows => `<table class="pr-table"><colgroup><col style="width:70%"><col style="width:30%"></colgroup>${rows.map(([a, b]) => `<tr><td>${a}</td><td class="r">${b}</td></tr>`).join('')}</table>`;
+      const h2 = t => `<p style="margin:8pt 0 3pt"><b>${t}</b></p>`;
+      printFormHTML(`
+        <div class="pr-form">
+          <h1>MONTHLY PROPERTY SUMMARY</h1>
+          <div class="pr-top"><span>Entity Name: <b>${e(reqRole.schoolName)}</b></span><span>Month: <b>${e(month)}</b></span></div>
+          ${h2('A. Property')}
+          ${kv([
+            ['Items in the inventory', (d.items || 0).toLocaleString()], ['Total value', `₱${peso2(d.value || 0)}`],
+            ['Tagged units · with staff', `${(d.units || 0).toLocaleString()} · ${(d.held || 0).toLocaleString()}`],
+            ['Serviceable · needs repair · unserviceable', `${Math.max(0, (d.units || 0) - R - U)} · ${R} · ${U}`],
+            ['Unserviceable property waiting for disposal', `₱${peso2(d.uv || 0)}`], ['Units reported lost', (d.lost || []).length],
+            ['Supplies low · out of stock', `${d.nLow || 0} · ${d.nOut || 0}`]
+          ])}
+          ${h2(`B. Purchase Requests approved in ${e(month)} · ₱${peso2(sp.mo)}`)}
+          ${prs.length ? `<table class="pr-table"><colgroup><col style="width:18%"><col style="width:14%"><col style="width:50%"><col style="width:18%"></colgroup>
+            <tr><th>PR No.</th><th>Date</th><th>Purpose</th><th>Amount</th></tr>
+            ${prs.map(p => `<tr><td class="pr-sn">${e(p.prNo)}</td><td class="c">${e(prDateText(p.date))}</td><td>${e(p.purpose)}</td><td class="r">${peso2(p.total)}</td></tr>`).join('')}
+            <tr><td colspan="3" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(sp.mo)}</b></td></tr></table>` : '<p style="margin:0">None.</p>'}
+          <p style="margin:2pt 0 0;font-size:8.5pt">Approved in ${sp.year}: ₱${peso2(sp.yr)} (${plural(sp.nYr, 'PR')}) · delivered ₱${peso2(sp.deliv)} · waiting for approval ₱${peso2(sp.pend)}</p>
+          ${h2(`C. Supplies issued (RIS) in ${e(month)}${use ? ` · ₱${peso2(use.total)}` : ''}`)}
+          ${use && use.items.length ? `<table class="pr-table"><colgroup><col style="width:55%"><col style="width:20%"><col style="width:25%"></colgroup>
+            <tr><th>Item</th><th>Quantity</th><th>Amount</th></tr>
+            ${use.items.map(i => `<tr><td>${e(i.n)}</td><td class="c">${i.q} ${e(i.u)}</td><td class="r">${peso2(i.a)}</td></tr>`).join('')}</table>` : '<p style="margin:0">None.</p>'}
+          ${h2('D. Needs attention')}
+          ${att.length ? `<ul style="margin:0;padding-left:14pt">${att.map(x => `<li>${e(x.text)}${x.sub ? ` · <span style="font-size:8.5pt">${e(x.sub)}</span>` : ''}</li>`).join('')}</ul>` : '<p style="margin:0">Nothing overdue.</p>'}
+          ${h2('E. Who holds the most property')}
+          ${(d.holders || []).length ? `<table class="pr-table"><colgroup><col style="width:45%"><col style="width:25%"><col style="width:10%"><col style="width:20%"></colgroup>
+            <tr><th>Name</th><th>Position</th><th>Units</th><th>Value</th></tr>
+            ${(d.holders || []).slice(0, 10).map(x => `<tr><td>${e(x.n)}</td><td>${e(x.p)}</td><td class="c">${x.u}</td><td class="r">${peso2(x.v)}</td></tr>`).join('')}</table>` : '<p style="margin:0">No equipment is issued yet.</p>'}
+          <p style="font-size:8pt;margin:4pt 0 0">From CustodianPro${d.updatedMs ? ` · property figures as of ${e(iarStamp(d.updatedMs))}` : ''}.</p>
+          ${coaSignBlock([{ label: 'Prepared by:', names: [me.name || headMe && headMe.name || ''], under: `${e(me.designation || 'School Head')} · Date` }])}
+        </div>`);
+    }
+
+    // A reminder on the head's phone when something has waited more than 3 days (once each).
+    function notifHeadWaiting(now = Date.now()) {
+      if (!isHeadDevice() || !headMe || headMe.status !== 'active') return;
+      const st = loadNotifs();
+      const due = headWaitList().filter(w => w.since && now - w.since >= HEAD_LATE_DAYS * DAY_MS && !st.seen['hw:' + w.id]);
+      if (!due.length) return;
+      due.forEach(w => { st.seen['hw:' + w.id] = 1; });
+      saveNotifs();
+      const w = due[0];
+      addNotif(due.length === 1
+        ? { title: `${w.label} has waited ${plural(headDays(w.since, now), 'day')}`, body: 'Approve or return it on your screen', icon: 'ph-hourglass-high', tone: 'amber', go: 'head' }
+        : { title: `${due.length} items waiting for you more than ${HEAD_LATE_DAYS} days`, body: due.slice(0, 3).map(x => x.label).join(' · ') + (due.length > 3 ? ` + ${due.length - 3} more` : ''), icon: 'ph-hourglass-high', tone: 'amber', go: 'head' });
+    }
+
     function headApCardHTML(a, wait) {
       const lines = a.lines || [];
       const rows = lines.map(l => `<li class="flex justify-between gap-3"><span class="min-w-0">${escapeHTML(l.desc)}${l.no ? ` <span class="font-mono text-slate-500">${escapeHTML(l.no)}</span>` : ''}</span><span class="shrink-0 font-mono text-slate-600">${l.qty} ${escapeHTML(l.unit || '')}${l.amount ? ` · ₱${peso2(l.amount)}` : ''}</span></li>`).join('');
@@ -15256,6 +15686,7 @@
               <p class="text-[11px] font-bold uppercase tracking-wider text-violet-700 flex items-center gap-1"><i class="ph-bold ${AP_ICON[a.kind] || 'ph-seal-check'}"></i> ${escapeHTML(AP_KIND[a.kind] || 'Approval')}</p>
               <p class="text-sm font-extrabold text-slate-900">${escapeHTML(a.title || '')}</p>
               <p class="text-[11px] text-slate-500">${escapeHTML(iarStamp(a.submittedMs))}${a.by ? ` · ${escapeHTML(a.by)}` : ''}</p>
+              ${wait ? headAgeChip(a.submittedMs) : ''}
             </div>
             ${a.total ? `<p class="shrink-0 text-base font-extrabold font-mono text-slate-900">₱${peso2(a.total)}</p>` : ''}
           </div>
@@ -15267,6 +15698,16 @@
               <button onclick="headDecideAp('${a.id}', true)" data-ap-approve="${a.id}" class="h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-seal-check"></i> Approve</button>
             </div>` : status}
         </div>`;
+    }
+    function headApplyAp(cur, ok, note) {
+      const me = reqRole.me || {};
+      const F = cloud.sdk;
+      const kind = (AP_KIND[cur.kind] || 'Approval').toLowerCase();
+      const decision = { byUid: cloud.user.uid, byName: me.name || headMe.name || '', byDesig: me.designation || headMe.designation || '', atMs: Date.now(), note };
+      cloudWrite(F.updateDoc(F.doc(apCol(), cur.id), { status: ok ? 'approved' : 'returned', decision, updatedAt: F.serverTimestamp() }), ok ? 'Approving' : 'Returning');
+      cur.status = ok ? 'approved' : 'returned';
+      cur.decision = decision;
+      auditNow('system', `School Head ${ok ? 'approved' : 'returned'} ${kind}: ${cur.title}${note ? ` – “${note}”` : ''}`);
     }
     async function headDecideAp(id, ok) {
       const ap = apList.find(a => a.id === id);
@@ -15289,12 +15730,7 @@
       }
       const cur = apList.find(a => a.id === id);
       if (!cur || cur.status !== 'pending') return;
-      const F = cloud.sdk;
-      const decision = { byUid: cloud.user.uid, byName: name, byDesig: me.designation || headMe.designation || '', atMs: Date.now(), note };
-      cloudWrite(F.updateDoc(F.doc(apCol(), id), { status: ok ? 'approved' : 'returned', decision, updatedAt: F.serverTimestamp() }), ok ? 'Approving' : 'Returning');
-      cur.status = ok ? 'approved' : 'returned';
-      cur.decision = decision;
-      auditNow('system', `School Head ${ok ? 'approved' : 'returned'} ${kind}: ${cur.title}${note ? ` – “${note}”` : ''}`);
+      headApplyAp(cur, ok, note);
       renderHeadView();
       showToast(ok ? 'Approved · the property custodian is told' : 'Returned to the property custodian', ok ? 'ph-seal-check' : 'ph-arrow-u-up-left');
     }
@@ -15806,7 +16242,7 @@
           <i class="ph-bold ${icon} text-2xl"></i>
           <div class="min-w-0"><p class="text-sm font-extrabold">${title}</p><p class="text-xs mt-0.5">${text}</p></div>
         </div>`;
-      let html;
+      let html, two = false;
       if (!u || !headMeLoaded) html = note('ph-circle-notch animate-spin', 'bg-slate-50 border border-slate-200 text-slate-700', 'Connecting…', 'Getting the Purchase Requests of your school.');
       else if (!headMe) html = note('ph-question', 'bg-amber-50 border border-amber-200 text-amber-900', 'This Google account has not joined', `Open the School Head link from the property custodian of ${escapeHTML(reqRole.schoolName)} again, and sign in with the account you used.`);
       else if (headMe.status === 'removed') html = note('ph-prohibit', 'bg-rose-50 border border-rose-200 text-rose-900', 'Your School Head access was removed', 'The property custodian removed it. Ask them if this is a mistake.');
@@ -15815,15 +16251,19 @@
         const live = prList.filter(p => p.status !== 'cancelled');
         const waiting = live.filter(p => prApprStatus(p) === 'pending')
           .sort((a, b) => ((a.approval.submittedMs || a.createdMs || 0) - (b.approval.submittedMs || b.createdMs || 0)));
-        const done = live.filter(p => ['approved', 'returned'].includes(prApprStatus(p)) && prApproval(p).via === 'app')
-          .sort((a, b) => (prApproval(b).atMs || 0) - (prApproval(a).atMs || 0)).slice(0, 15);
         const aps = apPending().sort((a, b) => (a.submittedMs || 0) - (b.submittedMs || 0));
-        const doneAp = apList.filter(a => ['approved', 'returned'].includes(a.status) && a.decision && a.decision.byUid === u.uid)
-          .sort((a, b) => (b.decision.atMs || 0) - (a.decision.atMs || 0)).slice(0, 10);
         const nWait = waiting.length + aps.length;
-        html = `
+        const routine = headRoutine();
+        const nRoutine = routine.prs.length + routine.ris.length;
+        const decided = headDecided(u);
+        two = true;
+        const left = `
+          ${headAttentionHTML(headAttention(dashLoaded ? dashDoc : null, headWaitList()))}
           <div class="space-y-2.5">
-            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Waiting for you · ${nWait}</h2>
+            <div class="flex items-center justify-between gap-2 px-1">
+              <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Waiting for you · ${nWait}</h2>
+              ${nRoutine >= 2 ? `<button onclick="headApproveAll()" data-head-approve-all="${nRoutine}" class="h-8 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-1"><i class="ph-bold ph-checks"></i> Approve all ${nRoutine}</button>` : ''}
+            </div>
             ${nWait ? waiting.map(p => headPrCardHTML(p, true)).join('') + aps.map(a => headApCardHTML(a, true)).join('') : `
               <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
                 <i class="ph-bold ph-seal-check text-3xl text-slate-300"></i>
@@ -15831,17 +16271,31 @@
                 <p>Purchase Requests, write-offs and count reports from the property custodian show up here.</p>
               </div>`}
           </div>
-          ${headDashHTML()}
-          ${done.length || doneAp.length ? `<div class="space-y-2.5"><h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Recently decided</h2>${done.map(p => headPrCardHTML(p, false)).join('')}${doneAp.map(a => headApCardHTML(a, false)).join('')}</div>` : ''}`;
+          ${decided.all ? `
+          <div class="space-y-2.5" data-head-decided>
+            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Recently decided</h2>
+            <div class="relative">
+              <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input id="hdSearch" type="search" value="${escapeHTML(headSearch)}" oninput="setHeadSearch(this.value)" placeholder="Search PR no., item, purpose or note" autocomplete="off" class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-brand-500 outline-none">
+            </div>
+            <div id="hdDecided" class="space-y-2.5">${decided.html}</div>
+          </div>` : ''}`;
+        const right = `${headDashHTML()}${headTurnoverHTML()}
+          <button onclick="openSchoolHistory()" data-head-history class="w-full rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-center gap-3 text-left hover:border-brand-300">
+            <span class="w-10 h-10 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="ph-bold ph-lock-key text-xl"></i></span>
+            <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">School history</span><span class="block text-[11px] text-slate-500">Every change on the custodian’s devices · can’t be edited or deleted</span></span>
+            <i class="ph-bold ph-caret-right text-slate-400"></i>
+          </button>`;
+        html = `<div class="hd-col space-y-5">${left}</div><div class="hd-col space-y-5">${right}</div>`;
       }
-      if (headMe && headMe.status === 'active') html += headTurnoverHTML() + `
-        <button onclick="openSchoolHistory()" data-head-history class="w-full rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-center gap-3 text-left hover:border-brand-300">
-          <span class="w-10 h-10 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="ph-bold ph-lock-key text-xl"></i></span>
-          <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">School history</span><span class="block text-[11px] text-slate-500">Every change on the custodian’s devices · can’t be edited or deleted</span></span>
-          <i class="ph-bold ph-caret-right text-slate-400"></i>
-        </button>`;
       const body = document.getElementById('hdBody');
-      if (body.innerHTML !== html) { body.innerHTML = html; drawTurnQr(); }
+      body.classList.toggle('hd-two', two);
+      if (body.innerHTML !== html) {
+        const active = document.activeElement && document.activeElement.id === 'hdSearch' ? document.activeElement.selectionStart : null;
+        body.innerHTML = html;
+        drawTurnQr();
+        if (active != null) { const box = document.getElementById('hdSearch'); if (box) { box.focus(); try { box.setSelectionRange(active, active); } catch (e) {} } }
+      }
     }
     function headPrCardHTML(pr, wait) {
       const a = prApproval(pr) || {};
@@ -15858,6 +16312,7 @@
             <div class="min-w-0">
               <p class="text-sm font-extrabold text-slate-900">PR No. <span class="font-mono">${escapeHTML(pr.prNo)}</span></p>
               <p class="text-[11px] text-slate-500">${escapeHTML(prDateText(pr.date))} · ${plural(lines.length, 'item')} · ${escapeHTML(by)}</p>
+              ${wait ? headAgeChip(a.submittedMs || pr.createdMs) : ''}
             </div>
             <p class="shrink-0 text-base font-extrabold font-mono text-slate-900">₱${peso2(pr.total)}</p>
           </div>
@@ -15874,6 +16329,17 @@
             </div>` : status}
           <button onclick="printPrById('${pr.id}')" class="min-h-9 text-[11px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-printer"></i> See the printed form</button>
         </div>`;
+    }
+    function headApplyPr(cur, ok, note) {
+      const me = reqRole.me || {};
+      const F = cloud.sdk;
+      const approval = {
+        ...prApproval(cur), status: ok ? 'approved' : 'returned', via: 'app', byUid: cloud.user.uid,
+        byName: me.name || headMe.name || '', byDesig: me.designation || headMe.designation || '', atMs: Date.now(), note
+      };
+      cloudWrite(F.updateDoc(F.doc(prCol(), cur.id), { approval, updatedAt: F.serverTimestamp() }), ok ? 'Approving' : 'Returning');
+      cur.approval = approval;   // shown now; the cloud snapshot follows
+      auditNow('system', ok ? `School Head approved Purchase Request ${cur.prNo} (₱${peso2(cur.total)})` : `School Head returned Purchase Request ${cur.prNo}: “${note}”`);
     }
     async function headDecide(id, ok) {
       const pr = prList.find(p => p.id === id);
@@ -15893,14 +16359,7 @@
       }
       const cur = prList.find(p => p.id === id);
       if (!cur || prApprStatus(cur) !== 'pending') return;
-      const F = cloud.sdk;
-      const approval = {
-        ...prApproval(cur), status: ok ? 'approved' : 'returned', via: 'app', byUid: cloud.user.uid,
-        byName: name, byDesig: me.designation || headMe.designation || '', atMs: Date.now(), note
-      };
-      cloudWrite(F.updateDoc(F.doc(prCol(), id), { approval, updatedAt: F.serverTimestamp() }), ok ? 'Approving' : 'Returning');
-      cur.approval = approval;   // shown now; the cloud snapshot follows
-      auditNow('system', ok ? `School Head approved Purchase Request ${pr.prNo} (₱${peso2(pr.total)})` : `School Head returned Purchase Request ${pr.prNo}: “${note}”`);
+      headApplyPr(cur, ok, note);
       renderHeadView();
       showToast(ok ? `PR No. ${pr.prNo} approved` : `PR No. ${pr.prNo} returned to the property custodian`, ok ? 'ph-seal-check' : 'ph-arrow-u-up-left');
     }
@@ -16191,7 +16650,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     const relLine = (item, qty, units = []) => ({
       code: item.code, desc: item.name, unit: item.unit, qty,
       unitCost: units.length && units.every(u => u.cost > 0) ? round2(units.reduce((n, u) => n + u.cost, 0) / units.length) : round2(item.price || 0),
-      units: units.map(u => ({ id: u.id, no: u.no || '', serial: u.serial || '', cond: u.cond || 'S', doc: unitDocLabel(u), docDate: u.icsDate || '', loc: u.loc || '', ...(u.acq ? { acq: u.acq } : {}), ...(u.cost > 0 ? { cost: u.cost } : {}) }))
+      units: units.map(u => ({ id: u.id, no: u.no || '', serial: u.serial || '', cond: u.cond || 'S', doc: unitDocLabel(u), docDate: u.icsDate || '', loc: u.loc || '', ...(u.acq ? { acq: u.acq } : {}), ...(u.life ? { life: u.life } : {}), ...(u.cost > 0 ? { cost: u.cost } : {}) }))
     });
     const relTotal = lines => Math.round(lines.reduce((n, l) => n + l.qty * (l.unitCost || 0), 0) * 100) / 100;
     function relBase(t, extra) {
@@ -16889,7 +17348,67 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const want = Math.max(0, Math.min(qty, relMax(item)));
       if (!relIsEquip(item)) return { code, equip: false, qty: want };
       const free = relFreeUnits(item).slice(0, want).map(u => u.id);
-      return { code, equip: true, unitIds: free, newUnits: Math.min(relUntagged(item), want - free.length) };
+      return { code, equip: true, unitIds: free, newUnits: Math.min(relUntagged(item), want - free.length),
+        hasSerials: itemHasSerials(item), serials: {}, newSerials: [], life: null };
+    }
+
+    // Serial numbers and useful life on the Release form (Nov 2026). An item "has serial
+    // numbers" when the custodian said so (userState[code].serials, set on release), else when a
+    // unit already has one or it is ICT, audio-visual or consumer electronics. Then every unit
+    // being released needs its own serial number before Release goes through.
+    const SERIAL_CATEGORIES = new Set(['ICT Equipment & Devices', 'Audio & Visual Equipment', 'Consumer Electronics']);
+    function itemHasSerials(item) {
+      const s = (userState[item.code] || {}).serials;
+      if (s === true || s === false) return s;
+      return getUnits(item.code).some(u => u.serial) || SERIAL_CATEGORIES.has(item.category);
+    }
+    function relSerialList(l, item) {
+      const units = getUnits(item.code);
+      const out = l.unitIds.map(id => {
+        const u = units.find(x => x.id === id);
+        return { key: id, label: u ? u.no : '', value: String(l.serials[id] ?? (u && u.serial) ?? '') };
+      });
+      for (let i = 0; i < l.newUnits; i++) out.push({ key: 'n' + i, label: `New unit ${i + 1}`, value: String(l.newSerials[i] ?? '') });
+      return out;
+    }
+    function relSerialProblem(l, item) {
+      if (!l.equip || !l.hasSerials) return '';
+      const list = relSerialList(l, item);
+      const missing = list.filter(x => !x.value.trim()).length;
+      if (missing) return `${plural(missing, 'serial number')} still to type`;
+      const norm = v => String(v).trim().toUpperCase();
+      const others = new Set(getUnits(item.code).filter(u => !l.unitIds.includes(u.id) && u.serial).map(u => norm(u.serial)));
+      const seen = new Set();
+      for (const x of list) {
+        const n = norm(x.value);
+        if (seen.has(n)) return `serial number ${x.value.trim()} is typed twice`;
+        if (others.has(n)) return `serial number ${x.value.trim()} is already on another unit`;
+        seen.add(n);
+      }
+      return '';
+    }
+    function relCommonLife(l, item) {
+      const lives = getUnits(item.code).filter(u => l.unitIds.includes(u.id)).map(u => u.life || '');
+      return lives.length && lives.every(v => v === lives[0]) ? lives[0] : '';
+    }
+    function setRelLife(code, v) {
+      const l = releaseDraft && releaseDraft.lines.find(x => x.code === code);
+      if (l) l.life = v;
+    }
+    function setRelHasSerials(code, on) {
+      const l = releaseDraft && releaseDraft.lines.find(x => x.code === code);
+      if (!l) return;
+      l.hasSerials = !!on;
+      renderRelease();
+    }
+    function setRelSerial(code, key, v, input) {
+      const l = releaseDraft && releaseDraft.lines.find(x => x.code === code);
+      const item = items.find(i => i.code === code);
+      if (!l || !item) return;
+      if (key.startsWith('n')) l.newSerials[Number(key.slice(1))] = v; else l.serials[key] = v;
+      if (input) input.classList.toggle('rel-sn-empty', !String(v).trim());
+      const hint = document.querySelector(`[data-relsnhint="${CSS.escape(code)}"]`);
+      if (hint) { const p = relSerialProblem(l, item); hint.textContent = p ? `· ${p}` : '· all typed'; hint.classList.toggle('text-rose-600', !!p); hint.classList.toggle('text-emerald-700', !p); }
     }
 
     function openRelease(opts = {}) {
@@ -17016,6 +17535,29 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             const on = l.unitIds.includes(u.id);
             return `<button type="button" onclick="toggleRelUnit('${l.code}', '${u.id}')" class="h-8 px-2 rounded-lg border text-[11px] font-mono font-bold ${on ? 'bg-brand-600 border-brand-600 text-white' : 'bg-white border-slate-300 text-slate-600'}">${on ? '<i class="ph-bold ph-check"></i> ' : ''}${escapeHTML(u.no)}</button>`;
           }).join('')}</div>${untag ? `<p class="mt-1.5 text-[11px] text-slate-500">${l.newUnits ? `<b>${l.newUnits}</b> of ` : ''}${plural(untag, 'unit')} without a property number${l.newUnits ? ' · new numbers are given on release' : ''}</p>` : ''}`;
+          const common = relCommonLife(l, item);
+          const sn = l.hasSerials && q ? relSerialList(l, item) : [];
+          const snProblem = sn.length ? relSerialProblem(l, item) : '';
+          units += `
+            <div class="mt-2 grid grid-cols-2 gap-2 items-end">
+              <label class="block min-w-0">
+                <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">Useful life</span>
+                <input type="text" data-rellife="${l.code}" value="${escapeHTML(l.life ?? common)}" placeholder="${defaultLifeYears(item)} years" list="lifeList" autocomplete="off" oninput="setRelLife('${l.code}', this.value)" class="w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
+              </label>
+              <label class="h-9 flex items-center gap-2 text-xs font-semibold text-slate-700 min-w-0">
+                <input type="checkbox" data-relhassn="${l.code}" ${l.hasSerials ? 'checked' : ''} onchange="setRelHasSerials('${l.code}', this.checked)" class="w-4 h-4 shrink-0 accent-brand-600"> <span class="truncate">Has serial numbers</span>
+              </label>
+            </div>
+            ${sn.length ? `
+            <div class="mt-2">
+              <p class="text-[11px] font-bold uppercase text-slate-500 mb-1">Serial numbers <span data-relsnhint="${l.code}" class="normal-case font-semibold ${snProblem ? 'text-rose-600' : 'text-emerald-700'}">· ${snProblem || 'all typed'}</span></p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">${sn.map(x => `
+                <label class="flex items-center gap-2 min-w-0">
+                  <span class="w-[8.5rem] shrink-0 truncate text-[11px] font-mono font-bold text-slate-500" title="${escapeHTML(x.label)}">${escapeHTML(x.label)}</span>
+                  <input type="text" data-relsn="${l.code}:${x.key}" value="${escapeHTML(x.value)}" oninput="setRelSerial('${l.code}', '${x.key}', this.value, this)" placeholder="Serial No." autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Serial number of ${escapeHTML(x.label)}" class="${x.value.trim() ? '' : 'rel-sn-empty '}flex-1 min-w-0 h-8 px-2 rounded-lg border border-slate-200 text-xs font-mono outline-none focus:border-brand-500">
+                </label>`).join('')}
+              </div>
+            </div>` : ''}`;
         }
         return `
           <div class="rounded-xl border border-slate-200 p-3" data-rel="${l.code}">
@@ -17114,6 +17656,15 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         const item = items.find(i => i.code === l.code);
         if (!item || relQty(l) > relMax(item)) { appAlert(`${item ? item.name : l.code}: only ${item ? relMax(item) : 0} available.`); return; }
       }
+      for (const l of lines) {
+        const item = items.find(i => i.code === l.code);
+        const problem = relSerialProblem(l, item);
+        if (!problem) continue;
+        appAlert(`${item.name}: ${problem}. Type the serial number of each unit before releasing, or untick Has serial numbers if this item has none.`, { title: 'Serial numbers first', icon: 'ph-barcode' });
+        const box = [...document.querySelectorAll(`[data-relsn^="${CSS.escape(l.code)}:"]`)].find(x => !x.value.trim());
+        if (box) box.scrollIntoView({ block: 'center' });
+        return;
+      }
       const F = cloud.sdk;
       const now = Date.now();
       const risNo = nextReleaseNo('RIS', d.date), icsNo = nextReleaseNo('ICS', d.date), parNo = nextReleaseNo('PAR', d.date);
@@ -17134,10 +17685,18 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         }
         const chosen = getUnits(item.code).filter(u => l.unitIds.includes(u.id));
         const fresh = l.newUnits ? nextPropertyNumbers(l.newUnits, undefined, { date: d.date, cost: item.price }).map(no => ({ id: newUnitId(), no, serial: '', loc: '', to: '', cond: 'S', seen: null, printed: null, added: now })) : [];
+        const sn = l.hasSerials ? relSerialList(l, item) : null;
         state.units = [...getUnits(item.code), ...fresh];
         // Each unit by its own cost: ₱50,000 and up on the PAR, the rest on the ICS
         // (COA standard: ₱5,000 and below on the SPLV ICS, above on the SPHV ICS)
         const all = [...chosen, ...fresh];
+        if (sn) {
+          chosen.forEach(u => { const x = sn.find(y => y.key === u.id); if (x) u.serial = x.value.trim(); });
+          fresh.forEach((u, i) => { const x = sn.find(y => y.key === 'n' + i); if (x) u.serial = x.value.trim(); });
+        }
+        const life = l.life != null ? normLife(l.life) : '';
+        if (life) all.forEach(u => { u.life = life; });
+        state.serials = !!l.hasSerials;
         const se = all.filter(u => !isPPE(item, u));
         const groups = [[all.filter(u => isPPE(item, u)), 'PAR'],
           ...(coaIcs ? [[se.filter(u => isLowValued(item, u)), 'SPLV'], [se.filter(u => !isLowValued(item, u)), 'SPHV']] : [[se, 'ICS']])];
@@ -17235,7 +17794,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const d = prDefaults();
       const rows = r.lines.map(l => {
         const serials = (l.units || []).map(u => u.serial).filter(Boolean);
-        const life = (l.units || []).map(u => (findUnitAny(u.id) || {}).life).find(Boolean) || '';   // only what the custodian wrote
+        const life = (l.units || []).map(u => u.life || (findUnitAny(u.id) || {}).life).find(Boolean) || '';   // only what the custodian wrote
         return `<tr><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td>
           <td>${e(l.desc)}${serials.length ? `<br><span style="font-size:8.5pt">S/N: ${e(serials.join(', '))}</span>` : ''}</td>
           <td class="pr-sn">${e(nosText(l.units))}</td><td class="c">${e(life)}</td></tr>`;
@@ -18128,8 +18687,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function findPerson(key, people = accountabilityPeople()) {
       const p = people.find(x => x.key === key);
       if (p || !tvLastPerson || tvLastPerson.key !== key) return p || null;
-      const { uid, name, position, office, joined } = tvLastPerson;
-      return { key, uid, name, position, office, joined, records: [], equipment: [], ris: [], toConfirm: [], open: [], value: 0, last: 0, oldest: 0, counted: 0, repair: 0, unserv: 0 };
+      // (status read again: someone just removed shows as removed, with Add back, right away)
+      const { uid, name, position, office } = tvLastPerson;
+      const card = uid ? memberList.find(m => m.uid === uid) : null;
+      const removed = isRemovedUid(uid);
+      return { key, uid, name: (card && card.name) || name, position: card ? card.position || '' : position, office: card ? card.office || '' : office,
+        joined: !!card && !removed && memberStatus(card) === 'active', removed, records: [], equipment: [], ris: [], toConfirm: [], open: [], value: 0, last: 0, oldest: 0, counted: 0, repair: 0, unserv: 0, lost: 0 };
     }
 
     function openTeachersView(key = null) {
@@ -18255,7 +18818,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <i class="ph-bold ph-users-three text-3xl text-slate-300"></i>
             <p class="mt-1 text-sm font-bold text-slate-700">No one yet</p>
             <p class="text-xs text-slate-500">Teachers appear here when they join with your invite link, when you release items to them, or when you fill in “Assigned to” under Property Numbers.</p>
-          </div>`;
+          </div>${removedMembersHTML()}`;
         return;
       }
       const since = countSince();
@@ -22992,7 +23555,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       ['import', 'ph-file-arrow-up', 'bg-sky-50 text-sky-600', 'Import Excel / CSV', 'Your existing inventory sheet'],
       ['ics', 'ph-file-text', 'bg-violet-50 text-violet-600', 'Scan printed ICS', 'Take a photo; the app reads it'],
       ['catalog', 'ph-books', 'bg-brand-50 text-brand-600', 'Pick from the catalog', 'APP-CSE items, count as you go'],
-      ['sample', 'ph-magic-wand', 'bg-slate-100 text-slate-500', 'Look around first', 'Load sample data to try things']
+      ['sample', 'ph-magic-wand', 'bg-slate-100 text-slate-500', 'Look around first', 'Load sample data to try things'],
+      ['invite', 'ph-user-plus', 'bg-teal-50 text-teal-600', 'Invite people now', 'Teachers, School Head, assistant · add items later']
     ];
     function maybeStartTour(newSchool) {
       if (localStorage.getItem(TOUR_KEY) || !isCustodianDevice()) return false;
@@ -23016,6 +23580,13 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
     function tourNext() {
       if (tourStep === 0) saveTourSchool();
+      // Invite people now: straight to the Invite people sheet (teachers, School Head, assistant…).
+      if (tourStep === 1 && tourPick === 'invite') {
+        closeTour(true);
+        if (isCustodianDevice() && reqRole && reqRole.schoolId) openInvite();
+        else showToast('Sign in as the property custodian first', 'ph-info');
+        return;
+      }
       if (tourStep < 2) { tourStep += 1; renderTour(); return; }
       const pick = tourPick;
       closeTour(true);
@@ -23023,6 +23594,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       else if (pick === 'ics') openIcsScanner();
       else if (pick === 'catalog') switchMainView('CATALOG');
       else if (pick === 'sample') loadSampleData();
+      else if (pick === 'invite') openInvite();
       else showToast('All set · add items any time from More', 'ph-check-circle');
     }
     function tourBack() { if (tourStep > 0) { tourStep -= 1; renderTour(); } }
@@ -23071,7 +23643,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       }
       if (tourStep === 1) {
         body.innerHTML = `
-          ${head('ph-package', 'bg-emerald-50 text-emerald-600', 'Add your items', 'How would you like to start? Pick one; it opens when you finish. You can use the others any time from More.')}
+          ${head('ph-package', 'bg-emerald-50 text-emerald-600', 'Add your items', 'How would you like to start? Pick one; it opens when you finish. Or invite people now and add items later. Everything is also in More.')}
           <div class="space-y-2">${TOUR_PICKS.map(([k, icon, tint, title, sub]) => {
             const on = tourPick === k;
             return `<button type="button" data-tour-pick="${k}" aria-pressed="${on}" onclick="tourChoose('${k}')" class="w-full text-left rounded-2xl border-2 p-3 flex items-center gap-3 transition ${on ? 'border-brand-500 bg-brand-50/60 stage-on' : 'border-slate-200 bg-white hover:border-slate-300'}">
@@ -23082,7 +23654,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           }).join('')}</div>`;
         foot.innerHTML = `
           <button onclick="tourBack()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Back</button>
-          <button id="tourNext" onclick="tourNext()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-sm flex items-center justify-center gap-2">${tourPick ? 'Next' : 'Decide later'} <i class="ph-bold ph-arrow-right"></i></button>`;
+          <button id="tourNext" onclick="tourNext()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-sm flex items-center justify-center gap-2">${tourPick === 'invite' ? '<i class="ph-bold ph-user-plus"></i> Invite now' : `${tourPick ? 'Next' : 'Decide later'} <i class="ph-bold ph-arrow-right"></i>`}</button>`;
         return;
       }
       const pick = TOUR_PICKS.find(p => p[0] === tourPick);
@@ -23580,6 +24152,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (!notifScope()) return;
       if (notifPrefs.reminders !== false) notifReceiptReminders(now);
       if (notifPrefs.waiting !== false && isCustodianDevice()) { notifWaitingRequests(now); notifLongRepairs(now); notifPrsNotDelivered(now); }
+      if (notifPrefs.waiting !== false && isHeadDevice()) notifHeadWaiting(now);
       if (notifPrefs.count !== false) notifCountSeason(now);
       if (notifPrefs.reminders !== false && isCustodianDevice() && !isAssistant()) { notifReliefDue(now); notifYearEnd(now); }
       if (notifPrefs.reminders !== false) { try { notifBookDue(now); notifBookYear(now); } catch (e) { console.warn(e); } }
@@ -24158,6 +24731,28 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-head-dashboard', date: 'Nov 2026', title: 'School Head: a fuller dashboard', points: [
+        'Needs your attention at the top: lost units with the days left to apply for relief, count progress, ICS / PAR older than 3 years, slips not yet marked Received, overdue library books, approved PRs not delivered, and a note when the numbers are more than 3 days old.',
+        'Waiting cards show how many days they have waited, and the School Head gets a reminder after 3 days. Approve all approves the waiting Purchase Requests and supply requests together (write-offs and count reports still need a look each). Recently decided has a search box.',
+        'New cards: Purchase Requests approved this month, quarter and year (delivered, waiting, average time to decide), condition of tagged units with the value waiting for disposal, 12-month bars of supplies issued and property value, and who uses the most supplies.',
+        'Who holds what: tap a name to see their items (property no., serial no., slip, condition) and print their list for a clearance. Print the monthly summary makes a one-page report.',
+        'On a laptop or landscape tablet, the School Head\u2019s screen uses two columns. Phones stay the same.'
+      ] },
+      { id: '2026-11-release-serials', date: 'Nov 2026', title: 'Release: serial numbers and useful life', points: [
+        'Release to teacher: each equipment item now has a Useful life box. What you type is saved on every unit you release and prints on the ICS.',
+        'Items with serial numbers (laptops, projectors, TVs and the like, or any item where a unit already has one) now ask for the serial number of each unit before Release goes through. A serial number typed twice, or already on another unit, is caught too.',
+        'No serial numbers on an item? Untick Has serial numbers on its line. The app remembers your choice for that item.'
+      ] },
+      { id: '2026-11-remove-instant', date: 'Nov 2026', title: 'Fixes: removing a teacher shows right away', points: [
+        'Fixes: after Remove from the school, the teacher\u2019s page now shows Removed from the school with Add back straight away. Before, it kept showing has the app and the Remove button until you refreshed.',
+        'Fixes: when the only teacher is removed, the Removed from the school list (with Add back) now shows under No one yet.'
+      ] },
+      { id: '2026-11-tour-invite', date: 'Nov 2026', title: 'Welcome tour: invite people right away', points: [
+        'New property custodians: the Add your items step now has Invite people now. Pick it and tap Invite now to open Invite people straight away (teachers, School Head, assistant or librarian), and add your items later from More.'
+      ] },
+      { id: '2026-11-school-id-fields', date: 'Nov 2026', title: 'Fixes: School ID and name boxes fit the screen', points: [
+        'Fixes: on the property custodian sign-in, the School ID and School name boxes under Setting up a new school now stay inside the card on phones. The same fix applies on No school on this account yet.'
+      ] },
       { id: '2026-11-school-id-login', date: 'Nov 2026', title: 'Custodian sign-in: your school is found by your account, set up once by School ID', points: [
         'Signing in opens the school of the account you sign in with. The school name you type plays no part any more, so spaces or capital letters can\u2019t make a second school.',
         'A new school is set up with its 6-digit DepEd School ID. If that ID is already set up, the app says so and shows a hint of the account that did it (e.g. r***a@deped.gov.ph \u00b7 Google), so you can sign in with that one.',

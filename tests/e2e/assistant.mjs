@@ -54,7 +54,7 @@ try {
   await until(a, s => (items.find(i => i.code === s.code) || {}).qty === s.qty, 'custodian sees the count', 10000, supply);
   check(true, 'an encoded count reaches the custodian’s device');
   await until(b, uid => teacherRoster().some(x => x.uid === uid), 'Ana on the assistant’s roster', 8000, anaUid);
-  await ev(b, (uid, code) => { openRelease({ teacherUid: uid, lines: [{ code, qty: 2 }], purpose: 'Grade 4 art' }); confirmRelease(); closeRelease(); }, anaUid, supply.code);
+  await ev(b, (uid, code) => { openRelease({ teacherUid: uid, lines: [{ code, qty: 2 }], purpose: 'Grade 4 art' }); __fillSerials(); confirmRelease(); closeRelease(); }, anaUid, supply.code);
   await waitNode(() => rel().some(r => r.teacherUid === anaUid && r.kind === 'RIS'));
   const ris = rel().find(r => r.teacherUid === anaUid && r.kind === 'RIS');
   check(ris && ris.by === 'Ben Cruz' && ris.byUid === bUid && ris.custName === 'Rhealyn B. Nadado', 'RIS made by the assistant: “by” Ben, the custodian stays on the form');

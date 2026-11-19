@@ -14,6 +14,7 @@ async function waitNode(fn, what, ms = 8000) {
 async function release(a, uid, lines) {
   await ev(a, (uid, lines) => openRelease({ teacherUid: uid, lines }), uid, lines);
   await sleep(200);
+  await a.evaluate(() => __fillSerials());
   await a.click('#relSaveBtn');
   await until(a, () => !!releaseDone, 'released');
   await ev(a, () => closeRelease());
