@@ -623,6 +623,9 @@ The inventory committee, COA representative, fund cluster and similar names are 
 
 On a teacher's phone the screen has two tabs: **My Items** and **Requests**.
 
+- **At a glance** (top of My Items): tiles for the items under the teacher's name, their value, supplies received this school year (June to May) and library books borrowed (shown only when there are some).
+- **Needs your attention:** slips to mark *Received*, items the custodian asks back, the year-end count, reports waiting for the custodian, items in repair or lost, ICS / PAR older than 3 years (the custodian renews them), overdue library books, books issued to them and requests to borrow from their room. Tapping a line goes there. With nothing waiting it shows *All clear*. Everything comes from what the phone already reads: no extra reads, no rules change.
+- **Leaving the school? Clearance** (bottom): **Return everything** sends one return request per slip for every unit that can be returned (not lost ones), the same as tapping *Return* on each. The steps, **Print my list** (Summary of Accountability), and, once nothing is left, a reminder to ask the custodian for the certificate (Teachers → their page → **Clearance**).
 - **New from the property custodian:** each RIS or ICS released to the teacher, with a **Received** button. The custodian's records show who confirmed.
 - **Accountable equipment · ICS:** every unit under the teacher's name, with its property number, serial, ICS no. and value. Returns are subtracted. Each unit has two actions:
   - **Report a problem:** needs repair, not working, lost or missing, or something else, plus a note.
@@ -830,6 +833,7 @@ node custodian-login.mjs              # custodian sign-in: school found by accou
 node teacher-remove.mjs             # Remove from the school / Add back with the teacher's page open (laptop and phone): page, list and Removed list change at once, no refresh; the teacher's phone follows
 node release-serials.mjs            # Release form: Useful life per equipment line (saved on units, the release and the ICS), serial numbers required for items that have them (missing, typed twice, already on another unit), Has serial numbers untick remembered per item
 node head-dashboard.mjs             # School Head screen: Needs your attention, Waiting N days + reminder, Approve all, search decisions, spending, condition, trends, supply usage, who holds what (tap, print), monthly summary print, two columns on a laptop
+node teacher-dashboard.mjs          # teacher's My Items: tiles, Needs your attention (slips, asked back, reports, repair, old slips, overdue books), Clearance: Return everything, then nothing under their name
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

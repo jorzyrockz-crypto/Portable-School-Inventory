@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="d85b66d8896b">
+  <meta name="app-version" content="c5e048c215cf">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -17927,14 +17927,152 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (tab === 'library') renderTeacherLibrary();
     }
 
+    // ---- A teacher's My Items: overview, needs your attention, clearance (Nov 2026) ----------
+    // All from what the teacher's phone already reads (their releases, reports, requests and,
+    // once the Library tab loaded them, their loans): no extra reads.
+    const T_OLD_YEARS = 3;
+    // School year (June to May) of an ISO date, as 2026 for SY 2026–27
+    const tSyOf = iso => { const d = iso ? new Date(iso + 'T00:00:00') : new Date(); return d.getMonth() >= 5 ? d.getFullYear() : d.getFullYear() - 1; };
+    function tReturnAsked(unitId) {
+      const last = tLatestFor(unitId);
+      return !!(last && last.kind === 'return' && last.status === 'open');
+    }
+    function teacherAttention(h, toAck) {
+      const out = [];
+      const add = (tone, icon, text, sub, key, act = '') => out.push({ tone, icon, text, sub: sub || '', key, act });
+      if (toAck.length) {
+        const oldest = Math.min(...toAck.map(r => r.createdMs || Date.now()));
+        const days = Math.floor((Date.now() - oldest) / 864e5);
+        add(days >= 2 ? 'amber' : 'green', 'ph-hand-arrow-down', `${plural(toAck.length, 'slip')} to mark Received`,
+          `Check the items, then tap Received below${days >= 1 ? ` · the oldest is ${plural(days, 'day')} old` : ''}`, 'ack', "document.getElementById('tAckBox')?.scrollIntoView({ block: 'center', behavior: 'smooth' })");
+      }
+      const asked = h.equipment.filter(x => tUnitStatus(x.unit, x.rel).flag === 'askback');
+      if (asked.length) add('amber', 'ph-bell-ringing', `The property custodian asks you to return ${plural(asked.length, 'item')}`,
+        [...new Set(asked.map(x => x.line.desc))].slice(0, 3).join(' · '), 'askback', "document.querySelector('[data-t-askback]')?.scrollIntoView({ block: 'center', behavior: 'smooth' })");
+      const since = countSince();
+      if (h.equipment.length && since.season && !myLastCount()) add('brand', 'ph-clipboard-text', `Year-end count ${since.year}: confirm your ${plural(h.equipment.length, 'item')}`,
+        'Tap All present, or say what is missing or broken', 'count', "document.getElementById('tcCard')?.scrollIntoView({ block: 'center', behavior: 'smooth' })");
+      const flags = h.equipment.map(x => tUnitStatus(x.unit, x.rel).flag);
+      const lost = flags.filter(f => f === 'lost').length, repair = flags.filter(f => f === 'repair').length;
+      if (lost) add('rose', 'ph-question', `${plural(lost, 'lost item')} still under your name`,
+        'Until it is found, or the property custodian relieves you of it (ask within 30 days of the loss)', 'lost');
+      if (repair) add('slate', 'ph-wrench', `${plural(repair, 'item')} in repair`, 'Still under your name while the custodian has it repaired', 'repair');
+      const open = tReports.filter(x => x.status === 'open' && (x.kind === 'problem' || x.kind === 'return'));
+      if (open.length) {
+        const ret = open.filter(x => x.kind === 'return').reduce((n, x) => n + Math.max(1, (x.units || []).length), 0);
+        const prob = open.filter(x => x.kind === 'problem').length;
+        add('slate', 'ph-hourglass-medium', `${plural(open.length, 'report')} waiting for the property custodian`,
+          [ret && `${plural(ret, 'item')} to return · bring them to the custodian`, prob && plural(prob, 'problem')].filter(Boolean).join(' · '), 'open');
+      }
+      const cut = icsRenewCutoff();
+      const old = h.equipment.filter(x => x.unit.icsDate && x.unit.icsDate <= cut && tUnitStatus(x.unit, x.rel).flag !== 'lost');
+      if (old.length) add('slate', 'ph-arrows-clockwise', `${plural(old.length, 'item')} on slips older than ${T_OLD_YEARS} years`,
+        'The property custodian renews them; you tap Received on the new slip', 'old');
+      const me = cloud.user ? cloud.user.uid : '';
+      const late = bk.loansLoaded ? bk.loans.filter(l => l.borrowerUid === me && bkOverdue(l)) : [];
+      if (late.length) add('rose', 'ph-books', `${plural(late.length, 'library book')} overdue`, 'Return them to the library', 'books', "setTeacherTab('library')");
+      const incoming = bk.moves.filter(m => m.toUid === me && m.status === 'sent').length;
+      if (incoming) add('green', 'ph-hand-arrow-down', `Books issued to you · ${plural(incoming, 'slip')} to mark Received`, 'Count them, then tap Received under Library', 'bookmoves', "setTeacherTab('library')");
+      const asks = bk.loans.filter(l => l.keeperUid === me && l.status === 'requested').length;
+      if (asks) add('brand', 'ph-hand', `${plural(asks, 'request')} to borrow books from your room`, 'Answer them under Library', 'bookasks', "setTeacherTab('library')");
+      return out;
+    }
+    function teacherOverviewHTML(h, toAck) {
+      const value = h.equipment.reduce((n, x) => n + (x.line.unitCost || 0), 0);
+      const sy = tSyOf(localISODate());
+      const syRis = h.supplies.filter(r => tSyOf(r.date || (r.createdMs ? localISODate(new Date(r.createdMs)) : '')) === sy);
+      const syAmount = syRis.reduce((n, r) => n + (Number(r.total) || relTotal(r.lines || [])), 0);
+      const me = cloud.user ? cloud.user.uid : '';
+      const books = bk.loansLoaded ? bk.loans.filter(l => l.borrowerUid === me && bkLoanOut(l)).length : null;
+      const tile = (v, label, sub, attr) => `<div class="rounded-xl bg-white border border-slate-200 px-2 py-2 text-center min-w-0" ${attr}><p class="text-base font-extrabold font-mono text-slate-900 truncate">${v}</p><p class="text-[11px] font-bold uppercase text-slate-500 leading-tight">${label}</p>${sub ? `<p class="text-[11px] text-slate-500 truncate">${sub}</p>` : ''}</div>`;
+      const att = teacherAttention(h, toAck);
+      const tones = { rose: 'bg-rose-50 text-rose-600', amber: 'bg-amber-50 text-amber-600', brand: 'bg-brand-50 text-brand-600', green: 'bg-emerald-50 text-emerald-600', slate: 'bg-slate-100 text-slate-500' };
+      return `
+        <div class="space-y-2.5" id="tOverview">
+          <div class="grid ${books != null && books > 0 ? 'grid-cols-2 min-[400px]:grid-cols-4' : 'grid-cols-3'} gap-2">
+            ${tile(h.equipment.length, h.equipment.length === 1 ? 'Item' : 'Items', 'ICS / PAR', 'data-t-tile="items"')}
+            ${tile(pesoShort(value), 'Value', 'accountable', 'data-t-tile="value"')}
+            ${tile(pesoShort(syAmount), 'Supplies', `SY ${sy}–${String(sy + 1).slice(-2)} · ${plural(syRis.length, 'RIS')}`, 'data-t-tile="supplies"')}
+            ${books != null && books > 0 ? tile(books, books === 1 ? 'Book' : 'Books', 'borrowed', 'data-t-tile="books"') : ''}
+          </div>
+          <div data-t-attention="${att.length}">
+            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1 mb-1.5">Needs your attention${att.length ? ` · ${att.length}` : ''}</h2>
+            ${att.length ? `<ul class="rounded-2xl bg-white border border-slate-200 divide-y divide-slate-100 overflow-hidden">${att.map(x => `
+              <li data-t-att="${x.key}">
+                <${x.act ? 'button type="button"' : 'div'} ${x.act ? `onclick="${x.act}"` : ''} class="w-full text-left flex items-start gap-2.5 px-3 py-2.5 ${x.act ? 'hover:bg-slate-50' : ''}">
+                  <span class="w-8 h-8 shrink-0 rounded-lg ${tones[x.tone] || tones.slate} flex items-center justify-center"><i class="ph-bold ${x.icon} text-base"></i></span>
+                  <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900">${escapeHTML(x.text)}</span>${x.sub ? `<span class="block text-[11px] text-slate-500">${escapeHTML(x.sub)}</span>` : ''}</span>
+                  ${x.act ? '<i class="ph-bold ph-caret-right text-slate-400 mt-2"></i>' : ''}
+                </${x.act ? 'button' : 'div'}>
+              </li>`).join('')}</ul>`
+            : '<div class="rounded-2xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-xs font-bold text-emerald-800 flex items-center gap-2" data-t-att="clear"><i class="ph-bold ph-check-circle text-lg"></i> All clear · nothing to do for now</div>'}
+          </div>
+        </div>`;
+    }
+
+    // Leaving the school, retiring or transferring: return everything, then the custodian's
+    // clearance. One return request per slip (at most 50 units each), like Return on each unit.
+    function teacherClearanceHTML(h) {
+      const left = h.equipment.filter(x => !tUnitStatus(x.unit, x.rel).lockReturn);
+      const asked = h.equipment.filter(x => tReturnAsked(x.unit.id)).length;
+      const me = cloud.user ? cloud.user.uid : '';
+      const books = bk.loans.filter(l => l.borrowerUid === me && bkLoanOut(l)).length;
+      return `
+        <details id="tClearance" class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" ${tClearanceOpen ? 'open' : ''} ontoggle="tClearanceOpen = this.open">
+          <summary class="text-xs font-bold text-slate-800 cursor-pointer flex items-center gap-1.5"><i class="ph-bold ph-door-open text-slate-500"></i> Leaving the school? Clearance</summary>
+          <div class="mt-2 space-y-2 text-xs text-slate-700">
+            ${h.equipment.length ? `
+              <p data-t-clear-left="${h.equipment.length}"><b>${plural(h.equipment.length, 'item')}</b> still under your name${asked ? ` · <span class="text-emerald-700 font-bold">${asked} return requested</span>` : ''}.</p>
+              <ol class="list-decimal pl-5 space-y-0.5 text-[11px] text-slate-600">
+                <li>Tap <b>Return everything</b> and bring the items to the property custodian.${books ? ` Return your ${plural(books, 'borrowed library book')} too.` : ''}</li>
+                <li>The custodian checks them and marks them received back; they leave your list.</li>
+                <li>With nothing left under your name, ask the custodian for your clearance (certificate of no accountability).</li>
+              </ol>
+              <div class="flex flex-wrap gap-2">
+                ${left.length ? `<button id="tReturnAll" onclick="returnEverything()" class="h-10 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-arrow-u-up-left"></i> Return everything (${left.length})</button>` : '<span class="h-10 px-3 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center gap-1.5"><i class="ph-bold ph-check-circle"></i> Return requested for all</span>'}
+                <button onclick="printMyList()" class="h-10 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print my list</button>
+              </div>`
+            : `<p class="text-emerald-800 font-bold flex items-center gap-1.5" data-t-clear-left="0"><i class="ph-bold ph-seal-check"></i> Nothing is under your name.</p>
+               ${books ? `<p class="text-[11px] text-rose-700 font-bold">Return your ${plural(books, 'borrowed library book')} first.</p>` : ''}
+              <p class="text-[11px] text-slate-600">Ask the property custodian for your clearance (certificate of no accountability).</p>`}
+          </div>
+        </details>`;
+    }
+    let tClearanceOpen = false;
+    async function returnEverything() {
+      if (!teacherMayAct() || !cloud.user) return;
+      const h = teacherHoldings(myReleases);
+      const left = h.equipment.filter(x => !tUnitStatus(x.unit, x.rel).lockReturn);
+      if (!left.length) return;
+      const note = await appPrompt(`Sends a return request for ${plural(left.length, 'item')} under your name. Bring them to the property custodian; they mark each one received back.`, 'Clearance: returning everything',
+        { title: 'Return everything?', ok: 'Send return requests', tone: 'good', icon: 'ph-arrow-u-up-left', label: 'Note for the custodian' });
+      if (note === null) return;
+      const F = cloud.sdk;
+      const byRel = new Map();
+      left.forEach(x => { if (!byRel.has(x.rel.id)) byRel.set(x.rel.id, { rel: x.rel, list: [] }); byRel.get(x.rel.id).list.push(x); });
+      const batch = F.writeBatch(cloud.db);
+      byRel.forEach(({ rel, list }) => {
+        for (let i = 0; i < list.length; i += 50) {
+          const part = list.slice(i, i + 50);
+          batch.set(F.doc(tReportCol()), tReportBase('return', rel, {
+            reason: '', note: String(note || '').trim().slice(0, 300), code: part[0].line.code || '',
+            desc: [...new Set(part.map(x => x.line.desc))].join(', ').slice(0, 160), units: part.map(x => ({ id: x.unit.id, no: x.unit.no || '' }))
+          }));
+        }
+      });
+      cloudWrite(batch.commit(), 'Sending');
+      tClearanceOpen = true;
+      showToast(`${plural(left.length, 'return request')} sent · bring the items to the property custodian`, 'ph-paper-plane-tilt');
+    }
+
     function renderTeacherItems(h, toAck) {
       const pane = document.getElementById('rqItemsPane');
       const date = iso => (iso ? formatShortDate(iso + 'T00:00:00') : '');
       const value = h.equipment.reduce((n, x) => n + (x.line.unitCost || 0), 0);
-      let html = '';
+      let html = teacherOverviewHTML(h, toAck);
       if (toAck.length) {
         html += `
-          <div class="rounded-2xl bg-emerald-50 border border-emerald-200 p-3 space-y-2">
+          <div id="tAckBox" class="rounded-2xl bg-emerald-50 border border-emerald-200 p-3 space-y-2">
             <p class="text-xs font-extrabold text-emerald-900 flex items-center gap-1.5"><i class="ph-bold ph-hand-arrow-down"></i> New from the property custodian</p>
             ${toAck.map(r => `
               <div class="rounded-xl bg-white border border-emerald-100 p-3 flex items-center gap-3">
@@ -17978,6 +18116,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
               <p>Supplies released to you are listed here. Ask for more under <button onclick="setTeacherTab('requests')" class="font-bold text-amber-700 underline">Requests</button>.</p>
             </div>`}</div>
         </div>`;
+      if (reqRole && reqRole.schoolId && (h.equipment.length || myReleases.length)) html += teacherClearanceHTML(h);
       const typing = document.activeElement && document.activeElement.id === 'tEquipSearch';
       const caret = typing ? document.activeElement.selectionStart : 0;
       pane.innerHTML = html;
@@ -24731,6 +24870,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-teacher-dashboard', date: 'Nov 2026', title: 'Teachers: My Items at a glance', points: [
+        'My Items now starts with four tiles: how many items are under your name, their value, the supplies you received this school year, and the library books you borrowed.',
+        'Needs your attention lists what is waiting for you: slips to mark Received, items the property custodian asks back, the year-end count, reports still waiting for the custodian, items in repair or lost, slips older than 3 years, overdue library books, and books issued to you. Tap a line to go there. When there is nothing, it says All clear.',
+        'Leaving the school? The new Clearance box at the bottom sends one return request for everything under your name, shows the steps, and has Print my list. When nothing is left, it tells you to ask the property custodian for your clearance.'
+      ] },
       { id: '2026-11-head-dashboard', date: 'Nov 2026', title: 'School Head: a fuller dashboard', points: [
         'Needs your attention at the top: lost units with the days left to apply for relief, count progress, ICS / PAR older than 3 years, slips not yet marked Received, overdue library books, approved PRs not delivered, and a note when the numbers are more than 3 days old.',
         'Waiting cards show how many days they have waited, and the School Head gets a reminder after 3 days. Approve all approves the waiting Purchase Requests and supply requests together (write-offs and count reports still need a look each). Recently decided has a search box.',
