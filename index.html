@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="0a5d57cfcf58">
+  <meta name="app-version" content="b5db0cabb284">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -11769,9 +11769,9 @@
           <details id="rcNewBox" class="rounded-xl border border-slate-200 px-3 py-2 [&[open]]:pb-3">
             <summary class="cursor-pointer text-xs font-bold text-slate-600 py-1">Setting up a new school? (first time only)</summary>
             <p class="mt-1 text-[11px] text-slate-500 leading-snug">Each school is set up once, by its DepEd School ID. Already set up? Just sign in above with the same account.</p>
-            <div class="mt-2 grid grid-cols-[7.5rem_1fr] gap-2">
-              <input id="rcSchoolNo" type="text" inputmode="numeric" maxlength="6" value="${startNo}" placeholder="School ID" aria-label="6-digit School ID" class="h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium tracking-wider focus:border-brand-500 outline-none">
-              <input id="rcSchool" type="text" value="${school}" placeholder="School name" aria-label="School name" class="h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
+            <div class="mt-2 grid grid-cols-[6.5rem_minmax(0,1fr)] gap-2">
+              <input id="rcSchoolNo" type="text" inputmode="numeric" maxlength="6" value="${startNo}" placeholder="School ID" aria-label="6-digit School ID" class="w-full min-w-0 h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium tracking-wider focus:border-brand-500 outline-none">
+              <input id="rcSchool" type="text" value="${school}" placeholder="School name" aria-label="School name" class="w-full min-w-0 h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
             </div>
           </details>
         </div>
@@ -11825,9 +11825,9 @@
           <button id="nsOther" onclick="custodianOtherAccount()" class="w-full h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-user-switch"></i> Use a different account</button>
           <div class="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider text-slate-500"><span class="flex-1 h-px bg-slate-200"></span>or set up a new school<span class="flex-1 h-px bg-slate-200"></span></div>
           <p class="text-[11px] text-slate-500 leading-snug">Only if your school is not in CustodianPro yet. The School ID makes sure it is set up once.</p>
-          <div class="grid grid-cols-[7.5rem_1fr] gap-2">
-            <input id="nsNo" type="text" inputmode="numeric" maxlength="6" value="${escapeHTML(pre.no || '')}" placeholder="School ID" aria-label="6-digit School ID" class="h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium tracking-wider focus:border-brand-500 outline-none">
-            <input id="nsName" type="text" value="${escapeHTML(String(pre.name || '').replace(/^\d{6}\s*[-–·]?\s*/, ''))}" placeholder="School name" aria-label="School name" class="h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
+          <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-2">
+            <input id="nsNo" type="text" inputmode="numeric" maxlength="6" value="${escapeHTML(pre.no || '')}" placeholder="School ID" aria-label="6-digit School ID" class="w-full min-w-0 h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium tracking-wider focus:border-brand-500 outline-none">
+            <input id="nsName" type="text" value="${escapeHTML(String(pre.name || '').replace(/^\d{6}\s*[-–·]?\s*/, ''))}" placeholder="School name" aria-label="School name" class="w-full min-w-0 h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
           </div>
           <p id="nsError" class="hidden text-xs font-semibold text-rose-600 leading-snug"></p>
           <button id="nsCreate" onclick="custodianCreateSchool()" class="w-full h-11 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-800 text-sm font-bold flex items-center justify-center gap-2"><i class="ph-bold ph-plus-circle"></i> Set up this school</button>
@@ -24158,6 +24158,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-school-id-fields', date: 'Nov 2026', title: 'Fixes: School ID and name boxes fit the screen', points: [
+        'Fixes: on the property custodian sign-in, the School ID and School name boxes under Setting up a new school now stay inside the card on phones. The same fix applies on No school on this account yet.'
+      ] },
       { id: '2026-11-school-id-login', date: 'Nov 2026', title: 'Custodian sign-in: your school is found by your account, set up once by School ID', points: [
         'Signing in opens the school of the account you sign in with. The school name you type plays no part any more, so spaces or capital letters can\u2019t make a second school.',
         'A new school is set up with its 6-digit DepEd School ID. If that ID is already set up, the app says so and shows a hint of the account that did it (e.g. r***a@deped.gov.ph \u00b7 Google), so you can sign in with that one.',
