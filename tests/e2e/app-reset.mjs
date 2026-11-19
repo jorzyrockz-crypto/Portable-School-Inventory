@@ -16,7 +16,7 @@ const SCHOOL = '114656 - San Jose National High School';
 async function signIn(a, create) {
   await ev(a, () => { openRequestsView(); gateGo('custodian'); });
   await until(a, () => !!document.getElementById('rcEmail'), 'sign-in card');
-  await ev(a, s => { rcSchool.value = s; rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; }, SCHOOL);
+  await ev(a, s => { rcSchool.value = s; rcSchoolNo.value = /\d{6}/.test(rcSchool.value) ? '' : String(300000 + [...rcSchool.value].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7)); rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; }, SCHOOL);
   await a.click(create ? '#rcCreate' : '#rcSignIn');
   await until(a, () => reqRole && reqRole.role === 'custodian', 'custodian', 10000);
   await ev(a, () => { if (typeof closeInvite === 'function') closeInvite(); });

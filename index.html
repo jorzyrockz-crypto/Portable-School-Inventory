@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="b40410e83f24">
+  <meta name="app-version" content="0a5d57cfcf58">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -4938,7 +4938,7 @@
     function schoolInitials(name) {
       const skip = new Set(['OF', 'THE', 'AND', 'DE', 'DEL', 'NG', 'SA']);
       return String(name || '').toUpperCase().replace(/[^A-Z0-9\s]/g, ' ').split(/\s+/)
-        .filter(w => w && !skip.has(w)).map(w => w[0]).join('').slice(0, 8);
+        .filter(w => w && !skip.has(w) && !/^\d+$/.test(w)).map(w => w[0]).join('').slice(0, 8);   // (not the School ID in "114656 - San Jose NHS")
     }
 
     function propertyPrefix() {
@@ -11375,7 +11375,7 @@
           localStorage.removeItem(GOOGLE_PENDING_KEY);
           if (cloud.user && !cloud.user.isAnonymous && pendingGoogle.mode === 'custodian') {
             const fail = msg => { gateStep = 'custodian'; renderRequestsEverywhere(); showToast(msg, 'ph-warning'); };
-            try { await finishCustodianConnect(cloud.user, pendingGoogle.schoolName || '', fail); } catch (err) { fail(cloudErrorText(err)); }
+            try { await finishCustodianConnect(cloud.user, { name: pendingGoogle.schoolName || '', no: pendingGoogle.schoolNo || schoolNoOf(pendingGoogle.schoolName) }, fail); } catch (err) { fail(cloudErrorText(err)); }
             return;
           }
           if (cloud.redirectError) showToast(cloud.redirectError, 'ph-warning');
@@ -11738,20 +11738,21 @@
     }
 
     function reqConnectHTML() {
+      if (custNew && cloud.user && cloud.user.uid === custNew.uid && !reqRole) return custNewHTML();
       const school = escapeHTML((reqRole && reqRole.schoolName) || schoolInfo.school || '');
-      const email = escapeHTML((reqRole && reqRole.email) || '');
+      const last = !reqRole && custLast();
+      const email = escapeHTML((reqRole && reqRole.email) || (last && last.provider === 'password' ? last.email : '') || '');
+      const startNo = schoolNoOf(school);
       return `
         <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3">
           <div class="flex items-center gap-3">
             <span class="w-11 h-11 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-identification-badge text-2xl"></i></span>
             <div>
               <p class="text-sm font-extrabold text-slate-900">Property custodian sign-in</p>
-              <p class="text-xs text-slate-500">Receive your teachers’ requests. The first sign-in sets up your school.</p>
+              <p class="text-xs text-slate-500">Sign in with the account you used before. Your school opens by itself.</p>
             </div>
           </div>
-          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500">School (first sign-in only)
-            <input id="rcSchool" type="text" value="${school}" placeholder="School name" class="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium normal-case tracking-normal text-slate-900 focus:border-brand-500 outline-none">
-          </label>
+          ${last ? `<div data-cust-last class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600 leading-snug"><i class="ph-bold ph-clock-counter-clockwise text-slate-500"></i> Last time on this phone: <b class="text-slate-800">${escapeHTML(last.email || 'your account')}</b> with ${last.provider === 'google.com' ? 'Google' : 'email and password'}${last.school ? ` · ${escapeHTML(last.school)}` : ''}</div>` : ''}
           <button id="rcGoogle" onclick="custodianGoogle()" class="w-full h-12 rounded-xl bg-white border-2 border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-800 text-sm font-extrabold flex items-center justify-center gap-2.5 shadow-sm">
             ${GOOGLE_G} Continue with Google
           </button>
@@ -11765,21 +11766,131 @@
             <button id="rcCreate" onclick="custodianConnect(true)" class="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-800 text-sm font-bold">Create account</button>
           </div>
           <button onclick="custodianResetPassword()" class="min-h-10 -my-2 px-1 text-xs font-bold text-slate-500 hover:text-slate-800">Forgot password?</button>
+          <details id="rcNewBox" class="rounded-xl border border-slate-200 px-3 py-2 [&[open]]:pb-3">
+            <summary class="cursor-pointer text-xs font-bold text-slate-600 py-1">Setting up a new school? (first time only)</summary>
+            <p class="mt-1 text-[11px] text-slate-500 leading-snug">Each school is set up once, by its DepEd School ID. Already set up? Just sign in above with the same account.</p>
+            <div class="mt-2 grid grid-cols-[7.5rem_1fr] gap-2">
+              <input id="rcSchoolNo" type="text" inputmode="numeric" maxlength="6" value="${startNo}" placeholder="School ID" aria-label="6-digit School ID" class="h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium tracking-wider focus:border-brand-500 outline-none">
+              <input id="rcSchool" type="text" value="${school}" placeholder="School name" aria-label="School name" class="h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
+            </div>
+          </details>
         </div>
 `;
+    }
+
+    // ---- One school per School ID -------------------------------------------------------
+    // Signing in finds the school by account (custodians array-contains uid), never by name.
+    // When the account has none, a new school needs the 6-digit DepEd School ID, and an ID that
+    // is already set up is refused with a hint of the account that set it up, so signing in
+    // with another account (or another sign-in method) can't quietly make a second school.
+    var custNew = null;                       // { uid, email, provider } signed in, no school yet
+    const CUST_LAST_KEY = 'cp_custodian_last_v1';
+    function custLast() { try { return JSON.parse(localStorage.getItem(CUST_LAST_KEY) || 'null'); } catch (e) { return null; } }
+    const providerOf = user => ((user && user.providerData) || []).some(pd => pd.providerId === 'google.com') ? 'google.com' : 'password';
+    function saveCustLast(user, school) {
+      try { localStorage.setItem(CUST_LAST_KEY, JSON.stringify({ email: (user && user.email) || '', provider: providerOf(user), school: String(school || '').slice(0, 120), ms: Date.now() })); } catch (e) {}
+    }
+    // "r***a@deped.gov.ph · Google": enough to recognise your own account, not to read it.
+    function accountHint(user) {
+      const email = String((user && user.email) || '');
+      const [local, domain] = email.split('@');
+      const masked = !domain ? 'another account' : `${local.length <= 2 ? local.slice(0, 1) : local[0] + '***' + local.slice(-1)}@${domain}`;
+      return `${masked} · ${providerOf(user) === 'google.com' ? 'Google' : 'email and password'}`.slice(0, 80);
+    }
+    function readNewSchool(noId = 'rcSchoolNo', nameId = 'rcSchool') {
+      const name = reqVal(nameId).replace(/\s+/g, ' ');
+      const no = reqVal(noId).replace(/\D/g, '') || schoolNoOf(name);
+      return { name, no };
+    }
+    function rerenderCustodianCard() {
+      const g = document.getElementById('loginGate');
+      if (g) g.dataset.step = '';
+      renderLoginGate();
+      renderRequestsEverywhere();
+    }
+    function custNewHTML() {
+      const last = custLast();
+      const other = last && last.email && last.email !== custNew.email;
+      const pre = readNewSchoolCache || { name: schoolInfo.school || '', no: schoolNoOf(schoolInfo.school) };
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3" data-cust-new>
+          <div class="flex items-center gap-3">
+            <span class="w-11 h-11 shrink-0 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="ph-bold ph-buildings text-2xl"></i></span>
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-slate-900">No school on this account yet</p>
+              <p class="text-xs text-slate-500 break-words">Signed in as <b class="text-slate-700">${escapeHTML(custNew.email || 'this account')}</b> with ${custNew.provider === 'google.com' ? 'Google' : 'email and password'}</p>
+            </div>
+          </div>
+          ${other ? `<div class="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 leading-snug">Last time on this phone you used <b>${escapeHTML(last.email)}</b> with ${last.provider === 'google.com' ? 'Google' : 'email and password'}${last.school ? ` for ${escapeHTML(last.school)}` : ''}. If that is your school, use that account instead.</div>` : ''}
+          <button id="nsOther" onclick="custodianOtherAccount()" class="w-full h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-user-switch"></i> Use a different account</button>
+          <div class="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider text-slate-500"><span class="flex-1 h-px bg-slate-200"></span>or set up a new school<span class="flex-1 h-px bg-slate-200"></span></div>
+          <p class="text-[11px] text-slate-500 leading-snug">Only if your school is not in CustodianPro yet. The School ID makes sure it is set up once.</p>
+          <div class="grid grid-cols-[7.5rem_1fr] gap-2">
+            <input id="nsNo" type="text" inputmode="numeric" maxlength="6" value="${escapeHTML(pre.no || '')}" placeholder="School ID" aria-label="6-digit School ID" class="h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium tracking-wider focus:border-brand-500 outline-none">
+            <input id="nsName" type="text" value="${escapeHTML(String(pre.name || '').replace(/^\d{6}\s*[-–·]?\s*/, ''))}" placeholder="School name" aria-label="School name" class="h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
+          </div>
+          <p id="nsError" class="hidden text-xs font-semibold text-rose-600 leading-snug"></p>
+          <button id="nsCreate" onclick="custodianCreateSchool()" class="w-full h-11 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-800 text-sm font-bold flex items-center justify-center gap-2"><i class="ph-bold ph-plus-circle"></i> Set up this school</button>
+        </div>`;
+    }
+    var readNewSchoolCache = null;
+    async function custodianOtherAccount() {
+      custNew = null; readNewSchoolCache = null;
+      try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
+      cloud.user = null;
+      gateStep = 'custodian';
+      rerenderCustodianCard();
+    }
+    async function custodianCreateSchool() {
+      const errEl = document.getElementById('nsError'), btn = document.getElementById('nsCreate');
+      const fail = msg => { if (errEl) { errEl.textContent = msg; errEl.classList.toggle('hidden', !msg); } if (btn) btn.disabled = false; };
+      if (!custNew || !cloud.user) return custodianOtherAccount();
+      const want = readNewSchool('nsNo', 'nsName');
+      if (btn) btn.disabled = true;
+      try { await finishCustodianConnect(cloud.user, want, fail, true); } catch (err) { fail(cloudErrorText(err)); }
+    }
+    // Makes the school (after checking its School ID is free) and lists the ID. Returns
+    // { schoolId, name } or null (fail was called).
+    async function createSchoolById(user, want, fail) {
+      const F = cloud.sdk;
+      const no = String(want.no || '');
+      if (!/^\d{6}$/.test(no)) { fail('Type your school’s 6-digit DepEd School ID (e.g. 114656).'); return null; }
+      const bare = String(want.name || '').replace(/^\d{6}\s*[-–·]?\s*/, '').trim();
+      if (!bare) { fail('Type the school name.'); return null; }
+      const full = `${no} - ${bare}`.slice(0, 120);
+      const idRef = F.doc(cloud.db, 'schoolIds', no);
+      const cur = await F.getDoc(idRef);
+      if (cur.exists() && cur.data().schoolId) {
+        const other = await F.getDoc(F.doc(cloud.db, 'schools', String(cur.data().schoolId)));
+        if (other.exists()) {
+          const d = cur.data();
+          fail(`School ID ${no} is already set up in CustodianPro${d.name ? ` (${d.name})` : ''}${d.hint ? `, by ${d.hint}` : ''}. Sign in with that account to open it. A new custodian asks the old one for a Turnover link; a helper asks for an Assistant link.`);
+          return null;
+        }
+      }
+      if (!await appConfirm(`${full}\n\nNo school is linked to ${user.email || 'this account'} yet. Set up this school now? If you set it up before with another account, tap Cancel and sign in with that one.`,
+        { title: 'Set up a new school?', ok: 'Set up school', icon: 'ph-buildings' })) { fail(''); return null; }
+      const ref = F.doc(F.collection(cloud.db, 'schools'));
+      await F.setDoc(ref, { name: full, schoolNo: no, ownerUid: user.uid, custodians: [user.uid], createdAt: F.serverTimestamp() });
+      try { await F.setDoc(idRef, { schoolId: ref.id, name: full, hint: accountHint(user), updatedMs: Date.now() }); }
+      catch (err) { console.warn('school id', err); }
+      return { schoolId: ref.id, name: full, no };
     }
 
     async function custodianConnect(create) {
       const email = reqVal('rcEmail');
       const pass = document.getElementById('rcPass').value;
-      const schoolName = reqVal('rcSchool');
+      const want = readNewSchool();
       const errEl = document.getElementById('rcError');
       const btns = ['rcSignIn', 'rcCreate', 'rcGoogle'].map(id => document.getElementById(id));
       const busy = on => btns.forEach(b => { if (b) b.disabled = on; });
       const fail = msg => { errEl.textContent = msg; errEl.classList.remove('hidden'); busy(false); };
       errEl.classList.add('hidden');
       if (!email || !pass) return fail('Enter your email and password.');
-      if (create && !schoolName) return fail('Enter the school name first.');
+      if (create && (!/^\d{6}$/.test(want.no) || !want.name)) {
+        const box = document.getElementById('rcNewBox'); if (box) box.open = true;
+        return fail('A new account needs the school: type its 6-digit School ID and name under Setting up a new school.');
+      }
       busy(true);
       try {
         await cloudStart();
@@ -11787,7 +11898,7 @@
         const cred = create
           ? await F.createUserWithEmailAndPassword(cloud.auth, email, pass)
           : await F.signInWithEmailAndPassword(cloud.auth, email, pass);
-        await finishCustodianConnect(cred.user, schoolName, fail);
+        await finishCustodianConnect(cred.user, want, fail);
       } catch (err) {
         fail(cloudErrorText(err));
       }
@@ -11798,13 +11909,17 @@
       const btns = ['rcSignIn', 'rcCreate', 'rcGoogle'].map(id => document.getElementById(id));
       const busy = on => btns.forEach(b => { if (b) b.disabled = on; });
       const fail = msg => { errEl.textContent = msg; errEl.classList.remove('hidden'); busy(false); };
-      const schoolName = reqVal('rcSchool');
+      const want = readNewSchool();
       errEl.classList.add('hidden');
       busy(true);
       try {
         await cloudStart();
-        const user = await googleSignIn({ pending: { mode: 'custodian', schoolName } });
-        await finishCustodianConnect(user, schoolName, fail);
+        // Always show Google's account list: a Google account still signed in from another role
+        // (teacher, School Head) must never be used for the custodian by itself.
+        const cur = cloud.auth.currentUser;
+        if (cur && !cur.isAnonymous && !isCustodianDevice()) { await cloud.sdk.signOut(cloud.auth); cloud.user = null; }
+        const user = await googleSignIn({ pending: { mode: 'custodian', schoolName: want.name, schoolNo: want.no } });
+        await finishCustodianConnect(user, want, fail);
       } catch (err) {
         if (googleCancelled(err)) { busy(false); return; }
         fail(cloudErrorText(err));
@@ -11812,9 +11927,11 @@
     }
 
     // Signed in (email or Google): find this custodian's school, or create it.
-    async function finishCustodianConnect(user, schoolName, fail) {
+    async function finishCustodianConnect(user, want, fail, fromNewStep = false) {
       const F = cloud.sdk;
       cloud.user = user;
+      if (typeof want === 'string') want = { name: want, no: schoolNoOf(want) };
+      want = want || { name: '', no: '' };
       const uid = user.uid;
       const email = user.email || '';
       const found = await F.getDocs(F.query(F.collection(cloud.db, 'schools'), F.where('custodians', 'array-contains', uid)));
@@ -11827,6 +11944,7 @@
           const d = was.data();
           reqRole = { role: 'custodian', schoolId: was.id, schoolName: d.name, email, viewOnly: { untilMs: d.viewOnly[uid].untilMs, toName: d.custodianName || '', atMs: d.turnoverMs || 0 } };
           saveReqRole();
+          custNew = null; saveCustLast(user, d.name);
           subscribeRequests();
           renderRequestsEverywhere();
           showToast(`${d.name}: view-only until ${msDate(d.viewOnly[uid].untilMs)}`, 'ph-eye');
@@ -11841,25 +11959,42 @@
           reqRole = { role: 'custodian', schoolId: sd.id, schoolName: sd.data().name, email, assistant: { name: card.name || user.displayName || email, designation: card.designation || '' } };
           invMergeAnswer = false;
           saveReqRole();
+          custNew = null; saveCustLast(user, sd.data().name);
           subscribeRequests();
           renderRequestsEverywhere();
           showToast(`${sd.data().name}: signed in as assistant custodian`, 'ph-users-three');
           return;
         }
       }
+      let made = null;
       if (found.docs.length) {
         schoolId = found.docs[0].id;
         name = found.docs[0].data().name;
       } else {
-        if (!schoolName) schoolName = ((await appPrompt('Teachers will see this name.', schoolInfo.school || '', { title: 'Name of your school', placeholder: 'e.g. San Jose National High School', ok: 'Continue', icon: 'ph-buildings', maxLength: 120 })) || '').trim();
-        if (!schoolName) return fail('No school is linked to this account yet. Enter the school name and try again.');
-        const ref = F.doc(F.collection(cloud.db, 'schools'));
-        await F.setDoc(ref, { name: schoolName.slice(0, 120), ownerUid: uid, custodians: [uid], createdAt: F.serverTimestamp() });
-        schoolId = ref.id;
-        name = schoolName;
+        // No school on this account: a School ID is needed (asked on the next card when missing).
+        if (!fromNewStep && !(/^\d{6}$/.test(String(want.no || '')) && want.name)) {
+          custNew = { uid, email, provider: providerOf(user) };
+          readNewSchoolCache = want.name || want.no ? want : null;
+          gateStep = 'custodian';
+          rerenderCustodianCard();
+          return;
+        }
+        custNew = custNew || { uid, email, provider: providerOf(user) };
+        made = await createSchoolById(user, want, msg => {
+          if (fromNewStep) return fail(msg);
+          readNewSchoolCache = want;
+          rerenderCustodianCard();
+          const e = document.getElementById('nsError');
+          if (e && msg) { e.textContent = msg; e.classList.remove('hidden'); }
+        });
+        if (!made) return;
+        schoolId = made.schoolId;
+        name = made.name;
       }
-      reqRole = { role: 'custodian', schoolId, schoolName: name, email };
+      custNew = null; readNewSchoolCache = null;
+      reqRole = { role: 'custodian', schoolId, schoolName: name, email, ...(made ? { schoolNo: made.no, schoolNoListed: made.no } : {}) };
       saveReqRole();
+      saveCustLast(user, name);
       if (!schoolInfo.school) {
         schoolInfo.school = name;
         localStorage.setItem(SCHOOL_KEY, JSON.stringify(schoolInfo)); scheduleInventorySync();
@@ -11868,6 +12003,7 @@
       logHistory('system', `Connected supply requests for ${name} (${email})`);
       subscribeRequests();
       renderRequestsEverywhere();
+      if (!found.docs.length) rerenderCustodianCard();
       showToast(found.docs.length ? `Connected to ${name}` : `${name} is ready · invite your teachers`, 'ph-cloud-check');
       if (!maybeStartTour(!found.docs.length) && !found.docs.length) openInvite();
     }
@@ -11885,7 +12021,8 @@
     }
 
     async function custodianSignOut() {
-      if (!await appConfirm('Your inventory stays on this phone and in your school account. Sign in again to keep using it.', { title: 'Sign out of CustodianPro?', ok: 'Sign out', icon: 'ph-sign-out', tone: 'warn' })) return;
+      const how = cloud.user ? `${cloud.user.email || 'this account'} with ${providerOf(cloud.user) === 'google.com' ? 'Google' : 'email and password'}` : 'the same account';
+      if (!await appConfirm(`Your inventory stays on this phone and in your school account.\n\nTo come back to ${(reqRole && reqRole.schoolName) || 'your school'}, sign in again with ${how}.`, { title: 'Sign out of CustodianPro?', ok: 'Sign out', icon: 'ph-sign-out', tone: 'warn' })) return;
       stopRequestSync();
       try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
       cloud.user = null;
@@ -11940,7 +12077,8 @@
         if (cur.exists() && cur.data().schoolId !== sid && !stale) {
           reqRole.schoolNoTaken = no;
         } else {
-          await F.setDoc(ref, { schoolId: sid, name: String(reqRole.schoolName || schoolInfo.school || 'School').slice(0, 120), updatedMs: Date.now() });
+          await F.setDoc(ref, { schoolId: sid, name: String(reqRole.schoolName || schoolInfo.school || 'School').slice(0, 120), updatedMs: Date.now(),
+            ...(reqRole.viewOnly ? {} : { hint: accountHint(cloud.user) }) });
           reqRole.schoolNoListed = no;
           delete reqRole.schoolNoTaken;
         }
@@ -24020,6 +24158,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-school-id-login', date: 'Nov 2026', title: 'Custodian sign-in: your school is found by your account, set up once by School ID', points: [
+        'Signing in opens the school of the account you sign in with. The school name you type plays no part any more, so spaces or capital letters can\u2019t make a second school.',
+        'A new school is set up with its 6-digit DepEd School ID. If that ID is already set up, the app says so and shows a hint of the account that did it (e.g. r***a@deped.gov.ph \u00b7 Google), so you can sign in with that one.',
+        'Signed in with an account that has no school? You see which account and method you used, a Use a different account button, and the account you used last time on this phone. Sign out tells you which account to use to come back.',
+        'Fixes: Continue with Google for the property custodian always shows Google\u2019s account list, so an account still signed in from a teacher or School Head is never used by itself. Property numbers made from the school\u2019s initials no longer start with a digit of the School ID (114656 - San Jose NHS gives SJNHS).'
+      ] },
       { id: '2026-11-teacher-return', date: 'Nov 2026', title: 'Teachers and School Heads: come back with Google, no code needed', points: [
         'Left the app or got a new phone? On the sign-in screen, choose Teacher, then Continue with Google under Joined before with Google?. Use the same Google account you joined with. Your school, name, requests and items come back, and you don\u2019t wait for approval again.',
         'If you joined in more than one school with that account, the app asks which one. Teachers who joined with Google before this update: open the app once while still joined so it can remember your school.',
@@ -24661,12 +24805,15 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function gateGo(step) {
       gateStep = step;
       renderLoginGate();
-      const first = step === 'custodian' ? (document.getElementById('rcSchool').value ? 'rcEmail' : 'rcSchool') : step === 'teacher' ? 'gateCode' : step === 'head' && !isHeadDevice() ? 'gateHeadCode' : '';
+      const first = step === 'custodian' ? (document.getElementById('rcEmail') ? 'rcEmail' : '') : step === 'teacher' ? 'gateCode' : step === 'head' && !isHeadDevice() ? 'gateHeadCode' : '';
       if (first && matchMedia('(hover: hover)').matches) setTimeout(() => document.getElementById(first)?.focus(), 50);
     }
 
     // A custodian whose sign-in ended can also start over (e.g. a different person takes the phone).
     function gateStartOver() {
+      try { if (cloud.auth && cloud.auth.currentUser) cloud.sdk.signOut(cloud.auth).catch(() => {}); } catch (e) {}
+      cloud.user = null;
+      custNew = null;
       reqRole = null;
       gateStep = 'welcome';
       saveReqRole();

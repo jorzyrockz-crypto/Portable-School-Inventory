@@ -74,7 +74,7 @@ try {
   await ev(a, () => { loadSampleInventory(); schoolInfo.custodian = 'Rosa Villanueva'; });
   await ev(a, () => { openRequestsView(); gateGo('custodian'); }); // signed out: the sign-in screen carries the form
   await until(a, () => !!document.getElementById('rcEmail'), 'sign-in card');
-  await ev(a, () => { rcSchool.value = 'San Jose National High School'; rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
+  await ev(a, () => { rcSchool.value = 'San Jose National High School'; rcSchoolNo.value = /\d{6}/.test(rcSchool.value) ? '' : String(300000 + [...rcSchool.value].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7)); rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
   await a.click('#rcCreate');
   await until(a, () => reqRole && reqRole.role === 'custodian', 'custodian');
   await ev(a, () => closeInvite());

@@ -50,7 +50,7 @@ try {
   await a.goto(BASE_URL, { waitUntil: 'networkidle0' });
   await ev(a, () => { loadSampleInventory(); schoolInfo.custodian = 'Rhealyn B. Nadado'; schoolInfo.position = 'Administrative Officer II'; openRequestsView(); gateGo('custodian'); });
   await until(a, () => !!document.getElementById('rcGoogle'), 'sign-in card');
-  await ev(a, () => { rcSchool.value = 'Guanko Elementary School'; });
+  await ev(a, () => { rcSchool.value = 'Guanko Elementary School'; rcSchoolNo.value = /\d{6}/.test(rcSchool.value) ? '' : String(300000 + [...rcSchool.value].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7)); });
   await a.click('#rcGoogle');
   await until(a, () => reqRole && reqRole.role === 'custodian', 'custodian connected', 10000);
   await ev(a, () => { if (typeof closeInvite === 'function') closeInvite(); });
@@ -69,7 +69,7 @@ try {
   check(await ev(t, () => document.querySelector('#rqAvatar img').getAttribute('referrerpolicy') === 'no-referrer'), 'loaded without a referrer (Google may refuse it otherwise)');
   await until(t, () => !document.getElementById('rqCustAv').classList.contains('hidden'), 'custodian photo', 8000);
   const cust = await avatarOf(t, '#rqCustAv');
-  check(cust && cust.kind === 'photo' && /rhea-photo/.test(cust.src) && /To the property custodian of Guanko/.test(await ev(t, () => document.getElementById('rqSchool').textContent)), 'next to “To the property custodian of …”: the custodian’s photo');
+  check(cust && cust.kind === 'photo' && /rhea-photo/.test(cust.src) && /To the property custodian of (\d{6} - )?Guanko/.test(await ev(t, () => document.getElementById('rqSchool').textContent)), 'next to “To the property custodian of …”: the custodian’s photo');
   check(await ev(t, () => reqRole.custName === 'Rhealyn B. Nadado'), 'the custodian’s name is known (for initials, notifications)');
   await ev(t, () => setTeacherTab('stock'));
   await sleep(100);

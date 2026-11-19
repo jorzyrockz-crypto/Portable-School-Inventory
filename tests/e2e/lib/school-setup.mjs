@@ -20,7 +20,7 @@ export async function custodian(backend, { name = 'custodian', email = 'rhea@dep
   await ev(a, () => { loadSampleInventory(); schoolInfo.numbering = 'unit'; schoolInfo.custodian = 'Rhealyn B. Nadado'; schoolInfo.position = 'Administrative Officer II'; schoolInfo.head = 'John Russell L. Guadalupe'; });
   await ev(a, () => { openRequestsView(); gateGo('custodian'); });
   await until(a, () => !!document.getElementById('rcEmail'), 'sign-in card');
-  await ev(a, (s, e) => { rcSchool.value = s; rcEmail.value = e; rcPass.value = 'secret12'; }, school, email);
+  await ev(a, (s, e) => { rcSchool.value = s; rcSchoolNo.value = /\d{6}/.test(rcSchool.value) ? '' : String(300000 + [...rcSchool.value].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7)); rcEmail.value = e; rcPass.value = 'secret12'; }, school, email);
   await a.click('#rcCreate');
   await until(a, () => reqRole && reqRole.role === 'custodian', 'custodian connected');
   await ev(a, () => closeInvite());

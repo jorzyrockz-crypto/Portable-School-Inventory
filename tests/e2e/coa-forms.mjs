@@ -51,12 +51,12 @@ try {
   await a.goto(BASE_URL, { waitUntil: 'networkidle0' });
   await ev(a, () => gateGo('custodian'));
   await until(a, () => !!document.getElementById('rcEmail'), 'sign-in form');
-  await ev(a, () => { rcSchool.value = 'San Jose National High School'; rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
+  await ev(a, () => { rcSchool.value = 'San Jose National High School'; rcSchoolNo.value = /\d{6}/.test(rcSchool.value) ? '' : String(300000 + [...rcSchool.value].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7)); rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
   await a.click('#rcCreate');
   await until(a, () => reqRole && reqRole.role === 'custodian' && !document.getElementById('tourModal').classList.contains('hidden'), 'tour open');
   check(await ev(a, () => !document.getElementById('tourModal').classList.contains('hidden') && document.getElementById('inviteModal').classList.contains('hidden')),
     'tour shown instead of the bare invite sheet');
-  check(await ev(a, () => document.getElementById('tourSchool').value) === 'San Jose National High School', 'step 1: school name carried over from sign-up');
+  check((await ev(a, () => document.getElementById('tourSchool').value)).replace(/^\d{6} - /, '') === 'San Jose National High School', 'step 1: school name carried over from sign-up');
   await ev(a, () => { tourCustodian.value = 'Rosa Villanueva'; tourPosition.value = 'Administrative Officer II'; tourHead.value = 'Dr. Elena Cruz'; });
   await sleep(250);
   await a.screenshot({ path: `${SHOTS}/tour-1-school.png` });

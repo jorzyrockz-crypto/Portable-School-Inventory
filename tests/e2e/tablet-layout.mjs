@@ -27,7 +27,7 @@ try {
   check(small >= 11.5, `small captions grow with the rest (${small.toFixed(1)} px)`);
 
   out('2 tablet: Home and pop-ups');
-  await ev(t, () => { rcSchool.value = 'Oquendo Elementary School'; rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
+  await ev(t, () => { rcSchool.value = 'Oquendo Elementary School'; rcSchoolNo.value = /\d{6}/.test(rcSchool.value) ? '' : String(300000 + [...rcSchool.value].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7)); rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
   await t.click('#rcCreate');
   await until(t, () => reqRole && reqRole.role === 'custodian' && cloud.user && !document.documentElement.classList.contains('gated'), 'signed in');
   await sleep(500);

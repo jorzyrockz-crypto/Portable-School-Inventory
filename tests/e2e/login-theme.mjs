@@ -13,7 +13,7 @@ const gateStepNow = page => ev(page, () => document.getElementById('loginGate').
 async function custodianSignIn(page, { create = false } = {}) {
   await ev(page, () => gateGo('custodian'));
   await until(page, () => !!document.getElementById('rcEmail'), 'sign-in form');
-  await ev(page, () => { rcSchool.value = 'San Jose National High School'; rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
+  await ev(page, () => { rcSchool.value = 'San Jose National High School'; rcSchoolNo.value = /\d{6}/.test(rcSchool.value) ? '' : String(300000 + [...rcSchool.value].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7)); rcEmail.value = 'rosa@deped.gov.ph'; rcPass.value = 'secret12'; });
   await page.click(create ? '#rcCreate' : '#rcSignIn');
   await until(page, () => reqRole && reqRole.role === 'custodian' && !document.documentElement.classList.contains('gated'), 'signed in');
   await ev(page, () => closeInvite());
@@ -259,7 +259,7 @@ try {
   await c2.goto(BASE_URL, { waitUntil: 'networkidle0' });
   await ev(c2, () => gateGo('custodian'));
   await until(c2, () => !!document.getElementById('rcEmail'), 'sign-in form');
-  await ev(c2, () => { rcSchool.value = '114656 - Rizal Elementary School'; rcEmail.value = 'ben@deped.gov.ph'; rcPass.value = 'secret12'; });
+  await ev(c2, () => { rcSchool.value = '114656 - Rizal Elementary School'; rcSchoolNo.value = /\d{6}/.test(rcSchool.value) ? '' : String(300000 + [...rcSchool.value].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7)); rcEmail.value = 'ben@deped.gov.ph'; rcPass.value = 'secret12'; });
   await c2.click('#rcCreate');
   await until(c2, () => reqRole && reqRole.role === 'custodian' && !document.documentElement.classList.contains('gated'), 'custodian 2 signed in');
   await ev(c2, () => closeInvite());
@@ -294,13 +294,14 @@ try {
   await c3.goto(BASE_URL, { waitUntil: 'networkidle0' });
   await ev(c3, () => gateGo('custodian'));
   await until(c3, () => !!document.getElementById('rcEmail'), 'sign-in form');
-  await ev(c3, () => { rcSchool.value = '114656 Copycat School'; rcEmail.value = 'eve@deped.gov.ph'; rcPass.value = 'secret12'; });
+  await ev(c3, () => { rcSchool.value = '114656 Copycat School'; rcSchoolNo.value = /\d{6}/.test(rcSchool.value) ? '' : String(300000 + [...rcSchool.value].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7)); rcEmail.value = 'eve@deped.gov.ph'; rcPass.value = 'secret12'; });
   await c3.click('#rcCreate');
-  await until(c3, () => reqRole && reqRole.role === 'custodian' && !document.documentElement.classList.contains('gated'), 'custodian 3 signed in');
-  await ev(c3, () => closeInvite());
-  await until(c3, () => reqRole.schoolNoTaken === '114656', 'taken', 8000);
+  await until(c3, () => !!document.querySelector('[data-cust-new]') && !document.getElementById('nsError').classList.contains('hidden'), 'refused', 8000);
+  const dupMsg = await ev(c3, () => document.getElementById('nsError').textContent);
+  check(/School ID 114656 is already set up in CustodianPro \(114656 - Rizal Elementary School\), by b\*\*\*n@deped\.gov\.ph · email and password/.test(dupMsg), 'a second school with the same School ID is refused, with a hint of the account that set it up');
+  check(await ev(c3, () => !reqRole) && [...backend.store.keys()].filter(k => /^schools\/[^/]+$/.test(k) && /Copycat/.test(backend.store.get(k).name || '')).length === 0, 'no second school is made');
   check((backend.store.get('schoolIds/114656') || {}).schoolId === sid2, 'the School ID stays with the first school');
-  check(await ev(c3, () => reqRole.schoolNoTaken === '114656' && !reqRole.schoolNoListed), 'second school is told it is taken');
+  check(/^b\*\*\*n@deped\.gov\.ph · email and password$/.test((backend.store.get('schoolIds/114656') || {}).hint || ''), 'the School ID entry keeps the masked hint');
 
   // after "New invite link" the School ID alone no longer lets anyone join
   await ev(c2, () => newInviteLink());

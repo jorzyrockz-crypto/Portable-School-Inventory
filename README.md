@@ -13,9 +13,11 @@ Every phone signs in before using the app. The sign-in screen shows the school a
 picture on phones held upright, a wide one on tablets turned sideways and computers) and asks
 who is using the phone:
 
-- **Property custodian**: Google, or email and password. The first sign-in creates the school
-  (*School* field). This is the same account that receives teachers' requests and keeps
-  the **Inventory** saved online.
+- **Property custodian**: Google, or email and password. The school is found by the **account**,
+  never by its name: sign in with the same account (and the same method) and your school opens.
+  A new school is set up once, with its 6-digit DepEd **School ID** (*Setting up a new school?*).
+  This is the same account that receives teachers' requests and keeps the **Inventory** saved online.
+  See *One school per School ID* below.
 - **Teacher**: paste the invite link or type the school code from the custodian. Opening the
   invite link on the phone skips this step and goes straight to *Join*.
 
@@ -323,7 +325,7 @@ Teachers kept asking *“Sir, meron pa ba nito?”*. The teacher's phone now has
 - Supplies only. Equipment still needs an ICS / PAR from the custodian. Under COA rules the custodian issues the RIS, which is why “I took this” waits for the custodian's Confirm.
 
 **Custodian**
-1. On the sign-in screen choose **Property custodian** and tap **Continue with Google** (or use email and password). The first sign-in creates your school. Requests are under **Supply requests** on Home (also in ☰ More).
+1. On the sign-in screen choose **Property custodian** and tap **Continue with Google** (or use email and password). The first time, open *Setting up a new school?* and type the 6-digit School ID and the school name (or sign in first; the app then asks for them). Requests are under **Supply requests** on Home (also in ☰ More).
 2. Tap **Invite** and send the link or QR code to your faculty group chat.
 3. **To review**: open a request to see *asked / on hand / to buy* for every line. Edit names, quantities, units and unit costs, link a line to an inventory item, add a note, then **Approve** or **Decline** (with a reason). You can also enter walk-in requests with **New**.
 4. **To purchase**: tick approved requests and tap **Prepare Purchase Request**. Only the quantity not in stock goes on the PR (asked minus on hand, editable). Identical items from several teachers are added together, and their names go in the Purpose.
@@ -345,7 +347,7 @@ The app is connected to the Firebase project **russapps-custodianpro** (settings
    - **Email/Password** (optional: custodians without a Google account).
 2. **Authentication → Settings → Authorized domains**: add `jorzyrockz-crypto.github.io`. Without it, Google sign-in shows “This website is not on the Firebase authorized domains list”.
 3. **Build → Firestore Database → Create database**: pick a location near you (e.g. `asia-southeast1`, Singapore) and start in **production mode**.
-4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school. Nothing can be deleted, except by the school's custodian through **Reset app** (below). **Publish again after updating the app** when `firestore.rules` changed (latest: `teacherSchools`, each Google teacher's private list of their schools, and the confirmed School Head's school lookup by `headUid`, both for **Continue with Google**; before that, `turnovers`, `turnoverInvites` and the view-only reads for custodian turnover, and before that the School Head's `heads`, `headInvites` and PR approval rules).
+4. **Firestore → Rules**: replace the contents with [`firestore.rules`](firestore.rules) from this repository and click **Publish**. These rules let teachers create and read only their own requests. Only the school’s custodian can list requests and create Purchase Requests. Only Google or email accounts can set up a school. Nothing can be deleted, except by the school's custodian through **Reset app** (below). **Publish again after updating the app** when `firestore.rules` changed (latest: `hint` on `schoolIds`, the masked account that set up a School ID; before that, `teacherSchools`, each Google teacher's private list of their schools, and the confirmed School Head's school lookup by `headUid`, both for **Continue with Google**; before that, `turnovers`, `turnoverInvites` and the view-only reads for custodian turnover, and before that the School Head's `heads`, `headInvites` and PR approval rules).
 
 The config values are not secret; access is controlled by the published rules. To use a different project, replace the object in `firebase-config.js` (or set it to `null` to hide Supply requests).
 
@@ -354,7 +356,16 @@ The config values are not secret; access is controlled by the published rules. T
 - **Teachers:** need a new invite link.
 
 **Sign-in**
-- **Custodian:** *Continue with Google* (or email + password). The first sign-in creates the school; signing in on another phone or tablet finds it again.
+- **Custodian:** *Continue with Google* (or email + password). The first sign-in sets up the school with its School ID; signing in on another phone or tablet with the same account finds it again.
+
+**One school per School ID.** Signing in looks for the school that has your account as its custodian (`custodians` array-contains your uid). The typed school name plays no part, so spaces or capital letters can't matter.
+- **No school on the account:** the card says *No school on this account yet* and shows which account and method you used (e.g. *jorzy.rockz@gmail.com with Google*). It offers **Use a different account**, which signs out. If this phone remembers another account, it says *Last time on this phone you used …*.
+- **Setting up a new school** needs the 6-digit DepEd School ID and the name. The school is saved as `114656 - San Jose NHS`, and the ID is listed under `schoolIds/114656` with a masked hint of the account that set it up (`r***a@deped.gov.ph · Google`).
+- **An ID that is already set up is refused:** *School ID 114656 is already set up in CustodianPro (114656 - San Jose NHS), by r***a@deped.gov.ph · Google. Sign in with that account…*. A new custodian uses a **Turnover** link, and a helper an **Assistant** link. An ID whose school was erased (Reset app) is free again. The app also asks *Set up a new school?* before making one.
+- **The sign-in card** shows *Last time on this phone: … with Google · school*.
+- **Sign out** says which account to use to come back.
+- **Continue with Google** always shows Google's account list, so a Google account still signed in from testing a teacher or School Head is never used for the custodian by itself. *Not you? Start over* signs out too.
+- **Schools made before this update** keep working. The duplicate check covers schools whose School ID is listed: it is listed when the custodian signs in or opens Invite and the school name starts with the ID.
 - **Teacher:** open the invite link, type your name, and tap *Continue* (no account needed), or *Continue with Google* to keep your requests when you change phones. You can also link Google later from the teacher screen.
 
 **Staying within the free plan (Spark)**
@@ -806,6 +817,7 @@ node invite-people.mjs                # More → Invite people: teachers' link +
 node photos-everyone.mjs              # photos for every user: custodian/assistant More button + Account, teacher Your details (or Sign in with Google), School Head page + card, assistant card; rules accept Google photos only
 node request-many.mjs                 # several items in one request: Stock tab Request adds to one request + Review & send bar (kept after reload), multi-tap search results, Pick from the school's supplies, 50-item cap, cleared on send
 node teacher-return.mjs               # Continue with Google on the Teacher and School Head sign-in: back to the school with no code (same phone, new phone, pick among schools), private teacherSchools list, Leave explains, school name typed in the code box
+node custodian-login.mjs              # custodian sign-in: school found by account (not name), new school set up once by 6-digit School ID, ID already set up refused with a masked account hint, Use a different account, last account on this phone, no reuse of a Google account left signed in
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

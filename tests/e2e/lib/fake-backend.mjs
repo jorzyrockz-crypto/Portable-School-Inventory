@@ -71,7 +71,7 @@ export function createBackend({ autoApprove = true } = {}) {
     const p = parts(path);
     if (!ctx.uid) deny('not signed in', { kind, path });
     if (p[0] === 'schoolIds' && p.length === 2) {
-      const ok = Object.keys(data).every(k => ['schoolId', 'name', 'updatedMs'].includes(k)) && str(data.name, 120);
+      const ok = Object.keys(data).every(k => ['schoolId', 'name', 'updatedMs', 'hint'].includes(k)) && str(data.name, 120) && (data.hint === undefined || str(data.hint, 80));
       if (kind === 'create' || !before) {
         if (!/^[0-9]{6}$/.test(p[1]) || !ok || typeof data.schoolId !== 'string' || !isCust(ctx, data.schoolId)) deny('school id create', { path, data });
       } else if (!ok || !((isCust(ctx, before.schoolId) && (data.schoolId ?? before.schoolId) === before.schoolId) ||
