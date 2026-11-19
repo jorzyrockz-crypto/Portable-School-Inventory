@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="05cf74207587">
+  <meta name="app-version" content="42790d5c6955">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -11635,6 +11635,7 @@
             ${pick ? `<span class="block mt-1.5 text-[11px] font-bold text-brand-700">To buy: ${plural(buy.length, 'item')} · ₱${peso2(reqBuyTotal(r))}</span>` : ''}
             ${r.status === 'declined' && r.declineReason ? `<span class="block mt-1 text-[11px] text-rose-600">Reason: ${escapeHTML(r.declineReason)}</span>` : ''}
             ${r.status === 'released' && r.releaseNos ? `<span class="block mt-1 text-[11px] font-bold text-teal-700">${escapeHTML(r.releaseNos.join(' · '))}</span>` : ''}
+            ${r.status === 'released' && (r.short || []).length && r.kind !== 'took' ? `<span data-req-short class="block mt-1 text-[11px] font-bold text-amber-700">Partly supplied: ${escapeHTML(reqShortText(r))}</span>` : ''}
             ${risHeadLineHTML(r)}
           </button>
           ${r.kind === 'took' && r.status === 'pending' ? `<button data-took-confirm onclick="openReleaseFromRequest('${r.id}')" class="shrink-0 w-20 px-2 border-l border-slate-100 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 flex flex-col items-center justify-center gap-1"><i class="ph-bold ph-check-circle text-xl"></i> Confirm · RIS</button>` : ''}
@@ -12264,7 +12265,7 @@
         : took && r.status === 'declined' ? 'The custodian corrected this'
         : r.status === 'pr' ? `Being purchased · PR No. ${escapeHTML(r.prNo || '')}`
         : r.status === 'closed' ? 'Ready · get it from the property custodian'
-        : r.status === 'released' ? `Released to you${r.releaseNos ? ` · ${escapeHTML(r.releaseNos.join(' · '))}` : ''}`
+        : r.status === 'released' ? `${(r.short || []).length ? 'Partly supplied' : 'Released to you'}${r.releaseNos ? ` · ${escapeHTML(r.releaseNos.join(' · '))}` : ''}`
         : r.status === 'approved' ? 'Approved by the property custodian' : st.label;
       return `
         <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2">
@@ -12276,6 +12277,7 @@
             ${reqStatusChip(r)}
           </div>
           <ul class="text-xs text-slate-700 space-y-0.5">${lines}</ul>
+          ${r.status === 'released' && (r.short || []).length && !took ? `<p data-req-short class="rounded-lg bg-amber-50 text-amber-800 text-[11px] px-2.5 py-1.5"><b>Supplied</b> ${escapeHTML(reqShortText(r))}</p>` : ''}
           ${note ? `<p class="rounded-lg ${r.status === 'declined' ? 'bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-600'} text-[11px] px-2.5 py-1.5"><b>Custodian:</b> ${escapeHTML(note)}</p>` : ''}
           ${r.status === 'pending' && !r.sending ? `<button onclick="cancelMyRequest('${r.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600">${took ? 'I didn’t take it after all' : 'Cancel request'}</button>` : ''}
         </div>`;
@@ -13932,23 +13934,25 @@
     function renewHolders() {
       return accountabilityPeople().map(p => ({ ...p, equipment: p.equipment.filter(x => !x.unit.lostMs) })).filter(p => p.equipment.length && (p.uid || p.name));
     }
-    // onlyOld (Year-end & reminders): just the units on slips older than 3 years.
+    // onlyOld (Year-end & reminders): true = just the units on slips older than 3 years;
+    // 'par' = just the units of ₱50,000 or more still on an ICS (they need a PAR).
     async function renewAllSlips(onlyOld = false) {
       if (!isCustodianDevice() || isViewOnly() || !cloud.user) return;
-      onlyOld = onlyOld === true;
+      const parOnly = onlyOld === 'par';
+      onlyOld = onlyOld === true || parOnly;
       const mine = onlyOld ? null : turnDone().find(t => t.uid === cloud.user.uid);
       const cut = icsRenewCutoff();
       const holders = onlyOld
-        ? renewHolders().map(p => ({ ...p, equipment: p.equipment.filter(x => x.unit.icsDate && x.unit.icsDate <= cut) })).filter(p => p.equipment.length)
+        ? renewHolders().map(p => ({ ...p, equipment: p.equipment.filter(x => parOnly ? unitNeedsPar(x.item, x.unit) : (x.unit.icsDate && x.unit.icsDate <= cut)) })).filter(p => p.equipment.length)
         : renewHolders();
-      if (!holders.length) { showToast(onlyOld ? `No slips older than ${ICS_RENEW_YEARS} years` : 'No teacher holds property right now', 'ph-info'); return; }
+      if (!holders.length) { showToast(parOnly ? 'No equipment of ₱50,000 or more on an ICS' : onlyOld ? `No slips older than ${ICS_RENEW_YEARS} years` : 'No teacher holds property right now', 'ph-info'); return; }
       const units = holders.reduce((n, p) => n + p.equipment.length, 0);
-      if (!await appConfirm(`Makes a new ICS or PAR in your name for each of ${plural(holders.length, 'teacher')} (${plural(units, 'unit')}${onlyOld ? ` on slips older than ${ICS_RENEW_YEARS} years` : ' they hold now'}). The old slips stay on record, and each teacher taps Received on the new one.`,
-        { title: onlyOld ? 'Renew the old slips?' : 'Renew all slips?', ok: onlyOld ? 'Renew' : 'Renew all', icon: 'ph-arrows-clockwise', tone: 'good' })) return;
+      if (!await appConfirm(`Makes a new ICS or PAR in your name for each of ${plural(holders.length, 'teacher')} (${plural(units, 'unit')}${parOnly ? ' of ₱50,000 or more now on an ICS' : onlyOld ? ` on slips older than ${ICS_RENEW_YEARS} years` : ' they hold now'}). The old slips stay on record, and each teacher taps Received on the new one.`,
+        { title: parOnly ? 'Make the PAR?' : onlyOld ? 'Renew the old slips?' : 'Renew all slips?', ok: parOnly ? 'Make the PAR' : onlyOld ? 'Renew' : 'Renew all', icon: 'ph-arrows-clockwise', tone: 'good' })) return;
       const F = cloud.sdk, date = localISODate(), now = Date.now();
       const coaIcs = numberingMode() === 'coa';
       const docs = [];
-      const purpose = (onlyOld ? `Renewal of slips older than ${ICS_RENEW_YEARS} years` : `Renewal on change of property custodian${mine && mine.fromName ? ` (from ${mine.fromName})` : ''}`).slice(0, 300);
+      const purpose = (parOnly ? 'Property of ₱50,000 or more moved from ICS to PAR (COA Circular 2022-004)' : onlyOld ? `Renewal of slips older than ${ICS_RENEW_YEARS} years` : `Renewal on change of property custodian${mine && mine.fromName ? ` (from ${mine.fromName})` : ''}`).slice(0, 300);
       holders.forEach(p => {
         const groups = { PAR: [], ICS: [], SPLV: [], SPHV: [] };
         p.equipment.forEach(x => {
@@ -13973,7 +13977,7 @@
         });
       });
       releaseAll = releaseAll.filter(r => !String(r.id).startsWith('tmp-'));
-      saveStateWith({ summary: { kind: 'release', text: `Renewed the slips of ${plural(holders.length, 'teacher')} ${onlyOld ? `(older than ${ICS_RENEW_YEARS} years)` : 'on the change of property custodian'}: ${docs.map(x => `${x.kind} ${x.no}`).join(', ')}`.slice(0, 600) } });
+      saveStateWith({ summary: { kind: 'release', text: `Renewed the slips of ${plural(holders.length, 'teacher')} ${parOnly ? '(₱50,000 or more: ICS to PAR)' : onlyOld ? `(older than ${ICS_RENEW_YEARS} years)` : 'on the change of property custodian'}: ${docs.map(x => `${x.kind} ${x.no}`).join(', ')}`.slice(0, 600) } });
       const out = [];
       for (let i = 0; i < docs.length; i += 400) {
         const batch = F.writeBatch(cloud.db);
@@ -14978,6 +14982,15 @@
           ${yeRenewDone ? `<button onclick="printYeRenewed()" class="w-full h-10 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print the ${plural(yeRenewDone.docs.length, 'new slip')}</button>` : ''}
           <button onclick="renewOldSlips()" ${ro || !cloud.user ? 'disabled' : ''} class="w-full h-10 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white text-xs font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrows-clockwise"></i> Renew these slips</button>`
         : `${yeRenewDone ? `<button onclick="printYeRenewed()" class="w-full h-10 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print the ${plural(yeRenewDone.docs.length, 'new slip')}</button>` : ''}<p class="text-[11px] text-slate-500">None. Slips are renewed every ${ICS_RENEW_YEARS} years, or when the property custodian changes.</p>`, 'data-ye-section="renew"');
+      const needPar = unitsNeedingPar();
+      if (needPar.length) html += sec('ph-file-text', `₱50,000 or more on an ICS · ${needPar.length}`, `
+          <p class="text-xs text-slate-600" data-ye-par="${needPar.length}">COA: equipment of ₱50,000 or more goes on a PAR, not an ICS. ${escapeHTML(listJoin(needPar.slice(0, 4).map(x => `${x.unit.no || x.item.name} (${unitHolder(x.unit) || '?'})`)))}${needPar.length > 4 ? ' …' : ''}.</p>
+          <button onclick="moveToPar()" data-ye-make-par ${ro || !cloud.user ? 'disabled' : ''} class="w-full h-10 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white text-xs font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-file-text"></i> Make the PAR</button>
+          <p class="text-[11px] text-slate-500">Each teacher gets a PAR for those units and taps Received. The old ICS stays on record.</p>`, 'data-ye-section="par"');
+      const latePrs = cloud.user ? prsNotDelivered() : [];
+      if (latePrs.length) html += sec('ph-truck', `Purchase Requests not delivered · ${latePrs.length}`, `
+          <ul class="space-y-1 text-[11px] text-slate-700" data-ye-late-prs="${latePrs.length}">${latePrs.slice(0, 6).map(x => `<li class="flex justify-between gap-2"><span class="min-w-0 truncate">PR No. ${escapeHTML(x.pr.prNo)} · ₱${peso2(x.pr.total)}${prPartlyReceived(x.pr) ? ' · partly received' : ''}</span><span class="shrink-0 font-bold ${x.days >= PR_LATE_DAYS * 2 ? 'text-rose-700' : 'text-amber-700'}">${x.days} days</span></li>`).join('')}</ul>
+          <button onclick="closeYearEnd(); openRequestsView(); setReqTab('prs')" class="w-full h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-files"></i> Purchase requests</button>`, 'data-ye-section="late-prs"');
       if (typeof bkYearEndHTML === 'function') html += bkYearEndHTML(sec, ro);
       const bond = schoolInfo.bondUntil, desig = schoolInfo.desigUntil;
       const warn = iso => iso && daysTo(iso) <= EXPIRY_WARN_DAYS;
@@ -15062,6 +15075,12 @@
         st.seen['ir:' + month] = old.length;
         saveNotifs();
         addNotif({ title: `${plural(old.length, 'unit')} on slips older than ${ICS_RENEW_YEARS} years`, body: 'Renew the ICS / PAR in More → Year-end & reminders', icon: 'ph-arrows-clockwise', tone: 'amber', go: 'yearend' });
+      }
+      const par = unitsNeedingPar();
+      if (par.length && st.seen['np:' + month] === undefined) {
+        st.seen['np:' + month] = par.length;
+        saveNotifs();
+        addNotif({ title: `${plural(par.length, 'unit')} of ₱50,000 or more on an ICS`, body: `${par.slice(0, 3).map(x => x.unit.no || x.item.name).join(', ')}${par.length > 3 ? '…' : ''} · they need a PAR · More → Year-end & reminders`, icon: 'ph-file-text', tone: 'amber', go: 'yearend' });
       }
     }
 
@@ -15628,6 +15647,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     const PPE_MIN = 50000;
     // A unit with its own cost (from a delivery or its ICS) is judged by that cost.
     const isPPE = (item, unit) => Number(unit && unit.cost > 0 ? unit.cost : item && item.price) >= PPE_MIN;
+    // Issued on an ICS although it costs ₱50,000 or more (e.g. a paper ICS scanned in, or a cost
+    // corrected later): COA wants a PAR for it.
+    const unitNeedsPar = (item, unit) => !!(unit && unit.ics && unit.doc !== 'PAR' && (unit.to || unit.toUid) && !unit.lostMs && isPPE(item, unit));
+    function unitsNeedingPar() { return allTaggedUnits().filter(x => unitNeedsPar(x.item, x.unit)); }
+    function moveToPar() { return renewAllSlips('par'); }
     const ISSUE_KINDS = ['ICS', 'PAR', 'ITR', 'PTR'];          // documents that put a unit with someone
     const isIssueKind = k => ISSUE_KINDS.includes(k);
     const unitDocKind = u => (u && u.doc) || 'ICS';
@@ -16378,6 +16402,26 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (!relMax(item)) { showToast(relIsEquip(item) ? 'Every unit is already with someone' : 'None in stock to release', 'ph-info'); return; }
       openRelease({ lines: [{ code, qty: 1 }] });
     }
+    // Fewer than asked: each line of the teacher's request against what the release gives them
+    // (the teacher is told "Supplied 3 of 5 box Chalk").
+    function reqShortLines(r, docs) {
+      if (!r) return [];
+      const got = new Map();
+      docs.forEach(x => (x.lines || []).forEach(l => got.set(l.code, (got.get(l.code) || 0) + (Number(l.qty) || 0))));
+      const out = [];
+      reqLinesOf(r).forEach(l => {
+        const asked = Number(l.requested != null ? l.requested : l.qty) || 0;
+        if (!(asked > 0)) return;
+        const item = (l.code && items.find(i => i.code === l.code)) || items.find(i => normItemName(i.name) === normItemName(l.desc));
+        const n = item ? (got.get(item.code) || 0) : 0;
+        if (n < asked) out.push({ desc: String(l.desc || '').slice(0, 120), unit: String(l.unit || '').slice(0, 30), asked, got: n });
+      });
+      return out.slice(0, 50);
+    }
+    const reqShortText = r => (r.short || []).slice(0, 3).map(x => `${x.got} of ${x.asked} ${x.unit} ${x.desc}`.replace(/\s+/g, ' ').trim()).join(' · ') + ((r.short || []).length > 3 ? ` · +${r.short.length - 3} more` : '');
+    // Approved fewer than asked: "3 of 5 box Chalk".
+    const reqLessText = r => (r.review && Array.isArray(r.review.lines) ? r.review.lines : []).filter(l => l.approved < l.requested)
+      .slice(0, 3).map(l => `${l.approved} of ${l.requested} ${l.unit || ''} ${l.desc}`.replace(/\s+/g, ' ').trim()).join(' · ');
     function openReleaseFromRequest(id) {
       const r = reqList.find(x => x.id === id);
       if (!r) return;
@@ -16608,7 +16652,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const batch = F.writeBatch(cloud.db);
       const refs = docs.map(x => { const ref = F.doc(relCol()); batch.set(ref, cleanJSON({ ...x, createdAt: F.serverTimestamp() })); return ref.id; });
       if (d.requestId) batch.update(F.doc(reqCol(), d.requestId), {
-        status: 'released', releaseIds: refs, releaseNos: docs.map(x => `${x.kind} ${x.no}`), releasedMs: now, updatedAt: F.serverTimestamp()
+        status: 'released', releaseIds: refs, releaseNos: docs.map(x => `${x.kind} ${x.no}`), releasedMs: now, short: reqShortLines(reqList.find(x => x.id === d.requestId), docs), updatedAt: F.serverTimestamp()
       });
       cloudWrite(batch.commit(), 'Saving the release');
       if (d.requestId) { pushStock(); closeHold(d.requestId, 'done'); }   // "I took this": the RIS replaces the hold
@@ -16868,9 +16912,15 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Where a unit stands for the teacher, from their latest report about it and the
     // custodian's answer: chip + which buttons are locked + a short flag for group summaries.
-    function tUnitStatus(unit) {
+    function tUnitStatus(unit, rel = null) {
       const last = tLatestFor(unit.id);
       const res = { chip: '', lockReport: false, lockReturn: false, flag: '' };
+      const ask = rel && rel.askBack && rel.askBack[unit.id];
+      // The custodian asked for it back, and no return was asked for since.
+      if (ask && !ask.doneMs && !(last && last.kind === 'return' && (last.createdMs || 0) >= ask.ms)) {
+        Object.assign(res, { flag: 'askback', chip: `<span data-t-askback class="block rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px] px-2.5 py-1.5"><b><i class="ph-bold ph-bell-ringing"></i> The custodian asks you to return this</b>${ask.note ? ` · ${escapeHTML(ask.note)}` : ''} · tap <b>Return</b></span>` });
+        if (!last) return res;
+      }
       if (!last) return res;
       const open = last.status === 'open';
       const since = last.repairedMs || last.foundMs || last.resolvedMs || last.createdMs || 0;
@@ -16900,7 +16950,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     function teacherUnitCardHTML(x) {
       const { unit, line, rel } = x;
-      const st = tUnitStatus(unit);
+      const st = tUnitStatus(unit, rel);
       return `
         <div data-tunit-card="${unit.id}" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2">
           <div class="flex items-start justify-between gap-3">
@@ -16939,8 +16989,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         const value = all.reduce((n, x) => n + (x.line.unitCost || 0), 0);
         const slips = [...new Set(all.map(x => `${x.rel.kind} ${x.rel.no || ''}`.trim()))];
         const flags = {};
-        all.forEach(x => { const f = tUnitStatus(x.unit).flag; if (f) flags[f] = (flags[f] || 0) + 1; });
-        const FLAG = { reported: ['bg-rose-50 text-rose-700', 'reported'], lost: ['bg-rose-50 text-rose-700', 'lost'], repair: ['bg-amber-50 text-amber-700', 'in repair'], return: ['bg-amber-50 text-amber-700', 'return requested'] };
+        all.forEach(x => { const f = tUnitStatus(x.unit, x.rel).flag; if (f) flags[f] = (flags[f] || 0) + 1; });
+        const FLAG = { reported: ['bg-rose-50 text-rose-700', 'reported'], lost: ['bg-rose-50 text-rose-700', 'lost'], repair: ['bg-amber-50 text-amber-700', 'in repair'], return: ['bg-amber-50 text-amber-700', 'return requested'], askback: ['bg-amber-50 text-amber-800', 'asked back'] };
         return `
           <div data-tgroup="${escapeHTML(g.key)}" class="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
             <button type="button" onclick="toggleTGroup(this.closest('[data-tgroup]').dataset.tgroup, ${open})" aria-expanded="${open}" class="w-full p-3 flex items-center gap-3 text-left hover:bg-slate-50">
@@ -16953,7 +17003,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
               <i class="ph-bold ph-caret-down text-slate-500 transition ${open ? 'rotate-180' : ''}"></i>
             </button>
             ${open ? `<div class="border-t border-slate-100 divide-y divide-slate-100">${g.units.map(x => {
-              const st = tUnitStatus(x.unit);
+              const st = tUnitStatus(x.unit, x.rel);
               return `
                 <div data-tunit-row="${x.unit.id}" class="px-3 py-2.5 space-y-1.5">
                   <div class="flex items-start justify-between gap-3">
@@ -17823,6 +17873,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         ${unit.cond === 'R' ? `<button data-repaired onclick="markRepaired('${unit.id}')" class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 ml-auto"><i class="ph-bold ph-wrench"></i> Repaired · back in use</button>` : ''}
         ${connected ? `<button onclick="openTransfer({ fromKey: '${k}', unitIds: ['${unit.id}'] })" class="text-[11px] font-bold text-slate-500 hover:text-brand-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>` : ''}
         <button data-report-lost onclick="reportLostUnit('${unit.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-question"></i> Lost</button>
+        ${p.uid && !isViewOnly() ? (unitAskBack(unit) ? `<span data-asked-back class="text-[11px] font-bold text-amber-700 flex items-center gap-1 ml-auto" title="${escapeHTML(unitAskBack(unit).note || '')}"><i class="ph-bold ph-hourglass-medium"></i> Asked back ${escapeHTML(formatShortDate(unitAskBack(unit).ms))}</span>`
+          : `<button data-ask-back onclick="askUnitBack('${unit.id}')" class="text-[11px] font-bold text-slate-500 hover:text-amber-700 flex items-center gap-1 ml-auto"><i class="ph-bold ph-bell-ringing"></i> Ask back</button>`) : ''}
         <button onclick="takeBackUnit('${item.code}', '${unit.id}')" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1 ml-auto"><i class="ph-bold ph-arrow-u-down-left"></i> Take back</button>`;
       const docLine = unit => [unit.ics && unitDocLabel(unit), unit.icsDate && formatShortDate(unit.icsDate + 'T00:00:00')].filter(Boolean).join(' · ');
 
@@ -17931,6 +17983,38 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // The custodian takes an item back (e.g. teacher transferred): back in stock, unassigned,
     // and a return record for the teacher's list.
+    // ---- Ask a teacher to return a unit (custodian) ----
+    // Written on the slip the teacher holds it on (releases/{id}.askBack[unitId]); their phone shows
+    // it on My Items with the Return button, and a notification. Their return request ends it.
+    function unitHeldRelease(unit) {
+      if (!unit || !unit.toUid) return null;
+      const x = teacherHoldings(releaseList.filter(r => r.teacherUid === unit.toUid)).equipment.find(e => e.unit.id === unit.id);
+      return x ? x.rel : null;
+    }
+    function unitAskBack(unit) {
+      const rel = unitHeldRelease(unit);
+      const a = rel && rel.askBack && rel.askBack[unit.id];
+      return a && !a.doneMs ? a : null;
+    }
+    async function askUnitBack(unitId) {
+      const found = findUnitWithItem(unitId);
+      if (!found || found.unit.lostMs || isViewOnly() || !cloud.user) return;
+      const { item, unit } = found;
+      const rel = unitHeldRelease(unit);
+      if (!rel) { showToast('Only for teachers who joined the app', 'ph-info'); return; }
+      const holder = unitHolder(unit) || 'The teacher';
+      const note = await appPrompt(`${holder} gets a notification and sees it on My Items, with a Return button. You take it back as usual when they hand it over.`, '',
+        { title: `Ask for ${unit.no || item.name} back?`, label: 'Why / by when', placeholder: 'e.g. For the physical count, by Friday', ok: 'Ask to return', icon: 'ph-bell-ringing', maxLength: 200,
+          suggestions: ['For the physical count', 'For repair', 'To transfer to another teacher', 'End of the school year'] });
+      if (note === null) return;
+      const F = cloud.sdk;
+      const askBack = { ...(rel.askBack || {}), [unit.id]: { note: String(note).trim().slice(0, 200), ms: Date.now(), by: actorName().slice(0, 80) } };
+      cloudWrite(F.updateDoc(F.doc(relCol(), rel.id), { askBack, updatedAt: F.serverTimestamp() }), 'Asking');
+      releaseList = releaseList.map(r => (r.id === rel.id ? { ...r, askBack } : r));
+      logHistory('system', `Asked ${holder} to return ${unit.no || item.name}${askBack[unit.id].note ? ` – ${askBack[unit.id].note}` : ''}`, item.code);
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+      showToast(`${holder.split(' ')[0]} is asked to return ${unit.no || item.name}`, 'ph-bell-ringing');
+    }
     async function takeBackUnit(code, unitId) {
       const item = items.find(i => i.code === code);
       const unit = item && getUnits(code).find(u => u.id === unitId);
@@ -22495,7 +22579,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           key: 'rq:' + r.id, sig: r.status || 'pending',
           make: () => {
             const what = reqNotifSummary(r);
-            if (r.status === 'approved') return { title: 'Your supply request was approved', body: what, icon: 'ph-check-circle', tone: 'emerald', go: 'teacher-requests' };
+            if (r.status === 'approved') return reqLessText(r)
+              ? { title: 'Your supply request was approved, with fewer items', body: `Approved ${reqLessText(r)}${r.review && r.review.note ? ` · ${r.review.note}` : ''}`, icon: 'ph-check-circle', tone: 'amber', go: 'teacher-requests' }
+              : { title: 'Your supply request was approved', body: what, icon: 'ph-check-circle', tone: 'emerald', go: 'teacher-requests' };
+            if (r.status === 'released' && (r.short || []).length && r.kind !== 'took') return { title: 'Partly supplied', body: `Supplied ${reqShortText(r)}`, icon: 'ph-package', tone: 'amber', go: 'teacher-requests' };
             if (r.status === 'declined') return { title: 'Your supply request was declined', body: [what, r.declineReason].filter(Boolean).join(' · '), icon: 'ph-x-circle', tone: 'rose', go: 'teacher-requests' };
             if (r.status === 'closed') return { title: 'Ready · get it from the property custodian', body: what, icon: 'ph-package', tone: 'teal', go: 'teacher-requests' };
             return null;
@@ -22517,7 +22604,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         // The custodian tapped Remind on slips still not confirmed: one notification per tap.
         const waiting = myReleases.filter(r => r.remindMs && !tAcked(r.id));
         const at = Math.max(0, ...waiting.map(r => r.remindMs));
-        return [{ key: 'rr', sig: at, make: () => (at ? { title: 'Reminder from the property custodian', body: `Please confirm ${listJoin(waiting.map(r => `${r.kind} ${r.no || ''}`.trim()))} · tap Received when you have the items`, icon: 'ph-bell-ringing', tone: 'amber', go: 'teacher-items' } : null) }];
+        const asks = [];
+        teacherHoldings(myReleases).equipment.forEach(x => { const a = x.rel.askBack && x.rel.askBack[x.unit.id]; if (a && !a.doneMs) asks.push({ key: `ab:${x.unit.id}`, sig: a.ms, make: () => ({ title: 'The property custodian asks for an item back', body: `${x.line.desc}${x.unit.no ? ` (${x.unit.no})` : ''}${a.note ? ` · ${a.note}` : ''} · tap Return on My Items`, icon: 'ph-bell-ringing', tone: 'amber', go: 'teacher-items' }) }); });
+        return [...asks, { key: 'rr', sig: at, make: () => (at ? { title: 'Reminder from the property custodian', body: `Please confirm ${listJoin(waiting.map(r => `${r.kind} ${r.no || ''}`.trim()))} · tap Received when you have the items`, icon: 'ph-bell-ringing', tone: 'amber', go: 'teacher-items' } : null) }];
       })()), fromCacheOf(meta));
     }
 
@@ -22679,10 +22768,35 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function notifReminders(now = Date.now()) {
       if (!notifScope()) return;
       if (notifPrefs.reminders !== false) notifReceiptReminders(now);
-      if (notifPrefs.waiting !== false && isCustodianDevice()) { notifWaitingRequests(now); notifLongRepairs(now); }
+      if (notifPrefs.waiting !== false && isCustodianDevice()) { notifWaitingRequests(now); notifLongRepairs(now); notifPrsNotDelivered(now); }
       if (notifPrefs.count !== false) notifCountSeason(now);
       if (notifPrefs.reminders !== false && isCustodianDevice() && !isAssistant()) { notifReliefDue(now); notifYearEnd(now); }
       if (notifPrefs.reminders !== false) { try { notifBookDue(now); notifBookYear(now); } catch (e) { console.warn(e); } }
+    }
+
+    // ---- A Purchase Request approved more than 30 days ago and not delivered yet (custodian) ----
+    // Once at 30 days and again at 60, per PR. Partly received PRs count too (Still to come).
+    const PR_LATE_DAYS = 30;
+    function prSinceMs(pr) {
+      const a = prApproval(pr);
+      return (a && a.atMs) || pr.createdMs || (pr.date ? new Date(pr.date + 'T00:00:00').getTime() : 0);
+    }
+    function prsNotDelivered(now = Date.now()) {
+      return prList.filter(p => p.status !== 'cancelled' && !p.deliveredMs && prApproved(p) && prSinceMs(p) && now - prSinceMs(p) >= PR_LATE_DAYS * 86400000)
+        .map(p => ({ pr: p, days: Math.floor((now - prSinceMs(p)) / 86400000) }))
+        .sort((a, b) => b.days - a.days || String(a.pr.prNo).localeCompare(String(b.pr.prNo)));
+    }
+    function notifPrsNotDelivered(now) {
+      if (!cloud.user || isViewOnly()) return;
+      const st = loadNotifs();
+      const due = prsNotDelivered(now).map(x => ({ ...x, stage: x.days >= PR_LATE_DAYS * 2 ? 2 : 1 })).filter(x => (st.seen['pl:' + x.pr.id] || 0) < x.stage);
+      if (!due.length) return;
+      due.forEach(x => { st.seen['pl:' + x.pr.id] = x.stage; });
+      saveNotifs();
+      const x = due[0], part = prPartlyReceived(x.pr);
+      addNotif(due.length === 1
+        ? { title: `PR No. ${x.pr.prNo} is still not ${part ? 'fully ' : ''}delivered`, body: `${plural(x.days, 'day')} since it was approved · ₱${peso2(x.pr.total)} · follow up with the supplier or BAC`, icon: 'ph-truck', tone: 'amber', go: 'prs' }
+        : { title: `${due.length} Purchase Requests are still not delivered`, body: due.slice(0, 4).map(d => `PR ${d.pr.prNo} (${d.days} days)`).join(', '), icon: 'ph-truck', tone: 'amber', go: 'prs' });
     }
 
     // ---- Supply requests waiting for review more than 2 days (custodian) ----
@@ -23232,6 +23346,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-follow-ups', date: 'Nov 2026', title: 'Ask back, partly supplied, and more reminders', points: [
+        'Ask back: on the Teachers page, tap Ask back on a unit and add why or by when. The teacher gets a notification and sees it on My Items, with the Return button.',
+        'Teachers are told when a request is approved or supplied with fewer items than they asked for, for example Supplied 3 of 5 box Chalk.',
+        'Year-end & reminders now lists equipment of \u20b150,000 or more that is still on an ICS, with a Make the PAR button. It also lists Purchase Requests approved more than 30 days ago that are still not delivered, and you get a reminder for each.'
+      ] },
       { id: '2026-11-book-colors', date: 'Nov 2026', title: 'A colour for each kind of book', points: [
         'In Books & Library and on the teachers\u2019 Library tab, each kind of book now has its own colour as well as its own icon: textbooks blue, teacher\u2019s manuals teal, fiction violet, non-fiction indigo, reference amber, Big Books pink, periodicals green, and SLMs grey.'
       ] },

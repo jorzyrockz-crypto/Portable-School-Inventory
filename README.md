@@ -272,6 +272,13 @@ Once a School Head is confirmed, more goes to their phone than PRs.
 - **ICS / PAR older than 3 years** are listed, and **Renew these slips** makes new slips for just those units (*Renewal of slips older than 3 years*). You get a reminder once a month while some are due.
 - **Bond and designation order.** Enter the fidelity bond and designation order numbers and dates. You get a notification 30 days before either one ends, and again when it has ended.
 
+### Follow-ups
+
+- **Ask back.** On the Teachers page, **Ask back** on a unit asks the teacher to return it (with why or by when). Their phone gets a notification, and My Items shows *The custodian asks you to return this* with the **Return** button. Their return request answers it, and you take the unit back as usual.
+- **Fewer than asked.** When you approve fewer than a teacher asked for, or release fewer, they are told (*Supplied 3 of 5 box Chalk*), and the request card shows it.
+- **₱50,000 or more on an ICS.** Equipment of ₱50,000 or more belongs on a PAR (for example, a paper ICS scanned in, or a cost corrected later). Year-end & reminders lists these units, with **Make the PAR**: a PAR for each teacher, which they confirm on their phones. A reminder comes once a month while any are left.
+- **Purchase Requests not delivered.** A PR approved more than 30 days ago that is still not (fully) delivered gets a reminder, once at 30 days and again at 60, and is listed in Year-end & reminders.
+
 **Publish `firestore.rules` again** after this update (new: `staff`, `staffInvites`, `approvals`, `dashboard`, `auditLog`, assistant access). Until you do, assistants can't join, and approvals and the head's summary fail with a permissions error.
 
 ### Books & Library
@@ -660,8 +667,8 @@ A bell in the header (next to **More**) shows what happened and how many you hav
 
 | Who | Is told when |
 | --- | --- |
-| Property custodian | a teacher sends a supply request · confirms receipt of released items · reports a problem · wants to return an item · **counts their items** (all present, or what is missing or broken) · **joins the school** · an item falls to its **low-stock alert** or **runs out** · a release is **still not confirmed after 3 days** · a request has **waited over 2 days** · units have been in **Needs repair over a month** (suggests the IIRUP) · **year-end count** progress |
-| Teacher | a request is approved, declined (with the reason) or ready to pick up · items are released to them (RIS/ICS) · a return is accepted or not · a report is answered · **reminder to tap Received** 2 days and again 7 days after a release · the custodian taps **Remind** · **year-end count**: check the items you hold |
+| Property custodian | a teacher sends a supply request · confirms receipt of released items · reports a problem · wants to return an item · **counts their items** (all present, or what is missing or broken) · **joins the school** · an item falls to its **low-stock alert** or **runs out** · a release is **still not confirmed after 3 days** · a request has **waited over 2 days** · units have been in **Needs repair over a month** (suggests the IIRUP) · **year-end count** progress · a **Purchase Request approved 30 days ago is still not delivered** (again at 60) · units of **₱50,000 or more still on an ICS** (monthly) |
+| Teacher | a request is approved, declined (with the reason) or ready to pick up · items are released to them (RIS/ICS) · a return is accepted or not · a report is answered · **reminder to tap Received** 2 days and again 7 days after a release · the custodian taps **Remind** · **year-end count**: check the items you hold · a request is **approved or supplied with fewer items** than asked (*Supplied 3 of 5 box Chalk*) · the custodian **asks for an item back** |
 | Everyone | **changes not saved to the account** for a day, or sign-in expired (also a bar under the header, with *Fix*) |
 
 - **Nothing for your own actions.** A custodian typing in a walk-in request, or a teacher sending a report, gets no notification for it.
@@ -772,6 +779,7 @@ node head-desk.mjs                    # School Head dashboard, RIS approval, los
 node books.mjs                        # Books & Library: titles, ISBN duplicates, accession numbers, places, teachers' Library, borrowing from a room, Librarian, prints
 node library.mjs                      # import a delivery list, lending at the desk, decline / cancel, overdue, librarian-kept corner, disposal approved by the head
 node class-books.mjs                  # Book Issuance List, Received, class sheet with learner names, privacy rules, losses, take back, names erased
+node follow-ups.mjs                   # partly supplied, Ask back (teacher's My Items), ₱50,000+ units on an ICS → Make the PAR, PRs not delivered after 30 days
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```
