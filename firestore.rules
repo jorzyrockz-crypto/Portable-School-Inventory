@@ -22,6 +22,12 @@ rules_version = '2';
 //   schools/{schoolId}/turnoverInvites/{code} the Turnover link (made by the custodian or the School Head)
 //   schools/{schoolId}/approvals/{id}         RIS, write-offs and count reports for the School Head to approve
 //   schools/{schoolId}/dashboard/summary      the School Head's summary of the school's property
+//   schools/{schoolId}/books/{id}             Books & Library: one title, its copies per place (staff, librarian)
+//   schools/{schoolId}/bookMeta/places        the places where books are kept, with their keepers
+//   schools/{schoolId}/bookIndex/{n}          the library catalogue every teacher reads (no learner names)
+//   schools/{schoolId}/bookMoves/{id}         books issued to an adviser (Book Issuance List), taken back, moved
+//   schools/{schoolId}/loans/{id}             borrowing: the borrower, the keeper of the copies, the librarian
+//   schools/{schoolId}/classBooks/{sy_uid}    an adviser's class: textbooks with learners (adviser + custodian only)
 //   schoolIds/{schoolNo}                      DepEd School ID (6 digits) → school, so teachers can type it
 //
 // Members: a teacher who joins waits for the custodian's approval (status 'pending'), then is
@@ -100,6 +106,12 @@ service cloud.firestore {
         && !(request.auth.uid in schoolDoc(schoolId).get('assistants', []));
     }
     function headJoined(schoolId) { return schoolDoc(schoolId).get('headUid', '') != ''; }
+    // The Librarian: an active teacher the custodian listed in school.librarians (their member card
+    // also says librarian: true). Books, places and lending only.
+    function isLibrarian(schoolId) {
+      return request.auth.uid in schoolDoc(schoolId).get('librarians', []) && isMember(schoolId);
+    }
+    function bookStaff(schoolId) { return isStaff(schoolId) || isLibrarian(schoolId); }
     function apprStatus(d) { return d.get('approval', {}).get('status', ''); }
     function memberPath(schoolId) {
       return /databases/$(database)/documents/schools/$(schoolId)/members/$(request.auth.uid);
@@ -303,7 +315,8 @@ service cloud.firestore {
           // The custodian: approve, remove, or correct the details.
           || (isCustodian(schoolId)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'position', 'office', 'status',
-                                                                                 'approvedMs', 'removedMs', 'editedMs', 'by', 'updatedAt'])
+                                                                                 'approvedMs', 'removedMs', 'editedMs', 'by', 'updatedAt',
+                                                                                 'librarian', 'librarianMs'])
             && request.resource.data.get('status', 'active') in ['pending', 'active', 'removed']
             && cardOk());
         allow delete: if isCustodian(schoolId);   // Reset app only
@@ -452,7 +465,7 @@ service cloud.firestore {
       match /approvals/{apId} {
         function apBodyOk() {
           let d = request.resource.data;
-          return d.kind in ['ris', 'writeoff', 'count']
+          return d.kind in ['ris', 'writeoff', 'count', 'books']
             && d.refId is string && d.refId.size() > 0 && d.refId.size() <= 120
             && shortText(d.get('title', ''), 160) && shortText(d.get('summary', ''), 600)
             && d.get('lines', []) is list && d.get('lines', []).size() <= 200;
@@ -506,6 +519,88 @@ service cloud.firestore {
           && request.resource.data.entries.size() > 0
           && request.resource.data.entries.size() <= 100;
         allow update, delete: if false;
+      }
+
+      // ---- Books & Library -------------------------------------------------------------------
+      // Titles and their copies: the custodian, the assistants and the librarian (never deleted
+      // from the app: a removed title is { deleted: true }). The catalogue (bookIndex) and the
+      // places are what every active teacher reads: titles, how many copies, where, and who
+      // borrowed them; never learner names.
+      match /books/{bookId} {
+        allow read: if canView(schoolId) || isLibrarian(schoolId);
+        allow create, update: if bookStaff(schoolId);
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+      match /bookMeta/{docId} {
+        allow read: if canView(schoolId) || isMember(schoolId);
+        allow create, update: if bookStaff(schoolId) && docId == 'places';
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+      match /bookIndex/{n} {
+        allow read: if canView(schoolId) || isMember(schoolId);
+        allow create, update: if bookStaff(schoolId) && n.matches('^[0-9]{1,3}$');
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+      // Books issued to an adviser (toUid): they read it and sign it once ("Received": status
+      // 'sent' → 'done', with their name and the time). The librarian moves library books.
+      match /bookMoves/{moveId} {
+        allow read: if canView(schoolId) || isLibrarian(schoolId)
+          || (signedIn() && resource.data.toUid == request.auth.uid);
+        allow create: if isStaff(schoolId)
+          || (isLibrarian(schoolId) && request.resource.data.kind in ['move', 'return'] && request.resource.data.get('toUid', '') == '');
+        allow update: if isStaff(schoolId)
+          || (isMember(schoolId) && resource.data.toUid == request.auth.uid
+              && resource.data.status == 'sent' && request.resource.data.status == 'done'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'receivedMs', 'receivedBy', 'updatedAt'])
+              && shortText(request.resource.data.get('receivedBy', ''), 80));
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+      // Borrowing. A teacher asks for themselves ('requested'); the keeper of the copies (keeperUid:
+      // the teacher whose room it is), the librarian or the custodian lends ('out'), declines, takes
+      // it back ('returned') or marks it lost. The borrower may cancel a request, or say they
+      // returned it (retSaidMs). Each teacher reads only the loans they borrowed or keep.
+      match /loans/{loanId} {
+        function loanOk(d) {
+          return d.bookId is string && d.bookId.size() > 0 && d.bookId.size() <= 80
+            && d.qty is int && d.qty > 0 && d.qty <= 500
+            && shortText(d.get('title', ''), 200) && shortText(d.get('borrowerName', ''), 80)
+            && shortText(d.get('borrowerNote', ''), 80) && shortText(d.get('note', ''), 200)
+            && d.get('acc', []) is list && d.get('acc', []).size() <= 100;
+        }
+        allow read: if canView(schoolId) || isLibrarian(schoolId)
+          || (signedIn() && (resource.data.borrowerUid == request.auth.uid || resource.data.keeperUid == request.auth.uid));
+        allow create: if (bookStaff(schoolId) && loanOk(request.resource.data))
+          || (isMember(schoolId) && loanOk(request.resource.data)
+              && request.resource.data.borrowerUid == request.auth.uid
+              && request.resource.data.status == 'requested'
+              && request.resource.data.keeperUid != request.auth.uid);
+        allow update: if (bookStaff(schoolId) && loanOk(request.resource.data))
+          || (isMember(schoolId) && resource.data.keeperUid == request.auth.uid
+              && resource.data.borrowerUid != request.auth.uid
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'outMs', 'lentBy', 'dueISO', 'decidedNote', 'decidedMs',
+                                                                                   'returnedMs', 'retBy', 'lostMs', 'lostBy', 'updatedAt'])
+              && (resource.data.status == 'requested' ? request.resource.data.status in ['out', 'declined', 'requested']
+                  : resource.data.status == 'out' && request.resource.data.status in ['out', 'returned', 'lost'])
+              && shortText(request.resource.data.get('decidedNote', ''), 200))
+          || (signedIn() && resource.data.borrowerUid == request.auth.uid
+              && ((resource.data.status == 'requested' && request.resource.data.status == 'cancelled'
+                   && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']))
+                  || (resource.data.status == 'out' && request.resource.data.status == 'out'
+                   && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['retSaidMs', 'updatedAt']))));
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+      // An adviser's class sheet ({schoolYear}_{uid}): the textbooks with their learners, returned,
+      // damaged, lost and paid, and (optional) learner NAMES only. Only the adviser and the
+      // custodian / assistants read it (Data Privacy Act); not the librarian, not other teachers.
+      match /classBooks/{classId} {
+        allow read: if canView(schoolId) || (signedIn() && resource.data.uid == request.auth.uid);
+        allow create, update: if isStaff(schoolId)
+          || (isMember(schoolId) && request.resource.data.uid == request.auth.uid
+              && classId == request.resource.data.get('sy', '') + '_' + request.auth.uid
+              && (resource == null || resource.data.uid == request.auth.uid)
+              && request.resource.data.get('learners', []) is list && request.resource.data.get('learners', []).size() <= 80
+              && request.resource.data.get('titles', []) is list && request.resource.data.get('titles', []).size() <= 60);
+        allow delete: if isCustodian(schoolId);   // Reset app only
       }
 
       match /turnoverInvites/{code} {

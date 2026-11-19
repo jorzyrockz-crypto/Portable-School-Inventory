@@ -51,8 +51,8 @@ small rule or setting; **P3** = later or needs a server.
 | C5 | **Year-end physical count** season (from 1 Dec) and the **RPCPPE/RPCSP** deadline (31 Jan) | *Physical count: 82 of 138 units verified · report due 31 Jan* | Bell, weekly in December/January | Count progress (`verified` per unit), Government forms | **Built** |
 | C6 | Units marked **Needs repair** for more than 30 days | *2 units need repair for over a month · consider IIRUP* | Bell, monthly | Unit `condition` + `condAt` (set when the condition changes) | **Built** |
 | C7 | **Backup / sync problem**: changes not saved to the account for 24 h while signed in, or sign-in expired | *Changes on this phone are not saved to your account yet* · **Fix** | Bell + existing banner, phone notification if on | Cloud sync status (`cloud.user`, pending writes) | **Built** |
-| C8 | A **Purchase Request** marked ordered has no delivery after 30 days | *PR 2026-11-003 is still not delivered* | Bell | PR status (`prCol()`) | P3 |
-| C9 | Equipment from **₱50,000** released without a PAR number | *Release to Ana needs a PAR number* | Toast when saving + bell if left | Release lines, thresholds already used for PAR/ICS | P3 |
+| C8 | A **Purchase Request** marked ordered has no delivery after 30 days | *PR 2026-11-003 is still not delivered* | Bell | PR status (`prCol()`) | **Built** (from approval; 30 and 60 days; listed in Year-end & reminders) |
+| C9 | Equipment from **₱50,000** released without a PAR number | *Release to Ana needs a PAR number* | Toast when saving + bell if left | Release lines, thresholds already used for PAR/ICS | **Built** (releases always use a PAR; units on an older ICS are listed with *Make the PAR*, monthly reminder) |
 
 ### Teacher
 
@@ -60,8 +60,8 @@ small rule or setting; **P3** = later or needs a server.
 | --- | --- | --- | --- | --- | --- |
 | T1 | Items released to you are **not marked Received** after 2 days | *Please confirm you received ICS 2026-11-0004 (2 projectors)* | Bell reminder (once) + phone notification if on | `myReleases`, own `received` reports | **Built** |
 | T2 | The custodian **starts the year-end count** | *Year-end count: check the 4 items you hold and report problems* | Bell | Count season (C5) + `myReleases` | **Built** |
-| T3 | A request is **partly supplied** (fewer than asked) | *Supplied 3 of 5 boxes of chalk* | Bell | Request lines and supplied quantities | P2 |
-| T4 | The custodian **asks you to return** an item (needs a new "Ask to return" action) | *Please return Laptop 10ES-2026-0007 by Friday* | Bell + phone notification | New report kind `ask-return` | P3 |
+| T3 | A request is **partly supplied** (fewer than asked) | *Supplied 3 of 5 boxes of chalk* | Bell | Request lines and supplied quantities | **Built** (approved fewer, and released fewer: `requests.short`) |
+| T4 | The custodian **asks you to return** an item (needs a new "Ask to return" action) | *Please return Laptop 10ES-2026-0007 by Friday* | Bell + phone notification | **Built** as `releases/{id}.askBack[unitId]` (no new report kind, no rules change) |
 
 ### Everyone
 
@@ -100,7 +100,7 @@ Cost for one school is within the free FCM allowance; the Cloud Functions need t
 ## 6. Suggested order
 
 1. **P1:** C1 low stock, C2 teacher joined, C3/T1 confirm-receipt reminders (**built, Nov 2026**: T1 reminds at 2 and 7 days, C3 once at 3 days; releases older than 30 days are skipped; switches *Low stock* and *Reminders* in the bell sheet), C7 sync problem (**built**). These only add `notifCheck` sources next to the existing ones, plus a daily digest helper.
-2. **P2:** C4–C6, T2 and the settings in §4 (**built, Nov 2026**). T3 is still open.
-3. **P3:** C8, C9, T4 and FCM push (§5), if the school moves to the Blaze plan.
+2. **P2:** C4–C6, T2, T3 and the settings in §4 (**built, Nov 2026**).
+3. **P3:** C8, C9, T4 (**built, Nov 2026**). FCM push (§5) only if the school moves to the Blaze plan.
 
 Each step gets tests in `tests/e2e/notifications.mjs` using the fake backend: event → one bell item → tap opens the screen → no repeat after a reload.

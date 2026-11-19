@@ -272,7 +272,34 @@ Once a School Head is confirmed, more goes to their phone than PRs.
 - **ICS / PAR older than 3 years** are listed, and **Renew these slips** makes new slips for just those units (*Renewal of slips older than 3 years*). You get a reminder once a month while some are due.
 - **Bond and designation order.** Enter the fidelity bond and designation order numbers and dates. You get a notification 30 days before either one ends, and again when it has ended.
 
+### Follow-ups
+
+- **Ask back.** On the Teachers page, **Ask back** on a unit asks the teacher to return it (with why or by when). Their phone gets a notification, and My Items shows *The custodian asks you to return this* with the **Return** button. Their return request answers it, and you take the unit back as usual.
+- **Fewer than asked.** When you approve fewer than a teacher asked for, or release fewer, they are told (*Supplied 3 of 5 box Chalk*), and the request card shows it.
+- **₱50,000 or more on an ICS.** Equipment of ₱50,000 or more belongs on a PAR (for example, a paper ICS scanned in, or a cost corrected later). Year-end & reminders lists these units, with **Make the PAR**: a PAR for each teacher, which they confirm on their phones. A reminder comes once a month while any are left.
+- **Purchase Requests not delivered.** A PR approved more than 30 days ago that is still not (fully) delivered gets a reminder, once at 30 days and again at 60, and is listed in Year-end & reminders.
+
 **Publish `firestore.rules` again** after this update (new: `staff`, `staffInvites`, `approvals`, `dashboard`, `auditLog`, assistant access). Until you do, assistants can't join, and approvals and the head's summary fail with a permissions error.
+
+### Books & Library
+
+Books are scattered across rooms, so the app keeps one list of every title and **where the copies are**. Open **Books & Library** from the Home card (or the sidebar on a computer).
+
+- **Titles, counted by title.** Textbooks (TX), teacher's manuals (TM), library fiction and non-fiction, reference, Big Books, SLMs, periodicals. Add them one by one, **scan the ISBN** barcode, or **Import list** (Excel or CSV, e.g. the division's delivery list). An ISBN already listed (10- or 13-digit) adds copies to that title instead of making a second one.
+- **Places with keepers.** The Supply room, a library corner, each teacher's room (made when books are issued to them), with who keeps it. Copies are counted per place as good, damaged (still usable) or unserviceable.
+- **Accession numbers** for library books (`LIB-2026-0001`, a new series each year) and **QR spine labels**. Textbooks are counted, not numbered.
+- **Lost and disposal.** *Report lost* takes copies off the count onto the **Summary of Losses**. Unserviceable copies are disposed of with the School Head's approval (or *signed on paper* when there is no head in the app yet).
+- **Prints:** book inventory, Book Issuance List, loan ledger, overdue list, accession register, spine labels, Summary of Losses, disposal list, and the class sheet.
+
+**The Library (every teacher).** Teachers get a fourth tab, **Library**: search by title, author, subject or ISBN and see *free / total* in each place (*Library corner 3/4 · Grade 4 (Ana Reyes) 2/2*). **Borrow** sends the request to whoever keeps those copies: the teacher whose room it is, the librarian, or the custodian for places without a keeper. The keeper **Lends**, **Declines** (with a reason) or confirms the return (the borrower can tap *I returned it*), and both sides are notified, with a reminder once a loan is overdue. Teachers read only a small catalogue (`bookIndex`, a few documents for the whole school) kept current by the custodian's and librarian's devices. Textbooks are not lent by default (*Teachers may borrow it* on the title).
+
+**Librarian.** **Books & Library → Librarian** makes a teacher the librarian. They keep their teacher account and get a **Library desk**: add books, manage places, lend and take returns. They don't see equipment, supplies, purchase requests, money or learner names, and they don't issue textbooks to classes. When the librarian is removed, the library places they kept and the open requests come back to the custodian.
+
+**Textbooks for a class.** **Issue to a teacher** makes a **Book Issuance List** (`BIL-2026-0001`) and moves the copies to the adviser's room. The adviser taps **Received** (name and time recorded). On their phone (**Library → My class's textbooks**) the adviser records how many the learners have, returned, damaged, lost, or lost and paid for. Learner names are optional (names only, no LRN), like an SF3. Only the adviser and the custodian can read them, they never go to the school history, **Clear names** erases them, and they are erased automatically when the school year ends (31 March unless changed in Settings). The counts stay. On the **Classes** tab the custodian sees every class, **Records the losses** in one tap (what learners paid is noted; teachers are never charged, DO 14 s. 2002) and **Takes back** the books at year end.
+
+**Count and retrieval.** **More → Year-end & reminders → Books** prints the count sheet and records **Counted today**. You get a reminder each quarter (grading period) when the books haven't been counted, and 3 weeks before the school year ends to collect the textbooks. Advisers get the same retrieval reminder. When advisers enter their class size, the School Head's summary shows the percentage of learners with their textbooks.
+
+Books added while exploring (before signing in) are offered to the school's account at the first sign-in. **Publish `firestore.rules` again** after this update (new: `books`, `bookMeta`, `bookIndex`, `bookMoves`, `loans`, `classBooks`, and the librarian). Until you do, the Books page and the teachers' Library show a permissions error.
 
 ### School stock and “I took this” (teachers)
 
@@ -640,8 +667,8 @@ A bell in the header (next to **More**) shows what happened and how many you hav
 
 | Who | Is told when |
 | --- | --- |
-| Property custodian | a teacher sends a supply request · confirms receipt of released items · reports a problem · wants to return an item · **counts their items** (all present, or what is missing or broken) · **joins the school** · an item falls to its **low-stock alert** or **runs out** · a release is **still not confirmed after 3 days** · a request has **waited over 2 days** · units have been in **Needs repair over a month** (suggests the IIRUP) · **year-end count** progress |
-| Teacher | a request is approved, declined (with the reason) or ready to pick up · items are released to them (RIS/ICS) · a return is accepted or not · a report is answered · **reminder to tap Received** 2 days and again 7 days after a release · the custodian taps **Remind** · **year-end count**: check the items you hold |
+| Property custodian | a teacher sends a supply request · confirms receipt of released items · reports a problem · wants to return an item · **counts their items** (all present, or what is missing or broken) · **joins the school** · an item falls to its **low-stock alert** or **runs out** · a release is **still not confirmed after 3 days** · a request has **waited over 2 days** · units have been in **Needs repair over a month** (suggests the IIRUP) · **year-end count** progress · a **Purchase Request approved 30 days ago is still not delivered** (again at 60) · units of **₱50,000 or more still on an ICS** (monthly) |
+| Teacher | a request is approved, declined (with the reason) or ready to pick up · items are released to them (RIS/ICS) · a return is accepted or not · a report is answered · **reminder to tap Received** 2 days and again 7 days after a release · the custodian taps **Remind** · **year-end count**: check the items you hold · a request is **approved or supplied with fewer items** than asked (*Supplied 3 of 5 box Chalk*) · the custodian **asks for an item back** |
 | Everyone | **changes not saved to the account** for a day, or sign-in expired (also a bar under the header, with *Fix*) |
 
 - **Nothing for your own actions.** A custodian typing in a walk-in request, or a teacher sending a report, gets no notification for it.
@@ -749,6 +776,10 @@ node turnover.mjs                     # custodian turnover: link, Confirm (custo
 node school-history.mjs               # append-only school history in the cloud: saved per device, read by the custodian and head, never edited or deleted
 node assistant.mjs                    # assistant custodians: link, Google sign-in, Confirm, release and encode with their name, what they can't do, removal
 node head-desk.mjs                    # School Head dashboard, RIS approval, lost units and write-offs approved by the head, Year-end & reminders
+node books.mjs                        # Books & Library: titles, ISBN duplicates, accession numbers, places, teachers' Library, borrowing from a room, Librarian, prints
+node library.mjs                      # import a delivery list, lending at the desk, decline / cancel, overdue, librarian-kept corner, disposal approved by the head
+node class-books.mjs                  # Book Issuance List, Received, class sheet with learner names, privacy rules, losses, take back, names erased
+node follow-ups.mjs                   # partly supplied, Ask back (teacher's My Items), ₱50,000+ units on an ICS → Make the PAR, PRs not delivered after 30 days
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```
