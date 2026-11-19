@@ -90,6 +90,7 @@ try {
   await until(a, () => teacherRoster().some(x => x.joined), 'roster', 8000);
   await ev(a, uid => openRelease({ teacherUid: uid, lines: [{ code: '45111609-MM-P01', qty: 1 }, { code: '12191601-AL-E04', qty: 3 }] }), ana);
   await sleep(200);
+  await a.evaluate(() => __fillSerials());
   await a.click('#relSaveBtn');
   await until(a, () => !!releaseDone, 'released');
   await ev(a, () => closeRelease());

@@ -132,6 +132,7 @@ try {
   check(await ev(a, () => loadNotifs().items.some(n => /took supplies/.test(n.title))), 'custodian notified: “Ana Reyes took supplies · confirm”');
   await a.click('[data-took-confirm]');
   await until(a, () => !document.getElementById('releaseModal').classList.contains('hidden'), 'release sheet');
+  await a.evaluate(() => __fillSerials());
   await a.click('#relSaveBtn');
   await until(a, () => !!releaseDone, 'released');
   await ev(a, () => closeRelease());

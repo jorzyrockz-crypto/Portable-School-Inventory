@@ -100,6 +100,7 @@ try {
   check(await ev(a, c => relQty(releaseDraft.lines.find(l => l.code === c)), pick.supply.code) === pick.supply.qty, 'quantity capped at stock on hand');
   await ev(a, c => setRelQty(c, 4), pick.supply.code);
   await a.screenshot({ path: '/tmp/e2e_rel_sheet.png' });
+  await a.evaluate(() => __fillSerials());
   await a.click('#relSaveBtn');
   await until(a, () => !!releaseDone, 'released');
   const after = await ev(a, (s, e) => ({
@@ -334,6 +335,7 @@ try {
   await ev(a, id => openReleaseFromRequest(id), req2);
   const d2 = await ev(a, () => releaseDraft.lines.map(l => ({ code: l.code, q: relQty(l) })));
   check(d2.length === 2 && d2.every(l => l.q > 0), 'both delivered items prefilled (new item matched by name)');
+  await a.evaluate(() => __fillSerials());
   await a.click('#relSaveBtn');
   await until(a, id => reqList.some(r => r.id === id && r.status === 'released'), 'released 2', 8000, req2);
   await until(a, c => items.find(i => i.code === c).qty === 0, 'stock updated', 5000, lowItem.code).catch(() => {});
@@ -348,6 +350,7 @@ try {
   const untagged = await ev(a, () => { const i = items.find(x => x.type === 'EQUIPMENT' && x.qty > 0 && !getUnits(x.code).length); return { code: i.code, qty: i.qty }; });
   await ev(a, code => { const inp = document.getElementById('relAdd'); inp.value = `x · ${code}`; addRelItem(inp); }, untagged.code);
   check(await ev(a, c => { const l = releaseDraft.lines.find(x => x.code === c); return l.newUnits === 1 && /new numbers are given/.test(document.getElementById('relLines').innerText); }, untagged.code), 'untagged equipment: a new property number will be given');
+  await a.evaluate(() => __fillSerials());
   await a.click('#relSaveBtn');
   await until(a, () => releaseList.filter(r => r.teacherName === 'Lorna Bautista').length === 2, 'other release', 8000);
   const lorna = rel().find(d => d.teacherName === 'Lorna Bautista' && d.kind === 'RIS');
@@ -364,6 +367,7 @@ try {
   await ev(a, () => { setRelTeacher('__other'); relOtherName.value = 'lol'; });
   await ev(a, code => { const inp = document.getElementById('relAdd'); inp.value = `x · ${code}`; addRelItem(inp); }, sup.code);
   await ev(a, () => { releaseDraft.lines[0].qty = 2; });
+  await a.evaluate(() => __fillSerials());
   await a.click('#relSaveBtn');
   await until(a, () => releaseList.filter(r => r.teacherName === 'lol').length === 1, 'lol release', 8000);
   await ev(a, () => closeRelease());

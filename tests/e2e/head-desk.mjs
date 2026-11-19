@@ -24,7 +24,7 @@ try {
   check(!!hUid, 'School Head confirmed');
   // Equipment issued to Ana (an ICS), so the head sees who holds what.
   const equip = await ev(a, () => { const i = items.find(x => relIsEquip(x) && relMax(x) >= 4 && !isPPE(x)); return { code: i.code, name: i.name }; });
-  await ev(a, (uid, code) => { openRelease({ teacherUid: uid, lines: [{ code, qty: 3 }], purpose: 'Classroom use' }); confirmRelease(); closeRelease(); }, anaUid, equip.code);
+  await ev(a, (uid, code) => { openRelease({ teacherUid: uid, lines: [{ code, qty: 3 }], purpose: 'Classroom use' }); __fillSerials(); confirmRelease(); closeRelease(); }, anaUid, equip.code);
   await waitNode(() => rel().some(r => r.teacherUid === anaUid && r.kind === 'ICS'));
 
   out('2 the School Head’s screen: the school’s property');
@@ -73,7 +73,7 @@ try {
   await ev(h, id => { headDecideAp(id, true); }, ap2);
   await until(a, () => !!document.querySelector('[data-ris-head="approved"]'), 'custodian sees approved', 10000);
   check(await ev(a, () => loadNotifs().items.some(n => /approved Ana Reyes’s supply request/.test(n.title))), 'custodian notified: approved');
-  await ev(a, id => { openReleaseFromRequest(id); confirmRelease(); }, rq);
+  await ev(a, id => { openReleaseFromRequest(id); __fillSerials(); confirmRelease(); }, rq);
   await waitNode(() => rel().some(r => r.requestId === rq && r.kind === 'RIS'));
   const ris = rel().find(r => r.requestId === rq && r.kind === 'RIS');
   check(ris && ris.headOk && ris.headOk.byName === HEAD, 'RIS made after approval keeps the head’s approval');

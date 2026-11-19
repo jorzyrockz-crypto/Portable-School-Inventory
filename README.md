@@ -566,6 +566,8 @@ Teachers who join with the invite link are listed automatically (their phone sen
 - **Equipment worth ₱50,000 or more** (PPE under COA Circular 2022-004) goes on a **PAR** (Property Acknowledgment Receipt, Appendix 71) instead. One release can create an ICS and a PAR; each line says which slip it goes on, and the unit shows *With Ana Reyes · PAR 2026-11-001*.
 - Numbers run per month (`2026-11-001`, …), separately for RIS, ICS, PAR, ITR, PTR and RRSP. The slips print from the done screen.
 - Someone without an account (e.g. utility staff) can be typed in. The slip still prints.
+- **Useful life** on each equipment line: what you type (e.g. `7` becomes *7 years*) is saved on every unit released and prints on the ICS. The box starts with the units' useful life if they all have the same one.
+- **Serial numbers:** items that have them need the serial number of each unit before **Release** goes through. A number typed twice, or already on another unit of the item, is refused. *Has serial numbers* is ticked for ICT equipment, audio-visual equipment and consumer electronics, or when a unit of the item already has a serial number. Untick it for items without one; the choice is remembered for that item (`serials` in its saved state).
 
 **Items delivered** on a Purchase Request now adds the items to the stock in Inventory. Items that weren't in Inventory yet are added as new items. The requests then show *Ready* to the teacher until you release them.
 
@@ -819,6 +821,7 @@ node request-many.mjs                 # several items in one request: Stock tab 
 node teacher-return.mjs               # Continue with Google on the Teacher and School Head sign-in: back to the school with no code (same phone, new phone, pick among schools), private teacherSchools list, Leave explains, school name typed in the code box
 node custodian-login.mjs              # custodian sign-in: school found by account (not name), new school set up once by 6-digit School ID, ID already set up refused with a masked account hint, Use a different account, last account on this phone, no reuse of a Google account left signed in
 node teacher-remove.mjs             # Remove from the school / Add back with the teacher's page open (laptop and phone): page, list and Removed list change at once, no refresh; the teacher's phone follows
+node release-serials.mjs            # Release form: Useful life per equipment line (saved on units, the release and the ICS), serial numbers required for items that have them (missing, typed twice, already on another unit), Has serial numbers untick remembered per item
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

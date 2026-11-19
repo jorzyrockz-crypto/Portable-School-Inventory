@@ -118,6 +118,7 @@ try {
   const relSheet = await ev(a, () => ({ summary: document.getElementById('relSummary').innerText, lines: document.getElementById('relLines').innerText }));
   check(relSheet.summary.includes(`ICS ${ym}-001`) && relSheet.summary.includes(`PAR ${ym}-001`), `creates an ICS and a PAR: “${relSheet.summary}”`);
   check(/Equipment · PAR/i.test(relSheet.lines) && /Equipment · ICS/i.test(relSheet.lines), 'each line says which slip it goes on');
+  await a.evaluate(() => __fillSerials());
   await a.click('#relSaveBtn');
   await until(a, () => !!releaseDone, 'released');
   const issued = await ev(a, (p, s) => ({ ppe: getUnits(p).find(u => u.toUid), se: getUnits(s).find(u => u.toUid), done: document.getElementById('relDone').innerText }), pick.ppe.code, pick.se.code);
@@ -286,6 +287,7 @@ try {
   await sleep(300);
   await ev(a, (uid, c) => openRelease({ teacherUid: uid, purpose: 'Classroom', lines: [{ code: c, qty: 2 }] }), anaUid, C);
   await until(a, () => !document.getElementById('releaseModal').classList.contains('hidden'), 'RIS sheet');
+  await a.evaluate(() => __fillSerials());
   await a.click('#relSaveBtn');
   await until(a, () => !!releaseDone, 'RIS released');
   await ev(a, () => closeRelease());
@@ -484,6 +486,7 @@ try {
   const yr = ym.slice(0, 4);
   const coaSum = await ev(a, () => document.getElementById('relSummary').innerText);
   check(coaSum.includes(`ICS SPLV-${ym}-0001`) && coaSum.includes(`ICS SPHV-${ym}-0001`), `separate low- and high-valued ICS: “${coaSum}”`);
+  await a.evaluate(() => __fillSerials());
   await a.click('#relSaveBtn');
   await until(a, () => !!releaseDone, 'released (COA)');
   await until(a, n => releaseList.some(r => r.no === n && !r.sending), 'COA ICS saved', 8000, `SPLV-${ym}-0001`);

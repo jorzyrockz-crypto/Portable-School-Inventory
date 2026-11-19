@@ -23,6 +23,7 @@ async function joinAsTeacher(page, schoolId, name, position, office) {
 async function release(a, uid, lines) {
   await ev(a, (uid, lines) => openRelease({ teacherUid: uid, lines }), uid, lines);
   await sleep(200);
+  await a.evaluate(() => __fillSerials());
   await a.click('#relSaveBtn');
   await until(a, () => !!releaseDone, 'released');
   await ev(a, () => closeRelease());
@@ -256,6 +257,7 @@ try {
   const oldISO = old.toISOString().slice(0, 10);
   await ev(a, (uid, d) => { openRelease({ teacherUid: uid, lines: [{ code: '14111507-PP-M01', qty: 2 }] }); document.getElementById('relDate').value = d; }, juan, oldISO);
   await sleep(200);
+  await a.evaluate(() => __fillSerials());
   await a.click('#relSaveBtn');
   await until(a, () => !!releaseDone, 'old RIS', 8000);
   await ev(a, () => closeRelease());

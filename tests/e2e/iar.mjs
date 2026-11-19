@@ -216,6 +216,7 @@ try {
   check(await ev(a, id => !!document.querySelector(`[data-iar-release="${id}"]`), reqId), 'papers screen: release each teacher’s share');
   await ev(a, id => iarRelease(id), reqId);
   check(await ev(a, () => releaseDraft && releaseDraft.lines.length === 3), 'release drafted from the request (3 items)');
+  await a.evaluate(() => __fillSerials());
   await a.click('#relSaveBtn');
   await until(a, id => reqList.some(r => r.id === id && r.status === 'released'), 'released', 8000, reqId);
   const relNos = await ev(a, () => releaseList.map(r => `${r.kind} ${r.no}`));

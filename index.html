@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="84fe805b8647">
+  <meta name="app-version" content="55e3895ee1d4">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -405,6 +405,7 @@
     .pr-in { display: block; width: 100%; height: 2.5rem; margin-top: 0.25rem; padding: 0 0.75rem; border: 1px solid #cbd5e1;
       border-radius: 0.75rem; font-size: 0.875rem; font-weight: 500; color: #0f172a; text-transform: none; letter-spacing: normal; outline: none; background: #fff; }
     .pr-in:focus { border-color: #6366f1; }
+    input.rel-sn-empty { border-color: #fcd34d; background: #fffbeb; }
     .pr-form { font-family: Arial, Helvetica, sans-serif; color: #000; font-size: 10.5pt; max-width: 190mm; margin: 0 auto; }
     .pr-appx { text-align: right; font-style: italic; font-size: 10pt; }
     .pr-form h1 { text-align: center; font-size: 14pt; font-weight: 700; margin: 4pt 0 10pt; letter-spacing: 0.5pt; }
@@ -444,6 +445,7 @@
       html.dark .cat-row:not(.is-on) .cat-step .cat-qty { color: #64748b; }
       html.dark .more-item:hover, html.dark .more-item:active { background: #1c2638; }
       html.dark .pr-in { background: #0e1626; border-color: #334155; color: #f1f5f9; }
+      html.dark input.rel-sn-empty { border-color: #b45309; background: #2a1d0a; }
       html.dark :where(input:not([type=checkbox], [type=radio], [type=range], [type=color]), select, textarea) { background-color: #0e1626; }
       html.dark .bg-\[\#eef3fb\] { background-color: #1b2747; }
       /* QR codes must stay dark-on-white to scan */
@@ -16191,7 +16193,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     const relLine = (item, qty, units = []) => ({
       code: item.code, desc: item.name, unit: item.unit, qty,
       unitCost: units.length && units.every(u => u.cost > 0) ? round2(units.reduce((n, u) => n + u.cost, 0) / units.length) : round2(item.price || 0),
-      units: units.map(u => ({ id: u.id, no: u.no || '', serial: u.serial || '', cond: u.cond || 'S', doc: unitDocLabel(u), docDate: u.icsDate || '', loc: u.loc || '', ...(u.acq ? { acq: u.acq } : {}), ...(u.cost > 0 ? { cost: u.cost } : {}) }))
+      units: units.map(u => ({ id: u.id, no: u.no || '', serial: u.serial || '', cond: u.cond || 'S', doc: unitDocLabel(u), docDate: u.icsDate || '', loc: u.loc || '', ...(u.acq ? { acq: u.acq } : {}), ...(u.life ? { life: u.life } : {}), ...(u.cost > 0 ? { cost: u.cost } : {}) }))
     });
     const relTotal = lines => Math.round(lines.reduce((n, l) => n + l.qty * (l.unitCost || 0), 0) * 100) / 100;
     function relBase(t, extra) {
@@ -16889,7 +16891,67 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const want = Math.max(0, Math.min(qty, relMax(item)));
       if (!relIsEquip(item)) return { code, equip: false, qty: want };
       const free = relFreeUnits(item).slice(0, want).map(u => u.id);
-      return { code, equip: true, unitIds: free, newUnits: Math.min(relUntagged(item), want - free.length) };
+      return { code, equip: true, unitIds: free, newUnits: Math.min(relUntagged(item), want - free.length),
+        hasSerials: itemHasSerials(item), serials: {}, newSerials: [], life: null };
+    }
+
+    // Serial numbers and useful life on the Release form (Nov 2026). An item "has serial
+    // numbers" when the custodian said so (userState[code].serials, set on release), else when a
+    // unit already has one or it is ICT, audio-visual or consumer electronics. Then every unit
+    // being released needs its own serial number before Release goes through.
+    const SERIAL_CATEGORIES = new Set(['ICT Equipment & Devices', 'Audio & Visual Equipment', 'Consumer Electronics']);
+    function itemHasSerials(item) {
+      const s = (userState[item.code] || {}).serials;
+      if (s === true || s === false) return s;
+      return getUnits(item.code).some(u => u.serial) || SERIAL_CATEGORIES.has(item.category);
+    }
+    function relSerialList(l, item) {
+      const units = getUnits(item.code);
+      const out = l.unitIds.map(id => {
+        const u = units.find(x => x.id === id);
+        return { key: id, label: u ? u.no : '', value: String(l.serials[id] ?? (u && u.serial) ?? '') };
+      });
+      for (let i = 0; i < l.newUnits; i++) out.push({ key: 'n' + i, label: `New unit ${i + 1}`, value: String(l.newSerials[i] ?? '') });
+      return out;
+    }
+    function relSerialProblem(l, item) {
+      if (!l.equip || !l.hasSerials) return '';
+      const list = relSerialList(l, item);
+      const missing = list.filter(x => !x.value.trim()).length;
+      if (missing) return `${plural(missing, 'serial number')} still to type`;
+      const norm = v => String(v).trim().toUpperCase();
+      const others = new Set(getUnits(item.code).filter(u => !l.unitIds.includes(u.id) && u.serial).map(u => norm(u.serial)));
+      const seen = new Set();
+      for (const x of list) {
+        const n = norm(x.value);
+        if (seen.has(n)) return `serial number ${x.value.trim()} is typed twice`;
+        if (others.has(n)) return `serial number ${x.value.trim()} is already on another unit`;
+        seen.add(n);
+      }
+      return '';
+    }
+    function relCommonLife(l, item) {
+      const lives = getUnits(item.code).filter(u => l.unitIds.includes(u.id)).map(u => u.life || '');
+      return lives.length && lives.every(v => v === lives[0]) ? lives[0] : '';
+    }
+    function setRelLife(code, v) {
+      const l = releaseDraft && releaseDraft.lines.find(x => x.code === code);
+      if (l) l.life = v;
+    }
+    function setRelHasSerials(code, on) {
+      const l = releaseDraft && releaseDraft.lines.find(x => x.code === code);
+      if (!l) return;
+      l.hasSerials = !!on;
+      renderRelease();
+    }
+    function setRelSerial(code, key, v, input) {
+      const l = releaseDraft && releaseDraft.lines.find(x => x.code === code);
+      const item = items.find(i => i.code === code);
+      if (!l || !item) return;
+      if (key.startsWith('n')) l.newSerials[Number(key.slice(1))] = v; else l.serials[key] = v;
+      if (input) input.classList.toggle('rel-sn-empty', !String(v).trim());
+      const hint = document.querySelector(`[data-relsnhint="${CSS.escape(code)}"]`);
+      if (hint) { const p = relSerialProblem(l, item); hint.textContent = p ? `· ${p}` : '· all typed'; hint.classList.toggle('text-rose-600', !!p); hint.classList.toggle('text-emerald-700', !p); }
     }
 
     function openRelease(opts = {}) {
@@ -17016,6 +17078,29 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             const on = l.unitIds.includes(u.id);
             return `<button type="button" onclick="toggleRelUnit('${l.code}', '${u.id}')" class="h-8 px-2 rounded-lg border text-[11px] font-mono font-bold ${on ? 'bg-brand-600 border-brand-600 text-white' : 'bg-white border-slate-300 text-slate-600'}">${on ? '<i class="ph-bold ph-check"></i> ' : ''}${escapeHTML(u.no)}</button>`;
           }).join('')}</div>${untag ? `<p class="mt-1.5 text-[11px] text-slate-500">${l.newUnits ? `<b>${l.newUnits}</b> of ` : ''}${plural(untag, 'unit')} without a property number${l.newUnits ? ' · new numbers are given on release' : ''}</p>` : ''}`;
+          const common = relCommonLife(l, item);
+          const sn = l.hasSerials && q ? relSerialList(l, item) : [];
+          const snProblem = sn.length ? relSerialProblem(l, item) : '';
+          units += `
+            <div class="mt-2 grid grid-cols-2 gap-2 items-end">
+              <label class="block min-w-0">
+                <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">Useful life</span>
+                <input type="text" data-rellife="${l.code}" value="${escapeHTML(l.life ?? common)}" placeholder="${defaultLifeYears(item)} years" list="lifeList" autocomplete="off" oninput="setRelLife('${l.code}', this.value)" class="w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
+              </label>
+              <label class="h-9 flex items-center gap-2 text-xs font-semibold text-slate-700 min-w-0">
+                <input type="checkbox" data-relhassn="${l.code}" ${l.hasSerials ? 'checked' : ''} onchange="setRelHasSerials('${l.code}', this.checked)" class="w-4 h-4 shrink-0 accent-brand-600"> <span class="truncate">Has serial numbers</span>
+              </label>
+            </div>
+            ${sn.length ? `
+            <div class="mt-2">
+              <p class="text-[11px] font-bold uppercase text-slate-500 mb-1">Serial numbers <span data-relsnhint="${l.code}" class="normal-case font-semibold ${snProblem ? 'text-rose-600' : 'text-emerald-700'}">· ${snProblem || 'all typed'}</span></p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">${sn.map(x => `
+                <label class="flex items-center gap-2 min-w-0">
+                  <span class="w-[8.5rem] shrink-0 truncate text-[11px] font-mono font-bold text-slate-500" title="${escapeHTML(x.label)}">${escapeHTML(x.label)}</span>
+                  <input type="text" data-relsn="${l.code}:${x.key}" value="${escapeHTML(x.value)}" oninput="setRelSerial('${l.code}', '${x.key}', this.value, this)" placeholder="Serial No." autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Serial number of ${escapeHTML(x.label)}" class="${x.value.trim() ? '' : 'rel-sn-empty '}flex-1 min-w-0 h-8 px-2 rounded-lg border border-slate-200 text-xs font-mono outline-none focus:border-brand-500">
+                </label>`).join('')}
+              </div>
+            </div>` : ''}`;
         }
         return `
           <div class="rounded-xl border border-slate-200 p-3" data-rel="${l.code}">
@@ -17114,6 +17199,15 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         const item = items.find(i => i.code === l.code);
         if (!item || relQty(l) > relMax(item)) { appAlert(`${item ? item.name : l.code}: only ${item ? relMax(item) : 0} available.`); return; }
       }
+      for (const l of lines) {
+        const item = items.find(i => i.code === l.code);
+        const problem = relSerialProblem(l, item);
+        if (!problem) continue;
+        appAlert(`${item.name}: ${problem}. Type the serial number of each unit before releasing, or untick Has serial numbers if this item has none.`, { title: 'Serial numbers first', icon: 'ph-barcode' });
+        const box = [...document.querySelectorAll(`[data-relsn^="${CSS.escape(l.code)}:"]`)].find(x => !x.value.trim());
+        if (box) box.scrollIntoView({ block: 'center' });
+        return;
+      }
       const F = cloud.sdk;
       const now = Date.now();
       const risNo = nextReleaseNo('RIS', d.date), icsNo = nextReleaseNo('ICS', d.date), parNo = nextReleaseNo('PAR', d.date);
@@ -17134,10 +17228,18 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         }
         const chosen = getUnits(item.code).filter(u => l.unitIds.includes(u.id));
         const fresh = l.newUnits ? nextPropertyNumbers(l.newUnits, undefined, { date: d.date, cost: item.price }).map(no => ({ id: newUnitId(), no, serial: '', loc: '', to: '', cond: 'S', seen: null, printed: null, added: now })) : [];
+        const sn = l.hasSerials ? relSerialList(l, item) : null;
         state.units = [...getUnits(item.code), ...fresh];
         // Each unit by its own cost: ₱50,000 and up on the PAR, the rest on the ICS
         // (COA standard: ₱5,000 and below on the SPLV ICS, above on the SPHV ICS)
         const all = [...chosen, ...fresh];
+        if (sn) {
+          chosen.forEach(u => { const x = sn.find(y => y.key === u.id); if (x) u.serial = x.value.trim(); });
+          fresh.forEach((u, i) => { const x = sn.find(y => y.key === 'n' + i); if (x) u.serial = x.value.trim(); });
+        }
+        const life = l.life != null ? normLife(l.life) : '';
+        if (life) all.forEach(u => { u.life = life; });
+        state.serials = !!l.hasSerials;
         const se = all.filter(u => !isPPE(item, u));
         const groups = [[all.filter(u => isPPE(item, u)), 'PAR'],
           ...(coaIcs ? [[se.filter(u => isLowValued(item, u)), 'SPLV'], [se.filter(u => !isLowValued(item, u)), 'SPHV']] : [[se, 'ICS']])];
@@ -17235,7 +17337,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const d = prDefaults();
       const rows = r.lines.map(l => {
         const serials = (l.units || []).map(u => u.serial).filter(Boolean);
-        const life = (l.units || []).map(u => (findUnitAny(u.id) || {}).life).find(Boolean) || '';   // only what the custodian wrote
+        const life = (l.units || []).map(u => u.life || (findUnitAny(u.id) || {}).life).find(Boolean) || '';   // only what the custodian wrote
         return `<tr><td class="c">${l.qty}</td><td class="c">${e(l.unit)}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * (l.unitCost || 0))}</td>
           <td>${e(l.desc)}${serials.length ? `<br><span style="font-size:8.5pt">S/N: ${e(serials.join(', '))}</span>` : ''}</td>
           <td class="pr-sn">${e(nosText(l.units))}</td><td class="c">${e(life)}</td></tr>`;
@@ -24171,6 +24273,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-release-serials', date: 'Nov 2026', title: 'Release: serial numbers and useful life', points: [
+        'Release to teacher: each equipment item now has a Useful life box. What you type is saved on every unit you release and prints on the ICS.',
+        'Items with serial numbers (laptops, projectors, TVs and the like, or any item where a unit already has one) now ask for the serial number of each unit before Release goes through. A serial number typed twice, or already on another unit, is caught too.',
+        'No serial numbers on an item? Untick Has serial numbers on its line. The app remembers your choice for that item.'
+      ] },
       { id: '2026-11-remove-instant', date: 'Nov 2026', title: 'Fixes: removing a teacher shows right away', points: [
         'Fixes: after Remove from the school, the teacher\u2019s page now shows Removed from the school with Add back straight away. Before, it kept showing has the app and the Remove button until you refreshed.',
         'Fixes: when the only teacher is removed, the Removed from the school list (with Add back) now shows under No one yet.'
