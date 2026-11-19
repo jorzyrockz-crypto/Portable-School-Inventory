@@ -179,6 +179,16 @@ If nothing matches, the last row offers to add what you typed as a new custom it
 
 When the search box is empty, Home shows:
 - three big tiles: **Scan ICS**, **Import** and **Count**. While a count is running, the Count tile shows a progress bar. A **Scan tag** tile appears once you have tagged units.
+- **Needs your attention** (since November 2026), below the tiles. It lists deadlines and things waiting on the custodian, most urgent first, and each line opens the right place:
+  - lost units, with the days left to apply for relief (COA: within 30 days), opening Teachers with the *Lost* filter;
+  - supply requests waiting more than 2 days, and teacher reports or returns waiting more than 3 days;
+  - slips teachers have not marked *Received* for more than 3 days;
+  - items waiting for the School Head more than 3 days, and approved PRs not delivered after 30 days;
+  - the semestral / year-end count (percent counted, or the start date 2 weeks ahead);
+  - ICS / PAR older than 3 years, and the fidelity bond or designation order ending within 30 days (Year-end & reminders);
+  - units in *Needs repair* for more than 30 days, low and out-of-stock supplies, and overdue library books.
+
+  The first 5 show, with **Show all**. With nothing due it says *All clear*. It is hidden until something is encoded, and never shown on a teacher's or School Head's phone. Everything comes from what the device already has: no extra reads.
 - your last 5 **recently encoded** items, which you can tap to edit.
 - one status line with the number of items, total value and last backup. It links to Reports. The backup reminder appears here only when a backup is overdue.
 
@@ -834,6 +844,7 @@ node teacher-remove.mjs             # Remove from the school / Add back with the
 node release-serials.mjs            # Release form: Useful life per equipment line (saved on units, the release and the ICS), serial numbers required for items that have them (missing, typed twice, already on another unit), Has serial numbers untick remembered per item
 node head-dashboard.mjs             # School Head screen: Needs your attention, Waiting N days + reminder, Approve all, search decisions, spending, condition, trends, supply usage, who holds what (tap, print), monthly summary print, two columns on a laptop
 node teacher-dashboard.mjs          # teacher's My Items: tiles, Needs your attention (slips, asked back, reports, repair, old slips, overdue books), Clearance: Return everything, then nothing under their name
+node home-attention.mjs             # custodian Home: Needs your attention (lost + relief days, waiting requests/reports, unconfirmed slips, ICS renewal, bond, repairs, stock), Show all, taps, hidden for teachers
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

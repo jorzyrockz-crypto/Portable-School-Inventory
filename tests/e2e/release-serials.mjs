@@ -46,7 +46,7 @@ try {
   await type(a, `[data-relsn="${boxes[1]}"]`, 'PF3K2B07');
   check(/all typed/.test(await ev(a, l => document.querySelector(`[data-relsnhint="${l}"]`).textContent, LAPTOP)), 'hint turns to “all typed”');
   await type(a, `[data-rellife="${LAPTOP}"]`, '7');
-  await a.screenshot({ path: '/home/user/Portable-School-Inventory/.arena/rel_sn.png' });
+  await a.screenshot({ path: '/tmp/rel_sn.png' });
   await a.click('#relSaveBtn');
   await until(a, () => !!releaseDone, 'released');
 
