@@ -112,6 +112,7 @@ export function createBackend({ autoApprove = true } = {}) {
       }
       const after = { ...before, ...data };
       if (isStaff(ctx, sid) && after.uid === before.uid) return;
+      if (isCust(ctx, sid) && after.mergedFrom === before.uid) return;   // same teacher, two accounts
       const changed = Object.keys(data);
       if (before.uid === ctx.uid && before.status === 'pending' && after.status === 'cancelled' && changed.every(k => ['status', 'updatedAt'].includes(k))) return;
       deny('request update', { path, data });
@@ -126,7 +127,7 @@ export function createBackend({ autoApprove = true } = {}) {
       }
       const ch = changedKeys(before, data);
       const own = ctx.uid === p[3] && ch.every(k => ['name', 'position', 'office', 'email', 'joinedMs', 'updatedAt'].includes(k)) && cardOk(data, p[3]);
-      const cust = isCust(ctx, sid) && ch.every(k => ['name', 'position', 'office', 'status', 'approvedMs', 'removedMs', 'editedMs', 'by', 'updatedAt', 'librarian', 'librarianMs'].includes(k)) &&
+      const cust = isCust(ctx, sid) && ch.every(k => ['name', 'position', 'office', 'status', 'approvedMs', 'removedMs', 'editedMs', 'by', 'updatedAt', 'librarian', 'librarianMs', 'mergedInto', 'mergedIntoName', 'mergedMs'].includes(k)) &&
         ['pending', 'active', 'removed'].includes(data.status ?? 'active') && cardOk(data, p[3]);
       if (!own && !cust) deny('member update', { path, data, ch });
       return;
@@ -280,7 +281,9 @@ export function createBackend({ autoApprove = true } = {}) {
         if (!ok) deny('teacher report create', { path, data });
         return;
       }
-      if (!isStaff(ctx, sid) || ({ ...before, ...data }).uid !== before.uid) deny('teacher report update', { path, data });
+      const aft = { ...before, ...data };
+      if (isCust(ctx, sid) && aft.mergedFrom === before.uid) return;
+      if (!isStaff(ctx, sid) || aft.uid !== before.uid) deny('teacher report update', { path, data });
       return;
     }
     if (p.length === 4 && sub === 'releases') {

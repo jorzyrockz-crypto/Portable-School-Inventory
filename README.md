@@ -207,6 +207,7 @@ A teacher’s phone only shows that teacher’s own requests, slips and items. I
 - **Waiting for approval.** A teacher who opens the invite link joins as *pending*. They see *Waiting for approval* and can't send requests or see the stock yet. The custodian gets a notification (*Ana Reyes wants to join your school*), and the Teachers page shows them under **To review**. **Approve** lets them in, and the teacher is told *You’re in!*. **Not from our school** refuses them.
 - **Edit details.** On a teacher's page, **Edit details** corrects the name, position and office. Their phone takes the corrected details.
 - **Remove from school.** The teacher can no longer send requests, see the stock or send reports (the rules refuse it). Their slips, items and history stay. Removed people are listed at the bottom of the Teachers list, where **Add back** brings them back.
+- **Delete entirely** (bin icon on the teacher's page, or next to **Add back**). Only for a teacher with **no records at all**: no slips (not even cancelled ones), units, requests, reports or books, for example a test join or a wrong account. The card is deleted from the cloud, not just hidden. Anyone with records can't be deleted, because their records are accountability records: use **Remove from school** (keeps them) or **Same person as…** (moves them). If that teacher's phone is still signed in, it says *Your name was deleted from …* with **Ask to join again**, which makes a new join request for you to approve.
 - **New invite link** (in the Invite sheet) replaces the link. Anyone opening an old link is told it was replaced by a newer one. Teachers who already joined are not affected.
 - **DepEd School ID.** If the school name starts with the 6-digit School ID (*114656 - San Jose NHS*), the join sheet and the poster show *School ID 114656*. It is a label so teachers can tell they picked the right school. It is not a password, since School IDs are public.
 
@@ -353,7 +354,7 @@ The free plan allows **50,000 document reads and 20,000 writes a day** for the w
 - **Teachers' School stock:** a single document instead of one per supply.
 - Every write to these lists sets `createdAt` (new) or `updatedAt` (changed); keep it that way when adding features.
 - **Limit used up:** the app says *“The school’s free daily cloud limit is used up…”* with the reset time. Work is kept on the phone and syncing restarts on its own after the reset.
-- Check **Firebase console → Firestore → Usage** now and then. One school stays far below the limit; if several schools share this project, watch the daily reads (or switch to the Blaze plan, which charges about $0.03 per 100,000 reads above the free amount).
+- Check **Firebase console → Firestore → Usage** now and then. One school stays far below the limit; if several schools share this project, watch the daily reads (or switch to the Blaze plan, which charges about $0.06 per 100,000 reads above the free amount).
 
 No rules change is needed for this.
 
@@ -641,6 +642,13 @@ In Inventory, an item's sheet lists who has its units (*Ana Reyes · 1 unit · I
 
 **Same person as…** On a typed name (*A. Reyes*), pick who it really is (*Ana Reyes*, same last name listed first). Units, slips and history move over. With an account, the units also show in the teacher's **My Items** (as a linked ICS when they were never on a slip).
 
+**One teacher, two accounts** (e.g. joined once with a personal and once with a DepEd Google account). **Same person as…** on the account you don't want, then pick the account to **keep** (only other joined accounts are listed). Everything moves to it:
+- units (their *Assigned to*), slips to them and transfer slips from them (numbers and dates stay; each slip keeps `mergedFrom`);
+- requests and reports (receipts stay confirmed);
+- books: loans, Book Issuance Lists, rooms they keep, their class sheet (unless the kept account already has one for that school year), and the Librarian role.
+
+The other card is then removed from the school; the Removed list says *merged into Ana Reyes* (no **Add back**), and since nothing is left under it, it can be deleted entirely. A phone signed in with the old account is told *Your records moved to your other account (Ana Reyes)*. The kept phone sees the items and requests right away, without *New items released* notifications for them. Custodian only (not assistants). **Publish `firestore.rules` again**: the custodian may move a teacher's requests and reports to another account only when stamped `mergedFrom` (the old account), and may write `mergedInto` on a member card.
+
 **Remove from the list** (bin icon on the page). This is for a typed name with no account and no units left, such as a test release or a typo. Slips can't be deleted because they are accountability records, so the name's slips are marked **Cancelled**, with who did it and when kept on the server. They are hidden from the list, prints, totals and supply usage, and their numbers are never reused. Supplies on its RIS go back to stock. A name that still holds units needs a transfer or return first. The list says *Typed on a slip* for names that come only from slips.
 
 **Year-end count by teachers.** In December and January, a teacher's **My Items** asks *Are the 3 items on your list with you?* They tap **All present**, or **Missing or broken…** to mark each one (any time of year: **Count my items**). Units they have count as checked for the RPCPPE / RPCSP. The custodian sees *Counted 2026: 8 of 10* per person, and anything missing or broken under **To review** on the Teachers page (*Mark broken for repair*); missing units are suggested on the RLSDDP. Outside the count season the year shown is the calendar year.
@@ -780,6 +788,7 @@ node books.mjs                        # Books & Library: titles, ISBN duplicates
 node library.mjs                      # import a delivery list, lending at the desk, decline / cancel, overdue, librarian-kept corner, disposal approved by the head
 node class-books.mjs                  # Book Issuance List, Received, class sheet with learner names, privacy rules, losses, take back, names erased
 node follow-ups.mjs                   # partly supplied, Ask back (teacher's My Items), ₱50,000+ units on an ICS → Make the PAR, PRs not delivered after 30 days
+node teacher-merge.mjs                # one teacher with two accounts → Same person as… moves slips, units, requests, reports; Delete entirely (no records only); Ask to join again
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```
