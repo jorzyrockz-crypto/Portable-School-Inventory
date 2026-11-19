@@ -20,7 +20,7 @@ async function waitNode(fn, what, ms = 8000) {
 async function signIn(page, create) {
   await ev(page, () => { openRequestsView(); gateGo('custodian'); });
   await until(page, () => !!document.getElementById('rcEmail'), 'sign-in card');
-  await ev(page, (e, p) => { rcSchool.value = 'San Jose National High School'; rcEmail.value = e; rcPass.value = p; }, EMAIL, PASS);
+  await ev(page, (e, p) => { rcSchool.value = 'San Jose National High School'; rcSchoolNo.value = /\d{6}/.test(rcSchool.value) ? '' : String(300000 + [...rcSchool.value].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7)); rcEmail.value = e; rcPass.value = p; }, EMAIL, PASS);
   await page.click(create ? '#rcCreate' : '#rcSignIn');
   await until(page, () => reqRole && reqRole.role === 'custodian', 'custodian');
   await ev(page, () => closeInvite());

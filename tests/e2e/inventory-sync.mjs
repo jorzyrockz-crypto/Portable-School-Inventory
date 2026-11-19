@@ -17,7 +17,7 @@ async function signIn(page, { create = false, school = '' } = {}) {
   await ev(page, () => { openRequestsView(); gateGo('custodian'); }); // signed out: the sign-in screen carries the form
   await until(page, () => !!document.getElementById('rcEmail'), 'sign-in card');
   await ev(page, (s, e, p) => {
-    document.getElementById('rcSchool').value = s;
+    document.getElementById('rcSchool').value = s; document.getElementById('rcSchoolNo').value = /\d{6}/.test(s) ? '' : String(300000 + [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7));
     document.getElementById('rcEmail').value = e;
     document.getElementById('rcPass').value = p;
   }, school, EMAIL, PASS);

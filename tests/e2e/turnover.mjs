@@ -23,7 +23,7 @@ const refused = (page, fn, ...args) => ev(page, async (src, a) => {
 async function signInCustodian(page, email, school) {
   await ev(page, () => { openRequestsView(); gateGo('custodian'); });
   await until(page, () => !!document.getElementById('rcEmail'), 'sign-in card');
-  await ev(page, (s, e) => { rcSchool.value = s; rcEmail.value = e; rcPass.value = 'secret12'; }, school, email);
+  await ev(page, (s, e) => { rcSchool.value = s; rcSchoolNo.value = /\d{6}/.test(rcSchool.value) ? '' : String(300000 + [...rcSchool.value].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7)); rcEmail.value = e; rcPass.value = 'secret12'; }, school, email);
 }
 async function openLink(page, acct, hash) {
   await page.evaluateOnNewDocument(a => { window.__googleAccount = a; }, acct);
@@ -181,7 +181,7 @@ try {
   await a2.click('#rcSignIn');
   await until(a2, () => typeof isViewOnly === 'function' && isViewOnly(), 'view-only on the new device', 10000);
   await until(a2, () => items.filter(i => i.qty > 0).length > 10, 'records loaded read-only', 10000);
-  check(await ev(a2, () => reqRole.schoolName === 'Oquendo Elementary School' && !document.getElementById('viewOnlyBar').classList.contains('hidden')), 'signing in again finds the school, view-only');
+  check(await ev(a2, () => /^(\d{6} - )?Oquendo Elementary School$/.test(reqRole.schoolName) && !document.getElementById('viewOnlyBar').classList.contains('hidden')), 'signing in again finds the school, view-only');
   check(!backend.docs('schools/').some(d => d.path.split('/').length === 2 && d.path !== `schools/${sid}`), 'no new school was made for the outgoing custodian');
 
   out('9 the School Head confirms the next turnover (outgoing custodian absent)');

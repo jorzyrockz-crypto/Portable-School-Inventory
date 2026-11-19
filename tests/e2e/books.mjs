@@ -197,7 +197,7 @@ try {
   out('10 explored first: the books added on the phone go to the new account');
   await ev(x, () => { openRequestsView(); gateGo('custodian'); });
   await until(x, () => !!document.getElementById('rcEmail'), 'sign-in card');
-  await ev(x, () => { rcSchool.value = 'Oquendo Annex'; rcEmail.value = 'annex@deped.gov.ph'; rcPass.value = 'secret12'; });
+  await ev(x, () => { rcSchool.value = 'Oquendo Annex'; rcSchoolNo.value = /\d{6}/.test(rcSchool.value) ? '' : String(300000 + [...rcSchool.value].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7)); rcEmail.value = 'annex@deped.gov.ph'; rcPass.value = 'secret12'; });
   await x.click('#rcCreate');
   await until(x, () => reqRole && reqRole.role === 'custodian', 'custodian connected', 10000);
   await ev(x, () => { try { closeInvite(); } catch (e) {} });

@@ -39,7 +39,7 @@ try {
   await a.goto(BASE_URL, { waitUntil: 'networkidle0' });
   await ev(a, () => { loadSampleInventory(); schoolInfo.custodian = 'Rhealyn B. Nadado'; schoolInfo.position = 'Administrative Officer II'; openRequestsView(); gateGo('custodian'); });
   await until(a, () => !!document.getElementById('rcGoogle'), 'sign-in card');
-  await ev(a, () => { rcSchool.value = 'Guanko Elementary School'; });
+  await ev(a, () => { rcSchool.value = 'Guanko Elementary School'; rcSchoolNo.value = /\d{6}/.test(rcSchool.value) ? '' : String(300000 + [...rcSchool.value].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 600000, 7)); });
   await a.click('#rcGoogle');
   await until(a, () => reqRole && reqRole.role === 'custodian', 'custodian connected', 10000);
   await ev(a, () => { closeInvite(); switchMainView('HOME'); });
