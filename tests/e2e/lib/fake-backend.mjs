@@ -59,6 +59,11 @@ export function createBackend({ autoApprove = true } = {}) {
   };
   const changedKeys = (before, after) => [...new Set([...Object.keys(before), ...Object.keys(after)])]
     .filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k]));
+  // The Librarian: an active teacher listed in school.librarians (firestore.rules isLibrarian).
+  const isLibrarian = (ctx, sid) => !!(ctx.uid && schoolPre(sid) && (schoolPre(sid).librarians || []).includes(ctx.uid) && isMember(ctx, sid));
+  const bookStaff = (ctx, sid) => isStaff(ctx, sid) || isLibrarian(ctx, sid);
+  const loanOk = d => typeof d.bookId === 'string' && d.bookId.length > 0 && d.bookId.length <= 80 && Number.isInteger(d.qty) && d.qty > 0 && d.qty <= 500 &&
+    str(d.title ?? '', 200) && str(d.borrowerName ?? '', 80) && str(d.borrowerNote ?? '', 80) && str(d.note ?? '', 200) && Array.isArray(d.acc ?? []) && (d.acc ?? []).length <= 100;
   const cardOk = (data, uid) => data.uid === uid && typeof data.name === 'string' && data.name.length > 0 && data.name.length <= 80 &&
     str(data.position, 80) && str(data.office, 80) && str(data.email ?? '', 120);
 
@@ -121,7 +126,7 @@ export function createBackend({ autoApprove = true } = {}) {
       }
       const ch = changedKeys(before, data);
       const own = ctx.uid === p[3] && ch.every(k => ['name', 'position', 'office', 'email', 'joinedMs', 'updatedAt'].includes(k)) && cardOk(data, p[3]);
-      const cust = isCust(ctx, sid) && ch.every(k => ['name', 'position', 'office', 'status', 'approvedMs', 'removedMs', 'editedMs', 'by', 'updatedAt'].includes(k)) &&
+      const cust = isCust(ctx, sid) && ch.every(k => ['name', 'position', 'office', 'status', 'approvedMs', 'removedMs', 'editedMs', 'by', 'updatedAt', 'librarian', 'librarianMs'].includes(k)) &&
         ['pending', 'active', 'removed'].includes(data.status ?? 'active') && cardOk(data, p[3]);
       if (!own && !cust) deny('member update', { path, data, ch });
       return;
@@ -187,7 +192,7 @@ export function createBackend({ autoApprove = true } = {}) {
       return;
     }
     if (p.length === 4 && sub === 'approvals') {
-      const bodyOk = d => ['ris', 'writeoff', 'count'].includes(d.kind) && typeof d.refId === 'string' && d.refId.length > 0 && d.refId.length <= 120 &&
+      const bodyOk = d => ['ris', 'writeoff', 'count', 'books'].includes(d.kind) && typeof d.refId === 'string' && d.refId.length > 0 && d.refId.length <= 120 &&
         str(d.title ?? '', 160) && str(d.summary ?? '', 600) && Array.isArray(d.lines ?? []) && (d.lines ?? []).length <= 200;
       if (kind === 'create') {
         if (!(isStaff(ctx, sid) && school(sid).headUid && data.status === 'pending' && !('decision' in data) && data.byUid === ctx.uid && bodyOk(data))) deny('approval create', { path, status: data.status });
@@ -282,6 +287,51 @@ export function createBackend({ autoApprove = true } = {}) {
       if (!isStaff(ctx, sid)) deny('release write', { path });
       return;
     }
+    // ---- Books & Library (firestore.rules) ----
+    if (p.length === 4 && sub === 'books') {
+      if (!bookStaff(ctx, sid)) deny('books write', { path });
+      return;
+    }
+    if (p.length === 4 && sub === 'bookMeta') {
+      if (!(bookStaff(ctx, sid) && p[3] === 'places')) deny('bookMeta write', { path });
+      return;
+    }
+    if (p.length === 4 && sub === 'bookIndex') {
+      if (!(bookStaff(ctx, sid) && /^[0-9]{1,3}$/.test(p[3]))) deny('bookIndex write', { path });
+      return;
+    }
+    if (p.length === 4 && sub === 'bookMoves') {
+      if (isStaff(ctx, sid)) return;
+      if (kind === 'create') {
+        if (isLibrarian(ctx, sid) && ['move', 'return'].includes(data.kind) && (data.toUid ?? '') === '') return;
+        deny('bookMoves create', { path, kind: data.kind });
+      }
+      const ch = changedKeys(before, data);
+      if (isMember(ctx, sid) && before.toUid === ctx.uid && before.status === 'sent' && data.status === 'done' &&
+          ch.every(k => ['status', 'receivedMs', 'receivedBy', 'updatedAt'].includes(k)) && str(data.receivedBy ?? '', 80)) return;
+      deny('bookMoves update', { path, ch });
+    }
+    if (p.length === 4 && sub === 'loans') {
+      if (bookStaff(ctx, sid) && loanOk(data)) return;
+      if (kind === 'create') {
+        if (isMember(ctx, sid) && loanOk(data) && data.borrowerUid === ctx.uid && data.status === 'requested' && data.keeperUid !== ctx.uid) return;
+        deny('loan create', { path, data });
+      }
+      const ch = changedKeys(before, data);
+      const keeperKeys = ['status', 'outMs', 'lentBy', 'dueISO', 'decidedNote', 'decidedMs', 'returnedMs', 'retBy', 'lostMs', 'lostBy', 'updatedAt'];
+      if (isMember(ctx, sid) && before.keeperUid === ctx.uid && before.borrowerUid !== ctx.uid && ch.every(k => keeperKeys.includes(k)) &&
+          (before.status === 'requested' ? ['out', 'declined', 'requested'].includes(data.status) : before.status === 'out' && ['out', 'returned', 'lost'].includes(data.status)) &&
+          str(data.decidedNote ?? '', 200)) return;
+      if (before.borrowerUid === ctx.uid && ((before.status === 'requested' && data.status === 'cancelled' && ch.every(k => ['status', 'updatedAt'].includes(k))) ||
+          (before.status === 'out' && data.status === 'out' && ch.every(k => ['retSaidMs', 'updatedAt'].includes(k))))) return;
+      deny('loan update', { path, ch, status: data.status });
+    }
+    if (p.length === 4 && sub === 'classBooks') {
+      if (isStaff(ctx, sid)) return;
+      if (isMember(ctx, sid) && data.uid === ctx.uid && p[3] === `${data.sy ?? ''}_${ctx.uid}` && (!before.uid || before.uid === ctx.uid) &&
+          Array.isArray(data.learners ?? []) && (data.learners ?? []).length <= 80 && Array.isArray(data.titles ?? []) && (data.titles ?? []).length <= 60) return;
+      deny('classBooks write', { path });
+    }
     if (p.length === 4 && sub === 'inspections') {
       if (isStaff(ctx, sid)) return;
       const ch = changedKeys(before, data);
@@ -361,6 +411,26 @@ export function createBackend({ autoApprove = true } = {}) {
       if (canView(ctx, sid) || isMember(ctx, sid)) return;
       deny(`read ${sub}`, { path, uid: ctx.uid });
     }
+    if (sub === 'books') { if (canView(ctx, sid) || isLibrarian(ctx, sid)) return; deny('read books', { path }); }
+    if (sub === 'bookMeta' || sub === 'bookIndex') { if (canView(ctx, sid) || isMember(ctx, sid)) return; deny(`read ${sub}`, { path, uid: ctx.uid }); }
+    if (sub === 'bookMoves') {
+      if (canView(ctx, sid) || isLibrarian(ctx, sid)) return;
+      if (single) { const d = store.get(path); if (d && d.toUid === ctx.uid) return; deny('get bookMove', { path }); }
+      if (!filters.some(f => f.field === 'toUid' && f.op === '==' && f.value === ctx.uid)) deny('list bookMoves', { path, filters });
+      return;
+    }
+    if (sub === 'loans') {
+      if (canView(ctx, sid) || isLibrarian(ctx, sid)) return;
+      if (single) { const d = store.get(path); if (d && (d.borrowerUid === ctx.uid || d.keeperUid === ctx.uid)) return; deny('get loan', { path }); }
+      if (!filters.some(f => ['borrowerUid', 'keeperUid'].includes(f.field) && f.op === '==' && f.value === ctx.uid)) deny('list loans', { path, filters });
+      return;
+    }
+    if (sub === 'classBooks') {
+      if (canView(ctx, sid)) return;
+      if (single) { const d = store.get(path); if (!d || d.uid === ctx.uid) return; deny('get classBooks', { path }); }
+      if (!filters.some(f => f.field === 'uid' && f.op === '==' && f.value === ctx.uid)) deny('list classBooks', { path, filters });
+      return;
+    }
     if (sub === 'teacherReports') {
       if (canView(ctx, sid)) return;
       if (single) { const d = store.get(path); if (d && d.uid === ctx.uid) return; deny('get teacher report', { path }); }
@@ -405,7 +475,7 @@ export function createBackend({ autoApprove = true } = {}) {
     let after = kind === 'set' || !before ? resolveTS(data) : { ...before, ...resolveTS(data) };
     const p = parts(path);
     // members/requests/reports/holds rules look at the whole document; others at what was sent
-    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog', 'staff', 'approvals'].includes(p[2]);
+    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog', 'staff', 'approvals', 'loans', 'bookMoves', 'classBooks'].includes(p[2]);
     checkWrite(before ? 'update' : 'create', path, whole ? after : data, before || {}, ctx);
     if (autoApprove && !before && p.length === 4 && p[2] === 'members' && after.status === 'pending') after = { ...after, status: 'active', approvedMs: Date.now() };
     store.set(path, after);

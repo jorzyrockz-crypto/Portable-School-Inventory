@@ -170,7 +170,7 @@ textbook accountability.
 | D3 Paperwork | **Not sure.** The app prints its own **Book Issuance List** with tap-to-confirm signatures. An ICS / RIS print can be added later if the division asks for one. No RPCI for now. |
 | D4 Accession nos. | **Yes, for library books**, with optional QR spine labels. Textbooks stay counted by title. |
 | D5 Librarian | **Teacher + librarian badge** on the same Google account, with an extra Library desk tab. |
-| Build order | **Releases 1 + 2 first** (Books + Library & Librarian). Release 3 (textbooks for learners) comes after. |
+| Build order | **Releases 1 + 2 first** (Books + Library & Librarian). Release 3 (textbooks for learners) comes after. Update 2026-11-19: "build all", so all three releases ship in one PR. |
 
 ### Learner names: privacy rules (Data Privacy Act, RA 10173)
 - Names only (no LRN, birthday, address or photo). Names are typed or pasted by the adviser.
@@ -207,3 +207,8 @@ textbook accountability.
 9. **README:** a Books & Library section with a publish-rules note.
 10. **Tests:** `tests/e2e/books.mjs` and `library.mjs`, plus a full regression run and a check
     on phone, tablet and laptop layouts.
+
+**Status (2026-11-19): built**, together with release 3 (class sheets, losses, take back, the
+book count and retrieval reminders in Year-end & reminders, and the learners-with-textbooks
+percentage on the head's summary). What's new: `2026-11-books`, `2026-11-library`,
+`2026-11-class-books`. Suites: `books.mjs`, `library.mjs`, `class-books.mjs`.

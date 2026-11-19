@@ -31,6 +31,7 @@ window.FirebaseSDK = (() => {
   // ---- offline queue ----
   const queue = []; // { ops:[[kind,path,data]], resolve, reject }
   let flushing = false;
+  let writesDone = 0;   // a listener's answer that crossed a finished write is stale: asked again
   async function flush() {
     if (flushing || window.__fakeOffline) return;
     flushing = true;
@@ -40,6 +41,7 @@ window.FirebaseSDK = (() => {
         try { await rpc('batch', { ops: w.ops, ctx: w.ctx }); w.resolve(); }
         catch (e) { w.reject(e); }
         queue.shift();
+        writesDone++;
       }
     } finally { flushing = false; }
   }
@@ -215,9 +217,11 @@ window.FirebaseSDK = (() => {
           if (fromCacheOnly) docs = isDoc ? [{ id: q.id, data: loadCache()[q.path] ?? null }] : cachedDocs(q.path);
           else if (offline) docs = cached || [];
           else {
+            const seq = writesDone;
             docs = isDoc
               ? [await rpc('get', { path: q.path, ctx: ctx() })]
               : await rpc('list', { path: q.path, filters, ctx: ctx() });
+            if (seq !== writesDone) { setTimeout(tick, 0); return; }
             // billed like Firestore: the first answer, then each new or changed document
             const now = new Map(docs.map(d => [d.id, JSON.stringify(d.data)]));
             if (!billed) bill(q.path, Math.max(1, docs.length));

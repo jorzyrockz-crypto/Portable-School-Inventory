@@ -102,7 +102,7 @@ try {
   await sleep(300);
   let L = await layout();
   check(L.left === 0 && L.top < 120 && L.w >= 250 && L.w <= 270 && L.h > 600, `tablet held sideways (1280 × 800, touch): tabs in a left sidebar (${L.w} px wide)`);
-  check(L.side.join() === 'Home,Inventory,Catalog,Reports,Supply requests,Teachers,Forms' && L.homeH >= 56, `finger-sized sidebar rows (${L.homeH} px): ${L.side.join(', ')}`);
+  check(L.side.join() === 'Home,Inventory,Catalog,Reports,Supply requests,Teachers,Books & Library,Forms' && L.homeH >= 56, `finger-sized sidebar rows (${L.homeH} px): ${L.side.join(', ')}`);
   check(await ev(t, () => [...document.querySelectorAll('#tabBar .tab-btn')].filter(b => b.offsetParent).every(b => b.getBoundingClientRect().height < 70)), 'every sidebar label fits on one line');
   check(L.pad === `${L.w}px` && await fits(t) && !L.lapCol, 'content beside it; the extra columns stay off (not enough room at 20 px text)');
   await t.screenshot({ path: `${SHOTS}/tablet-landscape-inventory.png` });
@@ -133,7 +133,7 @@ try {
   L = await layout();
   check(L.left === 0 && L.w >= 220 && L.w <= 240 && L.h >= 700 && L.top < 80, `left sidebar under the top bar (${L.w} × ${L.h} px at top ${L.top})`);
   check(L.homeW > 180 && L.homeH <= 48, `tabs are rows (${L.homeW} × ${L.homeH} px)`);
-  check(L.side.join() === 'Home,Inventory,Catalog,Reports,Supply requests,Teachers,Forms', `sidebar: ${L.side.join(', ')}`);
+  check(L.side.join() === 'Home,Inventory,Catalog,Reports,Supply requests,Teachers,Books & Library,Forms', `sidebar: ${L.side.join(', ')}`);
   check(L.pad === `${L.w}px` && await fits(t), 'content sits beside the sidebar, nothing spills sideways');
   check(L.items > 1000 && L.lapCol, `Inventory is wider (${L.items} px) with Category / Tagged / Unit cost columns`);
   await t.screenshot({ path: `${SHOTS}/computer-inventory.png` });

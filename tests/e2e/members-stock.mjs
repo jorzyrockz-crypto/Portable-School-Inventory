@@ -207,9 +207,9 @@ try {
   const carlo = await joinAsTeacher(c1, code, 'Carlo Diaz', 'Teacher I', 'Grade 8');
   await waitNode(() => (backend.store.get(`schools/${sid}/members/${carlo}`) || {}).status === 'pending', 'Carlo pending');
   check((backend.store.get(`schools/${sid}/members/${carlo}`) || {}).invite === code.split('-')[1], 'new link works (Carlo waits for approval)');
-  // Removing Ben can refuse one read of his open stock listener before his phone hears the news
-  // (Firestore does the same when access is taken away); anything else refused is a bug.
-  const refused = backend.denied.filter(d => !(new RegExp(`^read stock(Holds)? .*"uid":"${ben}"`).test(d)));
+  // Removing Ben can refuse one read of his open stock and Library listeners before his phone
+  // hears the news (Firestore does the same when access is taken away); anything else refused is a bug.
+  const refused = backend.denied.filter(d => !(new RegExp(`^read (stock(Holds)?|bookMeta|bookIndex|books|loans|bookMoves|classBooks) .*"uid":"${ben}"`).test(d)));
   check(refused.length === 0, `nothing else refused (${refused.length}) ${refused.slice(0, 2).join(' | ')}`);
 } catch (e) {
   out('CRASH', e);
