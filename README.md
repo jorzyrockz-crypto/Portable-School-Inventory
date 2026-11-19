@@ -204,6 +204,8 @@ A teacher’s phone only shows that teacher’s own requests, slips and items. I
 
 ### Joining: approval, removing and new invite links
 
+**Invite people** (at the top of **More**, and the **Invite** buttons on Supply requests and the Teachers page) is the one place to invite or confirm people. At the top, choose who you are inviting: **Teachers** (link, QR code, poster), **School Head**, **Assistant** custodian or **Librarian**. Each shows its status (*3 joined*, *To confirm*, *Confirmed*, *None*), with a count when someone is waiting for you. The School Head, Assistant and Librarian panels open from there, each with a back button. Custodian turnover is linked at the bottom. Assistants see the teachers' link only.
+
 - **Waiting for approval.** A teacher who opens the invite link joins as *pending*. They see *Waiting for approval* and can't send requests or see the stock yet. The custodian gets a notification (*Ana Reyes wants to join your school*), and the Teachers page shows them under **To review**. **Approve** lets them in, and the teacher is told *You’re in!*. **Not from our school** refuses them.
 - **Edit details.** On a teacher's page, **Edit details** corrects the name, position and office. Their phone takes the corrected details.
 - **Remove from school.** The teacher can no longer send requests, see the stock or send reports (the rules refuse it). Their slips, items and history stay. Removed people are listed at the bottom of the Teachers list, where **Add back** brings them back.
@@ -213,13 +215,19 @@ A teacher’s phone only shows that teacher’s own requests, slips and items. I
 
 Teachers who joined before approvals existed stay active; only new joins need **Approve**.
 
+### Profile photos
+
+- **From Google only.** A teacher who joins or signs in with Google gets their Google profile photo. There is no photo upload, so no Firebase Storage (Blaze) is needed. A teacher without Google shows initials, and My Items suggests **Sign in with Google** to add the photo. The photo is refreshed each time the app opens, so a new Google photo appears by itself.
+- **Where it shows.** At the top of the teacher's **My items** (next to *Hi Ana*), in the Teachers list, on each teacher's page, in join requests and in the bell. The custodian's Google photo (saved when the custodian signs in with Google) shows on teachers' phones next to *To the property custodian of …*.
+- **What is stored.** Only the address of the Google photo (`photo` on the member card, `custodianPhoto` on the school). The rules accept only `https://lhN.googleusercontent.com/…` addresses. A photo that fails to load falls back to initials.
+
 ### School Head approval of Purchase Requests
 
 Every Purchase Request needs the School Head's approval or signature.
 
 - **Waiting for approval.** A new PR is saved as *waiting for approval*. Until it is approved, the print, Excel and CSV say **FOR APPROVAL** and the *Approved by* signature is blank. **Inspect delivery** and **Items delivered** stay closed. PRs saved before this update count as approved.
 - **No School Head in the app yet.** Print the PR, have the head sign it, then tap **Signed on paper…** on the PR card and enter the date they signed. Change History shows it as a paper signature. If you recorded it by mistake, **Recorded by mistake?** removes it.
-- **Inviting the School Head.** Go to **Supply requests → Invite → School Head (approves PRs)**. Send the head their own link or QR code (it is not the teachers' link). On their phone, they open it (or choose **School Head** on the sign-in screen and paste it), then sign in with **their own Google account**. Anonymous sign-in and the custodian's account are refused. You get a notification, and you tap **Confirm** in the School Head panel. **Make a new School Head link** stops the old link from working.
+- **Inviting the School Head.** Go to **More → Invite people → School Head**. Send the head their own link or QR code (it is not the teachers' link). On their phone, they open it (or choose **School Head** on the sign-in screen and paste it), then sign in with **their own Google account**. Anonymous sign-in and the custodian's account are refused. You get a notification, and you tap **Confirm** in the School Head panel. **Make a new School Head link** stops the old link from working.
 - **Approving.** The head's phone shows *For your approval*: each PR waiting for them, with its items, purpose and total. They tap **Approve**, or **Return** with a note saying what to change. Their name, designation, date and time are saved on the PR. You are notified, and Change History records it. The final print shows *Approved in CustodianPro by …* under the head's signature.
 - **Returned PRs.** **Change it** (Edit) or **Send again as is** sends the PR back to the head. Changing an approved PR also sends it back for approval (the app asks first).
 - **Once a head is confirmed, only they can approve.** The rules then refuse paper signatures from the custodian. Approval and Return by the custodian are always refused, and so is any change to an approved PR that doesn't send it back. The head can read the PRs but change nothing except their decision on a PR that is waiting. A custodian of the school can never be its School Head, so nobody approves their own PR. **Remove as School Head** ends the head's access. PRs that are still waiting go back to paper signatures until a new head is confirmed.
@@ -242,7 +250,7 @@ When the property custodian changes, the school's inventory, requests and record
 
 A helper (for example, the teacher in charge of the supply room) can work on their own phone while you stay the accountable officer.
 
-- **Inviting.** Go to **More → Assistant custodians** and send the assistant link or QR code. The helper opens it and signs in with **their own Google account**. You get a notification and tap **Confirm**. **Make a new assistant link** stops the old link from working.
+- **Inviting.** Go to **More → Invite people → Assistant** and send the assistant link or QR code. The helper opens it and signs in with **their own Google account**. You get a notification and tap **Confirm**. **Make a new assistant link** stops the old link from working.
 - **What they can do.** On their phone they get the school inventory and can release items (RIS, ICS, PAR), handle teachers' requests, record deliveries, count and encode. Their name is recorded on each release (*by*) and in the history, while the forms keep **your** name as the property custodian. Their own phone's items are never merged into the school.
 - **What they can't do.** They can't remove items, change the school info, invite or remove teachers or the School Head, make invite links, hand over the school, relieve lost property, renew slips or reset the school. The app hides these, and the rules refuse them.
 - **Remove as assistant** ends their access at once. Their phone shows *You are no longer an assistant custodian*.
@@ -686,6 +694,7 @@ A bell in the header (next to **More**) shows what happened and how many you hav
 - **Year-end count** runs from 1 December to 31 January, once a week: *82 of 138 units counted · report due 31 Jan*, a reminder in the last 14 days and a note when every unit is counted.
 - **Also tell me about** at the bottom of the bell sheet turns each kind off or on (all on by default).
 - **Quiet hours** (shown once phone notifications are on): from 7:00 PM to 6:00 AM by default, phone notifications wait. They still appear in the bell, and when quiet hours end, a background app shows one summary such as *3 notifications overnight*.
+- **Pictures.** Each phone notification shows the same icon and colour as its row in the bell (a tray for requests, a warning for problems, a box for low stock…), plus a matching small icon for the status bar. A notification about a person, such as a new request or a teacher who joined, shows their photo (or initials) with the icon in a small coloured bubble in the corner.
 - **On the phone.** In the bell sheet, tap **Turn on** under *Get these on your phone too* (the app never asks by itself). Notifications then appear even when you're in another app, **as long as CustodianPro is open or was used recently**. Android may stop a background app after a while; there is no push server, so a phone where the app is fully closed won't get notified.
 
 ## App updates
@@ -789,6 +798,8 @@ node library.mjs                      # import a delivery list, lending at the d
 node class-books.mjs                  # Book Issuance List, Received, class sheet with learner names, privacy rules, losses, take back, names erased
 node follow-ups.mjs                   # partly supplied, Ask back (teacher's My Items), ₱50,000+ units on an ICS → Make the PAR, PRs not delivered after 30 days
 node teacher-merge.mjs                # one teacher with two accounts → Same person as… moves slips, units, requests, reports; Delete entirely (no records only); Ask to join again
+node profile-photos.mjs               # Google photos → teacher header, custodian photo, Teachers list/detail, bell rows; initials + Sign in with Google hint; per-type notification pictures and photo + bubble
+node invite-people.mjs                # More → Invite people: teachers' link + School Head / Assistant / Librarian switcher with status and waiting counts, back buttons, Supply requests and Teachers entry points
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

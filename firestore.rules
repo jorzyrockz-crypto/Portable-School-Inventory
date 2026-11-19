@@ -294,6 +294,12 @@ service cloud.firestore {
       // Teachers who joined: each teacher's phone writes its own card (name, position, office),
       // starting as 'pending'. The custodian reads all of them, approves, edits or removes.
       match /members/{uid} {
+        // photo: the teacher's Google profile photo (shown on the Teachers page), or empty.
+        function photoOk() {
+          return request.resource.data.get('photo', '') == ''
+            || (request.resource.data.photo is string && request.resource.data.photo.size() <= 300
+                && request.resource.data.photo.matches('^https://lh[0-9][.]googleusercontent[.]com/[^ ]+$'));
+        }
         function cardOk() {
           return request.resource.data.uid == uid
             && request.resource.data.name is string
@@ -313,8 +319,8 @@ service cloud.firestore {
           && cardOk();
         // The teacher: their own details only (never the status).
         allow update: if (signedIn() && request.auth.uid == uid
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'position', 'office', 'email', 'joinedMs', 'updatedAt'])
-            && cardOk())
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'position', 'office', 'email', 'joinedMs', 'updatedAt', 'photo'])
+            && cardOk() && photoOk())
           // The custodian: approve, remove, or correct the details.
           || (isCustodian(schoolId)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'position', 'office', 'status',
