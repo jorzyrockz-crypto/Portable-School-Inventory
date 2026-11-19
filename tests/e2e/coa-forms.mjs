@@ -63,7 +63,7 @@ try {
   await a.click('#tourNext');
   await until(a, () => document.getElementById('tourModal').dataset.step === '1', 'step 2');
   check(await ev(a, () => schoolInfo.custodian === 'Rosa Villanueva' && schoolInfo.head === 'Dr. Elena Cruz' && schoolInfo.position === 'Administrative Officer II'), 'school info saved from step 1');
-  check(await ev(a, () => document.querySelectorAll('[data-tour-pick]').length) === 4, 'step 2: import / scan ICS / catalog / sample');
+  check(await ev(a, () => [...document.querySelectorAll('[data-tour-pick]')].map(b => b.dataset.tourPick).join()) === 'import,ics,catalog,sample,invite', 'step 2: import / scan ICS / catalog / sample / invite people now');
   await a.click('[data-tour-pick="sample"]');
   check(await ev(a, () => document.querySelector('[data-tour-pick="sample"]').getAttribute('aria-pressed')) === 'true', 'choice is marked');
   await a.screenshot({ path: `${SHOTS}/tour-2-items.png` });

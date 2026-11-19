@@ -47,7 +47,7 @@ so the app stays the local-only inventory with no sign-in screen.
 After a property custodian's first sign-in (a new school), a three-step welcome replaces the bare invite sheet:
 
 1. **Your school:** school name, the custodian's name and position, and the school head. These go on every printed form.
-2. **Add your items:** import Excel/CSV, scan a printed ICS, pick from the catalog, or look around with sample data. The choice opens when the tour ends.
+2. **Add your items:** import Excel/CSV, scan a printed ICS, pick from the catalog, or look around with sample data. The choice opens when the tour ends. Or pick **Invite people now**: **Invite now** ends the tour and opens **Invite people** straight away (teachers, School Head, assistant, librarian), and items can be added later from More.
 3. **Invite your teachers:** the QR code and school code, **Share link** and **Print poster**: an A4 poster with a big QR code and three steps for the faculty room (also in the invite sheet).
 
 It is shown once per phone. **More → Welcome tour** opens it again.

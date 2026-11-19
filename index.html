@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="b5db0cabb284">
+  <meta name="app-version" content="e963c9490cf5">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -22992,7 +22992,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       ['import', 'ph-file-arrow-up', 'bg-sky-50 text-sky-600', 'Import Excel / CSV', 'Your existing inventory sheet'],
       ['ics', 'ph-file-text', 'bg-violet-50 text-violet-600', 'Scan printed ICS', 'Take a photo; the app reads it'],
       ['catalog', 'ph-books', 'bg-brand-50 text-brand-600', 'Pick from the catalog', 'APP-CSE items, count as you go'],
-      ['sample', 'ph-magic-wand', 'bg-slate-100 text-slate-500', 'Look around first', 'Load sample data to try things']
+      ['sample', 'ph-magic-wand', 'bg-slate-100 text-slate-500', 'Look around first', 'Load sample data to try things'],
+      ['invite', 'ph-user-plus', 'bg-teal-50 text-teal-600', 'Invite people now', 'Teachers, School Head, assistant · add items later']
     ];
     function maybeStartTour(newSchool) {
       if (localStorage.getItem(TOUR_KEY) || !isCustodianDevice()) return false;
@@ -23016,6 +23017,13 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
     function tourNext() {
       if (tourStep === 0) saveTourSchool();
+      // Invite people now: straight to the Invite people sheet (teachers, School Head, assistant…).
+      if (tourStep === 1 && tourPick === 'invite') {
+        closeTour(true);
+        if (isCustodianDevice() && reqRole && reqRole.schoolId) openInvite();
+        else showToast('Sign in as the property custodian first', 'ph-info');
+        return;
+      }
       if (tourStep < 2) { tourStep += 1; renderTour(); return; }
       const pick = tourPick;
       closeTour(true);
@@ -23023,6 +23031,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       else if (pick === 'ics') openIcsScanner();
       else if (pick === 'catalog') switchMainView('CATALOG');
       else if (pick === 'sample') loadSampleData();
+      else if (pick === 'invite') openInvite();
       else showToast('All set · add items any time from More', 'ph-check-circle');
     }
     function tourBack() { if (tourStep > 0) { tourStep -= 1; renderTour(); } }
@@ -23071,7 +23080,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       }
       if (tourStep === 1) {
         body.innerHTML = `
-          ${head('ph-package', 'bg-emerald-50 text-emerald-600', 'Add your items', 'How would you like to start? Pick one; it opens when you finish. You can use the others any time from More.')}
+          ${head('ph-package', 'bg-emerald-50 text-emerald-600', 'Add your items', 'How would you like to start? Pick one; it opens when you finish. Or invite people now and add items later. Everything is also in More.')}
           <div class="space-y-2">${TOUR_PICKS.map(([k, icon, tint, title, sub]) => {
             const on = tourPick === k;
             return `<button type="button" data-tour-pick="${k}" aria-pressed="${on}" onclick="tourChoose('${k}')" class="w-full text-left rounded-2xl border-2 p-3 flex items-center gap-3 transition ${on ? 'border-brand-500 bg-brand-50/60 stage-on' : 'border-slate-200 bg-white hover:border-slate-300'}">
@@ -23082,7 +23091,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           }).join('')}</div>`;
         foot.innerHTML = `
           <button onclick="tourBack()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700">Back</button>
-          <button id="tourNext" onclick="tourNext()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-sm flex items-center justify-center gap-2">${tourPick ? 'Next' : 'Decide later'} <i class="ph-bold ph-arrow-right"></i></button>`;
+          <button id="tourNext" onclick="tourNext()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-sm flex items-center justify-center gap-2">${tourPick === 'invite' ? '<i class="ph-bold ph-user-plus"></i> Invite now' : `${tourPick ? 'Next' : 'Decide later'} <i class="ph-bold ph-arrow-right"></i>`}</button>`;
         return;
       }
       const pick = TOUR_PICKS.find(p => p[0] === tourPick);
@@ -24158,6 +24167,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-tour-invite', date: 'Nov 2026', title: 'Welcome tour: invite people right away', points: [
+        'New property custodians: the Add your items step now has Invite people now. Pick it and tap Invite now to open Invite people straight away (teachers, School Head, assistant or librarian), and add your items later from More.'
+      ] },
       { id: '2026-11-school-id-fields', date: 'Nov 2026', title: 'Fixes: School ID and name boxes fit the screen', points: [
         'Fixes: on the property custodian sign-in, the School ID and School name boxes under Setting up a new school now stay inside the card on phones. The same fix applies on No school on this account yet.'
       ] },
