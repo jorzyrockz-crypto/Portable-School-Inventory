@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="8aa0f13e7bbf">
+  <meta name="app-version" content="2bc5c9f8c957">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1449,6 +1449,10 @@
         <button onclick="closeMoreMenu()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
       <div class="px-3 pb-4 space-y-3">
+        <div id="morePeople">
+          <p class="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">People</p>
+          <button id="moreInviteItem" onclick="closeMoreMenu(); openInvite()" class="more-item"><i class="ph-bold ph-user-plus text-brand-600"></i> Invite people <span id="moreInviteSub" class="ml-auto text-[11px] font-bold text-slate-500 [html.assistant_&]:hidden">Teachers · Head · Assistant</span></button>
+        </div>
         <div>
           <p class="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Add &amp; import</p>
           <button onclick="closeMoreMenu(); openCustomItemModal()" class="more-item"><i class="ph-bold ph-plus-circle text-brand-600"></i> Add a custom item</button>
@@ -1480,7 +1484,6 @@
           <button id="moreInstallItem" onclick="closeMoreMenu(); installApp()" class="more-item" style="display:none"><i class="ph-bold ph-device-mobile text-brand-600"></i> Install app on this phone</button>
           <button onclick="closeMoreMenu(); openSchoolModal()" class="more-item"><i class="ph-bold ph-buildings text-brand-600"></i> School &amp; custodian info</button>
           <button id="moreTurnoverItem" onclick="closeMoreMenu(); openTurnover()" class="more-item"><i class="ph-bold ph-handshake text-brand-600"></i> Custodian turnover</button>
-          <button id="moreAssistItem" onclick="closeMoreMenu(); openAssistPanel()" class="more-item"><i class="ph-bold ph-users-three text-brand-600"></i> Assistant custodians</button>
           <button id="moreYearEndItem" onclick="closeMoreMenu(); openYearEnd()" class="more-item"><i class="ph-bold ph-calendar-check text-brand-600"></i> Year-end &amp; reminders</button>
           <button onclick="closeMoreMenu(); exportBackupJSON()" class="more-item"><i class="ph-bold ph-floppy-disk text-emerald-600"></i> Back up now</button>
           <button onclick="closeMoreMenu(); document.getElementById('restoreFileInput').click()" class="more-item"><i class="ph-bold ph-upload-simple text-amber-600"></i> Restore a backup</button>
@@ -1818,13 +1821,14 @@
         <div class="flex items-start gap-3 min-w-0">
           <span class="w-10 h-10 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-user-plus text-xl"></i></span>
           <div class="min-w-0">
-            <h3 class="font-extrabold text-base text-slate-900 leading-tight">Invite teachers</h3>
+            <h3 id="inviteTitle" class="font-extrabold text-base text-slate-900 leading-tight">Invite people</h3>
             <p id="inviteSchool" class="text-xs font-semibold text-slate-500 truncate"></p>
             <p id="inviteSchoolNo" class="hidden text-[11px] font-bold text-brand-700"></p>
           </div>
         </div>
         <button onclick="closeInvite()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
+      <div id="inviteRoles" class="grid grid-cols-4 gap-1.5" role="tablist" aria-label="Who are you inviting?"></div>
       <div class="text-center">
         <div id="inviteQr" class="keep-light mx-auto w-44 h-44 rounded-2xl border border-slate-200 p-2.5 bg-white flex items-center justify-center text-xs text-slate-500">QR code</div>
         <p class="mt-2 text-[11px] text-slate-500">Teachers scan this with their phone camera, or tap the link you send them.</p>
@@ -1849,8 +1853,8 @@
       </div>
       <button id="invitePoster" onclick="printInvitePoster()" class="w-full h-11 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-sm font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print a poster for the faculty room</button>
       <p class="text-[11px] text-slate-500 text-center">Paste it in your faculty group chat. New teachers wait for your <b>Approve</b> on the Teachers page; they only see their own requests and items, plus the supplies left.</p>
-      <button id="inviteHeadBtn" onclick="closeInvite(); openHeadPanel()" class="w-full min-h-11 rounded-xl bg-violet-50 hover:bg-violet-100 border border-violet-200 text-sm font-bold text-violet-800 flex items-center justify-center gap-1.5"><i class="ph-bold ph-seal-check"></i> School Head (approves PRs)</button>
       <button id="inviteNewLink" onclick="newInviteLink()" class="w-full min-h-10 text-xs font-bold text-slate-500 hover:text-rose-600 flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrows-clockwise"></i> Link shared too widely? Make a new invite link</button>
+      <button id="inviteTurnover" onclick="closeInvite(); openTurnover()" class="hidden w-full min-h-10 rounded-xl bg-slate-50 border border-slate-200 hover:border-brand-300 px-3 text-xs font-semibold text-slate-600 flex items-center gap-2 text-left"><i class="ph-bold ph-handshake text-brand-600 text-base"></i><span class="flex-1">Handing the school over to a new custodian? <b class="text-slate-800">Custodian turnover</b></span><i class="ph-bold ph-caret-right"></i></button>
     </div>
   </div>
 
@@ -1859,7 +1863,8 @@
     <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
       <div class="flex items-start justify-between gap-3">
         <div class="flex items-start gap-3 min-w-0">
-          <span class="w-10 h-10 shrink-0 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="ph-bold ph-seal-check text-xl"></i></span>
+          <button data-invite-back onclick="closeHeadPanel(); openInvite()" class="hidden w-10 h-10 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center" aria-label="Back to Invite people"><i class="ph-bold ph-caret-left text-lg"></i></button>
+          <span data-invite-icon class="w-10 h-10 shrink-0 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="ph-bold ph-seal-check text-xl"></i></span>
           <div class="min-w-0">
             <h3 class="font-extrabold text-base text-slate-900 leading-tight">School Head</h3>
             <p class="text-xs font-semibold text-slate-500">Approves every Purchase Request</p>
@@ -1888,7 +1893,7 @@
     </div>
   </div>
 
-  <!-- ASSISTANT CUSTODIANS (custodian: More → Assistant custodians) -->
+  <!-- ASSISTANT CUSTODIANS (custodian: More → Invite people → Assistant) -->
   <div id="yearEndModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeYearEnd()">
     <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
       <div class="flex items-start justify-between gap-3">
@@ -1917,7 +1922,8 @@
     <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
       <div class="flex items-start justify-between gap-3">
         <div class="flex items-start gap-3 min-w-0">
-          <span class="w-10 h-10 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-users-three text-xl"></i></span>
+          <button data-invite-back onclick="closeAssistPanel(); openInvite()" class="hidden w-10 h-10 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center" aria-label="Back to Invite people"><i class="ph-bold ph-caret-left text-lg"></i></button>
+          <span data-invite-icon class="w-10 h-10 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-users-three text-xl"></i></span>
           <div class="min-w-0">
             <h3 class="font-extrabold text-base text-slate-900 leading-tight">Assistant custodians</h3>
             <p class="text-xs font-semibold text-slate-500">Help on their own phone · you stay accountable</p>
@@ -11938,12 +11944,13 @@
     }
 
     async function openInvite() {
-      if (!isCustodianDevice()) return;
+      if (!isCustodianDevice() || !reqRole || !reqRole.schoolId) { showToast('Sign in as the property custodian first', 'ph-info'); return; }
       const link = inviteLink();
       document.getElementById('inviteLink').value = link;
       document.getElementById('inviteLinkText').textContent = link;
       document.getElementById('inviteCode').textContent = inviteCodeText();
       document.getElementById('inviteSchool').textContent = reqRole.schoolName || '';
+      renderInviteRoles();
       renderInviteSchoolNo();
       publishSchoolNo().then(renderInviteSchoolNo);
       document.getElementById('inviteModal').classList.remove('hidden');
@@ -11956,6 +11963,46 @@
       }
     }
     function closeInvite() { document.getElementById('inviteModal').classList.add('hidden'); }
+    // One place to invite everyone: Teachers (this sheet), School Head, Assistant custodian and
+    // Librarian open their own panels, which get a back button to here. Only the property custodian
+    // (not an assistant or the outgoing custodian's view-only access) sees the other roles.
+    function inviteFullAccess() { return isCustodianDevice() && !isAssistant() && !isViewOnly() && !!(reqRole && reqRole.schoolId); }
+    function renderInviteRoles() {
+      const box = document.getElementById('inviteRoles');
+      if (!box) return;
+      const full = inviteFullAccess();
+      document.getElementById('inviteTitle').textContent = full ? 'Invite people' : 'Invite teachers';
+      box.classList.toggle('hidden', !full);
+      document.getElementById('inviteTurnover').classList.toggle('hidden', !full);
+      if (!full) { box.innerHTML = ''; return; }
+      const joined = teacherRoster().filter(t => t.uid && t.joined).length;
+      const head = currentHead(), libs = bkLibrarians().length, staff = activeStaff().length;
+      const chip = (id, icon, label, sub, wait, go) => {
+        const on = id === 'teachers';
+        return `<button type="button" role="tab" aria-selected="${on}" data-invite-role="${id}" onclick="${go}" class="relative min-h-[64px] rounded-xl border px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-center ${on ? 'bg-brand-50 border-brand-300 text-brand-800' : 'bg-white border-slate-200 text-slate-700 hover:border-brand-300'}">
+          <i class="ph-bold ${icon} text-lg"></i><span class="text-[11px] font-extrabold leading-tight">${label}</span><span class="text-[11px] leading-tight ${wait ? 'font-bold text-amber-700' : 'text-slate-500'}">${sub}</span>
+          ${wait ? `<span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-600 text-white text-[11px] font-bold flex items-center justify-center" data-invite-wait>${wait}</span>` : ''}</button>`;
+      };
+      const tw = pendingMembers().length, hw = pendingHeads().length, sw = pendingStaff().length;
+      box.innerHTML = chip('teachers', 'ph-chalkboard-teacher', 'Teachers', tw ? 'To approve' : `${joined} joined`, tw, '')
+        + chip('head', 'ph-seal-check', 'School Head', hw ? 'To confirm' : head ? 'Confirmed' : 'Not yet', hw, "inviteGo('head')")
+        + chip('assist', 'ph-users-three', 'Assistant', sw ? 'To confirm' : staff ? `${staff} active` : 'None', sw, "inviteGo('assist')")
+        + chip('librarian', 'ph-identification-badge', 'Librarian', libs ? (libs === 1 ? 'Set' : `${libs} set`) : 'None', 0, "inviteGo('librarian')");
+    }
+    function setInviteBack(modal, on) {
+      const m = document.getElementById(modal);
+      if (!m) return;
+      m.querySelectorAll('[data-invite-back]').forEach(b => b.classList.toggle('hidden', !on));
+      m.querySelectorAll('[data-invite-icon]').forEach(b => b.classList.toggle('hidden', on));
+    }
+    function inviteGo(which) {
+      if (!inviteFullAccess()) return;
+      if (which === 'librarian' && !bkOnline()) { showToast('Connect to the internet to choose the librarian', 'ph-wifi-slash'); return; }
+      closeInvite();
+      if (which === 'head') { openHeadPanel(); setInviteBack('headModal', true); }
+      else if (which === 'assist') { openAssistPanel(); setInviteBack('assistModal', true); }
+      else if (which === 'librarian') bkOpenSheet({ view: 'librarian', back: { invite: true } });
+    }
     async function copyInvite() {
       const link = document.getElementById('inviteLink').value;
       try { await navigator.clipboard.writeText(link); }
@@ -13170,6 +13217,7 @@
     const headInviteLink = () => `${location.origin}${location.pathname}#head=${headInviteText()}`;
     async function openHeadPanel() {
       if (!isCustodianDevice() || !cloud.user) { showToast('Sign in as the property custodian first', 'ph-info'); return; }
+      setInviteBack('headModal', false);
       document.getElementById('headModal').classList.remove('hidden');
       renderHeadPanel();
       if (!schoolInfo.headInvite && navigator.onLine) await newHeadInvite(true);
@@ -14281,6 +14329,7 @@
     // ---- The custodian's panel (More → Assistant custodians) ----------------------------------
     async function openAssistPanel() {
       if (!isCustodianDevice() || isViewOnly() || isAssistant() || !cloud.user) { showToast('Sign in as the property custodian first', 'ph-info'); return; }
+      setInviteBack('assistModal', false);
       document.getElementById('assistModal').classList.remove('hidden');
       renderAssistPanel();
       if (!schoolInfo.staffInvite && navigator.onLine) await newAssistInvite(true);
@@ -17790,6 +17839,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <h1 class="text-xl font-extrabold text-slate-900 whitespace-nowrap">Released to teachers</h1>
             <p class="text-xs text-slate-500">${people.length} ${people.length === 1 ? 'person' : 'people'} · ${plural(units, 'equipment unit')} · ₱${peso2(value)}</p>
           </div>
+          ${isCustodianDevice() && reqRole && reqRole.schoolId && !isViewOnly() ? `<button id="tvInviteBtn" onclick="openInvite()" class="shrink-0 h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-xs font-bold text-slate-700 flex items-center gap-1.5 sm:order-last"><i class="ph-bold ph-user-plus text-brand-600"></i> Invite</button>` : ''}
           <div class="tv-acts shrink-0 flex items-center gap-1.5 sm:pt-1 w-full sm:w-auto [&>button]:flex-auto sm:[&>button]:flex-none [&>button]:justify-center [&>button]:whitespace-nowrap [&>button]:h-10 sm:[&>button]:h-9">
             <button onclick="printAccountability()" ${withItems.length || hasRis ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print all</button>
             <button id="tvUsageBtn" onclick="openTeachersView('@usage')" ${hasRis ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-40 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-chart-bar"></i> Supply usage</button>
@@ -19546,7 +19596,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       document.getElementById('bkModal').classList.add('hidden');
       document.getElementById('bkModalBody').innerHTML = '';
     }
-    function bkBack() { const b = bkSheet && bkSheet.back; if (b) bkOpenSheet(b); else closeBkModal(); }
+    function bkBack() { const b = bkSheet && bkSheet.back; if (b && b.invite) { closeBkModal(); openInvite(); } else if (b) bkOpenSheet(b); else closeBkModal(); }
     function bkHeadHTML(icon, title, sub, tone = 'bg-violet-50 text-violet-600') {
       return `
         <div class="flex items-start justify-between gap-3">
@@ -20084,7 +20134,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         <div class="grid grid-cols-2 gap-3">
           <label class="block col-span-2"><span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">Teacher (adviser)</span>
             <select id="bkIssueTeacher" onchange="bkIssueSet('teacher', this.value)" class="${sel}"><option value="">Choose a teacher…</option>${roster.filter(r => r.uid).map(r => `<option value="${escapeHTML(r.uid)}" ${t && t.uid === r.uid ? 'selected' : ''}>${escapeHTML(r.name)}${r.office ? ` · ${escapeHTML(r.office)}` : ''}</option>`).join('')}</select>
-            ${roster.filter(r => r.uid).length ? '' : '<span class="block text-[11px] text-amber-700 mt-0.5">No teacher has joined yet. Teachers join with the invite link (More → Invite teachers).</span>'}
+            ${roster.filter(r => r.uid).length ? '' : '<span class="block text-[11px] text-amber-700 mt-0.5">No teacher has joined yet. Teachers join with the invite link (More → Invite people).</span>'}
           </label>
           <label class="block min-w-0"><span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">From</span>
             <select id="bkIssueFrom" onchange="bkIssueSet('from', this.value)" class="${sel}">${bkPlaces().filter(p => !t || p.keeperUid !== t.uid).map(p => `<option value="${escapeHTML(p.id)}" ${p.id === s.from ? 'selected' : ''}>${escapeHTML(bkPlaceName(p.id))}</option>`).join('')}</select></label>
@@ -20923,7 +20973,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
               <span class="min-w-0 flex-1"><span class="block text-sm font-bold text-slate-900 truncate">${escapeHTML(t.name)}</span><span class="block text-[11px] text-slate-500 truncate">${escapeHTML([t.position, t.office].filter(Boolean).join(' · ') || 'Teacher')}</span></span>
               ${on ? `<span class="shrink-0 px-2 py-0.5 rounded-md bg-violet-50 border border-violet-200 text-[11px] font-bold text-violet-700">Librarian</span>${bkBtn('Remove', 'ph-x', `bkSetLibrarian('${escapeHTML(t.uid)}', false)`, 'rose', 'data-bk-lib-off')}`
                 : bkBtn('Make librarian', 'ph-identification-badge', `bkSetLibrarian('${escapeHTML(t.uid)}', true)`, 'white', 'data-bk-lib-on')}
-            </div>`; }).join('') : '<p class="px-3 py-3 text-xs text-slate-500">No teacher has joined yet. Teachers join with the invite link (More → Invite teachers); then you can make one of them the librarian.</p>'}
+            </div>`; }).join('') : '<p class="px-3 py-3 text-xs text-slate-500">No teacher has joined yet. Teachers join with the invite link (More → Invite people); then you can make one of them the librarian.</p>'}
         </div>`;
     }
     async function bkSetLibrarian(uid, on) {
@@ -23699,6 +23749,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-invite-people', date: 'Nov 2026', title: 'Invite people: everyone in one place', points: [
+        'More \u2192 Invite people (at the top of More) is now the one place to invite or confirm people. The Invite buttons on Supply requests and on the Teachers page open the same sheet.',
+        'At the top, choose who you are inviting: Teachers (the link, QR code and poster), School Head, Assistant custodian or Librarian. Each one shows how far along it is, for example 3 joined or To confirm, with a count when someone is waiting for you.',
+        'The School Head, Assistant and Librarian panels have a back button to Invite people. Custodian turnover is linked at the bottom of the sheet.'
+      ] },
       { id: '2026-11-profile-photos', date: 'Nov 2026', title: 'Profile photos, and a picture on every notification', points: [
         'Teachers who sign in with Google see their profile photo at the top of their screen, and the custodian\u2019s photo next to \u201cTo the property custodian of \u2026\u201d. Without Google, their initials show instead. Tap Sign in with Google at the bottom of My Items to add your photo.',
         'The list of teachers, each teacher\u2019s page and the join requests now show the teachers\u2019 photos.',

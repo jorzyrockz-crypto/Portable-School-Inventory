@@ -69,6 +69,7 @@ try {
     return { turnover: vis('#moreTurnoverItem'), assist: vis('#moreAssistItem'), info: vis('[onclick*="openSchoolModal("]') };
   });
   check(!hidden.turnover && !hidden.assist && !hidden.info, 'More: turnover, assistants and school info are hidden');
+  check(await ev(b, () => { openInvite(); const ok = document.getElementById('inviteTitle').textContent === 'Invite teachers' && document.getElementById('inviteRoles').classList.contains('hidden') && document.getElementById('inviteTurnover').classList.contains('hidden'); closeInvite(); return ok; }), 'Invite: teachers’ link only (no School Head, assistant or librarian)');
   check(await ev(b, () => { openTurnover(); return document.getElementById('turnoverModal').classList.contains('hidden') || !canHandOver(); }), 'can’t hand over');
   check(await ev(b, () => !canEraseCloud()), 'Reset app can’t erase the school');
   const code1 = await ev(b, () => items.find(i => i.qty > 0).code);
