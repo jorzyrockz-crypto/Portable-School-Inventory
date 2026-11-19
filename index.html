@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="ccac80fc227e">
+  <meta name="app-version" content="27c7e40fb858">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -201,8 +201,10 @@
     @media screen and (min-width: 1024px) and (not (pointer: coarse)), screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1000px) and (min-height: 600px) {
       html:not(.no-tabs) body { padding-left: var(--side-w); padding-bottom: 2.5rem; }
       #viewHead { max-width: 72rem; }
-      #hdBody.hd-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 1.25rem; align-items: start; }
-      #hdBody.hd-two > * { margin-top: 0 !important; }
+      #hdBody .hd-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+      #hdBody .hd-grid > * { margin-top: 0 !important; }
+      #hdBody .hd-holders { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; align-items: start; }
+      #hdBody .hd-holders > * { margin-top: 0 !important; }
       html:not(.no-tabs) body > header { margin-left: calc(-1 * var(--side-w)); }
       html body > header > div.max-w-4xl { max-width: none; padding-left: 1.5rem; padding-right: 1.5rem; }
       #tabBar { top: var(--hdr-h, 3.75rem); bottom: 0; right: auto; width: var(--side-w); padding: 1rem 0.75rem; overflow-y: auto;
@@ -1283,10 +1285,16 @@
     <div class="flex items-start gap-3">
       <div class="min-w-0 flex-1">
         <p id="hdHello" class="text-sm text-slate-500"></p>
-        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">For your approval</h1>
+        <h1 id="hdTitle" class="text-2xl font-extrabold text-slate-900 tracking-tight">For your approval</h1>
         <p id="hdSchool" class="text-xs text-slate-500"></p>
       </div>
       <span id="hdAvatar" class="hidden shrink-0 mt-1 rounded-full ring-2 ring-white shadow-sm"></span>
+    </div>
+    <div id="hdTabs" role="tablist" aria-label="To approve, school property, people or history" class="hidden grid-cols-4 gap-1 p-1 rounded-2xl bg-slate-200/70">
+      <button id="hdTab-approve" role="tab" onclick="setHeadTab('approve')"><i class="ph-bold ph-seal-check text-base hidden min-[400px]:inline"></i> Approve <span id="hdApproveCount" class="hidden"></span></button>
+      <button id="hdTab-school" role="tab" onclick="setHeadTab('school')"><i class="ph-bold ph-buildings text-base hidden min-[400px]:inline"></i> School</button>
+      <button id="hdTab-people" role="tab" onclick="setHeadTab('people')"><i class="ph-bold ph-users-three text-base hidden min-[400px]:inline"></i> People</button>
+      <button id="hdTab-history" role="tab" onclick="setHeadTab('history')"><i class="ph-bold ph-clock-counter-clockwise text-base hidden min-[400px]:inline"></i> History</button>
     </div>
     <p id="hdSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
     <div id="hdBody" class="space-y-5"></div>
@@ -15584,14 +15592,15 @@
     }
     function setHeadUse(yr) { headUseYr = !!yr; renderHeadView(); }
 
-    function headHoldersHTML(d) {
+    function headHoldersHTML(d, open = false) {
       const holders = d.holders || [];
       return `
-          <details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-dash-holders>
+          <details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-dash-holders ${open ? 'open' : ''}>
             <summary class="text-xs font-bold text-slate-800 cursor-pointer">Who holds what · ${plural(d.nHolders || 0, 'person')}</summary>
             ${holders.length ? `<p class="text-[11px] text-slate-500 mt-1">Tap a name to see their items, for clearances.</p>
-            <div class="mt-1.5 space-y-1.5">${holders.map((x, i) => `
-              <details class="rounded-xl border border-slate-200 px-2.5 py-1.5" data-dash-holder="${i}">
+            ${holders.length >= 8 ? `<div class="relative mt-2"><i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i><input id="hdPeopleSearch" type="search" oninput="filterHeadPeople(this.value)" placeholder="Find a name" aria-label="Find a name" autocomplete="off" class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm font-medium focus:border-violet-500 outline-none"></div>` : ''}
+            <div class="mt-1.5 space-y-1.5 hd-holders">${holders.map((x, i) => `
+              <details class="rounded-xl border border-slate-200 px-2.5 py-1.5" data-dash-holder="${i}" data-name="${escapeHTML(String(x.n || '').toLowerCase())}">
                 <summary class="flex justify-between gap-3 text-xs cursor-pointer"><span class="min-w-0 font-semibold text-slate-800">${escapeHTML(x.n)}${x.p ? ` <span class="font-normal text-slate-500">· ${escapeHTML(x.p)}</span>` : ''}</span><span class="shrink-0 font-mono text-slate-600">${plural(x.u, 'unit')} · ₱${peso2(x.v)}</span></summary>
                 ${x.e ? `<ul class="mt-1.5 divide-y divide-slate-100 text-[11px]">${x.e.map(u => `
                   <li class="py-1.5">
@@ -15625,16 +15634,19 @@
             ${tile((d.nLow || 0) + (d.nOut || 0), 'Low / out', (d.nLow || d.nOut) ? 'text-amber-600' : 'text-slate-900')}
             ${tile(`${d.held || 0}/${d.units || 0}`, 'Units with staff')}
           </div>
+          <div class="hd-grid space-y-2.5">
+          <div class="space-y-2.5">
           ${headHealthHTML(d)}
           ${spend}
           ${headTrendHTML(d)}
+          </div>
+          <div class="space-y-2.5">
           ${headUseHTML(d)}
           <details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-dash-stock>
             <summary class="text-xs font-bold text-slate-800 cursor-pointer">Stock levels · ${d.nLow || 0} low, ${d.nOut || 0} out</summary>
             ${list([...(d.out || []).map(x => li(escapeHTML(x.n), '<span class="text-rose-600 font-bold">Out</span>')), ...(d.low || []).map(x => li(escapeHTML(x.n), `${x.q} ${escapeHTML(x.u)}`))], 'All supplies above their alert levels.')}
             ${more((d.nLow || 0) + (d.nOut || 0), (d.low || []).length + (d.out || []).length)}
           </details>
-          ${headHoldersHTML(d)}
           <div class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5 text-xs text-slate-700 space-y-1" data-dash-status>
             <p class="flex justify-between"><span>Supply requests waiting for the custodian</span><b class="font-mono">${r.pending || 0}</b></p>
             <p class="flex justify-between"><span>Approved, not yet released</span><b class="font-mono">${r.approved || 0}</b></p>
@@ -15649,9 +15661,30 @@
             <p class="flex justify-between"><span>Lost this school year · unserviceable</span><b class="font-mono">${d.books.l || 0} · ${d.books.u || 0}</b></p>
             ${d.books.r != null ? `<p class="flex justify-between" data-dash-books-ratio><span>Learners with their textbooks (class sheets)</span><b class="font-mono ${d.books.r < 90 ? 'text-amber-700' : ''}">${d.books.r}%</b></p>` : ''}
           </div>` : ''}
+          </div>
+          </div>
           <button onclick="headPrintMonth()" data-head-print-month class="w-full h-11 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print the monthly summary</button>
           <p class="text-[11px] text-slate-500 px-1">As of ${escapeHTML(iarStamp(d.updatedMs))}${d.by ? ` · ${escapeHTML(d.by)}` : ''}</p>
         </div>`;
+    }
+
+    // People: who holds what (open), each name a tap away for clearances, and the custodian turnover.
+    // A turnover waiting for the head's Confirm shows under Approve instead.
+    const headTurnWaiting = () => canHandOver() && turnPending().length > 0;
+    function headPeopleHTML() {
+      const turn = headTurnWaiting() ? '' : headTurnoverHTML();
+      const d = dashLoaded ? dashDoc : null;
+      const holders = d ? `
+        <div class="space-y-2.5" data-head-dash data-head-people>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Accountable people · ${plural(d.nHolders || 0, 'person')} · ${d.held || 0} of ${plural(d.units || 0, 'unit')} with staff</h2>
+          ${headHoldersHTML(d, true)}
+        </div>` : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600" data-head-people="none"><p class="font-bold text-slate-800 text-sm flex items-center gap-1.5"><i class="ph-bold ph-users-three"></i> Who holds what</p><p class="mt-1">${dashLoaded ? 'It shows up here the next time the property custodian’s phone is online.' : 'Loading…'}</p></div>`;
+      return `${holders}${turn}`;
+    }
+    function filterHeadPeople(q) {
+      const t = String(q || '').trim().toLowerCase();
+      headPeopleQ = String(q || '');
+      document.querySelectorAll('#hdBody [data-dash-holder]').forEach(el => { el.classList.toggle('hidden', !!t && !el.dataset.name.includes(t)); });
     }
 
     // Recently decided, with search over everything the head decided.
@@ -16360,7 +16393,7 @@
           <i class="ph-bold ${icon} text-2xl"></i>
           <div class="min-w-0"><p class="text-sm font-extrabold">${title}</p><p class="text-xs mt-0.5">${text}</p></div>
         </div>`;
-      let html, two = false;
+      let html, two = false, nTab = 0;
       if (!u || !headMeLoaded) html = note('ph-circle-notch animate-spin', 'bg-slate-50 border border-slate-200 text-slate-700', 'Connecting…', 'Getting the Purchase Requests of your school.');
       else if (!headMe) html = note('ph-question', 'bg-amber-50 border border-amber-200 text-amber-900', 'This Google account has not joined', `Open the School Head link from the property custodian of ${escapeHTML(reqRole.schoolName)} again, and sign in with the account you used.`);
       else if (headMe.status === 'removed') html = note('ph-prohibit', 'bg-rose-50 border border-rose-200 text-rose-900', 'Your School Head access was removed', 'The property custodian removed it. Ask them if this is a mistake.');
@@ -16375,7 +16408,11 @@
         const nRoutine = routine.prs.length + routine.ris.length;
         const decided = headDecided(u);
         two = true;
+        const turnWait = headTurnWaiting();
+        nTab = nWait + (turnWait ? turnPending().length : 0);
         const left = `
+          ${turnWait ? headTurnoverHTML() : ''}
+          <div class="hd-grid space-y-5">
           ${headAttentionHTML(headAttention(dashLoaded ? dashDoc : null, headWaitList()))}
           <div class="space-y-2.5">
             <div class="flex items-center justify-between gap-2 px-1">
@@ -16389,6 +16426,8 @@
                 <p>Purchase Requests, write-offs and count reports from the property custodian show up here.</p>
               </div>`}
           </div>
+          </div>`;
+        const history = `
           ${decided.all ? `
           <div class="space-y-2.5" data-head-decided>
             <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Recently decided</h2>
@@ -16397,23 +16436,57 @@
               <input id="hdSearch" type="search" value="${escapeHTML(headSearch)}" oninput="setHeadSearch(this.value)" placeholder="Search PR no., item, purpose or note" autocomplete="off" class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-brand-500 outline-none">
             </div>
             <div id="hdDecided" class="space-y-2.5">${decided.html}</div>
-          </div>` : ''}`;
-        const right = `${headDashHTML()}${headTurnoverHTML()}
+          </div>` : `
+          <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500" data-head-decided="none">
+            <i class="ph-bold ph-clock-counter-clockwise text-3xl text-slate-300"></i>
+            <p class="mt-1 font-bold text-slate-700 text-sm">No decisions yet</p>
+            <p>What you approve or return shows here, with a search.</p>
+          </div>`}
           <button onclick="openSchoolHistory()" data-head-history class="w-full rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-center gap-3 text-left hover:border-brand-300">
             <span class="w-10 h-10 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="ph-bold ph-lock-key text-xl"></i></span>
             <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">School history</span><span class="block text-[11px] text-slate-500">Every change on the custodian’s devices · can’t be edited or deleted</span></span>
             <i class="ph-bold ph-caret-right text-slate-400"></i>
           </button>`;
-        html = `<div class="hd-col space-y-5">${left}</div><div class="hd-col space-y-5">${right}</div>`;
+        const pane = (k, inner) => `<div data-hd-pane="${k}" class="space-y-5 ${headTab === k ? '' : 'hidden'}">${inner}</div>`;
+        html = pane('approve', left) + pane('school', headDashHTML()) + pane('people', headPeopleHTML()) + pane('history', history);
       }
+      renderHeadTabs(two, nTab);
       const body = document.getElementById('hdBody');
-      body.classList.toggle('hd-two', two);
       if (body.innerHTML !== html) {
-        const active = document.activeElement && document.activeElement.id === 'hdSearch' ? document.activeElement.selectionStart : null;
+        const focus = document.activeElement && ['hdSearch', 'hdPeopleSearch'].includes(document.activeElement.id) ? [document.activeElement.id, document.activeElement.selectionStart] : null;
         body.innerHTML = html;
         drawTurnQr();
-        if (active != null) { const box = document.getElementById('hdSearch'); if (box) { box.focus(); try { box.setSelectionRange(active, active); } catch (e) {} } }
+        if (headPeopleQ) { const box = document.getElementById('hdPeopleSearch'); if (box) box.value = headPeopleQ; filterHeadPeople(headPeopleQ); }
+        if (focus) { const box = document.getElementById(focus[0]); if (box) { box.focus(); try { box.setSelectionRange(focus[1], focus[1]); } catch (e) {} } }
       }
+    }
+    // Tabs like a teacher's: Approve (with the count waiting) · School · People · History.
+    var headTab = 'approve';
+    var headPeopleQ = '';
+    var HEAD_TITLES = { approve: 'For your approval', school: 'School property', people: 'Who holds what', history: 'Your decisions' };
+    function setHeadTab(t) {
+      if (!HEAD_TITLES[t]) return;
+      headTab = t;
+      document.querySelectorAll('#hdBody [data-hd-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.hdPane !== t));
+      renderHeadTabs(!!document.querySelector('#hdBody [data-hd-pane]'));
+      window.scrollTo({ top: 0 });
+    }
+    function renderHeadTabs(on, n) {
+      const bar = document.getElementById('hdTabs');
+      if (!bar) return;
+      bar.classList.toggle('hidden', !on);
+      bar.classList.toggle('grid', !!on);
+      document.getElementById('hdTitle').textContent = on ? HEAD_TITLES[headTab] : HEAD_TITLES.approve;
+      Object.keys(HEAD_TITLES).forEach(t => {
+        const b = document.getElementById(`hdTab-${t}`);
+        const sel = t === headTab;
+        b.className = `h-11 rounded-xl text-[13px] sm:text-sm font-extrabold flex items-center justify-center gap-1 sm:gap-1.5 transition ${sel ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5 seg-on' : 'text-slate-500 hover:text-slate-800'}`;
+        b.setAttribute('aria-selected', sel ? 'true' : 'false');
+      });
+      if (n === undefined) return;
+      const c = document.getElementById('hdApproveCount');
+      c.textContent = n || '';
+      c.className = n ? 'min-w-5 h-5 px-1.5 rounded-full bg-violet-600 text-white text-[11px] font-bold inline-flex items-center justify-center' : 'hidden';
     }
     function headPrCardHTML(pr, wait) {
       const a = prApproval(pr) || {};
@@ -24818,7 +24891,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         if (isHeadDevice()) switchMainView('HEAD');
         else openTurnover();
       } else if (n.go === 'head') {                  // School Head: their approvals; custodian: the School Head panel
-        if (isHeadDevice()) switchMainView('HEAD');
+        if (isHeadDevice()) { headTab = 'approve'; switchMainView('HEAD'); renderHeadView(); }
         else openHeadPanel();
       } else if (n.go === 'teacher-items' || n.go === 'teacher-requests') {
         switchMainView('REQUESTER');
@@ -24989,6 +25062,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-head-tabs', date: 'Nov 2026', title: 'School Head: tabs, less scrolling', points: [
+        'The School Head\u2019s screen now has four tabs, like a teacher\u2019s: Approve, School, People and History. Approve opens first and shows how many are waiting.',
+        'School has the property, spending, trends, supplies and the monthly summary. People has who holds what, with a name search, and the custodian turnover. History has your past decisions, with the search, and School history.',
+        'On a laptop, each tab uses two columns so most of it fits on one screen. A notification about an approval opens the Approve tab.'
+      ] },
       { id: '2026-11-home-attention', date: 'Nov 2026', title: 'Home: Needs your attention', points: [
         'Home now lists what needs you, most urgent first: lost items with the days left to apply for relief, supply requests and teacher reports that have waited a while, slips teachers have not marked Received, items waiting for the School Head, and Purchase Requests not delivered.',
         'Deadlines are there too: the semestral or year-end count, ICS / PAR older than 3 years, your bond or designation order ending, items in repair for more than a month, low or out-of-stock supplies, and overdue library books.',

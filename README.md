@@ -283,7 +283,13 @@ Once a School Head is confirmed, more goes to their phone than PRs.
 - **Cards:** Purchase Requests approved this month / quarter / year (by approval date), delivered, waiting and the head's average time to decide (from the PRs and approvals the head already reads); condition of tagged units with the repair and unserviceable value (waiting for disposal, IIRUP); 12-month bars of supplies issued (RIS ₱) and property value (recorded at the start of each month, `valueTrend` in the school info); who uses the most supplies this month / this year (top items and people).
 - **Who holds what:** tap a name to see their units (property no., serial no., ICS / PAR, condition, lost) and **Print their list** for a clearance. Up to 2,500 units in all are carried in the summary.
 - **Print the monthly summary:** one page with the property figures, PRs approved this month, supplies issued, what needs attention and who holds the most.
-- **Laptop / landscape tablet:** two columns (attention, waiting and decisions on the left; the school's property on the right). Phones are unchanged.
+- **Tabs** (like a teacher's), so the School Head scrolls less, on phones and laptops alike:
+  - **Approve** (opens first, with the count waiting): Needs your attention, Waiting for you, Approve all. A custodian turnover waiting for their Confirm shows here too.
+  - **School:** the property tiles, condition, Purchase Requests approved, trends, who uses the most supplies, stock levels, request status, Books & Library and *Print the monthly summary*.
+  - **People:** who holds what, open, with a name search from 8 people (tap a name, print their list for a clearance) and the custodian turnover link.
+  - **History:** recently decided with its search, and School history.
+
+  A notification for the head opens Approve. On a laptop or landscape tablet each tab uses two columns (attention beside waiting; the School cards in two columns; people in two columns). Phones stay one column.
 - Everything comes from `dashboard/summary` (one document the custodian's devices keep current) and the PRs and approvals the head already reads, so it adds no reads. No rules change.
 - **Rules.** These items are kept in `approvals`. Only the confirmed head approves or returns one, and only while it is waiting. The custodian and assistants can send, send again or cancel, never decide. A teacher can't read them.
 
@@ -842,7 +848,7 @@ node teacher-return.mjs               # Continue with Google on the Teacher and 
 node custodian-login.mjs              # custodian sign-in: school found by account (not name), new school set up once by 6-digit School ID, ID already set up refused with a masked account hint, Use a different account, last account on this phone, no reuse of a Google account left signed in
 node teacher-remove.mjs             # Remove from the school / Add back with the teacher's page open (laptop and phone): page, list and Removed list change at once, no refresh; the teacher's phone follows
 node release-serials.mjs            # Release form: Useful life per equipment line (saved on units, the release and the ICS), serial numbers required for items that have them (missing, typed twice, already on another unit), Has serial numbers untick remembered per item
-node head-dashboard.mjs             # School Head screen: Needs your attention, Waiting N days + reminder, Approve all, search decisions, spending, condition, trends, supply usage, who holds what (tap, print), monthly summary print, two columns on a laptop
+node head-dashboard.mjs             # School Head screen: Needs your attention, Waiting N days + reminder, Approve all, search decisions, spending, condition, trends, supply usage, who holds what (tap, print), monthly summary print, tabs (Approve · School · People · History), two columns inside each tab on a laptop
 node teacher-dashboard.mjs          # teacher's My Items: tiles, Needs your attention (slips, asked back, reports, repair, old slips, overdue books), Clearance: Return everything, then nothing under their name
 node home-attention.mjs             # custodian Home: Needs your attention (lost + relief days, waiting requests/reports, unconfirmed slips, ICS renewal, bond, repairs, stock), Show all, taps, hidden for teachers
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)

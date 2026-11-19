@@ -61,6 +61,13 @@ try {
   check(await ev(h, () => loadNotifs().items.filter(n => /has waited/.test(n.title)).length === 1), 'reminded once only');
 
   out('3 the head: property, spending, trends, usage, who holds what');
+  const tabs = await ev(h, () => ({ on: !document.getElementById('hdTabs').classList.contains('hidden'), n: document.querySelectorAll('#hdTabs [role=tab]').length,
+    sel: document.querySelector('#hdTabs [aria-selected=true]')?.id, count: document.getElementById('hdApproveCount').textContent, title: document.getElementById('hdTitle').textContent }));
+  check(tabs.on && tabs.n === 4 && tabs.sel === 'hdTab-approve' && tabs.count === '2' && tabs.title === 'For your approval', `tabs: Approve (2) · School · People · History, Approve first (${JSON.stringify(tabs)})`);
+  check(await ev(h, () => document.querySelector('[data-hd-pane="school"]').classList.contains('hidden') && !document.querySelector('[data-hd-pane="approve"]').classList.contains('hidden')), 'only the Approve pane shows');
+  await h.click('#hdTab-school');
+  check(await ev(h, () => !document.querySelector('[data-hd-pane="school"]').classList.contains('hidden') && document.querySelector('[data-hd-pane="approve"]').classList.contains('hidden') && document.getElementById('hdTitle').textContent === 'School property'), 'School tab: property, spending, trends (title School property)');
+  check(await ev(h, () => document.querySelector('#hdTabs [aria-selected=true]').id === 'hdTab-school' && document.getElementById('hdTab-school').classList.contains('seg-on') && !document.getElementById('hdTab-approve').classList.contains('seg-on')), 'School tab marked selected');
   const view = await ev(h, () => ({
     health: (document.querySelector('[data-head-health]') || {}).textContent || '',
     spend: (document.querySelector('[data-head-spend]') || {}).textContent || '',
@@ -72,7 +79,10 @@ try {
   check(view.trend && view.usage.includes(supply.name) && /Ana Reyes/.test(view.usage), 'trend bars and who uses the most supplies');
   await h.click('[data-head-use="yr"]');
   check(await ev(h, () => headUseYr && /This year/.test(document.querySelector('[data-head-usage]').textContent)), 'This year toggle');
-  await ev(h, () => { document.querySelector('[data-dash-holders]').open = true; document.querySelector('[data-dash-holder="0"]').open = true; });
+  await h.click('#hdTab-people');
+  check(await ev(h, () => !!document.querySelector('[data-hd-pane="people"] [data-dash-holders][open]') && document.getElementById('hdTitle').textContent === 'Who holds what'), 'People tab: who holds what, already open');
+  check(await ev(h, () => !document.querySelector('[data-hd-pane="school"] [data-dash-holders]')), 'not repeated under School');
+  await ev(h, () => { document.querySelector('[data-dash-holder="0"]').open = true; });
   const holder = await ev(h, () => document.querySelector('[data-dash-holder="0"]').textContent.replace(/\s+/g, ' '));
   check(/Ana Reyes/.test(holder) && /S\/N SN-/.test(holder) && /Lost/.test(holder) && /Unserviceable/.test(holder), 'tap Ana: her units with serial numbers, Lost and condition');
   await h.click('[data-head-print-holder="0"]');
@@ -81,6 +91,7 @@ try {
   check(p1.n === 1 && /PROPERTY ACCOUNTABILITY/.test(p1.t) && /ANA REYES/.test(p1.t) && /TOTAL · 2 units/.test(p1.t), 'Print their list (for clearances)');
 
   out('4 Approve all, then search the decisions');
+  await h.click('#hdTab-approve');
   check(await ev(h, () => document.querySelector('[data-head-approve-all]')?.dataset.headApproveAll === '2'), 'Approve all 2 shown');
   h.dialogs.length = 0;
   await h.click('[data-head-approve-all]');
@@ -88,6 +99,9 @@ try {
   check(backend.docs(`schools/${sid}/purchaseRequests/`).filter(p => p.approval && p.approval.status === 'approved' && p.approval.via === 'app').length === 2, 'both PRs approved in the cloud, by the head');
   check(h.dialogs.some(x => /2 Purchase Requests · ₱8,400\.00 in all/.test(x)), `asked first (${h.dialogs[0] || ''})`);
   await until(h, () => !document.querySelector('[data-head-approve-all]') && !!document.querySelector('[data-head-decided]'), 'decided list');
+  check(await ev(h, () => !!document.querySelector('[data-hd-pane="history"] [data-head-decided]') && !!document.querySelector('[data-hd-pane="history"] [data-head-history]')), 'History tab: recently decided and School history');
+  check(await ev(h, () => document.getElementById('hdApproveCount').classList.contains('hidden')), 'Approve count gone with nothing waiting');
+  await h.click('#hdTab-history');
   const sp = await ev(h, () => document.querySelector('[data-head-spend]').textContent.replace(/\s+/g, ' '));
   check(/₱8,400\.00/.test(sp) || /₱8\.4K/.test(sp), `spending now counts them as approved (${sp.slice(0, 90)})`);
   check(await ev(h, () => !!document.querySelector('[data-spend-avg]')), 'average time to decide shown');
@@ -99,21 +113,37 @@ try {
   await ev(h, () => setHeadSearch(''));
 
   out('5 the monthly summary print');
+  await h.click('#hdTab-school');
   await h.click('[data-head-print-month]');
   await sleep(200);
   const p2 = await ev(h, () => ({ n: window.__printed || 0, t: document.getElementById('printPrSection').textContent.replace(/\s+/g, ' ') }));
   check(p2.n === 2 && /MONTHLY PROPERTY SUMMARY/.test(p2.t) && /-101/.test(p2.t) && /-102/.test(p2.t) && p2.t.includes(supply.name) && /Lost/.test(p2.t), 'monthly summary: property, PRs approved, supplies issued, needs attention');
 
-  out('6 laptop: two columns; phone: one');
-  check(await ev(h, () => getComputedStyle(document.getElementById('hdBody')).display !== 'grid'), 'phone: one column');
+  out('6 laptop: two columns inside each tab; phone: one');
+  const colsOf = sel => ev(h, q => { const el = document.querySelector(q); return el ? getComputedStyle(el).gridTemplateColumns.split(' ').length : 0; }, sel);
+  check(await ev(h, () => getComputedStyle(document.querySelector('[data-hd-pane="school"] .hd-grid')).display !== 'grid'), 'phone: School in one column');
   await h.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
   await sleep(300);
-  const cols = await ev(h, () => getComputedStyle(document.getElementById('hdBody')).gridTemplateColumns.split(' ').length);
-  check(cols === 2, `laptop: two columns (${cols})`);
+  await h.click('#hdTab-school');
+  await sleep(200);
+  const sc = await colsOf('[data-hd-pane="school"] .hd-grid'); const scd = await ev(h, () => { const e = document.querySelector('[data-hd-pane="school"] .hd-grid'); return [getComputedStyle(e).display, getComputedStyle(e).gridTemplateColumns, e.parentElement.className, document.querySelectorAll('[data-hd-pane="school"] .hd-grid').length]; });
+  check(sc === 2, `laptop: School cards in two columns (${sc} ${JSON.stringify(scd)})`);
+  await h.click('#hdTab-people');
+  check(await colsOf('[data-hd-pane="people"] .hd-holders') === 2, 'laptop: people in two columns');
+  await h.click('#hdTab-approve');
+  check(await colsOf('[data-hd-pane="approve"] .hd-grid') === 2, 'laptop: Needs your attention beside Waiting for you');
+  check(await ev(h, () => !document.getElementById('hdTabs').classList.contains('hidden')), 'laptop: tabs too');
   await h.screenshot({ path: '/tmp/head_laptop.png' });
+  await h.click('#hdTab-school');
+  await sleep(400);
+  await h.screenshot({ path: '/tmp/head_laptop_school.png' });
   await h.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await sleep(300);
-  await h.screenshot({ path: '/tmp/head_phone.png', fullPage: true });
+  await h.screenshot({ path: '/tmp/head_phone.png' });
+  out('7 a notification for the head opens Approve');
+  await ev(h, () => { headTab = 'history'; renderHeadView(); });
+  await ev(h, () => { const n = { id: 'x', title: 'PR waits', go: 'head' }; goToNotifTarget(n); });
+  check(await ev(h, () => headTab === 'approve' && !document.querySelector('[data-hd-pane="approve"]').classList.contains('hidden')), 'notification → Approve tab');
   check(errors.length === 0, `no errors (${errors.join(' | ')})`);
 } catch (e) {
   check(false, 'suite crashed: ' + (e && e.stack || e));

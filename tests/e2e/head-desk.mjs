@@ -32,7 +32,7 @@ try {
   const dash = backend.store.get(`schools/${sid}/dashboard/summary`);
   check(dash && dash.items > 10 && dash.held >= 3 && dash.holders.some(x => x.n === 'Ana Reyes' && x.u === 3), `summary in the cloud: ${dash && dash.items} items, Ana holds ${dash && (dash.holders.find(x => x.n === 'Ana Reyes') || {}).u} units`);
   await until(h, () => !!document.querySelector('#hdBody [data-head-dash] [data-dash-holders]') && /Ana Reyes/.test(document.querySelector('[data-dash-holders]').textContent), 'head sees the summary', 10000);
-  const hv = await ev(h, () => ({ text: document.querySelector('[data-head-dash]').textContent, stock: !!document.querySelector('[data-dash-stock]') }));
+  const hv = await ev(h, () => ({ text: document.getElementById('hdBody').textContent, stock: !!document.querySelector('[data-dash-stock]') }));
   check(/Who holds what/i.test(hv.text) && /Ana Reyes/.test(hv.text) && hv.stock && /Supply requests waiting/i.test(hv.text), 'head: stock levels, who holds what, requests');
   check(await refused(h, (F, sid) => F.getDocs(F.collection(cloud.db, 'schools', sid, 'inventory')), sid), 'rules: the head still can’t read the inventory itself');
   check(await refused(t, (F, sid) => F.getDoc(F.doc(cloud.db, 'schools', sid, 'dashboard', 'summary')), sid), 'rules: a teacher can’t read the summary');
