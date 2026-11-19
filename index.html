@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="053bb337b879">
+  <meta name="app-version" content="8aa0f13e7bbf">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1225,10 +1225,13 @@
 
   <!-- REQUEST SUPPLIES (teacher phones): only their own requests -->
   <section id="viewRequester" class="hidden max-w-xl mx-auto px-4 pt-5 space-y-5 no-print">
-    <div>
-      <p id="rqHello" class="text-sm text-slate-500"></p>
-      <h1 id="rqTitle" class="text-2xl font-extrabold text-slate-900 tracking-tight">Request supplies</h1>
-      <p id="rqSchool" class="text-xs text-slate-500"></p>
+    <div class="flex items-start gap-3">
+      <div class="min-w-0 flex-1">
+        <p id="rqHello" class="text-sm text-slate-500"></p>
+        <h1 id="rqTitle" class="text-2xl font-extrabold text-slate-900 tracking-tight">Request supplies</h1>
+        <p class="flex items-start gap-1.5 min-w-0"><span id="rqCustAv" class="hidden mt-px"></span><span id="rqSchool" class="text-xs text-slate-500 min-w-0"></span></p>
+      </div>
+      <button id="rqAvatar" onclick="editMyDetails()" title="My details" aria-label="My details" class="hidden shrink-0 mt-1 rounded-full ring-2 ring-white shadow-sm active:scale-95 transition"></button>
     </div>
     <div role="tablist" aria-label="My items, requests, school stock or library" class="grid grid-cols-4 gap-1 p-1 rounded-2xl bg-slate-200/70">
       <button id="rqTab-items" role="tab" onclick="setTeacherTab('items')"><i class="ph-bold ph-backpack text-base hidden min-[400px]:inline"></i> My Items <span id="rqItemsCount" class="hidden"></span><span id="rqItemsDot" class="hidden w-2 h-2 rounded-full bg-emerald-500"></span></button>
@@ -10910,6 +10913,7 @@
         upsertMyMember();
         subscribeTeacherItems(F);
         subscribeInspections(F);
+        loadCustodianCard(F);
       }
       bkSubscribe();   // Books & Library (what each role may read)
     }
@@ -12191,6 +12195,7 @@
         saveReqRole();
         if (user.uid !== before) subscribeRequests(); // this Google account was set up on another phone
         renderRequesterView();
+        syncMyPhoto();
         showToast(`Signed in as ${user.email || 'your Google account'}`, 'ph-check-circle');
       } catch (err) {
         if (!googleCancelled(err)) showToast(cloudErrorText(err), 'ph-warning');
@@ -12198,6 +12203,54 @@
     }
 
     // ---- Teacher screen --------------------------------------------------------
+    // Top right: the teacher's Google photo (initials without Google). Next to "To the property
+    // custodian of …": the custodian's photo, when they signed in with Google.
+    function renderTeacherAvatars() {
+      if (!isTeacherDevice()) return;
+      const me = reqRole.me || {};
+      const av = document.getElementById('rqAvatar');
+      if (av) {
+        const html = avatarHTML(me.name || 'Teacher', googlePhotoOf(cloud.user), 'w-12 h-12 text-base', 'bg-teal-50 text-teal-700');
+        if (av.dataset.sig !== html) { av.innerHTML = html; av.dataset.sig = html; }
+        av.classList.remove('hidden');
+      }
+      const ca = document.getElementById('rqCustAv');
+      const sch = document.getElementById('rqSchool');
+      if (ca) {
+        const on = !!(photoSrc(reqRole.custPhoto) && sch && /^To the property custodian/.test(sch.textContent));
+        const html = on ? avatarHTML(reqRole.custName || 'Property Custodian', reqRole.custPhoto, 'w-5 h-5 text-[9px]', 'bg-slate-100 text-slate-600', `title="${escapeHTML(reqRole.custName || 'Property custodian')}"`) : '';
+        if (ca.dataset.sig !== html) { ca.innerHTML = html; ca.dataset.sig = html; }
+        ca.classList.toggle('hidden', !on);
+      }
+    }
+    // The custodian's name and photo, from the school document (one read when the app opens).
+    function loadCustodianCard(F) {
+      if (!isTeacherDevice() || !reqRole.schoolId) return;
+      F.getDoc(F.doc(cloud.db, 'schools', reqRole.schoolId)).then(snap => {
+        if (!snap.exists() || !reqRole || !isTeacherDevice()) return;
+        const d = snap.data() || {};
+        const photo = photoSrc(d.custodianPhoto) ? d.custodianPhoto : '';
+        const name = String(d.custodianName || '').slice(0, 80);
+        if ((reqRole.custPhoto || '') === photo && (reqRole.custName || '') === name) return;
+        reqRole.custPhoto = photo;
+        reqRole.custName = name;
+        saveReqRole();
+        renderTeacherAvatars();
+      }).catch(() => {});
+    }
+    // The teacher's Google photo on their member card (its own write, so a card without it
+    // still saves under older rules).
+    var myPhotoSent = '';
+    function syncMyPhoto() {
+      if (!isTeacherDevice() || !cloud.user || !myMember || !cloud.db || reqRole.memberDeleted) return;
+      const want = googlePhotoOf(cloud.user);
+      const sig = cloud.user.uid + '|' + want;
+      if ((myMember.photo || '') === want || myPhotoSent === sig) return;
+      myPhotoSent = sig;
+      const F = cloud.sdk;
+      F.updateDoc(F.doc(memberCol(), cloud.user.uid), { photo: want, updatedAt: F.serverTimestamp() }).catch(err => console.warn('my photo', err));
+    }
+
     function editMyDetails() { if (isTeacherDevice()) openJoin(reqRole.schoolId, true); }
 
     async function leaveSchool() {
@@ -12219,12 +12272,13 @@
       const me = reqRole.me || {};
       document.getElementById('rqHello').textContent = `Hi ${me.name ? me.name.split(' ')[0] : 'there'}`;
       document.getElementById('rqSchool').textContent = `To the property custodian of ${reqRole.schoolName}`;
+      renderTeacherAvatars();
       const acct = document.getElementById('rqAccount');
       if (acct) {
         const u = cloud.user;
         acct.innerHTML = u && !u.isAnonymous && u.email
           ? `<span class="flex items-center gap-1.5 text-slate-500">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} ${escapeHTML(u.email)}</span>`
-          : u ? `<button onclick="teacherLinkGoogle()" class="min-h-10 text-left font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} Sign in with Google to keep your requests if you change phones</button>` : '';
+          : u ? `<button onclick="teacherLinkGoogle()" class="min-h-10 text-left font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5">${GOOGLE_G.replace('w-5 h-5', 'w-3.5 h-3.5')} Sign in with Google to show your photo and keep your requests if you change phones</button>` : '';
       }
       document.getElementById('headerSchoolName').textContent = reqRole.schoolName;
       const sync = document.getElementById('rqSync');
@@ -13373,6 +13427,7 @@
       const patch = {};
       const name = String(schoolInfo.custodian || '').trim().slice(0, 80), desig = String(schoolInfo.position || '').trim().slice(0, 80);
       if (name && (d.custodianName !== name || (d.custodianDesig || '') !== desig)) { patch.custodianName = name; patch.custodianDesig = desig; }
+      if (d.ownerUid === cloud.user.uid) { const ph = googlePhotoOf(cloud.user); if ((d.custodianPhoto || '') !== ph) patch.custodianPhoto = ph; }   // teachers see it
       const vo = d.viewOnly || {};
       const live = Object.fromEntries(Object.entries(vo).filter(([, v]) => v && v.untilMs > Date.now()));
       if (Object.keys(live).length !== Object.keys(vo).length) { patch.viewOnly = live; patch.viewerUids = Object.keys(live); }
@@ -15915,7 +15970,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <div ${rvWrap(true, 'join')} data-tvjoin="${escapeHTML(m.uid)}">
               ${rvStripe(true, 'join')}
               ${rvHead(true, 'join', 'Wants to join', 'ph-user-plus', 'text-brand-700', m.joinedMs,
-                `<p class="text-sm text-slate-900"><b>${escapeHTML(m.name)}</b></p>
+                `<p class="text-sm text-slate-900 flex items-center gap-2">${avatarHTML(m.name, m.photo, 'w-7 h-7 text-[10px]', 'bg-brand-50 text-brand-700')}<b class="min-w-0 truncate">${escapeHTML(m.name)}</b></p>
               ${[m.position, m.office].filter(Boolean).length ? `<p class="text-xs text-slate-600 line-clamp-2">${escapeHTML([m.position, m.office].filter(Boolean).join(' · '))}</p>` : ''}`)}
               <p class="text-xs text-slate-500">${m.email ? `${escapeHTML(m.email)} · ` : 'No Google account · '}joined with your invite link</p>
               <div ${rvActs(true)}>
@@ -16028,6 +16083,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (myMember) {
         if (!reqRole.memberSeen || reqRole.memberDeleted) { reqRole.memberSeen = true; reqRole.memberDeleted = false; saveReqRole(); }
         upsertMyMember();
+        syncMyPhoto();
       } else if (!reqRole.schoolGone && !reqRole.memberDeleted) checkSchoolGone().then(gone => {
         if (gone || !reqRole) return;
         if (reqRole.memberSeen && !(snap.metadata && snap.metadata.fromCache)) {
@@ -16858,6 +16914,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (!teacherTab) teacherTab = myReleases.length ? 'items' : 'requests';
       const tab = teacherTab;
       document.getElementById('rqTitle').textContent = tab === 'items' ? 'My items' : tab === 'stock' ? 'School stock' : tab === 'library' ? 'Library' : 'Request supplies';
+      setTimeout(renderTeacherAvatars, 0);
       document.getElementById('rqSchool').textContent = tab === 'stock' ? `Supplies left at ${reqRole.schoolName}` : tab === 'library' ? `Books at ${reqRole.schoolName} · what is free and where` : `To the property custodian of ${reqRole.schoolName}`;
       ['items', 'requests', 'stock', 'library'].forEach(t => {
         const b = document.getElementById(`rqTab-${t}`);
@@ -17786,7 +17843,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         return `
           <div data-tvrow="${escapeHTML(p.key)}" class="rounded-2xl bg-white border ${on ? 'border-brand-500 ring-2 ring-brand-500/20' : 'border-slate-200'} shadow-sm overflow-hidden">
             <button onclick="openTeachersView('${qk(p.key)}')" ${on ? 'aria-current="true"' : ''} class="w-full text-left hover:bg-slate-50 p-3 flex items-center gap-3">
-              <span class="w-10 h-10 shrink-0 rounded-full ${p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-sm font-extrabold">${escapeHTML(personInitials(p.name))}</span>
+              ${avatarHTML(p.name, memberPhoto(p.uid), 'w-10 h-10 text-sm', personTone(p))}
               <span class="min-w-0 flex-1">
                 <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(p.name)}</span>
                 <span class="block text-[11px] text-slate-500 truncate">${escapeHTML([p.position, p.office].filter(Boolean).join(' · ') || (p.uid ? 'Teacher' : p.equipment.length ? 'Typed under Assigned to' : 'Typed on a slip'))}</span>
@@ -17842,6 +17899,23 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         </div>`;
     }
 
+    // ---- Profile photos: the Google account's photo (lh3.googleusercontent.com) ------------
+    // On the teacher's member card (photo) and, for the custodian, on the school document
+    // (custodianPhoto). Anyone without one gets their initials. Loaded without a referrer.
+    const PHOTO_RE = /^https:\/\/lh[0-9]\.googleusercontent\.com\/[^\s"'<>]+$/;
+    function photoSrc(url, px = 96) {
+      const u = String(url || '');
+      if (u.length > 300 || !PHOTO_RE.test(u)) return '';
+      return /=s\d+(-c)?$/.test(u) ? u.replace(/=s\d+(-c)?$/, `=s${px}-c`) : u;
+    }
+    function googlePhotoOf(u) { return u && !u.isAnonymous && photoSrc(u.photoURL) ? u.photoURL : ''; }
+    function avatarHTML(name, photo, cls = 'w-10 h-10 text-sm', tone = 'bg-teal-50 text-teal-700', attrs = '') {
+      const src = photoSrc(photo, 192);
+      return `<span ${attrs} data-avatar="${src ? 'photo' : 'initials'}" class="${cls} shrink-0 rounded-full ${tone} flex items-center justify-center font-extrabold overflow-hidden relative">${escapeHTML(personInitials(name))}${src ? `<img src="${escapeHTML(src)}" alt="" referrerpolicy="no-referrer" loading="lazy" decoding="async" onerror="this.parentNode.dataset.avatar='initials'; this.remove()" class="absolute inset-0 w-full h-full object-cover">` : ''}</span>`;
+    }
+    function memberPhoto(uid) { return uid ? ((memberList.find(m => m.uid === uid) || {}).photo || '') : ''; }
+    const personTone = p => (p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500');
+
     function personInitials(name) {
       const w = String(name || '').replace(/[^A-Za-zÀ-ÿ\s]/g, ' ').split(/\s+/).filter(x => x.length > 1 && !NAME_SKIP.has(x.toLowerCase()));
       return ((w[0] || '?')[0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase();
@@ -17858,7 +17932,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       head.innerHTML = `
         <button onclick="openTeachersView(null)" class="tv-back text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-1"><i class="ph-bold ph-caret-left"></i> All teachers</button>
         <div class="flex items-start gap-3">
-          <span class="w-12 h-12 shrink-0 rounded-full ${p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-base font-extrabold">${escapeHTML(personInitials(p.name))}</span>
+          ${avatarHTML(p.name, memberPhoto(p.uid), 'w-12 h-12 text-base', personTone(p), 'id="tvPersonAv"')}
           <div class="min-w-0 flex-1">
             <h1 class="text-xl font-extrabold text-slate-900 leading-tight">${escapeHTML(p.name)}</h1>
             <p class="text-xs text-slate-500">${escapeHTML([p.position, p.office].filter(Boolean).join(' · ') || '—')}${p.removed ? ' · <span class="text-amber-800 font-bold">removed from the school</span>' : p.uid ? ' · <span class="text-teal-700 font-bold">has the app</span>' : ' · no account'}</p>
@@ -18181,7 +18255,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         document.getElementById('pickMsg').textContent = message;
         document.getElementById('pickList').innerHTML = options.map((o, i) => `
           <button type="button" data-pick="${escapeHTML(o.value)}" onclick="closePick(${i})" class="w-full min-h-12 px-3 py-2 rounded-xl border border-slate-200 hover:border-brand-400 hover:bg-brand-50 text-left flex items-center gap-3">
-            <span class="w-9 h-9 shrink-0 rounded-full ${o.tone || 'bg-slate-100 text-slate-500'} flex items-center justify-center text-xs font-extrabold">${escapeHTML(o.badge || '')}</span>
+            ${o.photo ? avatarHTML(o.label, o.photo, 'w-9 h-9 text-xs', o.tone || 'bg-slate-100 text-slate-500') : `<span class="w-9 h-9 shrink-0 rounded-full ${o.tone || 'bg-slate-100 text-slate-500'} flex items-center justify-center text-xs font-extrabold">${escapeHTML(o.badge || '')}</span>`}
             <span class="min-w-0 flex-1"><span class="block text-sm font-bold text-slate-900 truncate">${escapeHTML(o.label)}</span>${o.sub ? `<span class="block text-[11px] text-slate-500 truncate">${escapeHTML(o.sub)}</span>` : ''}</span>
             <i class="ph-bold ph-caret-right text-slate-400"></i>
           </button>`).join('');
@@ -18205,7 +18279,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const last = s => (personKey(s).split(' ').pop() || '');
       const options = (p.uid ? mergeTargets(p, people) : people.filter(x => x.key !== key))
         .sort((a, b) => (last(b.name) === last(p.name)) - (last(a.name) === last(p.name)) || !!b.uid - !!a.uid || a.name.localeCompare(b.name))
-        .map(x => ({ value: x.key, label: x.name, badge: personInitials(x.name), tone: x.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500',
+        .map(x => ({ value: x.key, label: x.name, badge: personInitials(x.name), photo: memberPhoto(x.uid), tone: x.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500',
           sub: [x.uid ? ([x.position, x.office].filter(Boolean).join(' · ') || 'Has the app') : 'No account · typed name', x.equipment.length && plural(x.equipment.length, 'unit')].filter(Boolean).join(' · ') }));
       const to = await appPick({ title: `Same person as “${p.name}”?`, message: p.uid
         ? 'Two accounts for one teacher (e.g. a personal and a DepEd Google account)? Pick the account to KEEP. Everything under this one moves there: items, slips, requests, reports and books.'
@@ -18536,7 +18610,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         ${per.map(({ p, rows }) => `
           <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2" data-usage-person="${escapeHTML(p.key)}">
             <button onclick="openTeachersView('${qk(p.key)}')" class="w-full text-left flex items-center gap-2">
-              <span class="w-8 h-8 shrink-0 rounded-full ${p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-xs font-extrabold">${escapeHTML(personInitials(p.name))}</span>
+              ${avatarHTML(p.name, memberPhoto(p.uid), 'w-8 h-8 text-xs', personTone(p))}
               <span class="min-w-0 flex-1 text-sm font-extrabold text-slate-900 truncate">${escapeHTML(p.name)}</span>
               <i class="ph-bold ph-caret-right text-slate-400"></i>
             </button>
@@ -20473,8 +20547,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             return null;
           }
           const mineToAnswer = l.keeperUid === me || (staff && (!l.keeperUid || bkCanIssue()));
-          if (l.status === 'requested' && mineToAnswer) return { title: `${l.borrowerName || 'A teacher'} asks to borrow ${book}`, body: `From ${l.placeName || 'the library'} · until ${bkDate(l.dueISO)}`, icon: 'ph-hand-heart', tone: 'brand', go: isTeacherDevice() && !bk.librarian ? 'library' : 'books-lending' };
-          if (l.status === 'out' && l.retSaidMs && mineToAnswer) return { title: `${l.borrowerName || 'A teacher'} returned ${book}`, body: 'Check it, then tap Returned', icon: 'ph-arrow-u-down-left', tone: 'brand', go: isTeacherDevice() && !bk.librarian ? 'library' : 'books-lending' };
+          if (l.status === 'requested' && mineToAnswer) return { title: `${l.borrowerName || 'A teacher'} asks to borrow ${book}`, body: `From ${l.placeName || 'the library'} · until ${bkDate(l.dueISO)}`, icon: 'ph-hand-heart', tone: 'brand', person: l.borrowerUid || null, who: l.borrowerName || '', go: isTeacherDevice() && !bk.librarian ? 'library' : 'books-lending' };
+          if (l.status === 'out' && l.retSaidMs && mineToAnswer) return { title: `${l.borrowerName || 'A teacher'} returned ${book}`, body: 'Check it, then tap Returned', icon: 'ph-arrow-u-down-left', tone: 'brand', person: l.borrowerUid || null, who: l.borrowerName || '', go: isTeacherDevice() && !bk.librarian ? 'library' : 'books-lending' };
           return null;
         }
       })), cache);
@@ -20493,7 +20567,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         make: prev => {
           const t = bkClassTotals(c);
           if (!t.l || Number(prev) >= t.l) return null;
-          return { title: `${c.name || 'An adviser'} reported lost textbooks`, body: `${c.section || 'Their class'} · ${t.l} lost${t.p ? `, ${t.p} paid` : ''} · Summary of Losses`, icon: 'ph-student', tone: 'amber', go: 'books-classes' };
+          return { title: `${c.name || 'An adviser'} reported lost textbooks`, body: `${c.section || 'Their class'} · ${t.l} lost${t.p ? `, ${t.p} paid` : ''} · Summary of Losses`, icon: 'ph-student', tone: 'amber', go: 'books-classes', person: c.uid || null, who: c.name || '' };
         }
       })), fromCacheOf(meta));
     }
@@ -22678,8 +22752,109 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     let notifBurstTimer = null;
     const NOTIF_TONE = {
       amber: 'bg-amber-50 text-amber-600', emerald: 'bg-emerald-50 text-emerald-600', rose: 'bg-rose-50 text-rose-600',
-      teal: 'bg-teal-50 text-teal-600', brand: 'bg-brand-50 text-brand-600'
+      teal: 'bg-teal-50 text-teal-600', brand: 'bg-brand-50 text-brand-600', sky: 'bg-sky-50 text-sky-600',
+      warn: 'bg-amber-50 text-amber-600', good: 'bg-emerald-50 text-emerald-600', danger: 'bg-rose-50 text-rose-600', info: 'bg-sky-50 text-sky-600'
     };
+    // Solid colours: the small bubble on a photo, and the phone notification pictures.
+    const NOTIF_SOLID = {
+      amber: 'bg-amber-600', warn: 'bg-amber-600', emerald: 'bg-emerald-600', good: 'bg-emerald-600', rose: 'bg-rose-600', danger: 'bg-rose-600',
+      teal: 'bg-teal-600', sky: 'bg-sky-600', info: 'bg-sky-600', brand: 'bg-brand-600'
+    };
+    const NOTIF_HEX = { amber: '#d97706', warn: '#d97706', emerald: '#059669', good: '#059669', rose: '#e11d48', danger: '#e11d48', teal: '#0d9488', sky: '#0284c7', info: '#0284c7', brand: '#4f46e5' };
+    // Who a notification is about, for their photo: a teacher (custodian's phones: person), or,
+    // on a teacher's phone, the property custodian (requests and items). Others: the icon only.
+    function notifPerson(n) {
+      if (!n || !n.icon) return null;
+      if (n.person) {
+        const m = memberList.find(x => x.uid === n.person) || (isCustodianDevice() ? teacherRoster().find(x => x.uid === n.person) : null);
+        const name = (m && m.name) || n.who || '';
+        return name ? { name, photo: (m && m.photo) || '' } : null;
+      }
+      if (isTeacherDevice() && /^teacher-(items|requests)$/.test(n.go || '') && (reqRole.custName || reqRole.custPhoto))
+        return { name: reqRole.custName || 'Property Custodian', photo: reqRole.custPhoto || '' };
+      return null;
+    }
+    function notifIconHTML(n) {
+      const who = notifPerson(n);
+      if (!who) return `<span class="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center ${NOTIF_TONE[n.tone] || NOTIF_TONE.brand}"><i class="ph-bold ${escapeHTML(n.icon || 'ph-bell')} text-lg"></i></span>`;
+      return `<span class="relative w-9 h-9 shrink-0" data-notif-person>${avatarHTML(who.name, who.photo, 'w-9 h-9 text-xs', 'bg-teal-50 text-teal-700')}<span class="absolute -right-1 -bottom-1 w-[18px] h-[18px] rounded-full ring-2 ring-white text-white flex items-center justify-center ${NOTIF_SOLID[n.tone] || NOTIF_SOLID.brand}"><i class="ph-bold ${escapeHTML(n.icon)} text-[10px]"></i></span></span>`;
+    }
+
+    // Phone notification pictures, drawn on the phone from the same Phosphor icon and colour as
+    // the row in the bell: a coloured circle with the white icon, or, about a person, their photo
+    // (or initials) with the icon in a small bubble. Badge (Android's status bar): the icon alone,
+    // white on transparent. No files to download, so it works offline too.
+    const notifGlyphs = {};
+    function notifGlyph(icon) {
+      if (icon in notifGlyphs) return notifGlyphs[icon];
+      const el = document.createElement('i');
+      el.className = `ph-bold ${icon}`;
+      el.setAttribute('aria-hidden', 'true');
+      el.style.cssText = 'position:absolute;left:-9999px;top:0';
+      document.body.appendChild(el);
+      const ch = String(getComputedStyle(el, '::before').content || '').replace(/^["']|["']$/g, '');
+      const family = getComputedStyle(el).fontFamily;
+      el.remove();
+      return (notifGlyphs[icon] = ch && ch !== 'none' && ch !== 'normal' ? { ch, family } : null);
+    }
+    function notifLoadImg(src, ms = 2500) {
+      return new Promise(res => {
+        if (!src) { res(null); return; }
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.referrerPolicy = 'no-referrer';
+        const t = setTimeout(() => res(null), ms);
+        img.onload = () => { clearTimeout(t); res(img); };
+        img.onerror = () => { clearTimeout(t); res(null); };
+        img.src = src;
+      });
+    }
+    async function notifPictures(n) {
+      try {
+        const g = notifGlyph(n.icon || 'ph-bell') || notifGlyph('ph-bell');
+        if (!g) return null;
+        try { await document.fonts.load(`64px ${g.family}`); } catch (e) { /* drawn with what is there */ }
+        const hex = NOTIF_HEX[n.tone] || NOTIF_HEX.brand;
+        const glyph = (ctx, cx, cy, size, color) => {
+          ctx.font = `${size}px ${g.family}`;
+          ctx.fillStyle = color;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'alphabetic';
+          const m = ctx.measureText(g.ch);
+          const x = cx - ((m.actualBoundingBoxRight || 0) - (m.actualBoundingBoxLeft || 0)) / 2;
+          const y = cy + ((m.actualBoundingBoxAscent || size * 0.8) - (m.actualBoundingBoxDescent || 0)) / 2;
+          ctx.fillText(g.ch, x, y);
+        };
+        const disc = (ctx, cx, cy, r, color) => { ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); };
+        const draw = img => {
+          const c = document.createElement('canvas');
+          c.width = c.height = 192;
+          const ctx = c.getContext('2d');
+          if (!who) { disc(ctx, 96, 96, 96, hex); glyph(ctx, 96, 96, 104, '#fff'); return c.toDataURL('image/png'); }
+          ctx.save();
+          ctx.beginPath(); ctx.arc(96, 96, 96, 0, Math.PI * 2); ctx.clip();
+          if (img) ctx.drawImage(img, 0, 0, 192, 192);
+          else {
+            ctx.fillStyle = '#ccfbf1'; ctx.fillRect(0, 0, 192, 192);
+            ctx.fillStyle = '#0f766e'; ctx.font = '800 62px "Inter Variable", Inter, system-ui, sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(personInitials(who.name), 84, 90);   // clear of the bubble
+          }
+          ctx.restore();
+          disc(ctx, 150, 150, 42, '#fff');
+          disc(ctx, 150, 150, 35, hex);
+          glyph(ctx, 150, 150, 40, '#fff');
+          return c.toDataURL('image/png');
+        };
+        const who = notifPerson(n);
+        const img = who ? await notifLoadImg(photoSrc(who.photo, 192)) : null;
+        let icon;
+        try { icon = draw(img); } catch (e) { icon = draw(null); }   // a photo the canvas may not read
+        const b = document.createElement('canvas');
+        b.width = b.height = 96;
+        glyph(b.getContext('2d'), 48, 48, 76, '#fff');
+        return { icon, badge: b.toDataURL('image/png'), person: who ? who.name : '', photo: !!img };
+      } catch (e) { return null; }
+    }
 
     // Notifications belong to one school, role and account on one Firebase project.
     function notifScope() {
@@ -22747,8 +22922,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           key: 'rq:' + r.id, sig: r.status || 'pending',
           make: prev => (prev === undefined && (r.status || 'pending') === 'pending' && r.via !== 'custodian')
             ? (r.kind === 'took'
-              ? { title: `${r.name || 'A teacher'} took supplies · confirm`, body: reqNotifSummary(r), icon: 'ph-hand-grabbing', tone: 'amber', go: 'requests' }
-              : { title: `New supply request from ${r.name || 'a teacher'}`, body: reqNotifSummary(r), icon: 'ph-tray', tone: 'amber', go: 'requests' })
+              ? { title: `${r.name || 'A teacher'} took supplies · confirm`, body: reqNotifSummary(r), icon: 'ph-hand-grabbing', tone: 'amber', go: 'requests', person: r.uid || null, who: r.name || '' }
+              : { title: `New supply request from ${r.name || 'a teacher'}`, body: reqNotifSummary(r), icon: 'ph-tray', tone: 'amber', go: 'requests', person: r.uid || null, who: r.name || '' })
             : null
         })), fromCacheOf(meta));
       } else if (isTeacherDevice()) {
@@ -22989,7 +23164,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const days = r => plural(Math.floor((now - reqTime(r)) / 864e5), 'day');
       const r = due[0];
       addNotif(due.length === 1
-        ? { title: `${r.name || 'A teacher'}’s request is waiting ${days(r)}`, body: `${reqNotifSummary(r)} · approve, decline or ask for changes`, icon: 'ph-hourglass-medium', tone: 'amber', go: 'requests' }
+        ? { title: `${r.name || 'A teacher'}’s request is waiting ${days(r)}`, body: `${reqNotifSummary(r)} · approve, decline or ask for changes`, icon: 'ph-hourglass-medium', tone: 'amber', go: 'requests', person: r.uid || null, who: r.name || '' }
         : { title: `${due.length} supply requests waiting more than ${REQ_WAIT_DAYS} days`, body: due.slice(0, 4).map(x => `${x.name || 'A teacher'} (${days(x)})`).join(', ') + (due.length > 4 ? ` + ${due.length - 4} more` : ''), icon: 'ph-hourglass-medium', tone: 'amber', go: 'requests' });
     }
 
@@ -23195,8 +23370,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         localStorage.setItem(QUIET_KEY, JSON.stringify(held));
         return;
       }
+      const pic = n.id && n.icon ? await notifPictures(n) : null;
       const opts = {
-        body: n.body || '', icon: 'assets/icons/icon-192.png', badge: 'assets/icons/badge-96.png',
+        body: n.body || '', icon: pic ? pic.icon : 'assets/icons/icon-192.png', badge: pic ? pic.badge : 'assets/icons/badge-96.png',
         tag: n.id || 'custodianpro-summary', data: { nid: n.id || '' }, timestamp: n.at || Date.now()
       };
       try {
@@ -23308,7 +23484,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         ${notifPermissionCard()}
         ${items.length ? `<div class="divide-y divide-slate-100 rounded-2xl border border-slate-200 overflow-hidden bg-white">${items.map(n => `
           <button onclick="openNotif('${n.id}')" data-notif="${n.id}" class="w-full text-left px-3 py-3 flex items-start gap-3 hover:bg-slate-50 ${n.read ? '' : 'bg-brand-50/40'}">
-            <span class="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center ${NOTIF_TONE[n.tone] || NOTIF_TONE.brand}"><i class="ph-bold ${escapeHTML(n.icon || 'ph-bell')} text-lg"></i></span>
+            ${notifIconHTML(n)}
             <span class="flex-1 min-w-0">
               <span class="block text-sm leading-snug ${n.read ? 'font-semibold text-slate-700' : 'font-extrabold text-slate-900'}">${escapeHTML(n.title)}</span>
               ${n.body ? `<span class="block text-xs text-slate-500 mt-0.5 line-clamp-2">${escapeHTML(n.body)}</span>` : ''}
@@ -23523,6 +23699,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-profile-photos', date: 'Nov 2026', title: 'Profile photos, and a picture on every notification', points: [
+        'Teachers who sign in with Google see their profile photo at the top of their screen, and the custodian\u2019s photo next to \u201cTo the property custodian of \u2026\u201d. Without Google, their initials show instead. Tap Sign in with Google at the bottom of My Items to add your photo.',
+        'The list of teachers, each teacher\u2019s page and the join requests now show the teachers\u2019 photos.',
+        'Phone notifications now show a picture for each kind (the same icon and colour as in the bell) instead of the app icon. When a notification is about someone, for example a new supply request or a teacher who joined, it shows their photo with a small icon in the corner.'
+      ] },
       { id: '2026-11-teacher-merge', date: 'Nov 2026', title: 'Merge a teacher\u2019s two accounts, delete unused names', points: [
         'A teacher who joined twice (for example with a personal and a DepEd Google account): open the account you don\u2019t want on the Teachers page, tap Same person as\u2026 and pick the account to keep. Their items, slips, requests, reports and books move there. The slip numbers and dates stay the same.',
         'Delete entirely (the bin icon) removes a teacher with no records at all, such as a test join or a wrong account. It is deleted from the school, not just hidden. Teachers with records are kept for audit: use Remove or Same person as\u2026 instead.',

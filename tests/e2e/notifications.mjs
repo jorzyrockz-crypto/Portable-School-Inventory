@@ -136,7 +136,7 @@ try {
   await until(t, () => window.__shown.length >= 1, 'phone notification', 3000);
   const shown = await ev(t, () => window.__shown[0]);
   check(shown.title === 'Your supply request was approved' && /Bond paper/.test(shown.body), `phone notification: “${shown.title}” · ${shown.body}`);
-  check(shown.icon === 'assets/icons/icon-192.png' && shown.badge === 'assets/icons/badge-96.png' && !!shown.data.nid && shown.tag === shown.data.nid, 'with app icon, status-bar badge and the notification id');
+  check(/^data:image\/png/.test(shown.icon) && /^data:image\/png/.test(shown.badge) && !!shown.data.nid && shown.tag === shown.data.nid, 'with its own picture, status-bar badge and the notification id');
   check((await notifs(a)).length === 1, 'custodian is not notified of their own approval');
   // Tapping it: the service worker focuses the app and posts the id.
   await ev(t, nid => { window.__hidden = false; navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'open-notification', nid } })); }, shown.data.nid);

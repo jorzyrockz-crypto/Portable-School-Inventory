@@ -213,6 +213,12 @@ A teacher’s phone only shows that teacher’s own requests, slips and items. I
 
 Teachers who joined before approvals existed stay active; only new joins need **Approve**.
 
+### Profile photos
+
+- **From Google only.** A teacher who joins or signs in with Google gets their Google profile photo. There is no photo upload, so no Firebase Storage (Blaze) is needed. A teacher without Google shows initials, and My Items suggests **Sign in with Google** to add the photo. The photo is refreshed each time the app opens, so a new Google photo appears by itself.
+- **Where it shows.** At the top of the teacher's **My items** (next to *Hi Ana*), in the Teachers list, on each teacher's page, in join requests and in the bell. The custodian's Google photo (saved when the custodian signs in with Google) shows on teachers' phones next to *To the property custodian of …*.
+- **What is stored.** Only the address of the Google photo (`photo` on the member card, `custodianPhoto` on the school). The rules accept only `https://lhN.googleusercontent.com/…` addresses. A photo that fails to load falls back to initials.
+
 ### School Head approval of Purchase Requests
 
 Every Purchase Request needs the School Head's approval or signature.
@@ -686,6 +692,7 @@ A bell in the header (next to **More**) shows what happened and how many you hav
 - **Year-end count** runs from 1 December to 31 January, once a week: *82 of 138 units counted · report due 31 Jan*, a reminder in the last 14 days and a note when every unit is counted.
 - **Also tell me about** at the bottom of the bell sheet turns each kind off or on (all on by default).
 - **Quiet hours** (shown once phone notifications are on): from 7:00 PM to 6:00 AM by default, phone notifications wait. They still appear in the bell, and when quiet hours end, a background app shows one summary such as *3 notifications overnight*.
+- **Pictures.** Each phone notification shows the same icon and colour as its row in the bell (a tray for requests, a warning for problems, a box for low stock…), plus a matching small icon for the status bar. A notification about a person, such as a new request or a teacher who joined, shows their photo (or initials) with the icon in a small coloured bubble in the corner.
 - **On the phone.** In the bell sheet, tap **Turn on** under *Get these on your phone too* (the app never asks by itself). Notifications then appear even when you're in another app, **as long as CustodianPro is open or was used recently**. Android may stop a background app after a while; there is no push server, so a phone where the app is fully closed won't get notified.
 
 ## App updates
@@ -789,6 +796,7 @@ node library.mjs                      # import a delivery list, lending at the d
 node class-books.mjs                  # Book Issuance List, Received, class sheet with learner names, privacy rules, losses, take back, names erased
 node follow-ups.mjs                   # partly supplied, Ask back (teacher's My Items), ₱50,000+ units on an ICS → Make the PAR, PRs not delivered after 30 days
 node teacher-merge.mjs                # one teacher with two accounts → Same person as… moves slips, units, requests, reports; Delete entirely (no records only); Ask to join again
+node profile-photos.mjs               # Google photos → teacher header, custodian photo, Teachers list/detail, bell rows; initials + Sign in with Google hint; per-type notification pictures and photo + bubble
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

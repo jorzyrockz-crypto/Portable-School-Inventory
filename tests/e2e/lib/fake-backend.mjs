@@ -126,7 +126,8 @@ export function createBackend({ autoApprove = true } = {}) {
         return;
       }
       const ch = changedKeys(before, data);
-      const own = ctx.uid === p[3] && ch.every(k => ['name', 'position', 'office', 'email', 'joinedMs', 'updatedAt'].includes(k)) && cardOk(data, p[3]);
+      const photoOk = d => (d.photo ?? '') === '' || (typeof d.photo === 'string' && d.photo.length <= 300 && /^https:\/\/lh[0-9]\.googleusercontent\.com\/[^ ]+$/.test(d.photo));
+      const own = ctx.uid === p[3] && ch.every(k => ['name', 'position', 'office', 'email', 'joinedMs', 'updatedAt', 'photo'].includes(k)) && cardOk(data, p[3]) && photoOk({ ...before, ...data });
       const cust = isCust(ctx, sid) && ch.every(k => ['name', 'position', 'office', 'status', 'approvedMs', 'removedMs', 'editedMs', 'by', 'updatedAt', 'librarian', 'librarianMs', 'mergedInto', 'mergedIntoName', 'mergedMs'].includes(k)) &&
         ['pending', 'active', 'removed'].includes(data.status ?? 'active') && cardOk(data, p[3]);
       if (!own && !cust) deny('member update', { path, data, ch });
@@ -485,7 +486,7 @@ export function createBackend({ autoApprove = true } = {}) {
     writes.push(path);
   }
 
-  const gUser = (uid, acct) => ({ uid, email: acct.email, displayName: acct.name, provider: 'google.com', isAnonymous: false, providerData: [{ providerId: 'google.com' }] });
+  const gUser = (uid, acct) => ({ uid, email: acct.email, displayName: acct.name, photoURL: acct.photo || null, provider: 'google.com', isAnonymous: false, providerData: [{ providerId: 'google.com' }] });
   const ops = {
     anon: () => ({ uid: 'anon' + (++uidSeq), provider: 'anonymous', isAnonymous: true, providerData: [] }),
     createUser: ({ email, pass }) => {

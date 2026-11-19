@@ -7,6 +7,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+// An 8×8 orange PNG standing in for a Google profile photo.
+const TEST_PHOTO = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGP4WSyGFTEMLQkA7bNggdHW5fAAAAAASUVORK5CYII=', 'base64');
 export const BASE_URL = process.env.BASE_URL || 'http://localhost:8080/';
 const FAKE_SDK = fs.readFileSync(path.join(HERE, 'fake-firebase.js'), 'utf8');
 const TEST_CONFIG = 'window.FIREBASE_CONFIG = { apiKey: "test-key", authDomain: "demo.firebaseapp.com", projectId: "demo-school", appId: "1:1:web:1" };';
@@ -40,10 +42,15 @@ export async function openPhone(name, backend, { width = 390, height = 844, dial
     const url = req.url();
     if (url.endsWith('/firebase-config.js') || url.includes('/firebase-config.js?')) return req.respond({ status: 200, contentType: 'text/javascript', body: TEST_CONFIG });
     if (url.includes('/assets/cloud/firebase.js')) return req.respond({ status: 200, contentType: 'text/javascript', body: FAKE_SDK });
+    // Google profile photos (no internet here): a small picture, or 404 for a "broken" one.
+    if (/^https:\/\/lh[0-9]\.googleusercontent\.com\//.test(url)) return /broken/.test(url)
+      ? req.respond({ status: 404, contentType: 'text/plain', body: 'gone' })
+      : req.respond({ status: 200, contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' }, body: TEST_PHOTO });
     req.continue();
   });
   page.on('pageerror', e => errors.push(`${name}: ${e}`));
-  page.on('console', m => { if (m.type() === 'error') errors.push(`${name}: ${m.text()}`); });
+  // (a test photo made to be broken is not an app error)
+  page.on('console', m => { if (m.type() === 'error' && !/googleusercontent\.com\/.*broken/.test((m.location() || {}).url || '')) errors.push(`${name}: ${m.text()}`); });
   // The app's own dialogs (appAlert / appConfirm / appPrompt) are answered here instead of tapped:
   // prompts get dialogs.prompt, confirms get dialogs.confirm (default true). All are logged.
   // A suite that wants to tap the real dialog sets window.__dialogUI = true in the page.
