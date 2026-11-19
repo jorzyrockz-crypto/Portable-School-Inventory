@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="2bc5c9f8c957">
+  <meta name="app-version" content="9a4306d0be45">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -585,6 +585,7 @@
       <button onclick="openMoreMenu()" id="moreMenuBtn" class="h-10 px-3 shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition flex items-center gap-1.5 text-xs font-bold text-slate-700" aria-label="More">
         <i class="ph-bold ph-list text-lg"></i>
         <span class="hidden sm:inline">More</span>
+        <span id="moreAv" class="hidden -mr-1.5 rounded-full ring-2 ring-white"></span>
       </button>
       </div>
     </div>
@@ -1271,10 +1272,13 @@
 
   <!-- SCHOOL HEAD (head's phone): approve or return Purchase Requests -->
   <section id="viewHead" class="hidden max-w-xl mx-auto px-4 pt-5 space-y-5 no-print">
-    <div>
-      <p id="hdHello" class="text-sm text-slate-500"></p>
-      <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">For your approval</h1>
-      <p id="hdSchool" class="text-xs text-slate-500"></p>
+    <div class="flex items-start gap-3">
+      <div class="min-w-0 flex-1">
+        <p id="hdHello" class="text-sm text-slate-500"></p>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">For your approval</h1>
+        <p id="hdSchool" class="text-xs text-slate-500"></p>
+      </div>
+      <span id="hdAvatar" class="hidden shrink-0 mt-1 rounded-full ring-2 ring-white shadow-sm"></span>
     </div>
     <p id="hdSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
     <div id="hdBody" class="space-y-5"></div>
@@ -1970,6 +1974,7 @@
         </div>
         <button onclick="closeJoin()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
+      <div id="joinMe" class="hidden rounded-2xl bg-slate-50 border border-slate-200 px-3 py-2.5 flex items-center gap-3"></div>
       <div class="space-y-2">
         <input id="joinName" type="text" maxlength="80" autocomplete="name" placeholder="Your full name" class="w-full h-12 px-3 rounded-xl border-2 border-slate-200 focus:border-amber-500 text-sm font-semibold outline-none">
         <input id="joinPosition" type="text" maxlength="80" placeholder="Position, e.g. Teacher III" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
@@ -11391,6 +11396,7 @@
       renderLoginGate();
       renderViewOnly();
       renderAssistantMode();
+      renderMyAvatars();
       if (typeof renderNotifBell === 'function') renderNotifBell();
       renderHomeReqCard();
       if (activeMainView === 'REQUESTS') renderRequestsView();
@@ -12107,6 +12113,7 @@
       document.getElementById('joinGoogleWrap').classList.toggle('hidden', edit);
       document.getElementById('joinSchool').textContent = edit ? reqRole.schoolName : 'Connecting…';
       joinShowNo(edit ? (reqRole.schoolNo || schoolNoOf(reqRole.schoolName)) : '');
+      renderJoinMe(edit);
       document.getElementById('joinModal').classList.remove('hidden');
       if (edit) return;
       const btn = document.getElementById('joinBtn');
@@ -12299,6 +12306,21 @@
     }
 
     function editMyDetails() { if (isTeacherDevice()) openJoin(reqRole.schoolId, true); }
+    function renderJoinMe(edit) {
+      const box = document.getElementById('joinMe');
+      if (!box) return;
+      box.classList.toggle('hidden', !edit);
+      if (!edit) { box.innerHTML = ''; return; }
+      const me = reqRole.me || {}, u = cloud.user, photo = googlePhotoOf(u);
+      const google = !!(u && !u.isAnonymous);
+      box.innerHTML = `${avatarHTML(me.name || 'Teacher', photo, 'w-14 h-14 text-lg', 'bg-teal-50 text-teal-700', 'data-join-av')}
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-bold text-slate-800">${photo ? 'Your photo' : 'No photo yet'}</p>
+          <p class="text-[11px] text-slate-500 leading-snug">${photo ? `From your Google account${u.email ? ` · ${escapeHTML(u.email)}` : ''}. Change it in Google and it updates here.`
+            : google ? 'Your Google account has no profile photo. Add one in Google and it shows here.' : 'Sign in with Google to show your Google photo to the property custodian.'}</p>
+          ${!photo && !google ? `<button onclick="closeJoin(); teacherLinkGoogle()" data-join-google class="mt-1.5 h-8 px-2.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-1.5">${GOOGLE_G.replace('w-5 h-5', 'w-4 h-4')} Sign in with Google</button>` : ''}
+        </div>`;
+    }
 
     async function leaveSchool() {
       if (!await appConfirm(`Your sent requests stay with the custodian of ${reqRole.schoolName}.`, { title: 'Leave this school on this phone?', ok: 'Leave', icon: 'ph-sign-out', tone: 'danger', focusCancel: true })) return;
@@ -13231,7 +13253,7 @@
       const card = (h, extra) => `
         <div class="rounded-2xl border ${h.status === 'active' ? 'border-emerald-200 bg-emerald-50/50' : 'border-violet-200 bg-violet-50/50'} p-3 space-y-2" data-head-card="${h.id}">
           <div class="flex items-start gap-2.5">
-            <span class="w-9 h-9 shrink-0 rounded-full bg-white border border-slate-200 flex items-center justify-center text-sm font-extrabold text-slate-700">${escapeHTML((h.name || '?').trim()[0] || '?').toUpperCase()}</span>
+            ${avatarHTML(h.name, h.photo, 'w-9 h-9 text-xs', 'bg-white border border-slate-200 text-slate-700', 'data-head-av')}
             <div class="min-w-0">
               <p class="text-sm font-extrabold text-slate-900 truncate">${escapeHTML(h.name || '')}</p>
               <p class="text-[11px] text-slate-600 truncate">${escapeHTML([h.designation, h.email].filter(Boolean).join(' · '))}</p>
@@ -13846,6 +13868,7 @@
           turnJoinCard = snap.exists() ? { ...snap.data(), id: snap.id } : null;
           turnJoinLoaded = true;
           cloud.error = '';
+          if (turnJoinCard && turnJoinCard.status === 'pending') syncCardPhoto(F.doc(staffCol(), cloud.user.uid), turnJoinCard, 'staff');
           if (turnJoinCard && turnJoinCard.status === 'active') { becomeAssistant(turnJoinCard); return; }
           renderRequestsEverywhere();
         }, err => { console.warn('staff card', err); cloud.error = cloudErrorText(err); turnJoinLoaded = true; renderRequestsEverywhere(); }));
@@ -14313,6 +14336,8 @@
       reqUnsubs.push(F.onSnapshot(staffCol(), snap => {
         staffList = snap.docs.map(d => ({ ...d.data(), id: d.id }));
         staffLoaded = true;
+        const mine = isAssistant() && cloud.user && staffList.find(x => x.id === cloud.user.uid);
+        if (mine && mine.status === 'active') syncCardPhoto(F.doc(staffCol(), cloud.user.uid), mine, 'staff');
         if (!document.getElementById('assistModal').classList.contains('hidden')) renderAssistPanel();
         if (!isAssistant()) notifFromStaff(snap.metadata);
       }, err => console.warn('staff', err)));
@@ -14342,7 +14367,7 @@
       const card = (s, extra) => `
         <div class="rounded-2xl border ${s.status === 'active' ? 'border-emerald-200 bg-emerald-50/50' : 'border-brand-200 bg-brand-50/50'} p-3 space-y-2" data-staff-card="${s.id}">
           <div class="flex items-start gap-2.5">
-            <span class="w-9 h-9 shrink-0 rounded-full bg-white border border-slate-200 flex items-center justify-center text-sm font-extrabold text-slate-700">${escapeHTML(((s.name || '?').trim()[0] || '?').toUpperCase())}</span>
+            ${avatarHTML(s.name, s.photo, 'w-9 h-9 text-xs', 'bg-white border border-slate-200 text-slate-700', 'data-staff-av')}
             <div class="min-w-0">
               <p class="text-sm font-extrabold text-slate-900 truncate">${escapeHTML(s.name || '')}</p>
               <p class="text-[11px] text-slate-600 truncate">${escapeHTML([s.designation, s.email].filter(Boolean).join(' · '))}</p>
@@ -15379,6 +15404,7 @@
       reqUnsubs.push(F.onSnapshot(F.doc(headCol(), uid), snap => {
         headMe = snap.exists() ? { ...snap.data(), id: snap.id } : null;
         headMeLoaded = true;
+        if (headMe && headMe.status !== 'removed') syncCardPhoto(F.doc(headCol(), uid), headMe, 'head');
         cloud.error = '';
         const active = !!(headMe && headMe.status === 'active');
         if (active && !headPrUnsub) startHeadPrs(F);
@@ -15424,6 +15450,7 @@
       const me = reqRole.me || {};
       document.getElementById('hdHello').textContent = `Good day${me.name ? `, ${me.name.split(' ')[0]}` : ''}`;
       document.getElementById('hdSchool').textContent = `School Head · ${reqRole.schoolName}`;
+      setAvatarSlot(document.getElementById('hdAvatar'), me.name || 'School Head', googlePhotoOf(cloud.user), 'w-12 h-12 text-base', 'bg-violet-50 text-violet-700');
       document.getElementById('headerSchoolName').textContent = reqRole.schoolName;
       const sync = document.getElementById('hdSync');
       const msg = cloud.error || (!navigator.onLine ? 'You are offline. Approvals are sent when you reconnect.' : '');
@@ -17964,6 +17991,33 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       return `<span ${attrs} data-avatar="${src ? 'photo' : 'initials'}" class="${cls} shrink-0 rounded-full ${tone} flex items-center justify-center font-extrabold overflow-hidden relative">${escapeHTML(personInitials(name))}${src ? `<img src="${escapeHTML(src)}" alt="" referrerpolicy="no-referrer" loading="lazy" decoding="async" onerror="this.parentNode.dataset.avatar='initials'; this.remove()" class="absolute inset-0 w-full h-full object-cover">` : ''}</span>`;
     }
     function memberPhoto(uid) { return uid ? ((memberList.find(m => m.uid === uid) || {}).photo || '') : ''; }
+    // Draws an avatar into a slot only when it changed (no flicker on every render).
+    function setAvatarSlot(el, name, photo, cls, tone, show = true) {
+      if (!el) return;
+      const html = show ? avatarHTML(name, photo, cls, tone) : '';
+      if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html; }
+      el.classList.toggle('hidden', !show);
+    }
+    // The name behind this custodian device: the assistant's own name, else the custodian's.
+    function myStaffName() {
+      if (isAssistant()) return reqRole.assistant.name || reqRole.email || 'Assistant';
+      return (reqRole && reqRole.takeover && reqRole.takeover.name) || schoolInfo.custodian || (reqRole && reqRole.email) || 'Property custodian';
+    }
+    // Custodian and assistant devices: their Google photo on the More button (only with a photo).
+    function renderMyAvatars() {
+      const photo = isCustodianDevice() ? googlePhotoOf(cloud.user) : '';
+      setAvatarSlot(document.getElementById('moreAv'), myStaffName(), photo, 'w-7 h-7 text-[11px]', 'bg-brand-50 text-brand-700', !!photo);
+    }
+    // Head and assistant cards: their own Google photo (one write when it changes).
+    var cardPhotoSent = {};
+    function syncCardPhoto(ref, card, key) {
+      if (!ref || !card || !cloud.user || !cloud.sdk) return;
+      const want = googlePhotoOf(cloud.user);
+      const sig = cloud.user.uid + '|' + want;
+      if ((card.photo || '') === want || cardPhotoSent[key] === sig) return;
+      cardPhotoSent[key] = sig;
+      cloud.sdk.updateDoc(ref, { photo: want, updatedAt: cloud.sdk.serverTimestamp() }).catch(err => console.warn('my photo', err));
+    }
     const personTone = p => (p.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500');
 
     function personInitials(name) {
@@ -23749,6 +23803,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-photos-everyone', date: 'Nov 2026', title: 'Profile photos for everyone', points: [
+        'The School Head sees their Google photo at the top of For your approval. The property custodian sees the head\u2019s photo in the School Head panel when confirming them.',
+        'Assistant custodians\u2019 photos show in the Assistant panel. The custodian\u2019s and assistants\u2019 own photos show on the More button and in More \u2192 Account.',
+        'Teachers see their photo in Your details (tap your photo on My items). Without Google, it shows your initials and a Sign in with Google button to add your photo.'
+      ] },
       { id: '2026-11-invite-people', date: 'Nov 2026', title: 'Invite people: everyone in one place', points: [
         'More \u2192 Invite people (at the top of More) is now the one place to invite or confirm people. The Invite buttons on Supply requests and on the Teachers page open the same sheet.',
         'At the top, choose who you are inviting: Teachers (the link, QR code and poster), School Head, Assistant custodian or Librarian. Each one shows how far along it is, for example 3 joined or To confirm, with a count when someone is waiting for you.',
@@ -24810,9 +24869,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       el.innerHTML = `
         <p class="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Account</p>
         <div class="px-2 py-1.5 flex items-center gap-3">
-          <span class="w-9 h-9 shrink-0 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-user"></i></span>
+          ${avatarHTML(myStaffName(), googlePhotoOf(cloud.user), 'w-9 h-9 text-xs', 'bg-brand-50 text-brand-700', 'data-more-av')}
           <span class="min-w-0 flex-1"><span class="block text-sm font-bold text-slate-800 truncate">${escapeHTML(reqRole.email || 'Property custodian')}</span>
-            <span class="block text-[11px] text-slate-500 truncate">Property custodian · ${escapeHTML(reqRole.schoolName || '')}</span></span>
+            <span class="block text-[11px] text-slate-500 truncate">${isAssistant() ? 'Assistant custodian' : isViewOnly() ? 'View only' : 'Property custodian'} · ${escapeHTML(reqRole.schoolName || '')}</span></span>
         </div>
         <button id="moreSignOut" onclick="closeMoreMenu(); custodianSignOut()" class="more-item"><i class="ph-bold ph-sign-out text-rose-600"></i> Sign out</button>`;
     }

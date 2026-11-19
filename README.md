@@ -219,7 +219,8 @@ Teachers who joined before approvals existed stay active; only new joins need **
 
 - **From Google only.** A teacher who joins or signs in with Google gets their Google profile photo. There is no photo upload, so no Firebase Storage (Blaze) is needed. A teacher without Google shows initials, and My Items suggests **Sign in with Google** to add the photo. The photo is refreshed each time the app opens, so a new Google photo appears by itself.
 - **Where it shows.** At the top of the teacher's **My items** (next to *Hi Ana*), in the Teachers list, on each teacher's page, in join requests and in the bell. The custodian's Google photo (saved when the custodian signs in with Google) shows on teachers' phones next to *To the property custodian of …*.
-- **What is stored.** Only the address of the Google photo (`photo` on the member card, `custodianPhoto` on the school). The rules accept only `https://lhN.googleusercontent.com/…` addresses. A photo that fails to load falls back to initials.
+- **Everyone else.** The School Head's photo is at the top of *For your approval*, and on their card in the custodian's School Head panel. Assistant custodians' photos are on their cards in the Assistant panel. On the custodian's and assistants' own devices, their photo is on the **More** button and in **More → Account**. Teachers see theirs in **Your details** (tap the photo on My items), with **Sign in with Google** when they have none.
+- **What is stored.** Only the address of the Google photo (`photo` on the member, School Head and assistant cards, `custodianPhoto` on the school). The rules accept only `https://lhN.googleusercontent.com/…` addresses. A photo that fails to load falls back to initials.
 
 ### School Head approval of Purchase Requests
 
@@ -800,6 +801,7 @@ node follow-ups.mjs                   # partly supplied, Ask back (teacher's My 
 node teacher-merge.mjs                # one teacher with two accounts → Same person as… moves slips, units, requests, reports; Delete entirely (no records only); Ask to join again
 node profile-photos.mjs               # Google photos → teacher header, custodian photo, Teachers list/detail, bell rows; initials + Sign in with Google hint; per-type notification pictures and photo + bubble
 node invite-people.mjs                # More → Invite people: teachers' link + School Head / Assistant / Librarian switcher with status and waiting counts, back buttons, Supply requests and Teachers entry points
+node photos-everyone.mjs              # photos for every user: custodian/assistant More button + Account, teacher Your details (or Sign in with Google), School Head page + card, assistant card; rules accept Google photos only
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

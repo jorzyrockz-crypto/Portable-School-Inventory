@@ -98,6 +98,12 @@ service cloud.firestore {
         && after.get('viewOnly', {}).keys().hasOnly(resource.data.custodians.concat(resource.data.get('viewerUids', [])));
     }
     function shortText(v, max) { return v is string && v.size() <= max; }
+    // A card's photo: the person's Google profile photo (lhN.googleusercontent.com), or empty.
+    function googlePhotoOk() {
+      return request.resource.data.get('photo', '') == ''
+        || (request.resource.data.photo is string && request.resource.data.photo.size() <= 300
+            && request.resource.data.photo.matches('^https://lh[0-9][.]googleusercontent[.]com/[^ ]+$'));
+    }
     function schoolDoc(schoolId) { return get(/databases/$(database)/documents/schools/$(schoolId)).data; }
     // The confirmed School Head of the school (set by the custodian when they confirm the head).
     function isHead(schoolId) {
@@ -364,8 +370,8 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/schools/$(schoolId)/headInvites/$(request.resource.data.invite)).data.active == true
           && headCardOk();
         allow update: if (signedIn() && request.auth.uid == uid
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'designation', 'email', 'updatedAt'])
-            && headCardOk())
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'designation', 'email', 'updatedAt', 'photo'])
+            && headCardOk() && googlePhotoOk())
           || (isCustodian(schoolId)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'designation', 'status',
                                                                                  'approvedMs', 'removedMs', 'by', 'updatedAt'])
@@ -450,8 +456,8 @@ service cloud.firestore {
           && request.resource.data.status == 'pending'
           && staffInviteOk() && staffCardOk();
         allow update: if (signedIn() && request.auth.uid == uid
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'designation', 'email', 'updatedAt'])
-            && staffCardOk())
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'designation', 'email', 'updatedAt', 'photo'])
+            && staffCardOk() && googlePhotoOk())
           // asks again after being removed (a current link)
           || (signedIn() && request.auth.uid == uid && resource.data.status == 'removed'
             && request.resource.data.status == 'pending' && !isStaff(schoolId)
