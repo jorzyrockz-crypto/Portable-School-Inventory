@@ -78,6 +78,12 @@ export function createBackend({ autoApprove = true } = {}) {
                           (!school(before.schoolId) && typeof data.schoolId === 'string' && isCust(ctx, data.schoolId)))) deny('school id update', { path, data });
       return;
     }
+    if (p[0] === 'teacherSchools' && p.length === 2) {
+      const ok = ctx.uid === p[1] && ctx.provider === 'google.com' && Object.keys(data).every(k => ['schools', 'updatedMs'].includes(k)) &&
+        Array.isArray(data.schools) && data.schools.length <= 10 && Number.isInteger(data.updatedMs);
+      if (!ok) deny('teacher schools write', { path, data, provider: ctx.provider });
+      return;
+    }
     if (p[0] !== 'schools') deny('unknown collection', { path });
     if (p.length === 2) {
       if (kind === 'create') {
@@ -359,6 +365,7 @@ export function createBackend({ autoApprove = true } = {}) {
     const p = parts(path);
     if (!ctx.uid) deny('read signed out', { path });
     if (p[0] === 'schoolIds') { if (single && p.length === 2) return; deny('list school ids', { path }); }
+    if (p[0] === 'teacherSchools') { if (single && p.length === 2 && ctx.uid === p[1]) return; deny('read teacher schools', { path }); }
     if (p.length <= 2) {
       if (single) return;
       if (!filters.some(f => ['custodians', 'viewerUids', 'assistants'].includes(f.field) && f.op === 'array-contains' && f.value === ctx.uid)) deny('list schools', { path, filters });
@@ -467,6 +474,8 @@ export function createBackend({ autoApprove = true } = {}) {
     if (!ctx.uid) deny('delete signed out', { path });
     if (p[0] === 'schoolIds' && p.length === 2) {
       if (before && !isCust(ctx, before.schoolId)) deny('school id delete', { path });
+    } else if (p[0] === 'teacherSchools' && p.length === 2) {
+      if (ctx.uid !== p[1]) deny('teacher schools delete', { path });
     } else if (p[0] === 'schools' && (p.length === 2 || p.length === 4)) {
       if (p[2] === 'auditLog') deny('audit log delete', { path });
       if (!isCust(ctx, p[1])) deny('delete', { path });

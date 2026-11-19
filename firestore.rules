@@ -139,6 +139,20 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/schools/$(schoolId)/invites/$(data.invite)).data.active == true);
     }
 
+    // A teacher's own list of schools they joined with this Google account, so "Continue with
+    // Google" on the Teacher sign-in can bring them back without the invite link. Only they can
+    // read or write it. It is only a pointer: the app then reads their member card, which the
+    // member rules guard as before.
+    match /teacherSchools/{uid} {
+      allow get, delete: if signedIn() && request.auth.uid == uid;
+      allow list: if false;
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && request.resource.data.keys().hasOnly(['schools', 'updatedMs'])
+        && request.resource.data.schools is list && request.resource.data.schools.size() <= 10
+        && request.resource.data.updatedMs is int;
+    }
+
     // DepEd School ID → school: a teacher may type "114656" instead of the school code. Only
     // an exact ID can be looked up (no listing). One school per ID: the first custodian who
     // lists it keeps it, and only a custodian of that school can change or remove it. Joining

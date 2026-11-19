@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="d7a303aa7f7c">
+  <meta name="app-version" content="40a782332af3">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -9675,7 +9675,7 @@
       if (/popup-blocked/.test(code)) return 'The Google sign-in window was blocked. Allow pop-ups for this site and try again.';
       if (/account-exists-with-different-credential/.test(code)) return 'This email already signs in with a password. Use email and password instead.';
       if (/credential-already-in-use/.test(code)) return 'That Google account is already used on another phone.';
-      if (/no-school-no/.test(code)) return `No school in CustodianPro uses School ID ${(err && err.schoolNo) || 'that'} yet. Ask your property custodian for the invite link or school code.`;
+      if (/no-school-no/.test(code)) return `No school in CustodianPro uses School ID ${(err && err.schoolNo) || 'that'} yet. The School ID works once your property custodian puts it at the start of the school name (e.g. 114656 - San Jose NHS). Ask them for the invite link or school code.`;
       if (/invite-only/.test(code)) return 'This school only accepts its invite link. Ask your property custodian for it.';
       if (/no-school/.test(code)) return 'This invite link is not valid. Ask the property custodian for a new one.';
       if (/old-invite/.test(code)) return 'This invite link was replaced by a newer one. Ask the property custodian for the new link.';
@@ -12252,6 +12252,7 @@
         if (user.uid !== before) subscribeRequests(); // this Google account was set up on another phone
         renderRequesterView();
         syncMyPhoto();
+        syncTeacherIndex();
         showToast(`Signed in as ${user.email || 'your Google account'}`, 'ph-check-circle');
       } catch (err) {
         if (!googleCancelled(err)) showToast(cloudErrorText(err), 'ph-warning');
@@ -12308,6 +12309,76 @@
     }
 
     function editMyDetails() { if (isTeacherDevice()) openJoin(reqRole.schoolId, true); }
+
+    // ---- Coming back with Google (a teacher who left, or on a new phone) ----------------------
+    // teacherSchools/{uid} { schools: [{ id, name }], updatedMs }: the schools this Google account
+    // joined, written by the teacher's own phone once their card is there. "Continue with Google"
+    // on the Teacher sign-in reads it back, so no invite link or code is needed. It is only a
+    // pointer: the member card (guarded by the rules) decides.
+    var teacherIndexSent = '';
+    function syncTeacherIndex() {
+      if (!isTeacherDevice() || !cloud.user || cloud.user.isAnonymous || !cloud.db || !myMember || reqRole.memberDeleted) return;
+      const sig = `${cloud.user.uid}|${reqRole.schoolId}|${reqRole.schoolName || ''}`;
+      const key = 'cp_teacher_index_v1';
+      if (teacherIndexSent === sig) return;
+      teacherIndexSent = sig;
+      try { if (localStorage.getItem(key) === sig) return; } catch (e) {}
+      const F = cloud.sdk, ref = F.doc(cloud.db, 'teacherSchools', cloud.user.uid), sid = reqRole.schoolId, name = String(reqRole.schoolName || '').slice(0, 120);
+      F.getDoc(ref).then(snap => {
+        const list = ((snap.exists() && snap.data().schools) || []).filter(x => x && x.id && x.id !== sid);
+        return F.setDoc(ref, { schools: [{ id: sid, name }, ...list].slice(0, 10), updatedMs: Date.now() });
+      }).then(() => { try { localStorage.setItem(key, sig); } catch (e) {} })
+        .catch(err => { teacherIndexSent = ''; console.warn('teacher schools', err); });
+    }
+    async function teacherGoogleReturn() {
+      const errEl = document.getElementById('gateGoogleError'), btn = document.getElementById('gateGoogleBtn');
+      const done = () => { if (btn) btn.disabled = false; };
+      const fail = html => { if (errEl) { errEl.innerHTML = html; errEl.classList.remove('hidden'); } done(); };
+      if (!navigator.onLine) return fail('Signing in needs internet. Connect and try again.');
+      if (errEl) errEl.classList.add('hidden');
+      if (btn) btn.disabled = true;
+      try {
+        await cloudStart();
+        const F = cloud.sdk;
+        const user = await googleSignIn();
+        cloud.user = user;
+        const idx = await F.getDoc(F.doc(cloud.db, 'teacherSchools', user.uid));
+        const found = [];
+        for (const s of ((idx.exists() && idx.data().schools) || []).slice(0, 10)) {
+          try {
+            const card = await F.getDoc(F.doc(cloud.db, 'schools', s.id, 'members', user.uid));
+            if (card.exists() && !card.data().mergedInto) found.push({ id: s.id, name: s.name || 'School', card: card.data() });
+          } catch (e) {}
+        }
+        if (!found.length) {
+          return fail(`No school found for <b>${escapeHTML(user.email || 'this Google account')}</b>. If you joined without Google, with another Google account, or before this update, ask your property custodian for the invite link: joining again with this Google account brings your requests and items back if they are under it.`);
+        }
+        let pick = found[0];
+        if (found.length > 1) {
+          const v = await appPick({ title: 'Which school?', message: `${user.email || 'Your Google account'} joined more than one school.`,
+            options: found.map(f => ({ value: f.id, label: f.name, sub: [f.card.name, f.card.office].filter(Boolean).join(' · '), badge: personInitials(f.name), tone: 'bg-teal-50 text-teal-700' })) });
+          if (!v) return done();
+          pick = found.find(f => f.id === v) || pick;
+        }
+        let schoolNo = '';
+        try {
+          const sd = await F.getDoc(F.doc(cloud.db, 'schools', pick.id));
+          if (sd.exists()) { pick.name = sd.data().name || pick.name; schoolNo = sd.data().schoolNo || schoolNoOf(pick.name); }
+        } catch (e) {}
+        const c = pick.card;
+        reqRole = { role: 'teacher', schoolId: pick.id, schoolName: pick.name, schoolNo, invite: '', email: user.email || '', joinedMs: c.joinedMs || Date.now(),
+          me: { name: c.name, position: c.position || '', office: c.office || '' } };
+        saveReqRole();
+        subscribeRequests();
+        switchMainView('REQUESTER');
+        renderLoginGate();
+        renderRequestsEverywhere();
+        showToast(`Welcome back, ${String(c.name || '').split(' ')[0]} · ${pick.name}`, 'ph-hand-waving');
+      } catch (err) {
+        if (googleCancelled(err)) return done();
+        fail(escapeHTML(cloudErrorText(err)));
+      }
+    }
     function renderJoinMe(edit) {
       const box = document.getElementById('joinMe');
       if (!box) return;
@@ -12325,7 +12396,11 @@
     }
 
     async function leaveSchool() {
-      if (!await appConfirm(`Your sent requests stay with the custodian of ${reqRole.schoolName}.`, { title: 'Leave this school on this phone?', ok: 'Leave', icon: 'ph-sign-out', tone: 'danger', focusCancel: true })) return;
+      const google = !!(cloud.user && !cloud.user.isAnonymous);
+      if (!await appConfirm(`Your sent requests and items stay with the custodian of ${reqRole.schoolName}.\n\n` + (google
+          ? `To come back: tap Teacher, then Continue with Google (${cloud.user.email || 'this Google account'}). No code needed.`
+          : 'You joined without Google, so this phone can’t get back to the same name later: you would join again with the invite link as a new name (the property custodian can merge the two). To keep it, tap Sign in with Google on My items first.'),
+        { title: 'Leave this school on this phone?', ok: 'Leave', icon: 'ph-sign-out', tone: 'danger', focusCancel: true })) return;
       stopRequestSync();
       try { if (cloud.auth) await cloud.sdk.signOut(cloud.auth); } catch (e) {}
       cloud.user = null;
@@ -16236,6 +16311,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         if (!reqRole.memberSeen || reqRole.memberDeleted) { reqRole.memberSeen = true; reqRole.memberDeleted = false; saveReqRole(); }
         upsertMyMember();
         syncMyPhoto();
+        syncTeacherIndex();
       } else if (!reqRole.schoolGone && !reqRole.memberDeleted) checkSchoolGone().then(gone => {
         if (gone || !reqRole) return;
         if (reqRole.memberSeen && !(snap.metadata && snap.metadata.fromCache)) {
@@ -23891,6 +23967,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-teacher-return', date: 'Nov 2026', title: 'Teachers: come back with Google, no code needed', points: [
+        'Left the app or got a new phone? On the sign-in screen, choose Teacher, then Continue with Google under Joined before with Google?. Use the same Google account you joined with. Your school, name, requests and items come back, and you don\u2019t wait for approval again.',
+        'If you joined in more than one school with that account, the app asks which one. Teachers who joined with Google before this update: open the app once while still joined so it can remember your school.',
+        'Leave now tells you how to come back. Without Google, it warns that you would join again as a new name. Fixes: typing the school\u2019s name in the code box now explains what to type instead.'
+      ] },
       { id: '2026-11-request-many', date: 'Nov 2026', title: 'Several items in one request, and inspection before stock in', points: [
         'Teachers: Request on the Stock tab now adds the supply to one request. Tap it again for one more. Review & send at the bottom sends everything together, up to 50 items.',
         'In New supply request, search results stay open so you can tap several in a row. Pick from the school\u2019s supplies lists everything in stock. Items you haven\u2019t sent stay on your phone if you close the form.',
@@ -24577,6 +24658,14 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <p id="gateCodeError" class="hidden text-xs font-semibold text-rose-600"></p>
             <button id="gateJoinBtn" onclick="gateJoin()" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-sign-in"></i> Continue</button>
             <p class="text-[11px] text-slate-500">Got the link in a message? Open it on this phone and it brings you straight to the next step.</p>
+          </div>
+          <div class="mt-3 rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-2.5" data-gate-return>
+            <div>
+              <p class="text-sm font-extrabold text-slate-900">Joined before with Google?</p>
+              <p class="text-xs text-slate-500">Left the app, or got a new phone? Sign in with the same Google account. No code needed: your school, requests and items come back.</p>
+            </div>
+            <button id="gateGoogleBtn" onclick="teacherGoogleReturn()" class="w-full h-12 rounded-xl bg-white border-2 border-slate-200 hover:border-teal-300 disabled:opacity-50 text-slate-800 text-sm font-extrabold flex items-center justify-center gap-2">${GOOGLE_G} Continue with Google</button>
+            <p id="gateGoogleError" class="hidden text-xs font-semibold text-rose-600 leading-snug"></p>
           </div>`;
       }
       if (gateStep === 'head' && isHeadDevice()) {
@@ -24665,7 +24754,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         || raw.match(/^(?:school\s*id[\s:#]*)?(\d{6})(?:\s*[-–].*)?$/i);   // "114656", "School ID 114656", "114656 - San Jose NHS"
       const fail = msg => { err.textContent = msg; err.classList.remove('hidden'); };
       if (!raw) return fail('Paste the invite link, or type the school code or School ID.');
-      if (!m) return fail('That does not look like an invite link, school code or 6-digit School ID. Ask your property custodian to send it again.');
+      if (!m) return fail(/\s/.test(raw) && !/\d{6}/.test(raw)
+        ? 'That looks like a school name. Type the school code from your property custodian (letters and numbers, no spaces), your school’s 6-digit School ID, or paste the whole invite link.'
+        : 'That does not look like an invite link, school code or 6-digit School ID. Ask your property custodian to send it again.');
       if (!navigator.onLine) return fail('Joining needs internet once. Connect and try again.');
       err.classList.add('hidden');
       openJoin(m[1]);
