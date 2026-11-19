@@ -818,6 +818,7 @@ node photos-everyone.mjs              # photos for every user: custodian/assista
 node request-many.mjs                 # several items in one request: Stock tab Request adds to one request + Review & send bar (kept after reload), multi-tap search results, Pick from the school's supplies, 50-item cap, cleared on send
 node teacher-return.mjs               # Continue with Google on the Teacher and School Head sign-in: back to the school with no code (same phone, new phone, pick among schools), private teacherSchools list, Leave explains, school name typed in the code box
 node custodian-login.mjs              # custodian sign-in: school found by account (not name), new school set up once by 6-digit School ID, ID already set up refused with a masked account hint, Use a different account, last account on this phone, no reuse of a Google account left signed in
+node teacher-remove.mjs             # Remove from the school / Add back with the teacher's page open (laptop and phone): page, list and Removed list change at once, no refresh; the teacher's phone follows
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)
 ```

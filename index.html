@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="e963c9490cf5">
+  <meta name="app-version" content="84fe805b8647">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -18128,8 +18128,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function findPerson(key, people = accountabilityPeople()) {
       const p = people.find(x => x.key === key);
       if (p || !tvLastPerson || tvLastPerson.key !== key) return p || null;
-      const { uid, name, position, office, joined } = tvLastPerson;
-      return { key, uid, name, position, office, joined, records: [], equipment: [], ris: [], toConfirm: [], open: [], value: 0, last: 0, oldest: 0, counted: 0, repair: 0, unserv: 0 };
+      // (status read again: someone just removed shows as removed, with Add back, right away)
+      const { uid, name, position, office } = tvLastPerson;
+      const card = uid ? memberList.find(m => m.uid === uid) : null;
+      const removed = isRemovedUid(uid);
+      return { key, uid, name: (card && card.name) || name, position: card ? card.position || '' : position, office: card ? card.office || '' : office,
+        joined: !!card && !removed && memberStatus(card) === 'active', removed, records: [], equipment: [], ris: [], toConfirm: [], open: [], value: 0, last: 0, oldest: 0, counted: 0, repair: 0, unserv: 0, lost: 0 };
     }
 
     function openTeachersView(key = null) {
@@ -18255,7 +18259,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <i class="ph-bold ph-users-three text-3xl text-slate-300"></i>
             <p class="mt-1 text-sm font-bold text-slate-700">No one yet</p>
             <p class="text-xs text-slate-500">Teachers appear here when they join with your invite link, when you release items to them, or when you fill in “Assigned to” under Property Numbers.</p>
-          </div>`;
+          </div>${removedMembersHTML()}`;
         return;
       }
       const since = countSince();
@@ -24167,6 +24171,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-remove-instant', date: 'Nov 2026', title: 'Fixes: removing a teacher shows right away', points: [
+        'Fixes: after Remove from the school, the teacher\u2019s page now shows Removed from the school with Add back straight away. Before, it kept showing has the app and the Remove button until you refreshed.',
+        'Fixes: when the only teacher is removed, the Removed from the school list (with Add back) now shows under No one yet.'
+      ] },
       { id: '2026-11-tour-invite', date: 'Nov 2026', title: 'Welcome tour: invite people right away', points: [
         'New property custodians: the Add your items step now has Invite people now. Pick it and tap Invite now to open Invite people straight away (teachers, School Head, assistant or librarian), and add your items later from More.'
       ] },
