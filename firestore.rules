@@ -182,7 +182,9 @@ service cloud.firestore {
       // and a custodian who turned it over finds it while view-only (viewerUids array-contains uid).
       allow list: if signedIn() && (request.auth.uid in resource.data.custodians
         || request.auth.uid in resource.data.get('viewerUids', [])
-        || request.auth.uid in resource.data.get('assistants', []));
+        || request.auth.uid in resource.data.get('assistants', [])
+        // and the confirmed School Head finds their school with Continue with Google (headUid == uid)
+        || (request.auth.token.firebase.sign_in_provider == 'google.com' && resource.data.get('headUid', '') == request.auth.uid));
       allow create: if withAccount()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.custodians == [request.auth.uid]

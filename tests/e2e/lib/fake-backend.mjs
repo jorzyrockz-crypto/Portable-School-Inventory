@@ -368,7 +368,8 @@ export function createBackend({ autoApprove = true } = {}) {
     if (p[0] === 'teacherSchools') { if (single && p.length === 2 && ctx.uid === p[1]) return; deny('read teacher schools', { path }); }
     if (p.length <= 2) {
       if (single) return;
-      if (!filters.some(f => ['custodians', 'viewerUids', 'assistants'].includes(f.field) && f.op === 'array-contains' && f.value === ctx.uid)) deny('list schools', { path, filters });
+      if (!filters.some(f => (['custodians', 'viewerUids', 'assistants'].includes(f.field) && f.op === 'array-contains' && f.value === ctx.uid) ||
+          (f.field === 'headUid' && f.op === '==' && f.value === ctx.uid && ctx.provider === 'google.com'))) deny('list schools', { path, filters });
       return;
     }
     const sid = p[1], sub = p[2];

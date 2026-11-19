@@ -2,9 +2,10 @@
 // Google on the Teacher sign-in finds their school (teacherSchools/{uid}, written by their own
 // phone), and their name, requests and status come back. Without Google (or a Google account that
 // never joined) it explains what to do. The code box explains a typed school name.
+// The confirmed School Head comes back the same way (schools where headUid == their uid).
 import { createBackend } from './lib/fake-backend.mjs';
 import { BASE_URL, out, check, ev, until, openPhone, closeAll, summary } from './lib/harness.mjs';
-import { custodian, waitNode, refused } from './lib/school-setup.mjs';
+import { custodian, schoolHead, waitNode, refused } from './lib/school-setup.mjs';
 
 const backend = createBackend();
 const ANA = { email: 'ana.reyes@deped.gov.ph', name: 'Ana Reyes' };
@@ -133,6 +134,38 @@ try {
   await ev(z, () => { gateCode.value = 'http://x'; gateJoin(); });
   check(/does not look like an invite link/.test(await ev(z, () => document.getElementById('gateCodeError').textContent)), 'other text: the usual message');
   check(await ev(z, () => /puts it at the start of the school name/.test(cloudErrorText(Object.assign(new Error('no-school-no'), { schoolNo: '999999' })))), 'unknown School ID: says how the custodian makes it work');
+
+  out('10 School Head: Sign out, then Continue with Google');
+  const JOHN = { email: 'john.guadalupe@deped.gov.ph', name: 'John Russell L. Guadalupe' };
+  const { page: h, uid: headUid } = await schoolHead(backend, a, sid);
+  const hDialogs = [];
+  await ev(h, () => leaveHead());
+  await until(h, () => document.documentElement.classList.contains('gated'), 'head signed out', 8000);
+  const h2 = await openPhone('head-new-phone', backend, { dialogs: hDialogs });
+  await h2.evaluateOnNewDocument(a => { window.__googleAccount = a; }, JOHN);
+  await h2.goto(BASE_URL, { waitUntil: 'networkidle0' });
+  await until(h2, () => document.documentElement.classList.contains('gated') && typeof gateGo === 'function', 'sign-in (head)', 8000);
+  await ev(h2, () => gateGo('head'));
+  await until(h2, () => !!document.getElementById('gateHeadGoogleBtn'), 'head step');
+  check(await ev(h2, () => /Already confirmed as School Head/.test(document.querySelector('[data-gate-return]').textContent)), 'the School Head step offers “Already confirmed as School Head?”');
+  await h2.click('#gateHeadGoogleBtn');
+  await until(h2, () => reqRole && reqRole.role === 'head' && !document.documentElement.classList.contains('gated'), 'head back in', 10000);
+  check(await ev(h2, (s, u) => reqRole.schoolId === s && cloud.user.uid === u && /San Jose/.test(reqRole.schoolName), sid, headUid), 'back as School Head of the same school, no link');
+  await until(h2, () => headMeLoaded && headMe && headMe.status === 'active', 'head card', 8000);
+  check(await ev(h2, () => headMe.status === 'active' && isHeadDevice()), 'still confirmed: For your approval opens');
+  await ev(h2, () => leaveHead());
+  await until(h2, () => document.documentElement.classList.contains('gated'), 'signed out again', 8000);
+  check(hDialogs.some(d => /confirm: .*To come back: tap School Head/.test(d)), 'Sign out says how to come back with Google');
+  check(await refused(z, () => cloud.sdk.getDocs(cloud.sdk.query(cloud.sdk.collection(cloud.db, 'schools'), cloud.sdk.where('headUid', '==', 'someone-else')))), 'nobody can look up another person’s schools by headUid');
+
+  out('11 a teacher’s Google account is not a School Head');
+  await toTeacherGate(z);
+  await ev(z, () => gateGo('head'));
+  await until(z, () => !!document.getElementById('gateHeadGoogleBtn'), 'head step (z)');
+  await z.click('#gateHeadGoogleBtn');
+  await until(z, () => !document.getElementById('gateHeadGoogleError').classList.contains('hidden'), 'not a head', 10000);
+  check(/not a confirmed School Head yet/.test(await ev(z, () => document.getElementById('gateHeadGoogleError').textContent)), 'explains: not confirmed yet, use the School Head link');
+  check(await ev(z, () => !reqRole), 'stays on the sign-in screen');
 } catch (e) {
   check(false, 'suite crashed: ' + (e && e.stack || e));
 } finally {
