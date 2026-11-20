@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="c2ea64038c09">
+  <meta name="app-version" content="a5400e1680f8">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -225,7 +225,6 @@
     @media (pointer: coarse) { .rv-arrows { display: none !important; } }
     @media screen and (min-width: 1024px) and (not (pointer: coarse)), screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1000px) and (min-height: 600px) {
       html:not(.no-tabs) body { padding-left: var(--side-w); padding-bottom: 2.5rem; }
-      #viewHead { max-width: 72rem; }
       #hdBody .hd-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
       #hdBody .hd-grid > * { margin-top: 0 !important; }
       #hdBody .hd-holders { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; align-items: start; }
@@ -251,12 +250,11 @@
       html:not(.no-tabs) #appToast { margin-left: calc(var(--side-w) / 2); }   /* centred over the content, not the sidebar */
       .cat-step-w { width: 7.25rem; }
       .lap-only.flex { display: flex; }
-      /* A teacher's account on a computer: the same tabs on a wider page. My Items: equipment and
+      /* A teacher's account on a computer: the same tabs on a wider page, sized like the School Head's. My Items: equipment and
          supplies on the left; the overview, slips to receive, the count and clearance on the right.
          Equipment rows keep Report a problem / Return on the right; supplies, school stock,
          requests and books are laid out in columns. */
-      #viewRequester { max-width: 80rem; padding-left: 1.5rem; padding-right: 1.5rem; }
-      #rqTabs { max-width: 36rem; }
+      #viewHead, #viewRequester { max-width: 72rem; }   /* same page width as the School Head's */
       #rqItemsPane .t-desk { display: grid; grid-template-columns: minmax(0, 1fr) 24rem; grid-template-areas: "main side" "main foot";
         grid-template-rows: auto 1fr; gap: 1.25rem 1.5rem; align-items: start; }
       #rqItemsPane .t-desk > * { margin-top: 0 !important; }
@@ -282,7 +280,6 @@
       #rqStockPane > .space-y-2:first-child > .relative { flex: 0 1 32rem; }
       #rqStockPane [data-req-cart] { max-width: 24rem; margin-left: auto; }
       #rqLibraryPane #libDeskBtn, #rqLibraryPane [data-bk-toack], #rqLibraryPane .flex:has(> .relative > #libSearch) { max-width: 40rem; }
-      @media (min-width: 1680px) { #viewRequester { max-width: 96rem; } #rqItemsPane .t-desk { grid-template-columns: minmax(0, 1fr) 28rem; } }
       /* Teachers: people on the left, the one picked on the right (like an inbox) */
       html:not(.no-tabs) #viewTeachers { max-width: 76rem; }
       @media (min-width: 1680px) {   /* large monitors: use the room (wider list, more cards in view) */

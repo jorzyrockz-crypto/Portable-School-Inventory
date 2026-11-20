@@ -1,4 +1,4 @@
-// A teacher's account on a computer (Nov 2026): the same tabs on a wider page. My Items puts
+// A teacher's account on a computer (Nov 2026): the same tabs on a wider page, sized like the School Head's. My Items puts
 // equipment and supplies on the left (Report a problem / Return on each item's row) and the
 // overview, slips to receive, the count and clearance on the right; Stock, Requests and Library
 // show their cards in columns. Phones keep one column in the same order as before.
@@ -44,8 +44,9 @@ try {
   await ev(t, () => setTeacherTab('items'));
   await sleep(300);
   const page = await box(t, '#viewRequester'), tabs = await box(t, '#rqTabs'), main = await box(t, '.t-main'), side = await box(t, '.t-side'), foot = await box(t, '.t-foot');
-  check(page.w > 1100, `wider page (${Math.round(page.w)} px)`);
-  check(tabs.w <= 600, `the tabs stay as they are (${Math.round(tabs.w)} px)`);
+  const head = await ev(t, () => { const v = document.getElementById('viewHead'), was = v.classList.contains('hidden'); v.classList.remove('hidden'); const w = v.getBoundingClientRect().width; if (was) v.classList.add('hidden'); return w; });
+  check(page.w > 1100 && Math.abs(page.w - head) < 1, `wider page, the same width as the School Head's (${Math.round(page.w)} px · head ${Math.round(head)} px)`);
+  check(tabs.w > page.w - 40, `the tabs go across the page, as on the School Head's (${Math.round(tabs.w)} px)`);
   check(main.r <= side.l && main.w > side.w * 1.8 && Math.abs(main.t - side.t) < 4, `equipment and supplies on the left (${Math.round(main.w)} px), the rest on the right (${Math.round(side.w)} px)`);
   check(foot.l >= side.l - 1 && foot.t >= side.b, 'Clearance under the right column');
   const inSide = await ev(t, () => ['#tOverview', '#tAckBox', '#tPrintMine'].every(s => document.querySelector('.t-side ' + s)) && !!document.querySelector('.t-main #tEquipList'));

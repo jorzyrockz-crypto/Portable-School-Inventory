@@ -740,7 +740,7 @@ Teachers create only their own reports and read only their own. Only the custodi
 
 ### On a computer
 
-On a computer or a tablet held sideways (1000 px and wider), the teacher's account uses a wider page, and the tabs stay the same. **My Items** has two columns. Equipment and supplies are on the left: each item is one row, with **Report a problem** and **Return** on the right, and RIS slips sit side by side. The totals, *Needs your attention*, slips to mark **Received**, the count, **Print my list** and **Clearance** are on the right. **Stock**, **Requests** and **Library** show their cards in columns. Phones and upright tablets look the same as before.
+On a computer or a tablet held sideways (1000 px and wider), the teacher's account uses a wider page, the same width as the School Head's (72rem), with the tabs across the top. **My Items** has two columns. Equipment and supplies are on the left: each item is one row, with **Report a problem** and **Return** on the right, and RIS slips sit side by side. The totals, *Needs your attention*, slips to mark **Received**, the count, **Print my list** and **Clearance** are on the right. **Stock**, **Requests** and **Library** show their cards in columns. Phones and upright tablets look the same as before.
 
 ## Released to teachers (overview)
 
