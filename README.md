@@ -283,7 +283,13 @@ Once a School Head is confirmed, more goes to their phone than PRs.
 - **Cards:** Purchase Requests approved this month / quarter / year (by approval date), delivered, waiting and the head's average time to decide (from the PRs and approvals the head already reads); condition of tagged units with the repair and unserviceable value (waiting for disposal, IIRUP); 12-month bars of supplies issued (RIS ₱) and property value (recorded at the start of each month, `valueTrend` in the school info); who uses the most supplies this month / this year (top items and people).
 - **Who holds what:** tap a name to see their units (property no., serial no., ICS / PAR, condition, lost) and **Print their list** for a clearance. Up to 2,500 units in all are carried in the summary.
 - **Print the monthly summary:** one page with the property figures, PRs approved this month, supplies issued, what needs attention and who holds the most.
-- **Laptop / landscape tablet:** two columns (attention, waiting and decisions on the left; the school's property on the right). Phones are unchanged.
+- **Tabs** (like a teacher's), so the School Head scrolls less, on phones and laptops alike:
+  - **Approve** (opens first, with the count waiting): Needs your attention, Waiting for you, Approve all. A custodian turnover waiting for their Confirm shows here too.
+  - **School:** the property tiles, condition, Purchase Requests approved, trends, who uses the most supplies, stock levels, request status, Books & Library and *Print the monthly summary*.
+  - **People:** who holds what, open, with a name search from 8 people (tap a name, print their list for a clearance) and the custodian turnover link.
+  - **History:** recently decided with its search, and School history.
+
+  A notification for the head opens Approve. On a laptop or landscape tablet each tab uses two columns (attention beside waiting; the School cards in two columns; people in two columns). Phones stay one column.
 - Everything comes from `dashboard/summary` (one document the custodian's devices keep current) and the PRs and approvals the head already reads, so it adds no reads. No rules change.
 - **Rules.** These items are kept in `approvals`. Only the confirmed head approves or returns one, and only while it is waiting. The custodian and assistants can send, send again or cancel, never decide. A teacher can't read them.
 
@@ -627,6 +633,33 @@ Each tagged unit's card (Property Numbers) has **Date acquired** and **Estimated
 - They fill the Date Acquired and Estimated Useful Life columns on the Property Card, RegSPI, PAR, ICS/ITR/PTR and IIRUP. A card's first line is the real receipt date instead of *Balance forward* when every unit has one.
 - **Depreciation** (PPE only, ₱50,000 and up): straight-line, 5 % residual value, charged monthly from the month after acquisition. The unit card shows the carrying amount, and the IIRUP fills *Accumulated Depreciation* and *Carrying Amount* with a total row. Semi-expendable property is expensed when issued, so it shows none.
 
+### Useful life tracking (since November 2026)
+
+Every tagged ICS / PAR unit gets an **end of useful life**: its date acquired plus its useful life. When there is no date acquired, the ICS / PAR date is used, or else the day the unit was added. When no useful life is written, the usual life for its category is used. Either fallback marks the unit *est.* Lost and unserviceable units are left out. Each unit is one of:
+- *Past* its useful life (still to check);
+- *Ending soon*, within 12 months;
+- *Checked*: past, but marked still serviceable in the last year;
+- *In use*;
+- *No dates*.
+
+- **Home → Useful life** card: past · ending within 12 months · the cost to replace them at the original cost, with a coloured bar. Home's *Needs your attention* also has a row. The card opens the **Useful life** sheet (also in More), which has:
+  - tiles that act as filters;
+  - *To replace in the next 12 months* (₱, for next year's PPMP / APP);
+  - search, and the filters *Due*, *Past*, *Ending soon*, *Checked*, *No dates* and *All*.
+- **Each unit** in the sheet has:
+  - **Still serviceable**: it stays in use and on its ICS / PAR, and the app asks again in a year;
+  - **Unserviceable**: marks it U so it goes on the IIRUP; the toast has an IIRUP button;
+  - **Dates**: opens the item's units to set the date acquired and useful life.
+
+  **Use the ICS / PAR date as the date acquired** fills the date for units that have none. **Print this list** gives *Property past or near the end of estimated useful life*, signed Prepared by / Noted.
+- **Once a month** the custodian gets a notification (*3 units past their useful life · 2 end this month · ₱… to replace*). Year-end & reminders has a Useful life section.
+- **Teachers.** On a teacher's phone, a unit past its useful life (going by the dates on the slip) shows **Past its useful life (ended Jan 2024). Is it still working?**
+  - **Working** sends a short report. The custodian's device marks the unit still serviceable, asks again in a year, and notifies the custodian (*Ana Reyes: still working*).
+  - **Not working** opens Report a problem with *Not working · beyond repair* picked.
+
+  My Items' *Needs your attention* lists them too, and so does the person's card on the custodian's Teachers page. The new report kind (`life`) needs the updated `firestore.rules` to be published.
+- **School Head**: the School tab has a *Useful life of tagged units* bar (past, ending within 12 months, still serviceable) with the replacement estimate. *Needs your attention* lists units past their useful life. These numbers come from `dashboard/summary` (`life`), so there are no extra reads.
+
 The inventory committee, COA representative, fund cluster and similar names are remembered for next year; *As at* is always today unless changed. The cards and the Stock Card start with *Balance forward* on the chosen date and are worked out backwards from today's quantity, so the last line always matches Inventory. Since November 2026 the change history also keeps how much each item changed in bulk saves (deliveries, imports, ICS scans), so those show up as receipts.
 
 ## A teacher's My Items
@@ -677,6 +710,8 @@ A person's page lists:
 In Inventory, an item's sheet lists who has its units (*Ana Reyes · 1 unit · ICS 2026-11-001*); tapping a name opens that person's page.
 
 **Finding people.** Filter chips narrow the list: *Has items*, *To confirm*, *Open reports*, *Not counted yet*, *No account* (typed names) and *Hasn't joined* (holds items but never opened the invite link). **Sort** by name, value, units or the oldest unconfirmed slip. A row shows *1 for repair · 1 unserviceable* when units need attention; tapping it opens the IIRUP.
+
+**Needs your attention** (since November 2026). A person's page starts with a *Needs attention* card when something is due for them: lost units with the days left to apply for relief, units asked back, the count not done yet, ICS / PAR older than 3 years, unserviceable units still with them (take back for the IIRUP), units in repair, overdue library books, and *removed but still holds items*. On a computer, with nobody picked, the right side lists **everyone** with something due (including slips not marked Received and open reports), most urgent first, three lines each; tap a name to open them. A *Needs your attention* row in the list brings it back, and it says *All clear* when nothing is due. Phones keep the list screen as it was; the card shows on each person's page.
 
 **Not confirmed yet.** A person's page says *ICS 2026-11-003 not confirmed for 12 days*. **Remind** puts a notification in the teacher's bell (*Reminder from the property custodian*).
 
@@ -842,7 +877,9 @@ node teacher-return.mjs               # Continue with Google on the Teacher and 
 node custodian-login.mjs              # custodian sign-in: school found by account (not name), new school set up once by 6-digit School ID, ID already set up refused with a masked account hint, Use a different account, last account on this phone, no reuse of a Google account left signed in
 node teacher-remove.mjs             # Remove from the school / Add back with the teacher's page open (laptop and phone): page, list and Removed list change at once, no refresh; the teacher's phone follows
 node release-serials.mjs            # Release form: Useful life per equipment line (saved on units, the release and the ICS), serial numbers required for items that have them (missing, typed twice, already on another unit), Has serial numbers untick remembered per item
-node head-dashboard.mjs             # School Head screen: Needs your attention, Waiting N days + reminder, Approve all, search decisions, spending, condition, trends, supply usage, who holds what (tap, print), monthly summary print, two columns on a laptop
+node head-dashboard.mjs             # School Head screen: Needs your attention, Waiting N days + reminder, Approve all, search decisions, spending, condition, trends, supply usage, who holds what (tap, print), monthly summary print, tabs (Approve · School · People · History), two columns inside each tab on a laptop
+node teachers-attention.mjs         # Teachers page: Needs your attention for everyone on a computer (lost + relief days, unconfirmed, asked back, old ICS, unserviceable), each person's card, the list row, All clear, phone width
+node useful-life.mjs                # useful life: end dates (date acquired / ICS date, est.), Home card + attention row, the sheet (Still serviceable, Unserviceable, Dates, Use the ICS date, Print), monthly notification, teacher Working / Not working, Teachers page, School Head
 node teacher-dashboard.mjs          # teacher's My Items: tiles, Needs your attention (slips, asked back, reports, repair, old slips, overdue books), Clearance: Return everything, then nothing under their name
 node home-attention.mjs             # custodian Home: Needs your attention (lost + relief days, waiting requests/reports, unconfirmed slips, ICS renewal, bond, repairs, stock), Show all, taps, hidden for teachers
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)

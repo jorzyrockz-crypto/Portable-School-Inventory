@@ -285,7 +285,7 @@ export function createBackend({ autoApprove = true } = {}) {
       if (kind === 'create') {
         if (!isMember(ctx, sid)) deny('teacher report create: not an approved member', { path });
         const keys = ['uid', 'name', 'kind', 'releaseId', 'releaseNo', 'code', 'desc', 'units', 'reason', 'note', 'status', 'createdMs', 'createdAt'];
-        const ok = school(sid) && Object.keys(data).every(k => keys.includes(k)) && data.uid === ctx.uid && ['received', 'problem', 'return', 'count'].includes(data.kind) &&
+        const ok = school(sid) && Object.keys(data).every(k => keys.includes(k)) && data.uid === ctx.uid && ['received', 'problem', 'return', 'count', 'life'].includes(data.kind) &&
           data.status === 'open' && str(data.name, 80) && str(data.desc, 160) && str(data.note, 300) && Array.isArray(data.units) && data.units.length <= 50;
         if (!ok) deny('teacher report create', { path, data });
         return;

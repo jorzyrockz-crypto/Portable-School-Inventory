@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="ccac80fc227e">
+  <meta name="app-version" content="d19c7bdb3897">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -201,8 +201,10 @@
     @media screen and (min-width: 1024px) and (not (pointer: coarse)), screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1000px) and (min-height: 600px) {
       html:not(.no-tabs) body { padding-left: var(--side-w); padding-bottom: 2.5rem; }
       #viewHead { max-width: 72rem; }
-      #hdBody.hd-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 1.25rem; align-items: start; }
-      #hdBody.hd-two > * { margin-top: 0 !important; }
+      #hdBody .hd-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+      #hdBody .hd-grid > * { margin-top: 0 !important; }
+      #hdBody .hd-holders { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; align-items: start; }
+      #hdBody .hd-holders > * { margin-top: 0 !important; }
       html:not(.no-tabs) body > header { margin-left: calc(-1 * var(--side-w)); }
       html body > header > div.max-w-4xl { max-width: none; padding-left: 1.5rem; padding-right: 1.5rem; }
       #tabBar { top: var(--hdr-h, 3.75rem); bottom: 0; right: auto; width: var(--side-w); padding: 1rem 0.75rem; overflow-y: auto;
@@ -248,6 +250,7 @@
       html:not(.no-tabs) #tvDetailPane .rv-track { margin-inline: 0; padding-inline: 0; scroll-padding-inline: 0; }
       html:not(.no-tabs) #tvDetailPane .rv-track > .rv-card:only-child { flex-basis: min(100%, 28rem); flex-grow: 0; }
       html:not(.no-tabs) #tvChips { flex-wrap: wrap; margin-inline: 0; padding-inline: 0; overflow: visible; }
+      #tvDetailPane .tv-board { grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
       /* Government forms open as a page beside the sidebar instead of a pop-up. The page itself
          scrolls (no box scrolling inside the card), and a form's Back / Print bar sticks to the bottom. */
       html:not(.no-tabs) #coaModal.coa-page { left: var(--side-w); top: var(--hdr-h, 3.75rem); z-index: 30; padding: 1rem 1.5rem 0;
@@ -745,6 +748,19 @@
           <i class="ph-bold ph-package"></i> Stock in
         </button>
       </div>
+      <!-- Useful life of ICS / PAR property: past, ending within 12 months, to replace -->
+      <button id="homeLifeCard" type="button" onclick="openLifeSheet()" class="hidden w-full rounded-2xl bg-white border border-slate-200/90 shadow-sm p-3 items-center gap-3 text-left hover:bg-slate-50">
+        <span class="relative w-11 h-11 shrink-0 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center">
+          <i class="ph-bold ph-hourglass-medium text-2xl"></i>
+          <span id="homeLifeBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-rose-500 text-white text-[11px] font-extrabold items-center justify-center">0</span>
+        </span>
+        <span class="min-w-0 flex-1">
+          <span class="block text-sm font-extrabold text-slate-800">Useful life</span>
+          <span id="homeLifeSub" class="block text-[11px] text-slate-500 truncate">ICS / PAR property</span>
+          <span id="homeLifeBar" class="mt-1.5 h-1.5 rounded-full bg-slate-100 overflow-hidden flex"></span>
+        </span>
+        <i class="ph-bold ph-caret-right text-slate-400"></i>
+      </button>
       <!-- Teachers: equipment reports and people asking to join (shown only when there is something) -->
       <button id="homeTeachCard" onclick="openTeachersView(null)" class="hidden w-full rounded-2xl bg-white border border-rose-200 shadow-sm p-3 items-center gap-3 text-left hover:bg-rose-50/40">
         <span class="w-11 h-11 shrink-0 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center"><i class="ph-bold ph-chalkboard-teacher text-2xl"></i></span>
@@ -1283,10 +1299,16 @@
     <div class="flex items-start gap-3">
       <div class="min-w-0 flex-1">
         <p id="hdHello" class="text-sm text-slate-500"></p>
-        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">For your approval</h1>
+        <h1 id="hdTitle" class="text-2xl font-extrabold text-slate-900 tracking-tight">For your approval</h1>
         <p id="hdSchool" class="text-xs text-slate-500"></p>
       </div>
       <span id="hdAvatar" class="hidden shrink-0 mt-1 rounded-full ring-2 ring-white shadow-sm"></span>
+    </div>
+    <div id="hdTabs" role="tablist" aria-label="To approve, school property, people or history" class="hidden grid-cols-4 gap-1 p-1 rounded-2xl bg-slate-200/70">
+      <button id="hdTab-approve" role="tab" onclick="setHeadTab('approve')"><i class="ph-bold ph-seal-check text-base hidden min-[400px]:inline"></i> Approve <span id="hdApproveCount" class="hidden"></span></button>
+      <button id="hdTab-school" role="tab" onclick="setHeadTab('school')"><i class="ph-bold ph-buildings text-base hidden min-[400px]:inline"></i> School</button>
+      <button id="hdTab-people" role="tab" onclick="setHeadTab('people')"><i class="ph-bold ph-users-three text-base hidden min-[400px]:inline"></i> People</button>
+      <button id="hdTab-history" role="tab" onclick="setHeadTab('history')"><i class="ph-bold ph-clock-counter-clockwise text-base hidden min-[400px]:inline"></i> History</button>
     </div>
     <p id="hdSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
     <div id="hdBody" class="space-y-5"></div>
@@ -1497,6 +1519,7 @@
           <button onclick="closeMoreMenu(); openSchoolModal()" class="more-item"><i class="ph-bold ph-buildings text-brand-600"></i> School &amp; custodian info</button>
           <button id="moreTurnoverItem" onclick="closeMoreMenu(); openTurnover()" class="more-item"><i class="ph-bold ph-handshake text-brand-600"></i> Custodian turnover</button>
           <button id="moreYearEndItem" onclick="closeMoreMenu(); openYearEnd()" class="more-item"><i class="ph-bold ph-calendar-check text-brand-600"></i> Year-end &amp; reminders</button>
+          <button id="moreLifeItem" onclick="openLifeSheet()" class="more-item"><i class="ph-bold ph-hourglass-medium text-violet-600"></i> Useful life <span class="ml-auto text-[11px] font-bold text-slate-500">ICS · PAR</span></button>
           <button onclick="closeMoreMenu(); exportBackupJSON()" class="more-item"><i class="ph-bold ph-floppy-disk text-emerald-600"></i> Back up now</button>
           <button onclick="closeMoreMenu(); document.getElementById('restoreFileInput').click()" class="more-item"><i class="ph-bold ph-upload-simple text-amber-600"></i> Restore a backup</button>
           <button onclick="closeMoreMenu(); openHistory()" class="more-item"><i class="ph-bold ph-list-magnifying-glass text-brand-600"></i> Change history</button>
@@ -1921,6 +1944,21 @@
         <button onclick="closeYearEnd()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
       <div id="yeBody" class="space-y-3"></div>
+    </div>
+  </div>
+  <div id="lifeModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeLifeSheet()">
+    <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-3 safe-pad max-h-[94vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center"><i class="ph-bold ph-hourglass-medium text-xl"></i></span>
+          <div class="min-w-0">
+            <h3 class="font-extrabold text-base text-slate-900 leading-tight">Useful life</h3>
+            <p class="text-xs font-semibold text-slate-500">ICS / PAR property · past and ending soon</p>
+          </div>
+        </div>
+        <button onclick="closeLifeSheet()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="lifeBody" class="space-y-3"></div>
     </div>
   </div>
 
@@ -9159,6 +9197,10 @@
       const renew = icsRenewDue(now);
       if (renew.length) add('amber', 'ph-arrows-clockwise', `${plural(renew.length, 'unit')} on an ICS / PAR older than ${ICS_RENEW_YEARS} years`,
         `${plural(new Set(renew.map(x => personId(x.unit.toUid, x.unit.to))).size, 'person')} · renew them in Year-end & reminders`, 'renew', 'openYearEnd()');
+      const ls = lifeStats(lifeUnits(now));
+      if (ls.past.length || ls.soon.length) add(ls.past.length ? 'amber' : 'slate', 'ph-hourglass-medium',
+        ls.past.length ? `${plural(ls.past.length, 'unit')} past ${itsTheir(ls.past.length)} useful life · still serviceable?` : `${plural(ls.soon.length, 'unit')} reach the end of ${itsTheir(ls.soon.length)} useful life within ${LIFE_WARN_MONTHS} months`,
+        [ls.past.length && ls.soon.length && `${ls.soon.length} more within ${LIFE_WARN_MONTHS} months`, ls.cost && `₱${peso2(ls.cost)} to replace`].filter(Boolean).join(' · '), 'life', 'openLifeSheet()');
       [['bondUntil', 'Your fidelity bond'], ['desigUntil', 'Your designation order']].forEach(([k, label]) => {
         const iso = schoolInfo[k];
         if (!iso || isAssistant()) return;
@@ -9185,6 +9227,7 @@
     function renderHomeAttention() {
       const box = document.getElementById('homeAttention');
       if (!box) return;
+      try { renderHomeLife(); } catch (e) { console.warn('useful life', e); }
       try { renderHomeAttentionNow(box); homeAttRetry = 0; }
       catch (e) { if (homeAttRetry++ < 3) setTimeout(renderHomeAttention, 800); } // early in start-up, before everything is ready
     }
@@ -11267,6 +11310,7 @@
       setInvStatus(metas.some(m => m.pending) ? 'saving' : fromCache ? (navigator.onLine ? 'syncing' : 'offline') : 'synced');
       linkTypedNamesToTeachers();
       applyCountReports();
+      applyLifeReports();
       applyTakeover();
       tidySchoolDoc();
     }
@@ -15325,6 +15369,7 @@
         renew: { u: renew.length, p: new Set(renew.map(x => personId(x.unit.toUid, x.unit.to))).size },
         unconf: { s: unconf.reduce((n, p) => n + p.toConfirm.length, 0), p: unconf.length, since: since === Infinity ? 0 : since },
         trend: dashTrend(), use: dashUse(),
+        life: (ls => ({ p: ls.past.length, s: ls.soon.length, k: ls.checked.length, t: ls.total, c: ls.cost }))(lifeStats()),
         ...(bkDashSummary() ? { books: bkDashSummary() } : {})
       };
     }
@@ -15446,6 +15491,8 @@
         } else if (c && !c.open && c.start > now && c.start - now <= 14 * DAY_MS) {
           add('slate', 'ph-calendar', `${c.label} starts ${formatShortDate(c.start)}`, `As at ${formatShortDate(c.asAt + 'T00:00:00')}`, 'count');
         }
+        if (d.life && d.life.p) add('slate', 'ph-hourglass-medium', `${plural(d.life.p, 'unit')} past ${itsTheir(d.life.p)} useful life`,
+          `${d.life.s ? `${d.life.s} more end within ${LIFE_WARN_MONTHS} months · ` : ''}${d.life.c ? `₱${peso2(d.life.c)} to replace · ` : ''}the property custodian checks if they are still serviceable`, 'life');
         if (d.renew && d.renew.u) add('amber', 'ph-arrows-clockwise', `${plural(d.renew.u, 'unit')} on an ICS / PAR older than 3 years`,
           `${plural(d.renew.p, 'person')} · the property custodian renews them in Year-end & reminders`, 'renew');
         if (d.unconf && d.unconf.s) add('amber', 'ph-hand-arrow-down', `${plural(d.unconf.s, 'slip')} not yet marked Received`,
@@ -15584,14 +15631,15 @@
     }
     function setHeadUse(yr) { headUseYr = !!yr; renderHeadView(); }
 
-    function headHoldersHTML(d) {
+    function headHoldersHTML(d, open = false) {
       const holders = d.holders || [];
       return `
-          <details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-dash-holders>
+          <details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-dash-holders ${open ? 'open' : ''}>
             <summary class="text-xs font-bold text-slate-800 cursor-pointer">Who holds what · ${plural(d.nHolders || 0, 'person')}</summary>
             ${holders.length ? `<p class="text-[11px] text-slate-500 mt-1">Tap a name to see their items, for clearances.</p>
-            <div class="mt-1.5 space-y-1.5">${holders.map((x, i) => `
-              <details class="rounded-xl border border-slate-200 px-2.5 py-1.5" data-dash-holder="${i}">
+            ${holders.length >= 8 ? `<div class="relative mt-2"><i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i><input id="hdPeopleSearch" type="search" oninput="filterHeadPeople(this.value)" placeholder="Find a name" aria-label="Find a name" autocomplete="off" class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm font-medium focus:border-violet-500 outline-none"></div>` : ''}
+            <div class="mt-1.5 space-y-1.5 hd-holders">${holders.map((x, i) => `
+              <details class="rounded-xl border border-slate-200 px-2.5 py-1.5" data-dash-holder="${i}" data-name="${escapeHTML(String(x.n || '').toLowerCase())}">
                 <summary class="flex justify-between gap-3 text-xs cursor-pointer"><span class="min-w-0 font-semibold text-slate-800">${escapeHTML(x.n)}${x.p ? ` <span class="font-normal text-slate-500">· ${escapeHTML(x.p)}</span>` : ''}</span><span class="shrink-0 font-mono text-slate-600">${plural(x.u, 'unit')} · ₱${peso2(x.v)}</span></summary>
                 ${x.e ? `<ul class="mt-1.5 divide-y divide-slate-100 text-[11px]">${x.e.map(u => `
                   <li class="py-1.5">
@@ -15625,16 +15673,20 @@
             ${tile((d.nLow || 0) + (d.nOut || 0), 'Low / out', (d.nLow || d.nOut) ? 'text-amber-600' : 'text-slate-900')}
             ${tile(`${d.held || 0}/${d.units || 0}`, 'Units with staff')}
           </div>
+          <div class="hd-grid space-y-2.5">
+          <div class="space-y-2.5">
           ${headHealthHTML(d)}
+          ${headLifeHTML(d)}
           ${spend}
           ${headTrendHTML(d)}
+          </div>
+          <div class="space-y-2.5">
           ${headUseHTML(d)}
           <details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-dash-stock>
             <summary class="text-xs font-bold text-slate-800 cursor-pointer">Stock levels · ${d.nLow || 0} low, ${d.nOut || 0} out</summary>
             ${list([...(d.out || []).map(x => li(escapeHTML(x.n), '<span class="text-rose-600 font-bold">Out</span>')), ...(d.low || []).map(x => li(escapeHTML(x.n), `${x.q} ${escapeHTML(x.u)}`))], 'All supplies above their alert levels.')}
             ${more((d.nLow || 0) + (d.nOut || 0), (d.low || []).length + (d.out || []).length)}
           </details>
-          ${headHoldersHTML(d)}
           <div class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5 text-xs text-slate-700 space-y-1" data-dash-status>
             <p class="flex justify-between"><span>Supply requests waiting for the custodian</span><b class="font-mono">${r.pending || 0}</b></p>
             <p class="flex justify-between"><span>Approved, not yet released</span><b class="font-mono">${r.approved || 0}</b></p>
@@ -15649,9 +15701,30 @@
             <p class="flex justify-between"><span>Lost this school year · unserviceable</span><b class="font-mono">${d.books.l || 0} · ${d.books.u || 0}</b></p>
             ${d.books.r != null ? `<p class="flex justify-between" data-dash-books-ratio><span>Learners with their textbooks (class sheets)</span><b class="font-mono ${d.books.r < 90 ? 'text-amber-700' : ''}">${d.books.r}%</b></p>` : ''}
           </div>` : ''}
+          </div>
+          </div>
           <button onclick="headPrintMonth()" data-head-print-month class="w-full h-11 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print the monthly summary</button>
           <p class="text-[11px] text-slate-500 px-1">As of ${escapeHTML(iarStamp(d.updatedMs))}${d.by ? ` · ${escapeHTML(d.by)}` : ''}</p>
         </div>`;
+    }
+
+    // People: who holds what (open), each name a tap away for clearances, and the custodian turnover.
+    // A turnover waiting for the head's Confirm shows under Approve instead.
+    const headTurnWaiting = () => canHandOver() && turnPending().length > 0;
+    function headPeopleHTML() {
+      const turn = headTurnWaiting() ? '' : headTurnoverHTML();
+      const d = dashLoaded ? dashDoc : null;
+      const holders = d ? `
+        <div class="space-y-2.5" data-head-dash data-head-people>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Accountable people · ${plural(d.nHolders || 0, 'person')} · ${d.held || 0} of ${plural(d.units || 0, 'unit')} with staff</h2>
+          ${headHoldersHTML(d, true)}
+        </div>` : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600" data-head-people="none"><p class="font-bold text-slate-800 text-sm flex items-center gap-1.5"><i class="ph-bold ph-users-three"></i> Who holds what</p><p class="mt-1">${dashLoaded ? 'It shows up here the next time the property custodian’s phone is online.' : 'Loading…'}</p></div>`;
+      return `${holders}${turn}`;
+    }
+    function filterHeadPeople(q) {
+      const t = String(q || '').trim().toLowerCase();
+      headPeopleQ = String(q || '');
+      document.querySelectorAll('#hdBody [data-dash-holder]').forEach(el => { el.classList.toggle('hidden', !!t && !el.dataset.name.includes(t)); });
     }
 
     // Recently decided, with search over everything the head decided.
@@ -15954,6 +16027,10 @@
           ${yeRenewDone ? `<button onclick="printYeRenewed()" class="w-full h-10 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print the ${plural(yeRenewDone.docs.length, 'new slip')}</button>` : ''}
           <button onclick="renewOldSlips()" ${ro || !cloud.user ? 'disabled' : ''} class="w-full h-10 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white text-xs font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrows-clockwise"></i> Renew these slips</button>`
         : `${yeRenewDone ? `<button onclick="printYeRenewed()" class="w-full h-10 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print the ${plural(yeRenewDone.docs.length, 'new slip')}</button>` : ''}<p class="text-[11px] text-slate-500">None. Slips are renewed every ${ICS_RENEW_YEARS} years, or when the property custodian changes.</p>`, 'data-ye-section="renew"');
+      const ls = lifeStats(lifeUnits(now));
+      html += sec('ph-hourglass-medium', `Useful life · ${ls.past.length} past · ${ls.soon.length} within ${LIFE_WARN_MONTHS} months`, `
+          <p class="text-xs text-slate-600" data-ye-life="${ls.past.length}/${ls.soon.length}">${ls.past.length || ls.soon.length ? `₱${peso2(ls.cost)} to replace at the original cost · for next year’s PPMP / APP.` : 'Nothing past or ending soon.'}</p>
+          <button onclick="closeYearEnd(); openLifeSheet('due')" class="w-full h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-hourglass-medium"></i> Open Useful life</button>`, 'data-ye-section="life"');
       const needPar = unitsNeedingPar();
       if (needPar.length) html += sec('ph-file-text', `₱50,000 or more on an ICS · ${needPar.length}`, `
           <p class="text-xs text-slate-600" data-ye-par="${needPar.length}">COA: equipment of ₱50,000 or more goes on a PAR, not an ICS. ${escapeHTML(listJoin(needPar.slice(0, 4).map(x => `${x.unit.no || x.item.name} (${unitHolder(x.unit) || '?'})`)))}${needPar.length > 4 ? ' …' : ''}.</p>
@@ -16047,6 +16124,15 @@
         st.seen['ir:' + month] = old.length;
         saveNotifs();
         addNotif({ title: `${plural(old.length, 'unit')} on slips older than ${ICS_RENEW_YEARS} years`, body: 'Renew the ICS / PAR in More → Year-end & reminders', icon: 'ph-arrows-clockwise', tone: 'amber', go: 'yearend' });
+      }
+      const ls = lifeStats(lifeUnits(now));
+      if ((ls.past.length || ls.soon.length) && st.seen['ul:' + month] === undefined) {
+        st.seen['ul:' + month] = ls.past.length + ls.soon.length;
+        saveNotifs();
+        const thisMonth = ls.soon.filter(x => String(x.li.end).slice(0, 7) === month).length;
+        addNotif({ title: ls.past.length ? `${plural(ls.past.length, 'unit')} past ${itsTheir(ls.past.length)} useful life` : `${plural(ls.soon.length, 'unit')} reach ${itsTheir(ls.soon.length)} useful life within ${LIFE_WARN_MONTHS} months`,
+          body: [thisMonth && `${thisMonth} ${thisMonth === 1 ? 'ends' : 'end'} this month`, ls.past.length && ls.soon.length && `${ls.soon.length} more within ${LIFE_WARN_MONTHS} months`, ls.cost && `₱${peso2(ls.cost)} to replace`, ls.past.length ? 'check if still serviceable' : 'plan replacements'].filter(Boolean).join(' · '),
+          icon: 'ph-hourglass-medium', tone: 'amber', go: 'life' });
       }
       const par = unitsNeedingPar();
       if (par.length && st.seen['np:' + month] === undefined) {
@@ -16360,7 +16446,7 @@
           <i class="ph-bold ${icon} text-2xl"></i>
           <div class="min-w-0"><p class="text-sm font-extrabold">${title}</p><p class="text-xs mt-0.5">${text}</p></div>
         </div>`;
-      let html, two = false;
+      let html, two = false, nTab = 0;
       if (!u || !headMeLoaded) html = note('ph-circle-notch animate-spin', 'bg-slate-50 border border-slate-200 text-slate-700', 'Connecting…', 'Getting the Purchase Requests of your school.');
       else if (!headMe) html = note('ph-question', 'bg-amber-50 border border-amber-200 text-amber-900', 'This Google account has not joined', `Open the School Head link from the property custodian of ${escapeHTML(reqRole.schoolName)} again, and sign in with the account you used.`);
       else if (headMe.status === 'removed') html = note('ph-prohibit', 'bg-rose-50 border border-rose-200 text-rose-900', 'Your School Head access was removed', 'The property custodian removed it. Ask them if this is a mistake.');
@@ -16375,7 +16461,11 @@
         const nRoutine = routine.prs.length + routine.ris.length;
         const decided = headDecided(u);
         two = true;
+        const turnWait = headTurnWaiting();
+        nTab = nWait + (turnWait ? turnPending().length : 0);
         const left = `
+          ${turnWait ? headTurnoverHTML() : ''}
+          <div class="hd-grid space-y-5">
           ${headAttentionHTML(headAttention(dashLoaded ? dashDoc : null, headWaitList()))}
           <div class="space-y-2.5">
             <div class="flex items-center justify-between gap-2 px-1">
@@ -16389,6 +16479,8 @@
                 <p>Purchase Requests, write-offs and count reports from the property custodian show up here.</p>
               </div>`}
           </div>
+          </div>`;
+        const history = `
           ${decided.all ? `
           <div class="space-y-2.5" data-head-decided>
             <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Recently decided</h2>
@@ -16397,23 +16489,57 @@
               <input id="hdSearch" type="search" value="${escapeHTML(headSearch)}" oninput="setHeadSearch(this.value)" placeholder="Search PR no., item, purpose or note" autocomplete="off" class="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-brand-500 outline-none">
             </div>
             <div id="hdDecided" class="space-y-2.5">${decided.html}</div>
-          </div>` : ''}`;
-        const right = `${headDashHTML()}${headTurnoverHTML()}
+          </div>` : `
+          <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500" data-head-decided="none">
+            <i class="ph-bold ph-clock-counter-clockwise text-3xl text-slate-300"></i>
+            <p class="mt-1 font-bold text-slate-700 text-sm">No decisions yet</p>
+            <p>What you approve or return shows here, with a search.</p>
+          </div>`}
           <button onclick="openSchoolHistory()" data-head-history class="w-full rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-center gap-3 text-left hover:border-brand-300">
             <span class="w-10 h-10 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="ph-bold ph-lock-key text-xl"></i></span>
             <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">School history</span><span class="block text-[11px] text-slate-500">Every change on the custodian’s devices · can’t be edited or deleted</span></span>
             <i class="ph-bold ph-caret-right text-slate-400"></i>
           </button>`;
-        html = `<div class="hd-col space-y-5">${left}</div><div class="hd-col space-y-5">${right}</div>`;
+        const pane = (k, inner) => `<div data-hd-pane="${k}" class="space-y-5 ${headTab === k ? '' : 'hidden'}">${inner}</div>`;
+        html = pane('approve', left) + pane('school', headDashHTML()) + pane('people', headPeopleHTML()) + pane('history', history);
       }
+      renderHeadTabs(two, nTab);
       const body = document.getElementById('hdBody');
-      body.classList.toggle('hd-two', two);
       if (body.innerHTML !== html) {
-        const active = document.activeElement && document.activeElement.id === 'hdSearch' ? document.activeElement.selectionStart : null;
+        const focus = document.activeElement && ['hdSearch', 'hdPeopleSearch'].includes(document.activeElement.id) ? [document.activeElement.id, document.activeElement.selectionStart] : null;
         body.innerHTML = html;
         drawTurnQr();
-        if (active != null) { const box = document.getElementById('hdSearch'); if (box) { box.focus(); try { box.setSelectionRange(active, active); } catch (e) {} } }
+        if (headPeopleQ) { const box = document.getElementById('hdPeopleSearch'); if (box) box.value = headPeopleQ; filterHeadPeople(headPeopleQ); }
+        if (focus) { const box = document.getElementById(focus[0]); if (box) { box.focus(); try { box.setSelectionRange(focus[1], focus[1]); } catch (e) {} } }
       }
+    }
+    // Tabs like a teacher's: Approve (with the count waiting) · School · People · History.
+    var headTab = 'approve';
+    var headPeopleQ = '';
+    var HEAD_TITLES = { approve: 'For your approval', school: 'School property', people: 'Who holds what', history: 'Your decisions' };
+    function setHeadTab(t) {
+      if (!HEAD_TITLES[t]) return;
+      headTab = t;
+      document.querySelectorAll('#hdBody [data-hd-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.hdPane !== t));
+      renderHeadTabs(!!document.querySelector('#hdBody [data-hd-pane]'));
+      window.scrollTo({ top: 0 });
+    }
+    function renderHeadTabs(on, n) {
+      const bar = document.getElementById('hdTabs');
+      if (!bar) return;
+      bar.classList.toggle('hidden', !on);
+      bar.classList.toggle('grid', !!on);
+      document.getElementById('hdTitle').textContent = on ? HEAD_TITLES[headTab] : HEAD_TITLES.approve;
+      Object.keys(HEAD_TITLES).forEach(t => {
+        const b = document.getElementById(`hdTab-${t}`);
+        const sel = t === headTab;
+        b.className = `h-11 rounded-xl text-[13px] sm:text-sm font-extrabold flex items-center justify-center gap-1 sm:gap-1.5 transition ${sel ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5 seg-on' : 'text-slate-500 hover:text-slate-800'}`;
+        b.setAttribute('aria-selected', sel ? 'true' : 'false');
+      });
+      if (n === undefined) return;
+      const c = document.getElementById('hdApproveCount');
+      c.textContent = n || '';
+      c.className = n ? 'min-w-5 h-5 px-1.5 rounded-full bg-violet-600 text-white text-[11px] font-bold inline-flex items-center justify-center' : 'hidden';
     }
     function headPrCardHTML(pr, wait) {
       const a = prApproval(pr) || {};
@@ -16805,6 +16931,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         tReports = sampleList('reports', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id })));
         if (!(snap.metadata && snap.metadata.fromCache)) tRepLoaded = true;
         applyCountReports();
+      applyLifeReports();
         renderRequestsEverywhere();
         notifFromReports(snap.metadata);
         notifReminders();
@@ -17397,6 +17524,322 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       return { cost, acc, carrying: Math.round((cost - acc) * 100) / 100, months, life, est: life.est };
     }
 
+    // ---- Useful life of ICS / PAR property: tracking and reminders (Nov 2026) ----------------
+    // End of useful life = start + useful life. Start: the date acquired; else the ICS / PAR date;
+    // else the day the unit was added to the app (both marked est.). Useful life: as written on
+    // the unit, else the usual life for the category (est.). Ending soon = within LIFE_WARN_MONTHS.
+    // Past its useful life is not disposal: a working unit stays in use and on its ICS / PAR.
+    // "Still serviceable" (unit.lifeOk = when, lifeBy = who) hides it for LIFE_RECHECK_DAYS; a
+    // teacher's "Still working" on their phone does the same (applied on the custodian's device).
+    // Unserviceable and lost units are left out (they have the IIRUP and relief).
+    var LIFE_WARN_MONTHS = 12, LIFE_RECHECK_DAYS = 365;
+    var lifeView = { f: 'due', q: '', all: false };
+    function isoAddMonths(iso, months) {
+      const [y, m, d] = String(iso).split('-').map(Number);
+      const t = new Date(y, (m || 1) - 1 + months, 1);
+      const last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate();
+      t.setDate(Math.min(d || 1, last));
+      return localISODate(t);
+    }
+    function lifeInfo(item, u, now = Date.now(), okAtExtra = 0) {
+      const life = unitLife(item, u);
+      let start = (u && u.acq) || '', from = 'acq';
+      if (!start && u && (u.icsDate || u.docDate)) { start = u.icsDate || u.docDate; from = 'ics'; }
+      if (!start && u && u.added) { start = localISODate(new Date(u.added)); from = 'added'; }
+      if (!start || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return { status: 'nodate', life, from: '', est: true, days: Infinity, start: '', end: '', okAt: 0 };
+      const end = isoAddMonths(start, Math.max(1, Math.round(life.years * 12)));
+      const today = localISODate(new Date(now));
+      const days = Math.round((isoMs(end) - isoMs(today)) / DAY_MS);
+      const okAt = Math.max((u && u.lifeOk) || 0, okAtExtra || 0);
+      const checked = okAt && now - okAt < LIFE_RECHECK_DAYS * DAY_MS;
+      const status = days < 0 ? (checked ? 'checked' : 'past') : end <= isoAddMonths(today, LIFE_WARN_MONTHS) ? 'soon' : 'ok';
+      return { status, start, end, days, life, from, est: life.est || from !== 'acq', okAt: okAt || 0 };
+    }
+    function lifeMonth(iso) { return iso ? new Date(iso + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', year: 'numeric' }) : ''; }
+    function lifeSpan(days) {
+      const d = Math.abs(days);
+      if (d < 45) return plural(Math.max(1, d), 'day');
+      const m = Math.round(d / 30.44);
+      if (m < 24) return plural(m, 'month');
+      return `${plural(Math.floor(m / 12), 'year')}${m % 12 ? ` ${plural(m % 12, 'month')}` : ''}`;
+    }
+    function lifeWhen(li) {
+      if (li.status === 'nodate') return 'No date acquired or ICS / PAR date';
+      return li.days < 0 ? `Ended ${lifeMonth(li.end)} · ${lifeSpan(li.days)} ago` : li.days === 0 ? `Ends today` : `Ends ${lifeMonth(li.end)} · in ${lifeSpan(li.days)}`;
+    }
+    function lifeCost(x) { return x.unit.cost > 0 ? x.unit.cost : Number(x.item.price) || 0; }
+    function lifeUnits(now = Date.now()) {
+      return allTaggedUnits().filter(x => !x.unit.lostMs && x.unit.cond !== 'U').map(x => ({ ...x, li: lifeInfo(x.item, x.unit, now) }));
+    }
+    function lifeStats(list = lifeUnits()) {
+      const by = s => list.filter(x => x.li.status === s).sort((a, b) => String(a.li.end).localeCompare(String(b.li.end)));
+      const past = by('past'), soon = by('soon');
+      return { list, past, soon, checked: by('checked'), ok: by('ok'), nodate: by('nodate'), total: list.length,
+        est: list.filter(x => x.li.est).length, cost: round2([...past, ...soon].reduce((n, x) => n + lifeCost(x), 0)) };
+    }
+    function itsTheir(n) { return n === 1 ? 'its' : 'their'; }
+
+    // Home: the Useful life card
+    function renderHomeLife() {
+      const card = document.getElementById('homeLifeCard');
+      if (!card) return;
+      const st = lifeStats();
+      const show = st.total > 0;
+      card.classList.toggle('hidden', !show);
+      card.classList.toggle('flex', show);
+      if (!show) return;
+      const P = st.past.length, S = st.soon.length;
+      card.dataset.life = `${P}/${S}`;
+      document.getElementById('homeLifeSub').textContent = P || S
+        ? [P && `${P} past`, S && `${S} ending within ${LIFE_WARN_MONTHS} months`, st.cost && `${pesoShort(st.cost)} to replace`].filter(Boolean).join(' · ')
+        : `All ${plural(st.total, 'unit')} within ${itsTheir(st.total)} useful life`;
+      const badge = document.getElementById('homeLifeBadge');
+      badge.textContent = P;
+      badge.classList.toggle('hidden', !P);
+      badge.classList.toggle('flex', !!P);
+      const w = n => `${(n / st.total * 100).toFixed(1)}%`;
+      document.getElementById('homeLifeBar').innerHTML = [[st.ok.length, 'bg-emerald-500'], [st.checked.length, 'bg-sky-400'], [S, 'bg-amber-400'], [P, 'bg-rose-500'], [st.nodate.length, 'bg-slate-300']]
+        .filter(([n]) => n).map(([n, c]) => `<span class="h-full ${c}" style="width:${w(n)}"></span>`).join('');
+    }
+
+    // The Useful life sheet: tiles, replacement estimate, the list with Still serviceable /
+    // Unserviceable / Dates, Print.
+    function openLifeSheet(filter) {
+      closeMoreMenu();
+      if (filter) lifeView.f = filter;
+      lifeView.all = false;
+      document.getElementById('lifeModal').classList.remove('hidden');
+      renderLifeSheet();
+    }
+    function closeLifeSheet() { document.getElementById('lifeModal').classList.add('hidden'); }
+    function lifeIsOpen() { const m = document.getElementById('lifeModal'); return !!(m && !m.classList.contains('hidden')); }
+    var LIFE_FILTERS = [['due', 'Due'], ['past', 'Past'], ['soon', 'Ending soon'], ['checked', 'Checked'], ['nodate', 'No dates'], ['all', 'All']];
+    function lifeFiltered(st) {
+      const f = lifeView.f;
+      let list = f === 'due' ? [...st.past, ...st.soon] : f === 'all' ? [...st.past, ...st.soon, ...st.checked, ...st.ok, ...st.nodate] : (st[f] || []);
+      const words = lifeView.q.toLowerCase().split(/\s+/).filter(Boolean);
+      if (words.length) list = list.filter(x => { const hay = [x.item.name, x.unit.no, x.unit.serial, unitHolder(x.unit), x.unit.ics].join(' ').toLowerCase(); return words.every(w => hay.includes(w)); });
+      return list;
+    }
+    function renderLifeSheet() {
+      const body = document.getElementById('lifeBody');
+      if (!body || !lifeIsOpen()) return;
+      const ro = isViewOnly();
+      const st = lifeStats();
+      const tile = (f, n, label, tone) => `<button type="button" onclick="lifeView.f='${f}'; lifeView.all=false; renderLifeSheet()" data-life-tile="${f}" class="rounded-xl border px-2 py-2 text-center min-w-0 ${lifeView.f === f ? 'ring-2 ring-brand-500 border-transparent' : 'border-slate-200'} ${tone}">
+          <span class="block text-lg font-extrabold font-mono leading-tight">${n}</span><span class="block text-[11px] font-bold uppercase leading-tight">${label}</span></button>`;
+      const noAcqIcs = st.list.filter(x => !x.unit.acq && x.unit.icsDate).length;
+      const row = x => {
+        const li = x.li, u = x.unit;
+        const who = unitHolder(u);
+        const tone = li.status === 'past' ? 'text-rose-700' : li.status === 'soon' ? 'text-amber-700' : li.status === 'checked' ? 'text-sky-700' : 'text-slate-500';
+        const startTxt = li.start ? `${li.from === 'acq' ? 'Acquired' : li.from === 'ics' ? 'ICS / PAR dated' : 'Added'} ${lifeMonth(li.start)} · ${escapeHTML(li.life.text)}` : escapeHTML(li.life.text);
+        const btn = (cls, icon, label, onclick, attr) => `<button type="button" onclick="${onclick}" ${attr} ${ro ? 'disabled' : ''} class="h-9 px-2.5 rounded-lg text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 ${cls}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
+        return `
+          <li class="px-3 py-2.5 space-y-1.5" data-life-unit="${u.id}" data-life-status="${li.status}">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 leading-snug">${escapeHTML(x.item.name)}</p>
+                <p class="text-[11px] text-slate-500"><span class="font-mono font-bold text-slate-700">${escapeHTML(u.no || '—')}</span> · ${who ? escapeHTML(who) : 'In stock'}${isPPE(x.item, u) ? ' · PAR' : ''}</p>
+                <p class="text-[11px] font-bold ${tone}">${escapeHTML(lifeWhen(li))}</p>
+                <p class="text-[11px] text-slate-500">${startTxt}${li.est ? ' <span class="px-1 rounded bg-slate-100 text-slate-600 font-bold">est.</span>' : ''}</p>
+                ${li.status === 'checked' ? `<p class="text-[11px] text-sky-700" data-life-checked>Still serviceable · checked ${escapeHTML(lifeMonth(localISODate(new Date(li.okAt))))}${u.lifeBy ? ` by ${escapeHTML(u.lifeBy)}` : ''} · asked again in a year</p>` : ''}
+              </div>
+              <p class="shrink-0 text-[11px] font-bold font-mono text-slate-600">₱${peso2(lifeCost(x))}</p>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              ${li.status === 'past' ? btn('bg-emerald-50 hover:bg-emerald-100 text-emerald-800', 'ph-check', 'Still serviceable', `lifeMarkOk('${u.id}')`, 'data-life-ok') + btn('bg-rose-50 hover:bg-rose-100 text-rose-700', 'ph-x-circle', 'Unserviceable', `lifeMarkUnserv('${u.id}')`, 'data-life-unserv') : ''}
+              ${btn('bg-slate-100 hover:bg-slate-200 text-slate-700', 'ph-calendar', 'Dates', `lifeDates('${u.id}')`, 'data-life-dates')}
+            </div>
+          </li>`;
+      };
+      body.innerHTML = `
+        <div class="grid grid-cols-2 min-[400px]:grid-cols-4 gap-2">
+          ${tile('past', st.past.length, 'Past', 'bg-rose-50 text-rose-700')}
+          ${tile('soon', st.soon.length, `Within ${LIFE_WARN_MONTHS} mo`, 'bg-amber-50 text-amber-800')}
+          ${tile('checked', st.checked.length, 'Checked', 'bg-sky-50 text-sky-800')}
+          ${tile('ok', st.ok.length, 'In use', 'bg-emerald-50 text-emerald-800')}
+        </div>
+        <div class="rounded-2xl bg-violet-50 border border-violet-200 px-3 py-2.5" data-life-cost="${st.cost}">
+          <p class="text-xs text-violet-900 flex justify-between gap-3"><span class="font-bold">To replace in the next ${LIFE_WARN_MONTHS} months</span><b class="font-mono">₱${peso2(st.cost)}</b></p>
+          <p class="text-[11px] text-violet-800">${plural(st.past.length + st.soon.length, 'unit')} past or ending soon, at the original cost · for next year’s PPMP / APP</p>
+        </div>
+        <p class="text-[11px] text-slate-500">Past its useful life does not mean throw it away: a working unit stays in use and on its ICS / PAR. Check it once a year: <b>Still serviceable</b>, or <b>Unserviceable</b> for the IIRUP. Teachers can answer on their phone too.</p>
+        ${st.est ? `<div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 space-y-1.5" data-life-est="${st.est}">
+          <p class="text-[11px] text-slate-600"><b>${plural(st.est, 'unit')}</b> use an estimate (<b>est.</b>): no date acquired (the ICS / PAR date or the day added is used) or no useful life written (${LIFE_BY_CATEGORY['Furniture & Furnishings']} years for furniture, 5 for the rest). Tap <b>Dates</b> to set them.</p>
+          ${noAcqIcs && !ro ? `<button type="button" onclick="lifeUseIcsDates()" data-life-icsdates class="w-full h-9 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-[11px] font-bold text-slate-700">Use the ICS / PAR date as the date acquired (${plural(noAcqIcs, 'unit')})</button>` : ''}
+        </div>` : ''}
+        <div class="relative"><i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+          <input id="lifeSearch" type="search" value="${escapeHTML(lifeView.q)}" oninput="lifeView.q=this.value; lifeView.all=false; renderLifeList()" placeholder="Find an item, property no. or person" aria-label="Find" class="w-full h-11 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm font-medium focus:border-brand-500 outline-none"></div>
+        <div class="flex flex-wrap gap-1.5">${LIFE_FILTERS.map(([f, label]) => `<button type="button" onclick="lifeView.f='${f}'; lifeView.all=false; renderLifeSheet()" data-life-filter="${f}" class="h-8 px-3 rounded-full text-xs font-bold ${lifeView.f === f ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-700'}">${label}</button>`).join('')}</div>
+        <div id="lifeRows"></div>
+        <button type="button" onclick="printLifeList()" id="lifePrint" class="w-full h-11 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print this list</button>`;
+      lifeRowFn = row;
+      renderLifeList();
+    }
+    var lifeRowFn = null;
+    function renderLifeList() {
+      const box = document.getElementById('lifeRows');
+      if (!box || !lifeRowFn) return;
+      const list = lifeFiltered(lifeStats());
+      const SHOW = 40;
+      const shown = lifeView.all ? list : list.slice(0, SHOW);
+      box.innerHTML = list.length ? `<ul class="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden bg-white" data-life-list="${list.length}">${shown.map(lifeRowFn).join('')}
+          ${list.length > shown.length ? `<li><button type="button" id="lifeMore" onclick="lifeView.all=true; renderLifeList()" class="w-full min-h-10 px-3 text-xs font-bold text-brand-600 hover:bg-slate-50">Show all ${list.length}</button></li>` : ''}</ul>`
+        : `<p class="rounded-2xl bg-emerald-50 border border-emerald-200 px-3 py-3 text-xs font-bold text-emerald-800 flex items-center gap-2" data-life-list="0"><i class="ph-bold ph-check-circle text-lg"></i> ${lifeView.q ? 'Nothing matches.' : lifeView.f === 'due' ? `Nothing past or ending within ${LIFE_WARN_MONTHS} months.` : 'Nothing here.'}</p>`;
+    }
+    function lifeAfterChange() {
+      renderLifeSheet();
+      renderHomeLife();
+      if (activeMainView === 'HOME') renderHomeAttention();
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+    }
+    function lifeMarkOk(id) {
+      if (isViewOnly()) return;
+      const f = findUnitWithItem(id);
+      if (!f) return;
+      f.unit.lifeOk = Date.now();
+      f.unit.lifeBy = String(schoolInfo.custodian || actorName() || '').slice(0, 80);
+      saveStateWith({ summary: { kind: 'condition', code: f.item.code, text: `Unit ${f.unit.no || ''} past its useful life checked: still serviceable` } });
+      showToast(`${f.unit.no || 'Unit'}: still serviceable · asked again in a year`, 'ph-check-circle');
+      lifeAfterChange();
+    }
+    function lifeMarkUnserv(id) {
+      if (isViewOnly()) return;
+      const f = findUnitWithItem(id);
+      if (!f) return;
+      setUnitCond(f.item.code, id, 'U');
+      showToast(`${f.unit.no || 'Unit'} marked unserviceable · it goes on the IIRUP`, 'ph-x-circle', { label: 'IIRUP', onClick: () => { closeLifeSheet(); openCoa('unserv'); } });
+      lifeAfterChange();
+    }
+    function lifeDates(id) {
+      const f = findUnitWithItem(id);
+      if (!f) return;
+      closeLifeSheet();
+      openUnitsModal(f.item.code, id);
+    }
+    async function lifeUseIcsDates() {
+      if (isViewOnly()) return;
+      const list = lifeUnits().filter(x => !x.unit.acq && x.unit.icsDate);
+      if (!list.length) return;
+      const ok = await appConfirm(`${plural(list.length, 'unit')} with no date acquired get the date of ${list.length === 1 ? 'its' : 'their'} ICS / PAR. Use this when the items were issued soon after they arrived; otherwise set each date under Dates.`,
+        { title: 'Use the ICS / PAR date?', ok: 'Use the ICS / PAR date', icon: 'ph-calendar-check' });
+      if (!ok) return;
+      list.forEach(x => { x.unit.acq = x.unit.icsDate; });
+      saveStateWith({ summary: { kind: 'edit', text: `Date acquired set from the ICS / PAR date for ${plural(list.length, 'unit')} (useful life)` } });
+      showToast(`Updated ${plural(list.length, 'unit')}`, 'ph-check-circle');
+      lifeAfterChange();
+    }
+    function printLifeList() {
+      const st = lifeStats();
+      const list = lifeFiltered(st);
+      const label = (LIFE_FILTERS.find(f => f[0] === lifeView.f) || ['', 'All'])[1];
+      const STATUS = { past: 'Past useful life', soon: 'Ending soon', checked: 'Past · still serviceable', ok: 'In use', nodate: 'No dates' };
+      const total = round2(list.reduce((n, x) => n + lifeCost(x), 0));
+      const rows = list.map((x, i) => `<tr><td class="c">${i + 1}</td><td class="c" style="font-family:monospace">${bkPE(x.unit.no)}</td><td>${bkPE(x.item.name)}${x.unit.serial ? `<br><span style="font-size:8pt">S/N ${bkPE(x.unit.serial)}</span>` : ''}</td>
+        <td>${bkPE(unitHolder(x.unit) || 'In stock')}</td><td class="c">${bkPE(x.li.start ? formatShortDate(x.li.start + 'T00:00:00') : '')}${x.li.from && x.li.from !== 'acq' ? '*' : ''}</td><td class="c">${bkPE(x.li.life.text)}${x.li.life.est ? '*' : ''}</td>
+        <td class="c">${bkPE(x.li.end ? formatShortDate(x.li.end + 'T00:00:00') : '')}</td><td class="c">${bkPE(STATUS[x.li.status] || '')}</td><td class="r">${peso2(lifeCost(x))}</td></tr>`).join('');
+      printFormHTML(`<div class="pr-form pr-wide">
+        ${bkPrintHead('PROPERTY PAST OR NEAR THE END OF ESTIMATED USEFUL LIFE', `${bkPE(label)} · as of ${bkPE(bkLongToday())}`)}
+        <table class="pr-table"><tr><th>#</th><th>Property No.</th><th>Description</th><th>Accountable person</th><th>Date acquired</th><th>Est. useful life</th><th>End of useful life</th><th>Status</th><th>Unit cost</th></tr>
+          ${rows || '<tr><td colspan="9" class="c"><i>Nothing to list</i></td></tr>'}
+          <tr><td colspan="8" class="r"><b>TOTAL (${list.length})</b></td><td class="r"><b>${peso2(total)}</b></td></tr></table>
+        <p style="font-size:7.5pt;margin:3pt 0 0">* Estimated: no date acquired recorded (the ICS / PAR date or the date encoded is used), or no useful life written (the usual life for the category). Units past their useful life that are still serviceable stay in use; unserviceable ones go on the IIRUP.</p>
+        ${bkPrintSigs('Prepared by:', 'Noted:')}</div>`);
+    }
+
+    // Teachers: "Still working" on a teacher's phone (a 'life' report), applied here.
+    var lifeApplied = new Set();
+    function applyLifeReports() {
+      if (!inventorySyncActive() || !tRepLoaded) return;
+      const todo = tReports.filter(x => x.kind === 'life' && x.status === 'open' && !x.applied && !x.sending && !x.sample && !lifeApplied.has(x.id));
+      if (!todo.length) return;
+      const F = cloud.sdk;
+      const batch = F.writeBatch(cloud.db);
+      let changed = 0;
+      const who = new Set();
+      todo.forEach(x => {
+        lifeApplied.add(x.id);
+        (x.units || []).forEach(u => {
+          const found = findUnitWithItem(u.id);
+          if (!found || found.unit.toUid !== x.uid) return;
+          const at = Math.min(x.createdMs || Date.now(), Date.now());
+          if ((found.unit.lifeOk || 0) < at) { found.unit.lifeOk = at; found.unit.lifeBy = String(x.name || 'A teacher').slice(0, 80); changed++; who.add(x.name || 'A teacher'); }
+        });
+        batch.update(F.doc(tReportCol(), x.id), { applied: true, status: 'done', resolution: 'serviceable', reply: 'Noted', resolvedMs: Date.now(), resolvedBy: schoolInfo.custodian || reqRole.email || '', updatedAt: F.serverTimestamp() });
+      });
+      if (changed) saveStateWith({ summary: { kind: 'condition', text: `${listJoin([...who])}: ${plural(changed, 'unit')} past ${itsTheir(changed)} useful life still ${changed === 1 ? 'works' : 'work'} (told on their phone)` } });
+      cloudWrite(batch.commit(), 'Saving');
+      tReports = tReports.map(x => (todo.includes(x) ? { ...x, applied: true, status: 'done' } : x));
+      if (lifeIsOpen()) renderLifeSheet();
+      if (activeMainView === 'TEACHERS') renderTeachersView();
+    }
+
+    // A teacher's phone: the unit's useful life from what is on the slip (date acquired, ICS /
+    // PAR date, useful life) and the item's category, plus their own "Still working".
+    function tLife(x, now = Date.now()) {
+      const item = items.find(i => i.code === x.line.code) || null;
+      const okAt = tReports.filter(r => r.kind === 'life' && (r.units || []).some(u => u.id === x.unit.id)).reduce((m, r) => Math.max(m, r.createdMs || 0), 0);
+      return lifeInfo(item, x.unit, now, okAt);
+    }
+    function tLifeChipHTML(x, st) {
+      if (['lost', 'reported', 'return'].includes(st.flag)) return '';
+      const li = tLife(x);
+      if (li.status === 'past') return `
+        <div data-t-life="${x.unit.id}" class="rounded-lg bg-violet-50 border border-violet-200 px-2.5 py-2 space-y-1.5">
+          <p class="text-[11px] text-violet-900"><b><i class="ph-bold ph-hourglass-medium"></i> Past its useful life</b> (ended ${escapeHTML(lifeMonth(li.end))}). Is it still working?</p>
+          <div class="flex gap-1.5">
+            <button type="button" onclick="tLifeOk('${x.rel.id}', '${x.unit.id}')" data-t-life-ok class="h-9 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-extrabold flex items-center gap-1"><i class="ph-bold ph-check"></i> Working</button>
+            <button type="button" onclick="tLifeBad('${x.rel.id}', '${x.unit.id}')" data-t-life-bad class="h-9 px-3 rounded-lg bg-white border border-rose-200 text-rose-700 text-[11px] font-extrabold flex items-center gap-1"><i class="ph-bold ph-x-circle"></i> Not working</button>
+          </div>
+        </div>`;
+      if (li.status === 'soon') return `<span data-t-life-soon class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold"><i class="ph-bold ph-hourglass-medium"></i> Useful life ends ${escapeHTML(lifeMonth(li.end))}</span>`;
+      if (li.status === 'checked' && Date.now() - li.okAt < 30 * DAY_MS) return `<span data-t-life-done class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold"><i class="ph-bold ph-check"></i> You said it still works</span>`;
+      return '';
+    }
+    function tLifePast(h) {
+      return h.equipment.filter(x => !['lost', 'reported', 'return'].includes(tUnitStatus(x.unit, x.rel).flag) && tLife(x).status === 'past');
+    }
+    function tLifeOk(relId, unitId) {
+      if (!teacherMayAct() || !cloud.user) return;
+      const rel = myReleases.find(r => r.id === relId);
+      const line = rel && rel.lines.find(l => (l.units || []).some(u => u.id === unitId));
+      if (!line) return;
+      const unit = line.units.find(u => u.id === unitId);
+      const F = cloud.sdk;
+      const doc = tReportBase('life', rel, { reason: 'working', note: 'Still working (past its useful life)', code: line.code || '', desc: String(line.desc || '').slice(0, 160), units: [{ id: unit.id, no: unit.no || '' }] });
+      tReports = [...tReports, { ...doc, id: 'local-' + Date.now(), sending: true }];
+      cloudWrite(F.setDoc(F.doc(tReportCol()), doc), 'Sending');
+      showToast(navigator.onLine ? 'Thanks · the property custodian is told it still works' : 'Saved · it will be sent when you are back online', 'ph-check-circle');
+      renderRequesterView();
+    }
+    function tLifeBad(relId, unitId) {
+      openTeacherReport('problem', relId, unitId);
+      if (!tReportDraft) return;
+      tReportDraft.reason = 'unserv';
+      document.getElementById('trNote').value = 'Past its useful life and no longer working';
+      renderTeacherReasons();
+    }
+
+    // The School Head: counts from dashboard/summary (life: { p, s, k, t, c }).
+    function headLifeHTML(d) {
+      const L = d && d.life;
+      if (!L || !L.t) return '';
+      const ok = Math.max(0, L.t - L.p - L.s - (L.k || 0));
+      const w = n => `${(n / L.t * 100).toFixed(1)}%`;
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5 space-y-2" data-head-life="${L.p}/${L.s}">
+          <p class="text-xs font-bold text-slate-800 flex items-center gap-1.5"><i class="ph-bold ph-hourglass-medium text-violet-600"></i> Useful life of tagged units · ${L.t}</p>
+          <div class="h-2.5 rounded-full bg-slate-100 overflow-hidden flex"><div class="h-full bg-emerald-500" style="width:${w(ok)}"></div><div class="h-full bg-sky-400" style="width:${w(L.k || 0)}"></div><div class="h-full bg-amber-400" style="width:${w(L.s)}"></div><div class="h-full bg-rose-500" style="width:${w(L.p)}"></div></div>
+          <div class="grid grid-cols-3 gap-2 text-[11px]">
+            <p><span class="inline-block w-2 h-2 rounded-full bg-rose-500"></span> <b class="text-slate-900">${L.p}</b> past, to check</p>
+            <p><span class="inline-block w-2 h-2 rounded-full bg-amber-400"></span> <b class="text-slate-900">${L.s}</b> end within ${LIFE_WARN_MONTHS} months</p>
+            <p><span class="inline-block w-2 h-2 rounded-full bg-sky-400"></span> <b class="text-slate-900">${L.k || 0}</b> past, still serviceable</p>
+          </div>
+          ${L.c ? `<p class="text-[11px] text-slate-500" data-head-life-cost>To replace in the next ${LIFE_WARN_MONTHS} months: <b class="font-mono text-slate-700">₱${peso2(L.c)}</b> at the original cost · for next year’s PPMP / APP</p>` : ''}
+        </div>`;
+    }
+
     function findUnitAny(id) {
       for (const item of items) { const u = getUnits(item.code).find(x => x.id === id); if (u) return u; }
       return null;
@@ -17984,7 +18427,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
     const tAcked = relId => tReports.some(x => x.kind === 'received' && x.releaseId === relId) || (typeof ackSent !== 'undefined' && ackSent.has(relId));
     function tLatestFor(unitId) {
-      return tReports.filter(x => x.kind !== 'received' && x.kind !== 'count' && (x.units || []).some(u => u.id === unitId))
+      return tReports.filter(x => x.kind !== 'received' && x.kind !== 'count' && x.kind !== 'life' && (x.units || []).some(u => u.id === unitId))
         .sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0))[0] || null;
     }
 
@@ -18082,6 +18525,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         add('slate', 'ph-hourglass-medium', `${plural(open.length, 'report')} waiting for the property custodian`,
           [ret && `${plural(ret, 'item')} to return · bring them to the custodian`, prob && plural(prob, 'problem')].filter(Boolean).join(' · '), 'open');
       }
+      const lifePast = tLifePast(h);
+      if (lifePast.length) add('brand', 'ph-hourglass-medium', `${plural(lifePast.length, 'item')} past ${itsTheir(lifePast.length)} useful life`,
+        'Tell the property custodian if each one still works: Working or Not working on the item', 'life', "document.querySelector('[data-t-life]')?.scrollIntoView({ block: 'center', behavior: 'smooth' })");
       const cut = icsRenewCutoff();
       const old = h.equipment.filter(x => x.unit.icsDate && x.unit.icsDate <= cut && tUnitStatus(x.unit, x.rel).flag !== 'lost');
       if (old.length) add('slate', 'ph-arrows-clockwise', `${plural(old.length, 'item')} on slips older than ${T_OLD_YEARS} years`,
@@ -18293,6 +18739,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <p class="shrink-0 text-xs font-extrabold font-mono text-slate-700">₱${peso2(line.unitCost)}</p>
           </div>
           ${st.chip}
+          ${tLifeChipHTML(x, st)}
           <div class="flex gap-2">${tUnitButtons(rel, unit, st)}</div>
         </div>`;
     }
@@ -18321,7 +18768,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         const slips = [...new Set(all.map(x => `${x.rel.kind} ${x.rel.no || ''}`.trim()))];
         const flags = {};
         all.forEach(x => { const f = tUnitStatus(x.unit, x.rel).flag; if (f) flags[f] = (flags[f] || 0) + 1; });
-        const FLAG = { reported: ['bg-rose-50 text-rose-700', 'reported'], lost: ['bg-rose-50 text-rose-700', 'lost'], repair: ['bg-amber-50 text-amber-700', 'in repair'], return: ['bg-amber-50 text-amber-700', 'return requested'], askback: ['bg-amber-50 text-amber-800', 'asked back'] };
+        const lifePast = all.filter(x => !['lost', 'reported', 'return'].includes(tUnitStatus(x.unit, x.rel).flag) && tLife(x).status === 'past').length;
+        if (lifePast) flags.life = lifePast;
+        const FLAG = { life: ['bg-violet-50 text-violet-700', 'past useful life'], reported: ['bg-rose-50 text-rose-700', 'reported'], lost: ['bg-rose-50 text-rose-700', 'lost'], repair: ['bg-amber-50 text-amber-700', 'in repair'], return: ['bg-amber-50 text-amber-700', 'return requested'], askback: ['bg-amber-50 text-amber-800', 'asked back'] };
         return `
           <div data-tgroup="${escapeHTML(g.key)}" class="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
             <button type="button" onclick="toggleTGroup(this.closest('[data-tgroup]').dataset.tgroup, ${open})" aria-expanded="${open}" class="w-full p-3 flex items-center gap-3 text-left hover:bg-slate-50">
@@ -18342,6 +18791,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
                     <p class="shrink-0 text-[11px] font-bold font-mono text-slate-600">₱${peso2(x.line.unitCost)}</p>
                   </div>
                   ${st.chip}
+                  ${tLifeChipHTML(x, st)}
                   <div class="flex gap-2">${tUnitButtons(x.rel, x.unit, st, true)}</div>
                 </div>`;
             }).join('')}</div>` : ''}
@@ -18884,7 +19334,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
     // Open = still needs the custodian. A teacher's count with everything present needs nothing.
     function countFlags(x) { return (x.units || []).filter(u => u.s && u.s !== 'ok'); }
-    function tReportOpen(x) { return x.status === 'open' && x.kind !== 'received' && !(x.kind === 'count' && !countFlags(x).length); }
+    function tReportOpen(x) { return x.status === 'open' && x.kind !== 'received' && x.kind !== 'life' && !(x.kind === 'count' && !countFlags(x).length); }
 
     function accountabilityPeople() {
       const map = new Map();
@@ -19002,6 +19452,19 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       requestAnimationFrame(rvScrolled);   // also when it just became visible (sizes known now)
       review.classList.toggle('hidden', !html || !!teachersSel);
       const { joins, reports, total } = teachersToReview();
+      if (wide && !total) {   // nothing to review: the row brings back Needs your attention
+        const n = teachersAttentionBoard(accountabilityPeople()).length;
+        row.classList.toggle('hidden', !n);
+        if (!n) { row.innerHTML = ''; return; }
+        const on = !teachersSel;
+        row.innerHTML = `
+          <button type="button" onclick="openTeachersView(null)" data-tvatt-row="${n}" ${on ? 'aria-current="true"' : ''} class="w-full text-left rounded-2xl border px-3 py-2.5 flex items-center gap-3 transition ${on ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200 hover:bg-slate-50'}">
+            <span class="w-9 h-9 shrink-0 rounded-xl ${on ? 'bg-white' : 'bg-amber-50'} text-amber-600 flex items-center justify-center"><i class="ph-bold ph-list-checks text-lg"></i></span>
+            <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">Needs your attention</span><span class="block text-xs text-slate-600 truncate">${plural(n, 'person')} with something due</span></span>
+            <span class="shrink-0 min-w-6 h-6 px-1.5 rounded-full bg-amber-500 text-white text-xs font-extrabold flex items-center justify-center">${n}</span>
+          </button>`;
+        return;
+      }
       row.classList.toggle('hidden', !(wide && total));
       if (!(wide && total)) { row.innerHTML = ''; return; }
       const on = !teachersSel;
@@ -19130,6 +19593,88 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
 
     // Computers and tablets held sideways: nothing picked yet on the right.
+    // ---- Teachers: Needs your attention, per person and for everyone (Nov 2026) ----------------
+    // From what this device already has. full = also the slips and reports the person's page
+    // already shows in its own boxes (for the overview on a computer).
+    function personAttention(p, full = false, now = Date.now()) {
+      const out = [];
+      const add = (tone, icon, text, key, rank) => out.push({ tone, icon, text, key, rank });
+      const eq = p.equipment;
+      const lost = eq.filter(x => x.unit.lostMs).sort((a, b) => a.unit.lostMs - b.unit.lostMs);
+      if (lost.length) {
+        const left = reliefLeft(lost[0].unit, now);
+        add(left <= 7 ? 'rose' : 'amber', 'ph-question', `${lost.length === 1 ? `Lost: ${lost[0].unit.no || lost[0].item.name}` : `${lost.length} lost units`} · ${left < 0 ? `relief ${plural(-left, 'day')} overdue` : `${plural(left, 'day')} left to apply for relief`}`, 'lost', left <= 7 ? 0 : 2);
+      }
+      if (p.removed && eq.filter(x => !x.unit.lostMs).length) add('rose', 'ph-user-minus', `Removed from the school but still holds ${plural(eq.filter(x => !x.unit.lostMs).length, 'unit')} · Clearance`, 'removed', 1);
+      if (full && p.open.length) add('amber', 'ph-chalkboard-teacher', `${plural(p.open.length, 'report')} waiting for you`, 'open', 1);
+      if (full && p.toConfirm.length) {
+        const d = p.oldest ? daysSince(p.oldest) : 0;
+        add(d >= 3 ? 'amber' : 'slate', 'ph-hand-arrow-down', `${plural(p.toConfirm.length, 'slip')} not marked Received${d ? ` · ${plural(d, 'day')}` : ''}`, 'unconf', d >= 3 ? 3 : 6);
+      }
+      const asked = eq.filter(x => !x.unit.lostMs && unitAskBack(x.unit));
+      if (asked.length) {
+        const ms = Math.min(...asked.map(x => unitAskBack(x.unit).ms || now));
+        add('amber', 'ph-bell-ringing', `Asked to return ${plural(asked.length, 'unit')} · ${daysSince(ms) ? `${plural(daysSince(ms), 'day')} ago` : 'today'}`, 'askback', 3);
+      }
+      const since = countSince(now);
+      const live = eq.filter(x => !x.unit.lostMs);
+      if (since.season && live.length) {
+        const done = live.filter(x => (x.unit.seen || 0) >= since.ms).length;
+        if (done < live.length) add('brand', 'ph-clipboard-text', `Year-end count ${since.year}: ${done} of ${live.length} counted`, 'count', 4);
+      }
+      const cut = icsRenewCutoff(now);
+      const old = live.filter(x => x.unit.icsDate && x.unit.icsDate <= cut);
+      if (old.length) add('slate', 'ph-arrows-clockwise', `${plural(old.length, 'unit')} on an ICS / PAR older than ${ICS_RENEW_YEARS} years`, 'renew', 5);
+      const unserv = live.filter(x => x.unit.cond === 'U').length, repair = live.filter(x => x.unit.cond === 'R').length;
+      if (unserv) add('amber', 'ph-trash', `${plural(unserv, 'unserviceable unit')} still with them · take back for the IIRUP`, 'unserv', 4);
+      if (repair) add('slate', 'ph-wrench', `${plural(repair, 'unit')} in Needs repair`, 'repair', 6);
+      const lifePast = live.filter(x => x.unit.cond !== 'U' && lifeInfo(x.item, x.unit, now).status === 'past').length;
+      if (lifePast) add('slate', 'ph-hourglass-medium', `${plural(lifePast, 'unit')} past ${itsTheir(lifePast)} useful life · still serviceable?`, 'life', 6);
+      if (p.uid && bk.loansLoaded) {
+        const late = bk.loans.filter(l => l.borrowerUid === p.uid && bkOverdue(l)).length;
+        if (late) add('amber', 'ph-books', `${plural(late, 'library book')} overdue`, 'books', 5);
+      }
+      return out.sort((a, b) => a.rank - b.rank);
+    }
+    const PA_TONE = { rose: 'text-rose-600', amber: 'text-amber-600', brand: 'text-brand-600', green: 'text-emerald-600', slate: 'text-slate-500' };
+    function personAttentionHTML(list) {
+      if (!list.length) return '';
+      return `
+        <div id="tvPersonAtt" data-tvatt="${list.length}" class="rounded-2xl bg-white border border-amber-200 shadow-sm px-3 py-2.5 space-y-1.5">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-amber-800">Needs attention · ${list.length}</p>
+          ${list.map(x => `<p class="flex items-start gap-2 text-xs text-slate-800" data-tvatt-item="${x.key}"><i class="ph-bold ${x.icon} ${PA_TONE[x.tone] || PA_TONE.slate} text-sm mt-px"></i><span class="min-w-0">${escapeHTML(x.text)}</span></p>`).join('')}
+        </div>`;
+    }
+    // Everyone with something due, most urgent first: on a computer, what the right side shows
+    // while nobody is picked (under To review). Tap a name to open them.
+    function teachersAttentionBoard(people) {
+      return people.map(p => ({ p, list: personAttention(p, true) })).filter(x => x.list.length)
+        .sort((a, b) => a.list[0].rank - b.list[0].rank || b.list.length - a.list.length || a.p.name.localeCompare(b.p.name));
+    }
+    var tvBoardAll = false;
+    function teachersBoardHTML(people) {
+      const board = teachersAttentionBoard(people);
+      if (!board.length) return `<div class="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-xs font-bold text-emerald-800 flex items-center gap-2" data-tvboard="0"><i class="ph-bold ph-check-circle text-lg"></i> All clear · nothing due for any teacher</div>`;
+      const SHOW = 12;
+      const shown = tvBoardAll ? board : board.slice(0, SHOW);
+      return `
+        <div class="space-y-2" data-tvboard="${board.length}">
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Needs your attention · ${plural(board.length, 'person')}</h2>
+          <div class="grid gap-2 tv-board">${shown.map(({ p, list }) => `
+            <button type="button" onclick="openTeachersView('${qk(p.key)}')" data-tvboard-person="${escapeHTML(p.key)}" class="text-left rounded-2xl bg-white border border-slate-200 hover:border-brand-300 shadow-sm p-3 flex items-start gap-3">
+              ${avatarHTML(p.name, memberPhoto(p.uid), 'w-9 h-9 text-xs', personTone(p))}
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(p.name)}</span>
+                ${list.slice(0, 3).map(x => `<span class="flex items-start gap-1.5 text-[11px] text-slate-700"><i class="ph-bold ${x.icon} ${PA_TONE[x.tone] || PA_TONE.slate} mt-px"></i><span class="min-w-0">${escapeHTML(x.text)}</span></span>`).join('')}
+                ${list.length > 3 ? `<span class="block text-[11px] text-slate-500">+ ${list.length - 3} more</span>` : ''}
+              </span>
+              <i class="ph-bold ph-caret-right text-slate-400 mt-2"></i>
+            </button>`).join('')}
+          </div>
+          ${board.length > SHOW ? `<button type="button" id="tvBoardMore" onclick="tvBoardAll = !tvBoardAll; renderTeachersView()" class="w-full min-h-10 text-xs font-bold text-brand-600 hover:underline">${tvBoardAll ? 'Show less' : `Show all ${board.length}`}</button>` : ''}
+        </div>`;
+    }
+
     function renderTeachersNone(people) {
       document.getElementById('tvHead').innerHTML = '';
       const withItems = people.filter(p => p.equipment.length);
@@ -19138,10 +19683,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const counted = withItems.reduce((n, p) => n + p.counted, 0);
       const toConfirm = people.filter(p => p.toConfirm.length).length;
       const below = sidebarLayout() && teachersToReview().total;   // To review is above it
-      document.getElementById('tvBody').innerHTML = `
-        <div class="rounded-2xl bg-white border border-slate-200 ${below ? 'p-5' : 'p-8'} text-center">
-          ${below ? '' : '<i class="ph-bold ph-cursor-click text-3xl text-slate-300"></i>'}
-          <p class="mt-1 text-sm font-bold text-slate-700">${below ? 'Or pick someone on the left' : 'Pick someone on the left'}</p>
+      const board = sidebarLayout() && people.length ? teachersBoardHTML(people) : '';
+      document.getElementById('tvBody').innerHTML = `${board}
+        <div class="rounded-2xl bg-white border border-slate-200 ${below || board ? 'p-5' : 'p-8'} text-center">
+          ${below || board ? '' : '<i class="ph-bold ph-cursor-click text-3xl text-slate-300"></i>'}
+          <p class="mt-1 text-sm font-bold text-slate-700">${below || board ? 'Or pick someone on the left' : 'Pick someone on the left'}</p>
           <p class="text-xs text-slate-500">Their equipment, supplies and history show here.</p>
           ${units ? `<div class="mt-4 grid grid-cols-3 gap-2 text-center max-w-md mx-auto">
             <div class="rounded-xl bg-slate-50 border border-slate-200 py-2"><p class="text-lg font-extrabold font-mono text-slate-900">${withItems.length}</p><p class="text-[11px] font-bold uppercase text-slate-500">With items</p></div>
@@ -19262,6 +19808,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
       let html = '';
       if (teachersClear === p.key) html += clearanceHTML(p, connected);
+      html += personAttentionHTML(personAttention(p));
       if (p.open.length) html += `<div class="rounded-2xl bg-white border border-rose-200 shadow-sm overflow-hidden">${p.open.map(x => teacherReportCardHTML(x)).join('')}</div>`;
       const unconfirmedIssue = p.toConfirm.slice().sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
       if (unconfirmedIssue.length) {
@@ -24260,6 +24807,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             const who = x.name || 'A teacher';
             const units = nosText(x.units);
             if (x.kind === 'received') return { title: `${who} confirmed receipt`, body: [x.releaseNo, x.desc].filter(Boolean).join(' · '), icon: 'ph-check-circle', tone: 'emerald', go: 'teachers', person: x.uid || null };
+            if (x.kind === 'life') return { title: `${who}: still working`, body: [x.desc, units, 'past its useful life · asked again in a year'].filter(Boolean).join(' · '), icon: 'ph-hourglass-medium', tone: 'emerald', go: 'teachers', person: x.uid || null };
             if (x.status !== 'open') return null;
             if (x.kind === 'return') return { title: `${who} wants to return an item`, body: [x.desc, units, x.note].filter(Boolean).join(' · '), icon: 'ph-arrow-u-down-left', tone: 'amber', go: 'teachers', person: x.uid || null };
             if (x.kind === 'problem') return { title: `Problem reported by ${who}`, body: [tReasonLabel(x.reason), x.desc, units].filter(Boolean).join(' · '), icon: 'ph-warning', tone: 'rose', go: 'teachers', person: x.uid || null };
@@ -24814,11 +25362,13 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         openAssistPanel();
       } else if (n.go === 'yearend') {
         openYearEnd();
+      } else if (n.go === 'life') {
+        openLifeSheet('due');
       } else if (n.go === 'turnover') {              // custodian: the Turnover panel; School Head: their screen
         if (isHeadDevice()) switchMainView('HEAD');
         else openTurnover();
       } else if (n.go === 'head') {                  // School Head: their approvals; custodian: the School Head panel
-        if (isHeadDevice()) switchMainView('HEAD');
+        if (isHeadDevice()) { headTab = 'approve'; switchMainView('HEAD'); renderHeadView(); }
         else openHeadPanel();
       } else if (n.go === 'teacher-items' || n.go === 'teacher-requests') {
         switchMainView('REQUESTER');
@@ -24989,6 +25539,21 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-useful-life', date: 'Nov 2026', title: 'Useful life: know what is getting old', points: [
+        'Home has a new Useful life card. It shows how many ICS / PAR items are past their useful life, how many end within 12 months, and what replacing them would cost, for next year\u2019s PPMP / APP. The app works it out from the date acquired and the useful life.',
+        'Open it to check each item: Still serviceable (asked again in a year) or Unserviceable (goes on the IIRUP). Tap Dates to fix a date, or print the list. You also get a reminder once a month.',
+        'Teachers see Past its useful life on their item and tap Working or Not working. The School Head sees the counts and the replacement cost in the School tab.'
+      ] },
+      { id: '2026-11-teachers-attention', date: 'Nov 2026', title: 'Teachers: who needs your attention', points: [
+        'On a computer, the Teachers page now shows everyone with something due on the right while nobody is picked, most urgent first: lost items with the days left to apply for relief, slips not marked Received, items you asked back, old ICS / PAR, the count, unserviceable items, repairs and overdue library books. Tap a name to open them.',
+        'A Needs your attention row in the list brings that view back. When nothing is due, it says All clear.',
+        'Each teacher\u2019s page now starts with a short Needs attention card listing what is due for them, on phones too.'
+      ] },
+      { id: '2026-11-head-tabs', date: 'Nov 2026', title: 'School Head: tabs, less scrolling', points: [
+        'The School Head\u2019s screen now has four tabs, like a teacher\u2019s: Approve, School, People and History. Approve opens first and shows how many are waiting.',
+        'School has the property, spending, trends, supplies and the monthly summary. People has who holds what, with a name search, and the custodian turnover. History has your past decisions, with the search, and School history.',
+        'On a laptop, each tab uses two columns so most of it fits on one screen. A notification about an approval opens the Approve tab.'
+      ] },
       { id: '2026-11-home-attention', date: 'Nov 2026', title: 'Home: Needs your attention', points: [
         'Home now lists what needs you, most urgent first: lost items with the days left to apply for relief, supply requests and teacher reports that have waited a while, slips teachers have not marked Received, items waiting for the School Head, and Purchase Requests not delivered.',
         'Deadlines are there too: the semestral or year-end count, ICS / PAR older than 3 years, your bond or designation order ending, items in repair for more than a month, low or out-of-stock supplies, and overdue library books.',
