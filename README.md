@@ -107,9 +107,26 @@ The custodian's list of everything the school has (quantity above 0). It was cal
 - **Top:** *Inventory*, the saved-online chip, `N items · ₱ total`, **Stock in** (a delivery with its actual cost, see [Deliveries](#deliveries-and-actual-costs)) and **Add items** (opens the Catalog). Then a search box (name, code, room, property or serial number, teacher) and a sort menu: highest value, name, room, most / least quantity.
 - **Filter chips** wrap onto a second line instead of scrolling sideways, each with its count: *All · Equipment · Consumables · Low stock · Needs repair · With teachers*, plus *Not counted* during a physical count. Chips with nothing in them are hidden.
 - **One row per item:** type icon, name (2 lines at most), *room · code*, at most two status labels (repair / unserviceable, low stock, with a teacher, tagged; more show as *+N*), and on the right the quantity and total value. There are no +/− buttons on the rows, so a count can't change by accident while scrolling.
-- **Tap a row** for the **item sheet** (a bottom sheet on phones): on hand, unit cost and total value; a low-stock note; the quantity stepper; room, category, condition, property numbers and who has the units (each name opens that teacher's page); a **Prices** row (average cost and last paid) and a **Catalog** row (rename, hide or delete); and **Release · Edit details · History** at the bottom.
-- **During a physical count** each row has a check button on the left (tap to mark counted without opening the item), and the sheet has **Mark as counted**, which returns to the list.
-- `tests/e2e/phone-layout.mjs` checks the rows, chips, sheet and count mode at 390 px; `release.mjs` and `teachers-overview.mjs` use the sheet for Release and the teacher links.
+- **Tap a row** for the **Item preview** (see [Item preview](#item-preview)).
+- **During a physical count** each row has a check button on the left (tap to mark counted without opening the item), and the preview has **Mark as counted**, which returns to the list.
+- `tests/e2e/phone-layout.mjs` checks the rows, chips, preview and count mode at 390 px; `release.mjs` and `teachers-overview.mjs` use the preview for Release and the teacher links.
+
+### Item preview
+
+One window for everything about an item. It opens from **Inventory** (tap a row), **Catalog** (tap the name), the **scanner** (*Item*, next to *Open*), a **teacher's page** and **Useful life** (tap the item name), **low-stock notifications** about one item, and Home's quick count (**See everything**). The Home quick-count sheet itself stays as it is.
+
+- **Layout:** a bottom sheet on phones, a pop-up on upright tablets, and a **panel on the right** on computers and tablets held sideways. The list stays usable beside the panel: tap another row and it shows that item. Switching pages closes it. While it is open, the extra Inventory / Catalog columns show only on wide screens (1600 px+).
+- **Header:** type icon, name, code and classification, then **status chips**: *In stock / Low stock / Out of stock*, *N for repair*, *N unserviceable*, *N with teachers*, *N lost*, *N past useful life* or *N ending soon* (opens Useful life), *Counted / Not counted yet* during a count, and *View only*.
+- **Tabs** (← / → move between them):
+  - **Overview:** on hand, unit cost and total value; the low-stock note; the quantity stepper; room, category, prices, Catalog, condition, useful life, property numbers and who has the units (each name opens that teacher's page).
+  - **People:** *Has it now* (with photo, property numbers, ICS / PAR, lost or for repair), *Received it* / *Had it before* (from the RIS / ICS / PAR slips, with quantities and the last date) and *Asked for it* (supply requests). Each person opens their Teachers page.
+  - **History:** the latest 30 changes of this item (this device's log plus the slips and deliveries saved in the school account), and *Open the full history*.
+- **Buttons:** **Release** (custodian's phone), **Edit details** and **More** (*Property numbers*, *Print QR labels*, *Prices*, *Catalog*, *Full history*).
+- **Edit details opens in place** of the tabs (it replaced the separate item details window): on-hand, unit cost, minimum alert, classification, condition, property numbers and the room. **Save changes** returns to the Overview with a *Changes saved* message; **Cancel** (or Esc) returns without saving. Opening another item drops unsaved edits.
+- **View only** (the outgoing custodian's 30 days, or a removed assistant): no stepper, Release, Edit details or Catalog; everything can still be read.
+- No extra cloud reads: everything shown is already on the device.
+- Property numbers still open their own window; they move into the preview as a **Units** tab in a later update.
+- `tests/e2e/item-preview.mjs` checks the tabs, chips, People and History, editing in place, the openers, view-only mode, the phone sheet and the computer side panel.
 
 ## Catalog
 
@@ -126,18 +143,18 @@ The full APP-CSE catalog (361 items plus custom ones), where quantities are ente
   - *price / unit · code* (a missing price shows *Set price*), plus the category on wider screens;
   - up to three small labels: the total value and the room when it is in stock, and low stock or repair when needed;
   - on the right, a compact **− qty +** (40 px buttons named *One less* / *One more*; + is light indigo like *Add items*). The quantity can also be typed and is greyed out at 0.
-- **Tap the name** to open the item details: room, unit price, minimum stock.
+- **Tap the name** to open the [Item preview](#item-preview) (room, unit price and minimum stock are under *Edit details*).
 - **−** and **+** update the row in place, so the list doesn't jump and the button you tapped keeps focus.
 - `tests/e2e/phone-layout.mjs` checks at 390 px that:
   - the rows are compact;
   - every row has the − / + buttons;
   - the categories are in the drop-down;
   - + and − update the row;
-  - tapping a name opens the details.
+  - tapping a name opens the Item preview.
 
 ### Editing, hiding and deleting catalog items
 
-Open an item (item sheet → *Catalog*, or *Edit details* → *Catalog*):
+Open an item (Item preview → *More* → *Catalog*, or *Edit details* → *Catalog*):
 
 - **Your own (custom) items:** change the name, unit, category and classification. **Delete** is offered only when the item has quantity 0, no property numbers and isn't on any slip, PR or delivery; otherwise it is **archived** (hidden, but kept for past slips and reports). Deleted numbers are not reused.
 - **APP-CSE items:** name, unit and stock no. are locked (they come from the DBM list); you can set your own unit cost. They can't be deleted but can be **hidden**.
@@ -760,7 +777,7 @@ A bell in the header (next to **More**) shows what happened and how many you hav
 
 - **Nothing for your own actions.** A custodian typing in a walk-in request, or a teacher sending a report, gets no notification for it.
 - **No repeats.** Each phone remembers what it has already shown, so reloading the app doesn't repeat anything. Changes made while the app was closed appear the next time it opens.
-- **Low stock** follows each item that is in stock. It is announced once when the item reaches its *Min alert qty* (set in the item sheet) and again if it runs out; restocking resets it. Tapping it opens Inventory with the *Low stock* filter. Items stocked for the first time below their alert are not announced.
+- **Low stock** follows each item that is in stock. It is announced once when the item reaches its *Min alert qty* (set in the Item preview under *Edit details*) and again if it runs out; restocking resets it. Tapping it opens Inventory with the *Low stock* filter and that item's preview. Items stocked for the first time below their alert are not announced.
 - **Reminders** are worked out on the phone when the app opens (and every 30 minutes while open). Releases older than 30 days are left alone.
 - **Year-end count** runs from 1 December to 31 January, once a week: *82 of 138 units counted · report due 31 Jan*, a reminder in the last 14 days and a note when every unit is counted.
 - **Also tell me about** at the bottom of the bell sheet turns each kind off or on (all on by default).
@@ -880,6 +897,7 @@ node release-serials.mjs            # Release form: Useful life per equipment li
 node head-dashboard.mjs             # School Head screen: Needs your attention, Waiting N days + reminder, Approve all, search decisions, spending, condition, trends, supply usage, who holds what (tap, print), monthly summary print, tabs (Approve · School · People · History), two columns inside each tab on a laptop
 node teachers-attention.mjs         # Teachers page: Needs your attention for everyone on a computer (lost + relief days, unconfirmed, asked back, old ICS, unserviceable), each person's card, the list row, All clear, phone width
 node useful-life.mjs                # useful life: end dates (date acquired / ICS date, est.), Home card + attention row, the sheet (Still serviceable, Unserviceable, Dates, Use the ICS date, Print), monthly notification, teacher Working / Not working, Teachers page, School Head
+node item-preview.mjs              # the Item preview: computer side panel beside the list, chips, Overview / People / History tabs, Edit details in place (Save, Cancel, Esc), More menu, openers (Catalog, notification, teacher's page, Useful life, See everything), view only, phone bottom sheet
 node teacher-dashboard.mjs          # teacher's My Items: tiles, Needs your attention (slips, asked back, reports, repair, old slips, overdue books), Clearance: Return everything, then nothing under their name
 node home-attention.mjs             # custodian Home: Needs your attention (lost + relief days, waiting requests/reports, unconfirmed slips, ICS renewal, bond, repairs, stock), Show all, taps, hidden for teachers
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
