@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="227f4bd55aea">
+  <meta name="app-version" content="c2ea64038c09">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -251,6 +251,38 @@
       html:not(.no-tabs) #appToast { margin-left: calc(var(--side-w) / 2); }   /* centred over the content, not the sidebar */
       .cat-step-w { width: 7.25rem; }
       .lap-only.flex { display: flex; }
+      /* A teacher's account on a computer: the same tabs on a wider page. My Items: equipment and
+         supplies on the left; the overview, slips to receive, the count and clearance on the right.
+         Equipment rows keep Report a problem / Return on the right; supplies, school stock,
+         requests and books are laid out in columns. */
+      #viewRequester { max-width: 80rem; padding-left: 1.5rem; padding-right: 1.5rem; }
+      #rqTabs { max-width: 36rem; }
+      #rqItemsPane .t-desk { display: grid; grid-template-columns: minmax(0, 1fr) 24rem; grid-template-areas: "main side" "main foot";
+        grid-template-rows: auto 1fr; gap: 1.25rem 1.5rem; align-items: start; }
+      #rqItemsPane .t-desk > * { margin-top: 0 !important; }
+      #rqItemsPane .t-main { grid-area: main; }
+      #rqItemsPane .t-side { grid-area: side; }
+      #rqItemsPane .t-foot { grid-area: foot; }
+      #rqItemsPane [data-tunit-card], #rqItemsPane [data-tunit-row] { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 1.25rem; row-gap: 0.5rem; align-items: center; }
+      #rqItemsPane [data-tunit-card] > *, #rqItemsPane [data-tunit-row] > * { grid-column: 1; margin-top: 0 !important; }
+      #rqItemsPane [data-tunit-card] > .t-u-btns, #rqItemsPane [data-tunit-row] > .t-u-btns { grid-column: 2; grid-row: 1; }
+      #rqItemsPane .t-sup { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: 0.5rem; align-items: start; }
+      #rqItemsPane .t-sup > * { margin-top: 0 !important; grid-column: 1 / -1; }
+      #rqItemsPane .t-sup > .t-ris { grid-column: auto; }
+      #rqNewBtn { width: auto; min-width: 20rem; padding: 0 2rem; }
+      #rqList, #stList, #libList, #rqLibraryPane [data-bk-keep] > .space-y-2, #rqLibraryPane [data-bk-mine] > .space-y-2 {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr)); gap: 0.625rem; align-items: start; }
+      #stList { grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); align-items: stretch; }
+      #rqList > *, #stList > *, #libList > *, #rqLibraryPane [data-bk-keep] > .space-y-2 > *, #rqLibraryPane [data-bk-mine] > .space-y-2 > * { margin-top: 0 !important; }
+      #rqList > :only-child, #stList > :only-child, #libList > :not([data-lib-title]) { grid-column: 1 / -1; }
+      #stList > [data-stock] { display: flex; flex-direction: column; }
+      #stList > [data-stock] > .grid { margin-top: auto; padding-top: 0.5rem; }
+      #rqStockPane > .space-y-2:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+      #rqStockPane > .space-y-2:first-child > * { margin-top: 0 !important; }
+      #rqStockPane > .space-y-2:first-child > .relative { flex: 0 1 32rem; }
+      #rqStockPane [data-req-cart] { max-width: 24rem; margin-left: auto; }
+      #rqLibraryPane #libDeskBtn, #rqLibraryPane [data-bk-toack], #rqLibraryPane .flex:has(> .relative > #libSearch) { max-width: 40rem; }
+      @media (min-width: 1680px) { #viewRequester { max-width: 96rem; } #rqItemsPane .t-desk { grid-template-columns: minmax(0, 1fr) 28rem; } }
       /* Teachers: people on the left, the one picked on the right (like an inbox) */
       html:not(.no-tabs) #viewTeachers { max-width: 76rem; }
       @media (min-width: 1680px) {   /* large monitors: use the room (wider list, more cards in view) */
@@ -1301,7 +1333,7 @@
       </div>
       <button id="rqAvatar" onclick="editMyDetails()" title="My details" aria-label="My details" class="hidden shrink-0 mt-1 rounded-full ring-2 ring-white shadow-sm active:scale-95 transition"></button>
     </div>
-    <div role="tablist" aria-label="My items, requests, school stock or library" class="grid grid-cols-4 gap-1 p-1 rounded-2xl bg-slate-200/70">
+    <div id="rqTabs" role="tablist" aria-label="My items, requests, school stock or library" class="grid grid-cols-4 gap-1 p-1 rounded-2xl bg-slate-200/70">
       <button id="rqTab-items" role="tab" onclick="setTeacherTab('items')"><i class="ph-bold ph-backpack text-base hidden min-[400px]:inline"></i> My Items <span id="rqItemsCount" class="hidden"></span><span id="rqItemsDot" class="hidden w-2 h-2 rounded-full bg-emerald-500"></span></button>
       <button id="rqTab-requests" role="tab" onclick="setTeacherTab('requests')"><i class="ph-bold ph-paper-plane-tilt text-base hidden min-[400px]:inline"></i> Requests</button>
       <button id="rqTab-stock" role="tab" onclick="setTeacherTab('stock')"><i class="ph-bold ph-package text-base hidden min-[400px]:inline"></i> Stock</button>
@@ -1314,7 +1346,7 @@
     <div id="rqStockPane" class="hidden space-y-3"></div>
     <div id="rqLibraryPane" class="hidden space-y-5"></div>
     <div id="rqRequestsPane" class="space-y-5">
-    <button onclick="openRequestForm()" class="w-full h-16 rounded-2xl bg-amber-700 hover:bg-amber-800 active:scale-[0.98] text-white font-extrabold text-base shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition">
+    <button id="rqNewBtn" onclick="openRequestForm()" class="w-full h-16 rounded-2xl bg-amber-700 hover:bg-amber-800 active:scale-[0.98] text-white font-extrabold text-base shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition">
       <i class="ph-bold ph-plus-circle text-2xl"></i> New supply request
     </button>
     <div>
@@ -19956,6 +19988,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const pane = document.getElementById('rqItemsPane');
       const date = iso => (iso ? formatShortDate(iso + 'T00:00:00') : '');
       const value = h.equipment.reduce((n, x) => n + (x.line.unitCost || 0), 0);
+      // Phones: one column in this order. Computers: equipment and supplies on the left, the rest on the right.
       let html = teacherOverviewHTML(h, toAck);
       if (toAck.length) {
         html += `
@@ -19979,7 +20012,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           <button id="tPrintMine" onclick="printMyList()" class="h-10 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Print my list</button>
           ${h.equipment.length && !since.season && !myLastCount() ? `<button id="tCountMine" onclick="openTeacherCount()" class="h-10 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-clipboard-text"></i> Count my items</button>` : ''}
         </div>`;
-      html += `
+      const side = html;
+      html = `
         <div>
           <div class="flex items-end justify-between gap-2 mb-2 px-1">
             <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Accountable equipment · ICS / PAR</h2>
@@ -19996,14 +20030,15 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         </div>
         <div>
           <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Supplies received · RIS</h2>
-          <div class="space-y-2">${h.supplies.length ? teacherSuppliesHTML(h.supplies) : `
+          <div class="t-sup space-y-2">${h.supplies.length ? teacherSuppliesHTML(h.supplies) : `
             <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
               <i class="ph-bold ph-package text-3xl text-slate-300"></i>
               <p class="mt-1 font-bold text-slate-700 text-sm">No supplies yet</p>
               <p>Supplies released to you are listed here. Ask for more under <button onclick="setTeacherTab('requests')" class="font-bold text-amber-700 underline">Requests</button>.</p>
             </div>`}</div>
         </div>`;
-      if (reqRole && reqRole.schoolId && (h.equipment.length || myReleases.length)) html += teacherClearanceHTML(h);
+      const foot = reqRole && reqRole.schoolId && (h.equipment.length || myReleases.length) ? teacherClearanceHTML(h) : '';
+      html = `<div class="t-desk space-y-5"><div class="t-side space-y-5">${side}</div><div class="t-main space-y-5">${html}</div>${foot ? `<div class="t-foot">${foot}</div>` : ''}</div>`;
       const typing = document.activeElement && document.activeElement.id === 'tEquipSearch';
       const caret = typing ? document.activeElement.selectionStart : 0;
       pane.innerHTML = html;
@@ -20063,7 +20098,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           </div>
           ${st.chip}
           ${tLifeChipHTML(x, st)}
-          <div class="flex gap-2">${tUnitButtons(rel, unit, st)}</div>
+          <div class="t-u-btns flex gap-2">${tUnitButtons(rel, unit, st)}</div>
         </div>`;
     }
 
@@ -20115,7 +20150,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
                   </div>
                   ${st.chip}
                   ${tLifeChipHTML(x, st)}
-                  <div class="flex gap-2">${tUnitButtons(x.rel, x.unit, st, true)}</div>
+                  <div class="t-u-btns flex gap-2">${tUnitButtons(x.rel, x.unit, st, true)}</div>
                 </div>`;
             }).join('')}</div>` : ''}
           </div>`;
@@ -20160,7 +20195,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const last = tReports.filter(x => x.kind === 'problem' && x.releaseId === r.id).sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0))[0];
       const ack = tReports.find(x => x.kind === 'received' && x.releaseId === r.id);
       return `
-        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2">
+        <div class="t-ris rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2">
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
               <p class="text-xs font-bold text-slate-900">RIS No. <span class="font-mono">${escapeHTML(r.no || '')}</span> · ${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</p>
@@ -27093,6 +27128,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-teacher-desktop', date: 'Nov 2026', title: 'Teachers: a wider My Items on a computer', points: [
+        'On a computer or a tablet held sideways, a teacher\u2019s account now uses the whole screen. The tabs stay the same.',
+        'My Items: equipment and supplies on the left, with Report a problem and Return on the same line as each item. The totals, Needs your attention, slips to mark Received, the count and Clearance are on the right.',
+        'School stock, requests and library books are shown in columns, so more fit on the screen. Phones look the same as before.'
+      ] },
       { id: '2026-11-pr-expense', date: 'Nov 2026', title: 'Purchase Requests by expense: Office Supplies and Other Supplies', points: [
         'Purchase Requests now group their items by expense, as on the updated form: Office Supplies Expenses for what the office uses, Other Supplies Expenses for supplies the teachers use, and Semi-Expendable Machinery and Equipment or Semi-Expendable Furniture, Fixtures and Books Expenses for equipment. The print, Excel and CSV put each heading above its items, with one total at the end.',
         'Items from teachers\u2019 requests go under Other Supplies. Requests you add for the office (tap The office under Used by), the reorder list and items you add yourself go under Office Supplies. Change any line with Charge to.',
