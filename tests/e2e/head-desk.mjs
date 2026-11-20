@@ -34,7 +34,8 @@ try {
   await until(h, () => !!document.querySelector('#hdBody [data-head-dash] [data-dash-holders]') && /Ana Reyes/.test(document.querySelector('[data-dash-holders]').textContent), 'head sees the summary', 10000);
   const hv = await ev(h, () => ({ text: document.getElementById('hdBody').textContent, stock: !!document.querySelector('[data-dash-stock]') }));
   check(/Who holds what/i.test(hv.text) && /Ana Reyes/.test(hv.text) && hv.stock && /Supply requests waiting/i.test(hv.text), 'head: stock levels, who holds what, requests');
-  check(await refused(h, (F, sid) => F.getDocs(F.collection(cloud.db, 'schools', sid, 'inventory')), sid), 'rules: the head still can’t read the inventory itself');
+  check(!await refused(h, (F, sid) => F.getDocs(F.collection(cloud.db, 'schools', sid, 'inventory')), sid), 'rules: the head can read the inventory (Items tab)');
+  check(await refused(h, (F, sid) => F.setDoc(F.doc(cloud.db, 'schools', sid, 'inventory', 'i:x'), { code: 'x' }), sid), 'rules: the head can’t write the inventory');
   check(await refused(t, (F, sid) => F.getDoc(F.doc(cloud.db, 'schools', sid, 'dashboard', 'summary')), sid), 'rules: a teacher can’t read the summary');
   check(await refused(h, (F, sid) => F.setDoc(F.doc(cloud.db, 'schools', sid, 'dashboard', 'summary'), { items: 0 }), sid), 'rules: the head can’t change the summary');
 

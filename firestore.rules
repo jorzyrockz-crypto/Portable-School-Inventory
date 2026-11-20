@@ -301,18 +301,19 @@ service cloud.firestore {
       // School inventory (My Items), custom catalog items and school info: the custodian's
       // devices only. Teachers never read the inventory. Removed items are marked
       // { deleted: true } instead of being deleted.
+      // The School Head reads the inventory too (Items tab, view only; changes are suggestions).
       match /inventory/{code} {
-        allow read: if canView(schoolId);
+        allow read: if canView(schoolId) || isHead(schoolId);
         allow create, update: if staffInvWrite(schoolId);
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
       match /catalog/{code} {
-        allow read: if canView(schoolId);
+        allow read: if canView(schoolId) || isHead(schoolId);
         allow create, update: if staffInvWrite(schoolId);
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
       match /settings/{docId} {
-        allow read: if canView(schoolId);
+        allow read: if canView(schoolId) || isHead(schoolId);
         allow create, update: if isStaff(schoolId);
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
@@ -528,8 +529,36 @@ service cloud.firestore {
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
 
+      // The School Head's suggested changes to the inventory (Items tab): the head sends them, the
+      // custodian or an assistant accepts (all or some items) or declines. The inventory itself only
+      // changes on the custodian's devices, when they accept. The head may take one back.
+      match /suggestions/{id} {
+        function sugBodyOk() {
+          return request.resource.data.ops is list
+            && request.resource.data.ops.size() > 0 && request.resource.data.ops.size() <= 150
+            && request.resource.data.get('lines', []) is list && request.resource.data.get('lines', []).size() <= 150
+            && shortText(request.resource.data.get('title', ''), 160)
+            && shortText(request.resource.data.get('byName', ''), 80);
+        }
+        allow read: if canView(schoolId) || isHead(schoolId);
+        allow create: if isHead(schoolId)
+          && request.resource.data.byUid == request.auth.uid
+          && request.resource.data.status == 'pending'
+          && !('decision' in request.resource.data)
+          && sugBodyOk();
+        allow update: if (isHead(schoolId) && resource.data.byUid == request.auth.uid && resource.data.status == 'pending'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+            && request.resource.data.status == 'cancelled')
+          || (isStaff(schoolId) && resource.data.status == 'pending'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'decision', 'updatedAt'])
+            && request.resource.data.status in ['accepted', 'declined']
+            && request.resource.data.decision.byUid == request.auth.uid
+            && shortText(request.resource.data.decision.get('note', ''), 300));
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+
       // The School Head's summary (stock levels, who holds what, requests, condition), kept current
-      // by the custodian's devices. The head reads only this, not the inventory itself.
+      // by the custodian's devices. The head also reads the inventory (Items tab).
       match /dashboard/{docId} {
         allow read: if canView(schoolId) || isHead(schoolId);
         allow create, update: if isStaff(schoolId) && docId == 'summary';
@@ -676,7 +705,7 @@ service cloud.firestore {
       match /releases/{releaseId} {
         allow create, update: if isStaff(schoolId);
         allow get, list: if signedIn()
-          && (resource.data.teacherUid == request.auth.uid || canView(schoolId));
+          && (resource.data.teacherUid == request.auth.uid || canView(schoolId) || isHead(schoolId));
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
 

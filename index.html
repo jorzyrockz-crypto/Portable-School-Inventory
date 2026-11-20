@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="6382f07e7837">
+  <meta name="app-version" content="ac108a5e7a6c">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1126,6 +1126,7 @@
             </button>
           </div>
         </div>
+        <div id="sugBanner" class="hidden"></div>
         <div class="flex items-center gap-2">
           <div class="relative flex-1 min-w-0">
             <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base pointer-events-none"></i>
@@ -1345,11 +1346,12 @@
       </div>
       <span id="hdAvatar" class="hidden shrink-0 mt-1 rounded-full ring-2 ring-white shadow-sm"></span>
     </div>
-    <div id="hdTabs" role="tablist" aria-label="To approve, school property, people or history" class="hidden grid-cols-4 gap-1 p-1 rounded-2xl bg-slate-200/70">
-      <button id="hdTab-approve" role="tab" onclick="setHeadTab('approve')"><i class="ph-bold ph-seal-check text-base hidden min-[400px]:inline"></i> Approve <span id="hdApproveCount" class="hidden"></span></button>
-      <button id="hdTab-school" role="tab" onclick="setHeadTab('school')"><i class="ph-bold ph-buildings text-base hidden min-[400px]:inline"></i> School</button>
-      <button id="hdTab-people" role="tab" onclick="setHeadTab('people')"><i class="ph-bold ph-users-three text-base hidden min-[400px]:inline"></i> People</button>
-      <button id="hdTab-history" role="tab" onclick="setHeadTab('history')"><i class="ph-bold ph-clock-counter-clockwise text-base hidden min-[400px]:inline"></i> History</button>
+    <div id="hdTabs" role="tablist" aria-label="To approve, school property, items, people or history" class="hidden grid-cols-5 gap-1 p-1 rounded-2xl bg-slate-200/70">
+      <button id="hdTab-approve" role="tab" onclick="setHeadTab('approve')"><i class="ph-bold ph-seal-check text-base"></i> Approve <span id="hdApproveCount" class="hidden"></span></button>
+      <button id="hdTab-school" role="tab" onclick="setHeadTab('school')"><i class="ph-bold ph-buildings text-base"></i> School</button>
+      <button id="hdTab-items" role="tab" onclick="setHeadTab('items')"><i class="ph-bold ph-package text-base"></i> Items</button>
+      <button id="hdTab-people" role="tab" onclick="setHeadTab('people')"><i class="ph-bold ph-users-three text-base"></i> People</button>
+      <button id="hdTab-history" role="tab" onclick="setHeadTab('history')"><i class="ph-bold ph-clock-counter-clockwise text-base"></i> History</button>
     </div>
     <p id="hdSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
     <div id="hdBody" class="space-y-5"></div>
@@ -2003,6 +2005,23 @@
     </div>
   </div>
 
+  <!-- The School Head's suggested changes to the inventory: accept (all or some items) or decline -->
+  <div id="sugModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeSugSheet()" onkeydown="if (event.key === 'Escape') closeSugSheet()">
+    <div role="dialog" aria-modal="true" aria-labelledby="sugTitle" class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-3 safe-pad max-h-[94vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center"><i class="ph-bold ph-lightbulb text-xl"></i></span>
+          <div class="min-w-0">
+            <h3 id="sugTitle" class="font-extrabold text-base text-slate-900 leading-tight">Suggestions from the School Head</h3>
+            <p class="text-xs font-semibold text-slate-500">Nothing changes in the inventory until you accept</p>
+          </div>
+        </div>
+        <button onclick="closeSugSheet()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="sugBody" class="space-y-3"></div>
+    </div>
+  </div>
+
   <!-- Books & Library: one window, what it shows depends on bkSheet.view -->
   <div id="bkModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeBkModal()" onkeydown="if (event.key === 'Escape') closeBkModal()">
     <div id="bkModalBox" role="dialog" aria-modal="true" class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 safe-pad max-h-[94vh] overflow-y-auto">
@@ -2302,7 +2321,7 @@
           <i class="ph-bold ph-hand-arrow-up text-lg"></i> Release
         </button>
         <button id="isEdit" data-ip-write onclick="itemSheetGo('edit')" class="flex-1 h-14 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 text-xs font-bold flex flex-col items-center justify-center gap-0.5">
-          <i class="ph-bold ph-pencil-simple text-lg"></i> Edit details
+          <i class="ph-bold ph-pencil-simple text-lg"></i> <span id="isEditLabel">Edit details</span>
         </button>
         <button id="isMoreBtn" onclick="ipToggleMore()" aria-haspopup="menu" aria-expanded="false" class="w-16 h-14 shrink-0 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 text-xs font-bold flex flex-col items-center justify-center gap-0.5">
           <i class="ph-bold ph-dots-three text-lg"></i> More
@@ -2310,7 +2329,7 @@
       </div>
       <div id="ipEditFoot" class="hidden gap-2 p-4 border-t border-slate-200 bg-slate-50">
         <button onclick="closeItemModal()" class="h-12 px-5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 font-bold text-xs text-slate-700">Cancel</button>
-        <button id="ipSave" onclick="saveItemModal()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 font-extrabold text-sm text-white shadow-md flex items-center justify-center gap-2"><i class="ph-bold ph-check"></i> Save changes</button>
+        <button id="ipSave" onclick="saveItemModal()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 font-extrabold text-sm text-white shadow-md flex items-center justify-center gap-2"><i class="ph-bold ph-check"></i> <span id="ipSaveLabel">Save changes</span></button>
       </div>
     </div>
   </div>
@@ -3820,7 +3839,7 @@
     let sheetCode = null;
     var ipView = { tab: 'overview', edit: false, more: false };
     const IP_TABS = ['overview', 'people', 'history'];
-    function ipReadOnly() { return isViewOnly() || (typeof assistantRemoved === 'function' && assistantRemoved()); }
+    function ipReadOnly() { return isViewOnly() || isHeadDevice() || (typeof assistantRemoved === 'function' && assistantRemoved()); }
     function openItemPreview(code, opts = {}) {
       if (!items.some(i => i.code === code)) return;
       const el = document.getElementById('itemSheet');
@@ -3920,7 +3939,10 @@
         btn.setAttribute('aria-selected', on ? 'true' : 'false');
         btn.tabIndex = on || (editing && t === 'overview') ? 0 : -1;
       });
-      document.querySelectorAll('#itemSheet [data-ip-write]').forEach(b => b.classList.toggle('hidden', ro || (b.id === 'isRelease' && !isCustodianDevice())));
+      const suggest = headCanSuggest();   // the School Head: Suggest a change instead of Edit details
+      document.querySelectorAll('#itemSheet [data-ip-write]').forEach(b => b.classList.toggle('hidden', (ro && !(suggest && b.id === 'isEdit')) || (b.id === 'isRelease' && !isCustodianDevice())));
+      document.getElementById('isEditLabel').textContent = suggest ? 'Suggest a change' : 'Edit details';
+      document.getElementById('ipSaveLabel').textContent = suggest ? 'Save as a suggestion' : 'Save changes';
       const more = document.getElementById('ipMore');
       more.classList.toggle('hidden', !ipView.more || editing);
       document.getElementById('isMoreBtn').setAttribute('aria-expanded', ipView.more ? 'true' : 'false');
@@ -4005,7 +4027,7 @@
       // Quantity stepper (same rules as before: not below the units with property numbers)
       document.getElementById('isQty').textContent = item.qty;
       document.getElementById('isUnit').textContent = item.unit;
-      document.getElementById('isQtyNote').textContent = units.length ? `${plural(units.length, 'unit')} with property numbers: the count can't go lower.` : 'Changes are saved right away and kept in History.';
+      document.getElementById('isQtyNote').textContent = units.length ? `${plural(units.length, 'unit')} with property numbers: the count can't go lower.` : isHeadDevice() ? 'Wrong count? Tap Suggest a change.' : 'Changes are saved right away and kept in History.';
       const countBtn = document.getElementById('isCount');
       countBtn.classList.toggle('hidden', !countSession);
       if (countSession) {
@@ -4043,7 +4065,10 @@
       const chip = (tone, icon, text, onclick = '', attr = '') => chips.push(onclick
         ? `<button type="button" ${attr} onclick="${onclick}" class="ip-chip ${IP_CHIP[tone]} hover:brightness-95"><i class="ph-bold ${icon}"></i> ${text}</button>`
         : `<span ${attr} class="ip-chip ${IP_CHIP[tone]}"><i class="ph-bold ${icon}"></i> ${text}</span>`);
-      if (ipReadOnly()) chip('slate', 'ph-eye', 'View only', '', 'data-ip-chip="viewonly"');
+      if (ipReadOnly() && !isHeadDevice()) chip('slate', 'ph-eye', 'View only', '', 'data-ip-chip="viewonly"');
+      const hm = headMarkOf(item.code);
+      if (hm === 'draft') chips.push('<span data-ip-chip="draft" class="ip-chip bg-amber-50 text-amber-800 border-amber-200"><i class="ph-bold ph-pencil-simple-line"></i> Your change · not sent</span>');
+      else if (hm === 'sent') chips.push('<span data-ip-chip="suggested" class="ip-chip bg-violet-50 text-violet-800 border-violet-200"><i class="ph-bold ph-paper-plane-tilt"></i> Suggested · waiting for the custodian</span>');
       if (itemUnsynced(item.code)) chips.push(`<span data-ip-chip="unsynced" class="ip-chip bg-sky-50 text-sky-800 border-sky-200" title="${UNSYNC_TIP}"><i class="ph-bold ph-cloud-arrow-up"></i> Not synced yet</span>`);
       if (item.qty <= 0) chip('rose', 'ph-prohibit', 'Out of stock', '', 'data-ip-chip="out"');
       else if (item.qty <= item.minQty) chip('amber', 'ph-warning', 'Low stock', '', 'data-ip-chip="low"');
@@ -4561,7 +4586,7 @@
       const item = items.find(i => i.code === code);
       if (!item) return;
       openItemPreview(code);
-      if (ipReadOnly()) { showToast('View only: changes are not saved on this phone', 'ph-eye'); return; }
+      if (ipReadOnly() && !headCanSuggest()) { showToast(isHeadDevice() ? 'Getting the school inventory first…' : 'View only: changes are not saved on this phone', 'ph-eye'); return; }
       activeModalCode = code;
       ipView.edit = true;
       ipView.more = false;
@@ -4731,7 +4756,7 @@
       renderItems();
       renderDashboard();
       closeItemModal();
-      showToast('Changes saved', 'ph-check-circle');
+      showToast(isHeadDevice() ? 'Saved as a suggestion · send it from Items' : 'Changes saved', isHeadDevice() ? 'ph-pencil-simple-line' : 'ph-check-circle');
     }
 
     // CUSTOM ITEM MODAL
@@ -11345,6 +11370,8 @@
       apList = []; apLoaded = false; dashDoc = null; dashLoaded = false; dashSentHash = ''; clearTimeout(dashTimer);
       turnList = []; turnLoaded = false; turnJoinCard = null; turnJoinLoaded = false; lastSchoolDoc = null; schoolTidySent = ''; viewOnlyLive = false;
       stopInventorySync();
+      stopSuggestions();
+      if (headInvUnsubs.length) stopHeadInventory();
       bkStop();
     }
 
@@ -11388,6 +11415,7 @@
         subscribeHeads(F);
         subscribeStaff(F);
         subscribeApprovals(F, onErr);
+        subscribeSuggestions();
         subscribeTeam(F);
         subscribeInspections(F);
         subscribeSchoolDoc(F);
@@ -11790,7 +11818,9 @@
     }
 
     // Called after every local save; sends what changed since the last sync.
+    var headCaptureTimer = null;
     function scheduleInventorySync() {
+      if (isHeadDevice()) { if (!invApplying) { clearTimeout(headCaptureTimer); headCaptureTimer = setTimeout(headCaptureDraft, 0); } return; }   // the School Head: a draft suggestion
       if (invApplying || !invReady || isViewOnly()) return;
       if (!invSync.pendingSince) { invSync.pendingSince = Date.now(); saveInvSync(); }
       scheduleUnsynced();
@@ -14355,6 +14385,18 @@
       'itemSheetCounted', 'stepModalCondition', 'openTransfer', 'openRelease', 'openReleaseFromRequest', 'openInspectPr', 'remindTeacher',
       'removeTypedName', 'homeCountAction', 'openTook', 'openSamePerson', 'openRequestForm', 'requestFromStock', 'openIcsScanner', 'openDelivery',
       'openSchoolModal', 'newTurnoverInvite', 'confirmTurnover', 'declineTurnover', 'renewAllSlips', 'openHeadPanel', 'openInvite', 'forgetMatch']);
+    // The School Head may suggest: Edit details (Save as a suggestion), a new item, Scan ICS / PAR.
+    const HEAD_SUGGEST_OK = new Set(['saveItemModal', 'saveItemEdit', 'saveCustomItem', 'openCustomItemModal', 'saveIcs', 'openIcsScanner']);
+    document.addEventListener('click', e => {
+      if (!isHeadDevice()) return;
+      const el = e.target && e.target.closest && e.target.closest('[onclick]');
+      if (!el) return;
+      const names = String(el.getAttribute('onclick') || '').match(/[A-Za-z_$][\w$]*(?=\s*\()/g) || [];
+      if (!names.some(n => VIEW_ONLY_BLOCK.has(n) && !HEAD_SUGGEST_OK.has(n))) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      showToast('Only the property custodian can do this · you can suggest changes from Items', 'ph-info');
+    }, true);
     document.addEventListener('click', e => {
       if (!isViewOnly()) return;
       const el = e.target && e.target.closest && e.target.closest('[onclick]');
@@ -16733,6 +16775,11 @@
         const active = !!(headMe && headMe.status === 'active');
         if (active && !headPrUnsub) startHeadPrs(F);
         else if (!active && headPrUnsub) stopHeadPrs();
+        if (active) {
+          subscribeSuggestions();
+          // opened Items before: keep it current (only changed documents are read again)
+          if (headTab === 'items' || localStorage.getItem('custodian_head_school_v1') === reqRole.schoolId) startHeadInventory();
+        }
         renderRequestsEverywhere();
       }, err => { console.warn('head card', err); cloud.error = cloudErrorText(err); headMeLoaded = true; renderRequestsEverywhere(); }));
       reqUnsubs.push(() => stopHeadPrs());
@@ -16766,7 +16813,498 @@
       [apUnsub, dashUnsub].forEach(off => { if (off) { try { off(); } catch (e) {} } });
       apUnsub = null; dashUnsub = null; apList = []; dashDoc = null; dashLoaded = false;
       turnList = [];
-      if (isHeadDevice()) prList = [];
+      if (isHeadDevice()) { prList = []; stopSuggestions(); if (headInvUnsubs.length) stopHeadInventory(); }
+    }
+
+    // ---- The School Head: Items tab (the whole inventory, view only) and suggested changes ----
+    // The head reads schools/{id}/inventory, catalog and settings (firestore.rules) and sees every
+    // item with the same Item preview, read only. What the head changes on their phone (Suggest a
+    // change, New item, Scan ICS / PAR, dates on Property numbers) stays a draft on their phone
+    // (HEAD_DRAFT_KEY: { schoolId, ops: { 'i:CODE' | 'c:CODE': { base, body } } }) until they send
+    // it: schools/{id}/suggestions/{id} { ops: [{ k, base, body }], lines, title, byUid, byName,
+    // status: pending | accepted | declined | cancelled, decision }. The custodian (or an
+    // assistant) accepts it, all or some items, or declines it; only then does the inventory
+    // change. base = the account's version when the head changed it, so an accepted change only
+    // touches what the head changed (the custodian's own changes since are kept).
+    const HEAD_DRAFT_KEY = 'custodian_head_draft_v1';
+    const SUG_MAX = 150;
+    var sugList = [], sugLoaded = false, sugUnsub = null;
+    var headInvUnsubs = [], headInvLoaded = false, headInvError = '', headInvBase = {}, headDraft = null;
+    var headItemsQ = '', headItemsFilter = 'ALL', headItemsShown = 120;
+    const sugCol = () => cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'suggestions');
+    const sugKeyOk = k => /^[ic]:/.test(k);
+    function headDraftOps() {
+      const sid = reqRole && reqRole.schoolId;
+      if (!headDraft || headDraft.schoolId !== sid) {
+        let d = null;
+        try { d = JSON.parse(localStorage.getItem(HEAD_DRAFT_KEY)); } catch (e) {}
+        headDraft = d && d.schoolId === sid && d.ops ? d : { schoolId: sid, ops: {} };
+      }
+      return headDraft.ops;
+    }
+    function saveHeadDraft() { if (headDraft) localStorage.setItem(HEAD_DRAFT_KEY, JSON.stringify(headDraft)); }
+    const headCanSuggest = () => isHeadDevice() && headInvLoaded && !!(headMe && headMe.status === 'active') && !!cloud.user;
+    const mySugs = () => (cloud.user ? sugList.filter(s => s.byUid === cloud.user.uid) : []);
+    const sugPending = () => sugList.filter(s => s.status === 'pending').sort((a, b) => (a.submittedMs || 0) - (b.submittedMs || 0));
+    // Item codes in the head's draft / their suggestions still waiting (for the marks).
+    function headMarkOf(code) {
+      if (!isHeadDevice()) return '';
+      const ops = headDraftOps();
+      if (ops['i:' + code] || ops['c:' + code]) return 'draft';
+      if (mySugs().some(s => s.status === 'pending' && (s.ops || []).some(o => o.k === 'i:' + code || o.k === 'c:' + code))) return 'sent';
+      return '';
+    }
+
+    function onSuggestions(snap) {
+      sugList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+      sugLoaded = true;
+      if (isHeadDevice()) { onHeadInventory(); renderHeadView(); }
+      else { renderSugBanner(); if (sugIsOpen()) renderSugSheet(); }
+      notifFromSuggestions(snap.metadata);
+    }
+    function subscribeSuggestions() {
+      if (sugUnsub || !cloud.db || !reqRole) return;
+      sugUnsub = listenSynced(sugCol(), ['createdAt', 'updatedAt'], onSuggestions, err => { console.warn('suggestions', err); sugUnsub = null; });
+    }
+    function stopSuggestions() {
+      if (sugUnsub) { try { sugUnsub(); } catch (e) {} }
+      sugUnsub = null; sugList = []; sugLoaded = false;
+      renderSugBanner();
+    }
+
+    // The head's phone: the school inventory, kept current (cheap after the first time: only
+    // changed documents are read again).
+    function startHeadInventory() {
+      if (!headMe || headMe.status !== 'active' || !isHeadDevice() || !cloud.db || !cloud.user || headInvUnsubs.length) return;
+      const F = cloud.sdk;
+      invRemote = {};
+      headInvError = '';
+      ['inventory', 'catalog', 'settings'].forEach(col => {
+        headInvUnsubs.push(listenSynced(F.collection(cloud.db, 'schools', reqRole.schoolId, col), ['updatedAt'], snap => {
+          const map = {};
+          snap.docs.forEach(d => { map[d.id] = d.data(); });
+          invRemote[col] = map;
+          onHeadInventory();
+        }, err => { console.warn('head inventory', err); headInvError = cloudErrorText(err); renderHeadView(); }));
+      });
+      // Slips (who received each item), for People in the Item preview
+      headInvUnsubs.push(listenSynced(relCol(), ['createdAt', 'updatedAt'], snap => {
+        releaseAll = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+        releaseAll.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
+        releaseList = releaseAll.filter(r => !r.void);
+        releasesLoaded = true;
+        if (sheetCode) renderItemSheet();
+      }, err => console.warn('head slips', err)));
+    }
+    function stopHeadInventory() {
+      headInvUnsubs.forEach(off => { try { off(); } catch (e) {} });
+      headInvUnsubs = [];
+      headInvLoaded = false;
+      invRemote = {};
+    }
+    // The phone shows: the account's inventory + the head's suggestions still waiting + the draft.
+    function onHeadInventory() {
+      if (!isHeadDevice() || !invRemote.inventory || !invRemote.catalog || !invRemote.settings) return;
+      const sid = reqRole.schoolId;
+      if (localStorage.getItem('custodian_head_school_v1') !== sid) {
+        // first time: whatever this phone had before is kept in this browser
+        try { if (Object.keys(userState).length || customRawItems.length) localStorage.setItem('custodian_before_head_v1', JSON.stringify(snapshotData())); } catch (e) {}
+        localStorage.setItem('custodian_head_school_v1', sid);
+      }
+      const remote = remoteInvDocs();
+      const target = {};
+      Object.entries(remote).forEach(([k, r]) => { if (r.body && k !== 'm:matches') target[k] = r.body; });
+      mySugs().filter(s => s.status === 'pending').sort((a, b) => (a.submittedMs || 0) - (b.submittedMs || 0))
+        .forEach(s => (s.ops || []).forEach(o => { if (sugKeyOk(o.k) && o.body) target[o.k] = o.body; }));
+      const ops = headDraftOps();
+      Object.keys(ops).forEach(k => {
+        const r = remote[k] && remote[k].body;
+        if (r && invHash(r) === invHash(ops[k].body)) { delete ops[k]; return; }   // the custodian made the same change
+        target[k] = ops[k].body;
+      });
+      saveHeadDraft();
+      const local = localInvDocs();
+      const apply = [];
+      // copies: the phone's records must not share objects with the account's (edits would change both)
+      Object.entries(target).forEach(([k, b]) => { if (!local[k] || invHash(local[k]) !== invHash(b)) apply.push([k, JSON.parse(JSON.stringify(b))]); });
+      Object.keys(local).forEach(k => { if (!target[k] && k !== 'm:matches' && k !== 's:info') apply.push([k, null]); });
+      if (apply.length) applyRemoteInventory(apply);
+      headInvBase = {};
+      Object.entries(localInvDocs()).forEach(([k, b]) => { headInvBase[k] = invHash(b); });
+      headInvLoaded = true;
+      headInvError = '';
+      if (activeMainView === 'HEAD') renderHeadView();
+      if (sheetCode) renderItemSheet();
+    }
+    // After a save on the head's phone: what changed becomes part of the draft.
+    function headCaptureDraft() {
+      if (!headCanSuggest()) return;
+      const remote = remoteInvDocs(), local = localInvDocs(), ops = headDraftOps();
+      Object.entries(local).forEach(([k, b]) => {
+        if (!sugKeyOk(k)) return;
+        const h = invHash(b);
+        if (headInvBase[k] === h) return;
+        headInvBase[k] = h;
+        const r = remote[k] && remote[k].body;
+        if (r && invHash(r) === h) { delete ops[k]; return; }
+        ops[k] = { base: ops[k] ? ops[k].base : (r ? JSON.parse(JSON.stringify(r)) : null), body: cleanJSON(b) };
+      });
+      saveHeadDraft();
+      if (activeMainView === 'HEAD') renderHeadView();
+      if (sheetCode) renderItemSheet();
+    }
+
+    // One line per item: what the head changed, in plain words.
+    function sugLine(o, nameOf) {
+      const code = o.k.slice(2);
+      const num = v => parseInt(v, 10) || 0;
+      if (o.k.startsWith('c:')) {
+        const raw = (o.body && o.body.raw) || [], was = (o.base && o.base.raw) || null;
+        if (!was) return { k: o.k, code, name: String(raw[2] || code), text: `New item · per ${raw[3] || 'unit'}${raw[4] ? ` · ₱${peso2(raw[4])}` : ''}` };
+        const parts = [];
+        if (was[2] !== raw[2]) parts.push(`Name “${was[2]}” to “${raw[2]}”`);
+        if (was[3] !== raw[3]) parts.push(`Unit ${was[3]} to ${raw[3]}`);
+        if (was[5] !== raw[5]) parts.push(`Category ${CATEGORIES[raw[5]] || ''}`);
+        return { k: o.k, code, name: String(raw[2] || code), text: parts.join(' · ') || 'Catalog details' };
+      }
+      const s0 = (o.base && o.base.state) || {}, s1 = (o.body && o.body.state) || {};
+      const parts = [];
+      if (!o.base) parts.push('Added to the inventory');
+      if (num(s0.qty) !== num(s1.qty)) parts.push(`Quantity ${num(s0.qty)} to ${num(s1.qty)}`);
+      if ((s0.customPrice ?? null) !== (s1.customPrice ?? null)) parts.push(`Unit cost ₱${peso2(s1.customPrice || 0)}`);
+      if ((s0.note || '') !== (s1.note || '')) parts.push(s1.note ? `Room “${s1.note}”` : 'Room removed');
+      if (num(s0.minQty) !== num(s1.minQty)) parts.push(`Low-stock alert at ${num(s1.minQty)}`);
+      if ((s0.typeOverride || '') !== (s1.typeOverride || '')) parts.push(s1.typeOverride === 'EQUIPMENT' ? 'Type: Equipment (ICS/PAR)' : s1.typeOverride === 'CONSUMABLE' ? 'Type: Consumable (RIS)' : 'Type: automatic');
+      if (num(s0.repair) !== num(s1.repair) || num(s0.unserv) !== num(s1.unserv)) parts.push(`Condition: ${num(s1.repair)} for repair, ${num(s1.unserv)} unserviceable`);
+      const before = new Map((s0.units || []).map(u => [u.id, canonJSON(u)]));
+      const added = (s1.units || []).filter(u => !before.has(u.id)).length;
+      const changed = (s1.units || []).filter(u => before.has(u.id) && before.get(u.id) !== canonJSON(u)).length;
+      if (added) parts.push(`${plural(added, 'property record')} added`);
+      if (changed) parts.push(`${plural(changed, 'property record')} updated`);
+      if (!parts.length) parts.push('Other details');
+      return { k: o.k, code, name: nameOf(code), text: parts.join(' · ') };
+    }
+    function sugLines(list) {
+      const names = {};
+      list.forEach(o => { if (o.k.startsWith('c:') && o.body && o.body.raw) names[o.k.slice(2)] = o.body.raw[2]; });
+      const nameOf = code => names[code] || (items.find(i => i.code === code) || {}).name || code;
+      // a new item shows once (its catalog line), with what was added
+      const out = [];
+      list.forEach(o => {
+        const l = sugLine(o, nameOf);
+        const twin = out.find(x => x.code === l.code);
+        if (twin) { twin.text = `${twin.text} · ${l.text.replace(/^Added to the inventory( · )?/, '')}`.replace(/ · $/, ''); twin.ks.push(o.k); }
+        else out.push({ ...l, ks: [o.k] });
+      });
+      return out;
+    }
+
+    // ---- The head's Items tab ----
+    function headItemsHTML() {
+      if (headInvError && !headInvLoaded) return `<div class="rounded-2xl bg-rose-50 border border-rose-200 p-4 text-xs text-rose-900" data-head-items="error"><p class="font-extrabold text-sm">Can’t open the school inventory</p><p class="mt-0.5">${escapeHTML(headInvError)} · Ask the property custodian to publish the latest database rules (README, Firebase setup).</p></div>`;
+      if (!headInvLoaded) return `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-600" data-head-items="loading"><i class="ph-bold ph-circle-notch animate-spin text-2xl text-slate-400"></i><p class="mt-1 font-bold text-slate-700 text-sm">Getting the school inventory…</p><p>The first time takes a moment; after that it opens right away, also offline.</p></div>`;
+      const ops = headDraftOps();
+      const draft = sugLines(Object.entries(ops).map(([k, o]) => ({ k, ...o })));
+      const mine = mySugs().filter(s => s.status !== 'cancelled').sort((a, b) => (b.submittedMs || 0) - (a.submittedMs || 0));
+      const statusChip = s => s.status === 'pending' ? '<span class="text-[11px] font-bold px-1.5 py-0.5 rounded border bg-violet-50 text-violet-800 border-violet-200">Waiting</span>'
+        : s.status === 'accepted' ? `<span class="text-[11px] font-bold px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">Accepted${s.decision && Array.isArray(s.decision.keys) && s.decision.keys.length < (s.ops || []).length ? ` · ${s.decision.keys.length} of ${(s.ops || []).length}` : ''}</span>`
+        : '<span class="text-[11px] font-bold px-1.5 py-0.5 rounded border bg-rose-50 text-rose-800 border-rose-200">Declined</span>';
+      return `
+        <div class="space-y-3" data-head-items>
+          ${draft.length ? `
+          <div class="rounded-2xl bg-amber-50 border border-amber-200 p-3 space-y-2" data-head-draft="${draft.length}">
+            <p class="text-sm font-extrabold text-amber-900 flex items-center gap-1.5"><i class="ph-bold ph-pencil-simple-line"></i> ${plural(draft.length, 'change')} not sent yet</p>
+            <ul class="text-xs text-amber-900 space-y-1">${draft.slice(0, 6).map(l => `<li><b>${escapeHTML(l.name)}</b> · ${escapeHTML(l.text)}</li>`).join('')}${draft.length > 6 ? `<li>+ ${draft.length - 6} more</li>` : ''}</ul>
+            <div class="flex gap-2">
+              <button onclick="headSendDraft()" data-head-send class="flex-1 h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-paper-plane-tilt"></i> Send to the custodian</button>
+              <button onclick="headDiscardDraft()" data-head-discard class="h-11 px-3 rounded-xl bg-white border border-amber-200 hover:bg-amber-100 text-xs font-bold text-amber-900">Discard</button>
+            </div>
+          </div>` : ''}
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="headNewItem()" data-head-new class="h-12 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5"><i class="ph-bold ph-plus text-brand-600"></i> New item</button>
+            <button onclick="headScanIcs()" data-head-scan class="h-12 rounded-xl bg-white border border-slate-200 hover:border-brand-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5"><i class="ph-bold ph-scan text-brand-600"></i> Scan ICS / PAR</button>
+          </div>
+          <p class="text-[11px] text-slate-500 px-1 flex items-start gap-1.5"><i class="ph-bold ph-info mt-px"></i><span>Help build the inventory: open an item and tap <b>Suggest a change</b>, add a new item or scan an old ICS / PAR. Your changes go to the property custodian, who accepts or declines them. Nothing changes until then.</span></p>
+          ${mine.length ? `
+          <details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-head-sugs ${mine.some(s => s.status === 'pending') ? 'open' : ''}>
+            <summary class="text-xs font-bold text-slate-800 cursor-pointer">Your suggestions · ${mine.filter(s => s.status === 'pending').length} waiting</summary>
+            <div class="mt-2 space-y-2">${mine.slice(0, 12).map(s => `
+              <div class="rounded-xl bg-slate-50 px-3 py-2 text-xs" data-head-sug="${s.id}" data-status="${s.status}">
+                <div class="flex items-center justify-between gap-2"><span class="font-bold text-slate-800 min-w-0 truncate">${escapeHTML(s.title || 'Suggested changes')}</span>${statusChip(s)}</div>
+                <p class="text-[11px] text-slate-500 mt-0.5">${escapeHTML(formatTimeAgo(s.submittedMs))}${s.decision && s.decision.byName ? ` · ${escapeHTML(s.decision.byName)}` : ''}${s.decision && s.decision.note ? ` · “${escapeHTML(s.decision.note)}”` : ''}</p>
+                ${s.status === 'pending' ? `<button onclick="headCancelSug('${s.id}')" class="mt-1 text-[11px] font-bold text-slate-500 underline">Take it back</button>` : ''}
+              </div>`).join('')}</div>
+          </details>` : ''}
+          <div class="space-y-2">
+            <div class="relative">
+              <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+              <input type="search" id="hdItemsSearch" oninput="headItemsSearch(this.value)" value="${escapeHTML(headItemsQ)}" placeholder="Search items, codes, rooms, property numbers" autocomplete="off" spellcheck="false" aria-label="Search the school inventory"
+                class="w-full h-11 pl-9 pr-3 bg-white rounded-xl border border-slate-200 text-sm font-medium outline-none focus:border-brand-500">
+            </div>
+            <div class="flex gap-1.5 flex-wrap" role="group" aria-label="Show">${[['ALL', 'All'], ['EQUIPMENT', 'Equipment'], ['CONSUMABLE', 'Supplies'], ['LOW', 'Low stock']].map(([k, label]) =>
+              `<button onclick="headItemsSetFilter('${k}')" data-head-filter="${k}" aria-pressed="${headItemsFilter === k}" class="h-8 px-3 rounded-full border text-xs font-bold ${headItemsFilter === k ? 'bg-brand-600 border-brand-600 text-white' : 'bg-white border-slate-200 text-slate-700'}">${label}</button>`).join('')}</div>
+          </div>
+          <div id="hdItemsList" class="rounded-2xl bg-white border border-slate-200 divide-y divide-slate-100 overflow-hidden">${headItemsListHTML()}</div>
+        </div>`;
+    }
+    function headItemsListHTML() {
+      const q = headItemsQ.trim().toLowerCase();
+      const inInv = i => i.qty > 0 || getUnits(i.code).length > 0 || !!headMarkOf(i.code);
+      const match = i => !q || `${i.name} ${i.code} ${i.note || ''} ${i.category || ''} ${getUnits(i.code).map(u => `${u.no || ''} ${u.serial || ''} ${u.to || ''}`).join(' ')}`.toLowerCase().includes(q);
+      const kind = i => headItemsFilter === 'ALL' || (headItemsFilter === 'LOW' ? i.qty <= i.minQty && i.minQty > 0 : i.type === headItemsFilter);
+      const list = items.filter(i => inInv(i) && kind(i) && match(i)).sort((a, b) => a.name.localeCompare(b.name));
+      // Searching: items from the Catalog that are not in the inventory yet, to add them
+      const more = q.length >= 2 ? items.filter(i => !inInv(i) && kind(i) && match(i)).slice(0, 15) : [];
+      const row = (i, extra) => {
+        const mark = headMarkOf(i.code);
+        const t = itemTypeIcon(i);
+        const held = getUnits(i.code).filter(u => u.to || u.toUid).length;
+        return `<button type="button" onclick="openItemPreview('${escapeHTML(i.code)}')" data-head-item="${escapeHTML(i.code)}" class="w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-slate-50">
+          <span class="w-9 h-9 shrink-0 rounded-xl ${t.tone} flex items-center justify-center"><i class="ph-duotone ${t.icon} text-xl"></i></span>
+          <span class="flex-1 min-w-0">
+            <span class="block text-sm font-bold text-slate-900 truncate">${escapeHTML(i.name)}</span>
+            <span class="block text-[11px] text-slate-500 truncate">${i.note ? `${escapeHTML(i.note)} · ` : ''}<span class="font-mono">${escapeHTML(i.code)}</span>${held ? ` · ${held} with staff` : ''}</span>
+            ${mark === 'draft' ? '<span class="mt-1 inline-flex text-[11px] font-bold px-1.5 rounded bg-amber-50 text-amber-800" data-head-mark="draft">Your change · not sent</span>'
+              : mark === 'sent' ? '<span class="mt-1 inline-flex text-[11px] font-bold px-1.5 rounded bg-violet-50 text-violet-800" data-head-mark="sent">Suggested · waiting for the custodian</span>' : ''}
+            ${extra || ''}
+          </span>
+          <span class="shrink-0 text-right"><span class="block text-sm font-extrabold text-slate-900">${i.qty} <span class="text-[11px] font-semibold text-slate-500">${escapeHTML(i.unit.toLowerCase())}</span></span>
+          <span class="block text-[11px] font-mono text-emerald-700">${i.qty > 0 && i.price > 0 ? formatCurrency(i.qty * i.price) : ''}</span></span>
+        </button>`;
+      };
+      const shown = list.slice(0, headItemsShown);
+      const value = list.reduce((n, i) => n + i.qty * (i.price || 0), 0);
+      return `<p class="px-3 py-2 text-[11px] font-bold text-slate-500 bg-slate-50" data-head-count="${list.length}">${plural(list.length, 'item')} · ${formatCurrency(value)}</p>` +
+        (shown.map(i => row(i)).join('') || `<p class="px-3 py-6 text-center text-xs text-slate-500">${q ? 'No item in the inventory matches.' : 'No items yet.'}</p>`) +
+        (list.length > shown.length ? `<button onclick="headItemsShown += 200; document.getElementById('hdItemsList').innerHTML = headItemsListHTML()" class="w-full py-3 text-xs font-bold text-brand-700">Show ${Math.min(200, list.length - shown.length)} more</button>` : '') +
+        (more.length ? `<p class="px-3 py-2 text-[11px] font-bold text-slate-500 bg-slate-50">In the Catalog, not in the inventory</p>` + more.map(i => row(i, '<span class="mt-0.5 block text-[11px] text-slate-500">Open it and tap Suggest a change to add it</span>')).join('') : '');
+    }
+    function headItemsSearch(v) {
+      headItemsQ = String(v || '');
+      headItemsShown = 120;
+      const el = document.getElementById('hdItemsList');
+      if (el) el.innerHTML = headItemsListHTML();
+    }
+    function headItemsSetFilter(k) {
+      headItemsFilter = k;
+      headItemsShown = 120;
+      renderHeadView();
+    }
+    function headNewItem() { if (headCanSuggest()) openCustomItemModal(); }
+    function headScanIcs() { if (headCanSuggest()) openIcsScanner(); }
+
+    async function headSendDraft() {
+      if (!headCanSuggest()) return;
+      const ops = headDraftOps();
+      const list = Object.entries(ops).map(([k, o]) => ({ k, base: o.base || null, body: o.body }));
+      if (!list.length) return;
+      if (list.length > SUG_MAX) { appAlert(`You can send up to ${SUG_MAX} items at a time. Send part of them first (Discard keeps nothing, so ask the custodian to accept these in two parts).`); return; }
+      const lines = sugLines(list);
+      const me = reqRole.me || {};
+      const title = lines.length === 1 ? `${lines[0].name}` : `${plural(lines.length, 'item')}: ${lines.slice(0, 2).map(l => l.name).join(', ')}${lines.length > 2 ? '…' : ''}`;
+      const F = cloud.sdk;
+      const ref = F.doc(sugCol());
+      const doc = cleanJSON({
+        ops: list, lines: lines.map(l => ({ code: l.code, name: String(l.name).slice(0, 160), text: String(l.text).slice(0, 400) })),
+        title: title.slice(0, 160), byUid: cloud.user.uid, byName: String(me.name || (headMe && headMe.name) || 'School Head').slice(0, 80),
+        status: 'pending', submittedMs: Date.now()
+      });
+      cloudWrite(F.setDoc(ref, { ...doc, createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp() }), 'Sending to the property custodian');
+      sugList = [...sugList, { ...doc, id: ref.id }];
+      headDraft.ops = {};
+      saveHeadDraft();
+      auditNow('edit', `Suggested changes to ${plural(lines.length, 'item')}: ${lines.slice(0, 5).map(l => l.name).join(', ')}${lines.length > 5 ? '…' : ''}`);
+      showToast('Sent to the property custodian · you get a notification when they answer', 'ph-paper-plane-tilt');
+      renderHeadView();
+    }
+    async function headDiscardDraft() {
+      const n = Object.keys(headDraftOps()).length;
+      if (!n || !await appConfirm(`Your ${plural(n, 'change')} on this phone ${n === 1 ? 'is' : 'are'} removed. The school inventory stays as it is.`, { title: 'Discard your changes?', ok: 'Discard', tone: 'danger', focusCancel: true })) return;
+      headDraft.ops = {};
+      saveHeadDraft();
+      onHeadInventory();
+      renderHeadView();
+    }
+    async function headCancelSug(id) {
+      const s = sugList.find(x => x.id === id);
+      if (!s || s.status !== 'pending' || !await appConfirm('The property custodian won’t see it anymore. Your changes are removed from this phone too.', { title: 'Take back this suggestion?', ok: 'Take it back' })) return;
+      const F = cloud.sdk;
+      cloudWrite(F.updateDoc(F.doc(sugCol(), id), { status: 'cancelled', updatedAt: F.serverTimestamp() }), 'Taking back the suggestion');
+      s.status = 'cancelled';
+      onHeadInventory();
+      renderHeadView();
+    }
+
+    // ---- The custodian: review, accept or decline ----
+    // A change by the head on top of what is on this phone now: only what the head changed.
+    function sugMerge(k, base, body, cur) {
+      if (!body) return null;
+      if (!cur) return base ? null : body;                     // removed here since: skipped
+      if (k.startsWith('c:')) {
+        const b = (base && base.raw) || [], n = body.raw || [], c = cur.raw || [];
+        const raw = c.slice();
+        n.forEach((v, i) => { if (canonJSON(v) !== canonJSON(b[i])) raw[i] = v; });
+        return { code: cur.code, raw };
+      }
+      const s0 = (base && base.state) || {}, s1 = body.state || {}, sc = cur.state || {};
+      const out = JSON.parse(JSON.stringify(sc));
+      new Set([...Object.keys(s0), ...Object.keys(s1)]).forEach(f => {
+        if (f === 'units' || canonJSON(s0[f]) === canonJSON(s1[f])) return;
+        if (f === 'qty') { out.qty = Math.max(0, (parseInt(sc.qty, 10) || 0) + (parseInt(s1.qty, 10) || 0) - (parseInt(s0.qty, 10) || 0)); return; }   // what the head added or took away
+        if (s1[f] === undefined) delete out[f]; else out[f] = JSON.parse(JSON.stringify(s1[f]));
+      });
+      if (canonJSON(s0.units || []) !== canonJSON(s1.units || [])) {
+        const was = new Map((s0.units || []).map(u => [u.id, u]));
+        const units = out.units || [];
+        const at = new Map(units.map((u, i) => [u.id, i]));
+        (s1.units || []).forEach(u => {
+          const b = was.get(u.id);
+          if (!b) { if (!at.has(u.id)) units.push(JSON.parse(JSON.stringify(u))); return; }
+          if (!at.has(u.id)) return;                             // removed here since
+          const cu = units[at.get(u.id)];
+          new Set([...Object.keys(b), ...Object.keys(u)]).forEach(f => { if (canonJSON(b[f]) !== canonJSON(u[f])) { if (u[f] === undefined) delete cu[f]; else cu[f] = JSON.parse(JSON.stringify(u[f])); } });
+        });
+        out.units = units;
+        if (units.length > (parseInt(out.qty, 10) || 0)) out.qty = units.length;
+      }
+      return { code: cur.code, state: out };
+    }
+    async function acceptSuggestion(id) {
+      const s = sugList.find(x => x.id === id);
+      if (!s || s.status !== 'pending' || !isCustodianDevice() || isViewOnly() || !cloud.user) return;
+      const picked = new Set([...document.querySelectorAll(`[data-sug="${id}"] [data-sug-pick]`)].filter(b => b.checked).flatMap(b => b.dataset.sugPick.split(',')));
+      let chosen = (s.ops || []).filter(o => sugKeyOk(o.k) && o.body && (!document.querySelector(`[data-sug="${id}"] [data-sug-pick]`) || picked.has(o.k)));
+      if (!chosen.length) { appAlert('Tick at least one item to accept, or tap Decline.'); return; }
+      const local = localInvDocs();
+      // A new item whose code another item already uses here: it gets the next free code.
+      chosen.filter(o => o.k.startsWith('c:') && !o.base && local[o.k] && String(local[o.k].raw[2]) !== String(o.body.raw[2])).forEach(o => {
+        const old = o.k.slice(2);
+        const { no, code } = nextCustomCode();
+        chosen = chosen.map(x => {
+          if (x.k === 'c:' + old) { const raw = x.body.raw.slice(); raw[0] = no; raw[1] = code; return { ...x, k: 'c:' + code, body: { code, raw } }; }
+          if (x.k === 'i:' + old) return { ...x, k: 'i:' + code, base: null, body: { ...x.body, code } };
+          return x;
+        });
+        customRawItems.push([no, code, '', 'unit', 0, 24, 'PART2']);   // holds the code while the rest is merged
+      });
+      const before = new Set(Object.values(userState).flatMap(st => (st && st.units || []).map(u => u.id)));
+      const done = [], skipped = [];
+      chosen.sort((a, b) => (a.k.startsWith('c:') ? 0 : 1) - (b.k.startsWith('c:') ? 0 : 1)).forEach(o => {
+        const cur = o.k.startsWith('c:') ? (customRawItems.find(r => r && r[1] === o.k.slice(2) && r[2]) ? local[o.k] : null) : local[o.k];
+        const m = sugMerge(o.k, o.base, o.body, cur);
+        if (!m) { skipped.push(o); return; }
+        const code = o.k.slice(2);
+        if (o.k.startsWith('c:')) {
+          const at = customRawItems.findIndex(r => r && r[1] === code);
+          if (at >= 0) customRawItems[at] = m.raw; else customRawItems.push(m.raw);
+        } else userState[code] = m.state;
+        done.push(o);
+      });
+      customRawItems = customRawItems.filter(r => r && r[2]);
+      // Property numbers made on the head's phone that are already used here get the next free number
+      const used = new Set();
+      Object.values(userState).forEach(st => (st && st.units || []).forEach(u => { if (before.has(u.id) && u.no) used.add(u.no); }));
+      Object.keys(userState).forEach(code => (userState[code].units || []).forEach(u => {
+        if (before.has(u.id) || !u.no) return;
+        if (used.has(u.no)) u.no = nextPropertyNumbers(1, undefined, { date: u.acq || u.icsDate || '', cost: u.cost || 0 })[0] || u.no;
+        used.add(u.no);
+      }));
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(customRawItems));
+      rebuildCatalogList();
+      const who = s.byName || 'the School Head';
+      const lines = sugLines(done);
+      saveStateWith({ summary: { kind: 'edit', code: lines.length === 1 ? lines[0].code : null,
+        text: `Accepted ${who}’s suggestion: ${lines.map(l => `${l.name} (${l.text})`).join('; ')}`.slice(0, 480) } });
+      renderItems();
+      renderDashboard();
+      const F = cloud.sdk;
+      const keys = done.map(o => o.k);
+      cloudWrite(F.updateDoc(F.doc(sugCol(), id), { status: 'accepted', decision: cleanJSON({ byUid: cloud.user.uid, byName: actorName(), atMs: Date.now(), keys, ...(skipped.length ? { note: `${plural(skipped.length, 'item')} removed from the inventory since, skipped` } : {}) }), updatedAt: F.serverTimestamp() }), 'Accepting the suggestion');
+      s.status = 'accepted';
+      renderSugBanner();
+      renderSugSheet();
+      showToast(`Accepted · ${plural(lines.length, 'item')} updated${skipped.length ? ` (${skipped.length} skipped)` : ''}`, 'ph-check-circle');
+    }
+    async function declineSuggestion(id) {
+      const s = sugList.find(x => x.id === id);
+      if (!s || s.status !== 'pending' || !isCustodianDevice() || isViewOnly() || !cloud.user) return;
+      const note = await appPrompt(`${s.byName || 'The School Head'} sees this.`, '', { title: 'Decline this suggestion?', label: 'Reason (optional)', placeholder: 'e.g. Already encoded from the paper ICS', ok: 'Decline', tone: 'danger' });
+      if (note === null || note === undefined || note === false) return;
+      const F = cloud.sdk;
+      cloudWrite(F.updateDoc(F.doc(sugCol(), id), { status: 'declined', decision: cleanJSON({ byUid: cloud.user.uid, byName: actorName(), atMs: Date.now(), note: String(note || '').trim().slice(0, 300) }), updatedAt: F.serverTimestamp() }), 'Declining the suggestion');
+      s.status = 'declined';
+      logHistory('system', `Declined ${s.byName || 'the School Head'}’s suggestion (${s.title || 'changes'})${String(note || '').trim() ? ` – ${String(note).trim()}` : ''}`);
+      renderSugBanner();
+      renderSugSheet();
+    }
+    const sugIsOpen = () => !document.getElementById('sugModal').classList.contains('hidden');
+    function openSugSheet() {
+      if (!isCustodianDevice()) return;
+      closeMoreMenu();
+      document.getElementById('sugModal').classList.remove('hidden');
+      renderSugSheet();
+    }
+    function closeSugSheet() { document.getElementById('sugModal').classList.add('hidden'); }
+    function renderSugBanner() {
+      const el = document.getElementById('sugBanner');
+      if (!el) return;
+      const n = isCustodianDevice() ? sugPending().length : 0;
+      el.classList.toggle('hidden', !n);
+      if (!n) { el.innerHTML = ''; return; }
+      const s = sugPending()[0];
+      const head = currentHead();
+      el.innerHTML = `<button type="button" onclick="openSugSheet()" data-sug-banner="${n}" class="w-full rounded-xl bg-violet-50 border border-violet-200 hover:bg-violet-100 px-3 py-2.5 flex items-center gap-3 text-left">
+        ${avatarHTML((head && head.name) || s.byName || 'School Head', (head && head.photo) || '', 'w-9 h-9 text-xs', 'bg-violet-100 text-violet-700')}
+        <span class="flex-1 min-w-0"><span class="block text-sm font-extrabold text-violet-900">${n === 1 ? `${escapeHTML(s.byName || 'The School Head')} suggested changes` : `${n} suggestions from the School Head`}</span>
+        <span class="block text-[11px] text-violet-800 truncate">${escapeHTML(s.title || '')} · tap to review</span></span>
+        <i class="ph-bold ph-caret-right text-violet-500"></i></button>`;
+    }
+    function renderSugSheet() {
+      const body = document.getElementById('sugBody');
+      if (!body || !sugIsOpen()) return;
+      const ro = isViewOnly();
+      const local = localInvDocs();
+      const pend = sugPending();
+      const done = sugList.filter(s => ['accepted', 'declined'].includes(s.status)).sort((a, b) => ((b.decision && b.decision.atMs) || 0) - ((a.decision && a.decision.atMs) || 0)).slice(0, 10);
+      const card = s => {
+        const lines = sugLines((s.ops || []).filter(o => sugKeyOk(o.k)));
+        const rows = lines.map(l => {
+          const conflict = l.ks.some(k => { const o = s.ops.find(x => x.k === k); return o && o.base && local[k] && invHash(local[k]) !== invHash(o.base); });
+          const gone = l.ks.some(k => { const o = s.ops.find(x => x.k === k); return o && o.base && !local[k]; });
+          return `<label class="flex items-start gap-2.5 py-1.5" data-sug-line="${escapeHTML(l.code)}">
+            ${ro ? '' : `<input type="checkbox" data-sug-pick="${escapeHTML(l.ks.join(','))}" ${gone ? '' : 'checked'} class="mt-0.5 w-4 h-4 accent-brand-600">`}
+            <span class="min-w-0 text-xs"><b class="text-slate-900">${escapeHTML(l.name)}</b> <span class="font-mono text-[11px] text-slate-500">${escapeHTML(l.code)}</span><br><span class="text-slate-700">${escapeHTML(l.text)}</span>
+            ${gone ? '<br><span class="text-rose-700 font-semibold">Removed from your inventory since · skipped</span>' : conflict ? '<br><span class="text-amber-700 font-semibold">You changed this item since · only what the head changed is applied</span>' : ''}</span>
+          </label>`;
+        }).join('');
+        return `<div class="rounded-2xl border border-violet-200 bg-white p-3 space-y-2" data-sug="${s.id}">
+          <div class="flex items-center gap-2.5">
+            ${avatarHTML(s.byName || 'School Head', ((currentHead() && currentHead().uid === s.byUid) ? currentHead().photo : '') || '', 'w-9 h-9 text-xs', 'bg-violet-100 text-violet-700')}
+            <div class="min-w-0"><p class="text-sm font-extrabold text-slate-900 truncate">${escapeHTML(s.byName || 'School Head')}</p><p class="text-[11px] text-slate-500">School Head · ${escapeHTML(formatTimeAgo(s.submittedMs))} · ${plural(lines.length, 'item')}</p></div>
+          </div>
+          <div class="divide-y divide-slate-100">${rows}</div>
+          ${ro ? '' : `<div class="flex gap-2 pt-1">
+            <button onclick="declineSuggestion('${s.id}')" data-sug-decline class="h-11 px-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-xs font-bold text-slate-700">Decline</button>
+            <button onclick="acceptSuggestion('${s.id}')" data-sug-accept class="flex-1 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-check"></i> Accept${lines.length > 1 ? ' ticked' : ''}</button>
+          </div>`}
+        </div>`;
+      };
+      body.innerHTML = (pend.length ? pend.map(card).join('') : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500" data-sug-none><i class="ph-bold ph-check-circle text-3xl text-slate-300"></i><p class="mt-1 font-bold text-slate-700 text-sm">Nothing to review</p><p>When the School Head suggests a change to the inventory, it shows here.</p></div>`) +
+        (done.length ? `<details class="rounded-2xl border border-slate-200 px-3 py-2.5"><summary class="text-xs font-bold text-slate-600 cursor-pointer">Answered · ${done.length}</summary><div class="mt-2 space-y-1.5">${done.map(s => `
+          <p class="text-xs text-slate-700 flex justify-between gap-3"><span class="min-w-0 truncate">${escapeHTML(s.title || '')}</span><span class="shrink-0 font-bold ${s.status === 'accepted' ? 'text-emerald-700' : 'text-rose-700'}">${s.status === 'accepted' ? 'Accepted' : 'Declined'}</span></p>`).join('')}</div></details>` : '');
+    }
+    function notifFromSuggestions(meta) {
+      if (isCustodianDevice() && !isViewOnly()) {
+        notifCheck('sugWaiting', sugPending().map(s => ({
+          key: 'sg:' + s.id, sig: String(s.submittedMs || 0),
+          make: () => ({ title: `${s.byName || 'The School Head'} suggested changes`, body: `${s.title || 'Inventory'} · tap to accept or decline`, icon: 'ph-lightbulb', tone: 'brand', go: 'suggest', who: s.byName || '' })
+        })), fromCacheOf(meta));
+      } else if (isHeadDevice()) {
+        notifCheck('sugAnswers', mySugs().filter(s => ['accepted', 'declined'].includes(s.status)).map(s => ({
+          key: 'sa:' + s.id, sig: s.status,
+          make: () => ({ title: s.status === 'accepted' ? 'The custodian accepted your suggestion' : 'The custodian declined your suggestion', body: `${s.title || ''}${s.decision && s.decision.note ? ` · “${s.decision.note}”` : ''}`, icon: s.status === 'accepted' ? 'ph-check-circle' : 'ph-x-circle', tone: s.status === 'accepted' ? 'emerald' : 'rose', go: 'suggest' })
+        })), fromCacheOf(meta));
+      }
     }
 
     function renderHeadView() {
@@ -16843,12 +17381,12 @@
             <i class="ph-bold ph-caret-right text-slate-400"></i>
           </button>`;
         const pane = (k, inner) => `<div data-hd-pane="${k}" class="space-y-5 ${headTab === k ? '' : 'hidden'}">${inner}</div>`;
-        html = pane('approve', left) + pane('school', headDashHTML()) + pane('people', headPeopleHTML()) + pane('history', history);
+        html = pane('approve', left) + pane('school', headDashHTML()) + pane('items', headTab === 'items' ? headItemsHTML() : '') + pane('people', headPeopleHTML()) + pane('history', history);
       }
       renderHeadTabs(two, nTab);
       const body = document.getElementById('hdBody');
       if (body.innerHTML !== html) {
-        const focus = document.activeElement && ['hdSearch', 'hdPeopleSearch'].includes(document.activeElement.id) ? [document.activeElement.id, document.activeElement.selectionStart] : null;
+        const focus = document.activeElement && ['hdSearch', 'hdPeopleSearch', 'hdItemsSearch'].includes(document.activeElement.id) ? [document.activeElement.id, document.activeElement.selectionStart] : null;
         body.innerHTML = html;
         drawTurnQr();
         if (headPeopleQ) { const box = document.getElementById('hdPeopleSearch'); if (box) box.value = headPeopleQ; filterHeadPeople(headPeopleQ); }
@@ -16858,10 +17396,12 @@
     // Tabs like a teacher's: Approve (with the count waiting) · School · People · History.
     var headTab = 'approve';
     var headPeopleQ = '';
-    var HEAD_TITLES = { approve: 'For your approval', school: 'School property', people: 'Who holds what', history: 'Your decisions' };
+    var HEAD_TITLES = { approve: 'For your approval', school: 'School property', items: 'School inventory', people: 'Who holds what', history: 'Your decisions' };
     function setHeadTab(t) {
       if (!HEAD_TITLES[t]) return;
+      const was = headTab;
       headTab = t;
+      if (t === 'items') { startHeadInventory(); if (was !== 'items') renderHeadView(); }
       document.querySelectorAll('#hdBody [data-hd-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.hdPane !== t));
       renderHeadTabs(!!document.querySelector('#hdBody [data-hd-pane]'));
       window.scrollTo({ top: 0 });
@@ -16875,13 +17415,13 @@
       Object.keys(HEAD_TITLES).forEach(t => {
         const b = document.getElementById(`hdTab-${t}`);
         const sel = t === headTab;
-        b.className = `h-11 rounded-xl text-[13px] sm:text-sm font-extrabold flex items-center justify-center gap-1 sm:gap-1.5 transition ${sel ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5 seg-on' : 'text-slate-500 hover:text-slate-800'}`;
+        b.className = `relative h-12 sm:h-11 rounded-xl text-[11px] min-[400px]:text-xs sm:text-sm font-extrabold flex flex-col sm:flex-row items-center justify-center gap-0 sm:gap-1.5 transition ${sel ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5 seg-on' : 'text-slate-500 hover:text-slate-800'}`;
         b.setAttribute('aria-selected', sel ? 'true' : 'false');
       });
       if (n === undefined) return;
       const c = document.getElementById('hdApproveCount');
       c.textContent = n || '';
-      c.className = n ? 'min-w-5 h-5 px-1.5 rounded-full bg-violet-600 text-white text-[11px] font-bold inline-flex items-center justify-center' : 'hidden';
+      c.className = n ? 'absolute top-0.5 right-0.5 sm:static min-w-5 h-5 px-1.5 rounded-full bg-violet-600 text-white text-[11px] font-bold inline-flex items-center justify-center' : 'hidden';
     }
     function headPrCardHTML(pr, wait) {
       const a = prApproval(pr) || {};
@@ -24956,6 +25496,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         const name = (m && m.name) || n.who || '';
         return name ? { name, photo: (m && m.photo) || '' } : null;
       }
+      if (n.go === 'suggest' && isCustodianDevice()) {
+        const h = currentHead();
+        const name = (h && h.name) || n.who || '';
+        return name ? { name, photo: (h && h.photo) || '' } : null;
+      }
       if (isTeacherDevice() && /^teacher-(items|requests)$/.test(n.go || '') && (reqRole.custName || reqRole.custPhoto))
         return { name: reqRole.custName || 'Property Custodian', photo: reqRole.custPhoto || '' };
       return null;
@@ -25710,6 +26255,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         openBooksView(n.go === 'books' ? 'titles' : n.go.slice(6));
       } else if (n.go === 'assist') {
         openAssistPanel();
+      } else if (n.go === 'suggest') {               // custodian: review the School Head's suggestion; head: Items
+        if (isHeadDevice()) { headTab = 'items'; switchMainView('HEAD'); startHeadInventory(); renderHeadView(); }
+        else openSugSheet();
       } else if (n.go === 'yearend') {
         openYearEnd();
       } else if (n.go === 'life') {
@@ -25890,6 +26438,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-head-items', date: 'Nov 2026', title: 'School Heads can see the inventory and help build it', points: [
+        'The School Head\u2019s page has a new Items tab: every item of the school with the same Item preview (units, who holds them, slips, history), view only. Search by name, code, room or property number.',
+        'The head can help encode: Suggest a change on an item, add a New item or Scan an old ICS / PAR. The changes are sent to the property custodian as a suggestion.',
+        'Custodians: a suggestion shows on top of Inventory and in your notifications. Check each item, then Accept (all or only the ticked items) or Decline with a reason. Nothing in the inventory changes until you accept.'
+      ] },
       { id: '2026-11-unsynced-marks', date: 'Nov 2026', title: 'See what is not synced yet', points: [
         'Changes saved on this phone but not yet in your school account now show a small blue cloud: on the item\u2019s row in Inventory and Catalog, a Not synced yet chip in the Item preview, and on deliveries and slips (RIS, ICS, PAR) that are still waiting to be sent.',
         'The marks go away by themselves once you are online and the change reaches the account. When you are offline, the top chip also says how many changes are waiting, and a slip released offline says it reaches the teacher when you are back online.'
@@ -26817,7 +27370,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     // so nothing syncs back. Typed RESET confirms; the page reloads clean.
     var resetScope = 'device';
     var resetBusy = false;
-    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites', 'turnovers', 'turnoverInvites', 'staff', 'staffInvites', 'approvals', 'dashboard', 'books', 'bookMeta', 'bookIndex', 'bookMoves', 'loans', 'classBooks'];
+    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites', 'turnovers', 'turnoverInvites', 'staff', 'staffInvites', 'approvals', 'suggestions', 'dashboard', 'books', 'bookMeta', 'bookIndex', 'bookMoves', 'loans', 'classBooks'];
     const canEraseCloud = () => isCustodianDevice() && !isViewOnly() && !isAssistant() && !!cloud.user && !!cloud.db && !!(reqRole && reqRole.schoolId);
     function openResetApp() {
       if (typeof closeMoreMenu === 'function') { try { closeMoreMenu(); } catch (e) {} }

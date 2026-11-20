@@ -63,7 +63,7 @@ try {
   out('3 the head: property, spending, trends, usage, who holds what');
   const tabs = await ev(h, () => ({ on: !document.getElementById('hdTabs').classList.contains('hidden'), n: document.querySelectorAll('#hdTabs [role=tab]').length,
     sel: document.querySelector('#hdTabs [aria-selected=true]')?.id, count: document.getElementById('hdApproveCount').textContent, title: document.getElementById('hdTitle').textContent }));
-  check(tabs.on && tabs.n === 4 && tabs.sel === 'hdTab-approve' && tabs.count === '2' && tabs.title === 'For your approval', `tabs: Approve (2) · School · People · History, Approve first (${JSON.stringify(tabs)})`);
+  check(tabs.on && tabs.n === 5 && tabs.sel === 'hdTab-approve' && tabs.count === '2' && tabs.title === 'For your approval', `tabs: Approve (2) · School · Items · People · History, Approve first (${JSON.stringify(tabs)})`);
   check(await ev(h, () => document.querySelector('[data-hd-pane="school"]').classList.contains('hidden') && !document.querySelector('[data-hd-pane="approve"]').classList.contains('hidden')), 'only the Approve pane shows');
   await h.click('#hdTab-school');
   check(await ev(h, () => !document.querySelector('[data-hd-pane="school"]').classList.contains('hidden') && document.querySelector('[data-hd-pane="approve"]').classList.contains('hidden') && document.getElementById('hdTitle').textContent === 'School property'), 'School tab: property, spending, trends (title School property)');

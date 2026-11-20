@@ -292,7 +292,7 @@ A helper (for example, the teacher in charge of the supply room) can work on the
 
 Once a School Head is confirmed, more goes to their phone than PRs.
 
-- **School property.** Their screen shows a summary of the school's property: items and value, supplies that are low or out, **who holds what** (each person's units and value), requests waiting, items needing repair or unserviceable, and units reported lost. The custodian's devices keep it current (`dashboard/summary`). The head still can't read the inventory itself.
+- **School property.** Their screen shows a summary of the school's property: items and value, supplies that are low or out, **who holds what** (each person's units and value), requests waiting, items needing repair or unserviceable, and units reported lost. The custodian's devices keep it current (`dashboard/summary`). The full inventory is in the **Items** tab (see below).
 - **RIS approval (optional).** In **More → School Head** (the School Head panel), turn on **Supply requests (RIS) need approval too**. After you approve a teacher's request, it waits for the head (*Waiting for the School Head's approval*), and **Release** stays closed until they approve. If they **Return** it with a note, change it and tap **Send again**. The RIS then prints their name under *Approved by*, with *Approved in the app*. Requests a teacher already took ("I took this") and releases without a request don't wait.
 - **Write-offs.** **Relieve** (lost property) and **Remove unit** with *keep it under Written off* go to the head first. Once they approve, the unit leaves the inventory on the device that sent it (or on any custodian device a day later). It stays under *Written off*, and the reference notes *approved by …*. If they return it, the unit stays and shows their note. With no head in the app, these work as before (signed on paper).
 - **The count report.** See *Year-end & reminders* below.
@@ -305,11 +305,20 @@ Once a School Head is confirmed, more goes to their phone than PRs.
   - **Approve** (opens first, with the count waiting): Needs your attention, Waiting for you, Approve all. A custodian turnover waiting for their Confirm shows here too.
   - **School:** the property tiles, condition, Purchase Requests approved, trends, who uses the most supplies, stock levels, request status, Books & Library and *Print the monthly summary*.
   - **People:** who holds what, open, with a name search from 8 people (tap a name, print their list for a clearance) and the custodian turnover link.
+  - **Items:** the whole inventory, view only (see *The School Head's Items tab* below).
   - **History:** recently decided with its search, and School history.
 
   A notification for the head opens Approve. On a laptop or landscape tablet each tab uses two columns (attention beside waiting; the School cards in two columns; people in two columns). Phones stay one column.
 - Everything comes from `dashboard/summary` (one document the custodian's devices keep current) and the PRs and approvals the head already reads, so it adds no reads. No rules change.
 - **Rules.** These items are kept in `approvals`. Only the confirmed head approves or returns one, and only while it is waiting. The custodian and assistants can send, send again or cancel, never decide. A teacher can't read them.
+
+### The School Head's Items tab: view the inventory, suggest changes
+
+- **View only.** The head's **Items** tab lists the whole school inventory, the same items, units, holders and history the custodian sees. It has a search (name, code, room, property number) and the filters *All, Equipment, Supplies, Low stock*. Tapping an item opens the Item preview with no Release and no stock in. It loads only when the head opens the tab, so the head's other tabs cost no extra reads.
+- **Helping encode.** In the preview, **Suggest a change** opens the usual edit form (room, details, quantity, units, date acquired…). The tab also has **New item** and **Scan ICS / PAR** for old slips. Nothing reaches the inventory yet: the change is kept on the head's phone as *Your change · not sent*. A yellow card lists the changes, with **Send to the custodian** and **Discard**. Once sent, the items show *Suggested · waiting for the custodian*, and the head can **Take it back** while it waits. Other changes (release, stock in, delete…) are refused on the head's phone.
+- **The custodian confirms.** The custodian (or an assistant) gets a notification and a banner on top of **Inventory**: *… suggested changes*. The review sheet shows each item and what the head changed. **Accept** applies the ticked items, so the custodian can untick some. **Decline** asks for a reason. If the custodian changed the same item meanwhile, the sheet says so. Only the fields the head changed are applied, and a quantity change is added to the custodian's current count. Accepted changes go into Change History as *suggested by the School Head* and sync as usual. The head gets *Accepted* or *Declined* (with the reason), and their phone goes back to the account's values.
+- **Approvals stay separate.** PRs, RIS, write-offs and count reports still go through **Approve**.
+- **Rules.** The confirmed head can read `inventory`, `catalog`, `settings` and `releases`, but never write them. Suggestions are kept in `suggestions`. Only the head creates one (waiting, with their own uid, 1–150 items) and may cancel their own while it waits. Staff accept or decline a waiting one, and the custodian may delete it. **Publish the updated `firestore.rules`** for this to work.
 
 ### Lost property
 
