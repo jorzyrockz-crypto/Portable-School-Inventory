@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="a63d39cc3d5c">
+  <meta name="app-version" content="259291273eac">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -498,6 +498,27 @@
     .pr-draft { border: 1.5pt solid #000; text-align: center; font-weight: 700; letter-spacing: 1pt; padding: 3pt; margin: 2pt 0 2pt; font-size: 11pt; }
     .pr-esign { display: block; text-align: center; font-size: 8pt; font-style: italic; padding-top: 9pt; }
     .pr-table .pr-purpose { height: 40pt; }
+    @media (max-width: 639px) { #rqTabs.rq-five > button { font-size: 12px; gap: 0.2rem; } }
+    .lv-form { font-size: 8.5pt; }
+    .pr-table .lc-sub th { font-size: 7.5pt; padding: 2pt 1pt; }
+    .lv-form h1 { font-size: 13pt; margin: 2pt 0 6pt; }
+    .lv-cs { font-size: 8pt; }
+    .lv-agency { text-align: center; font-size: 9.5pt; line-height: 1.3; margin-top: -2pt; }
+    .lv-t td, .lv-t th { padding: 2.5pt 4pt; }
+    .lv-list { margin-top: 3pt; }
+    .lv-opt { line-height: 1.35; margin: 1pt 0; }
+    .lv-sub { margin-top: 3pt; }
+    .lv-law { font-size: 6.5pt; }
+    .lv-box { display: inline-block; width: 8pt; height: 8pt; border: 0.8pt solid #000; text-align: center; line-height: 8pt; font-size: 7pt; font-weight: 700; vertical-align: -1pt; }
+    .lv-line { display: inline-block; border-bottom: 0.8pt solid #000; padding: 0 2pt; min-height: 9pt; font-weight: 700; }
+    .lv-big { font-size: 11pt; }
+    .lv-cred { width: 100%; border-collapse: collapse; margin-top: 4pt; table-layout: fixed; }
+    .lv-cred td, .lv-cred th { border: 0.8pt solid #000; padding: 1.5pt 3pt; text-align: center; font-size: 8pt; height: 11pt; }
+    .lv-cred td:first-child { text-align: left; }
+    .lv-memo { margin-top: 3pt; font-size: 8pt; }
+    .lv-sig { text-align: center; margin-top: 14pt; line-height: 1.2; }
+    .lv-sig b { display: inline-block; min-width: 55mm; border-bottom: 0.8pt solid #000; }
+    .lv-sig span { font-size: 7.5pt; }
     /* ---- Light / dark ---------------------------------------------------------------
        html.dark is set by the <head> script (System / Light / Dark in More). The Tailwind
        color classes get their dark twins from scripts/dark-theme.mjs; these are the bits
@@ -1335,6 +1356,7 @@
       <button id="rqTab-requests" role="tab" onclick="setTeacherTab('requests')"><i class="ph-bold ph-paper-plane-tilt text-base hidden min-[400px]:inline"></i> Requests</button>
       <button id="rqTab-stock" role="tab" onclick="setTeacherTab('stock')"><i class="ph-bold ph-package text-base hidden min-[400px]:inline"></i> Stock</button>
       <button id="rqTab-library" role="tab" onclick="setTeacherTab('library')"><i class="ph-bold ph-books text-base hidden min-[400px]:inline"></i> Library <span id="rqLibDot" class="hidden w-2 h-2 rounded-full bg-violet-500"></span></button>
+      <button id="rqTab-leave" role="tab" onclick="setTeacherTab('leave')" class="hidden"><i class="ph-bold ph-calendar-check text-base hidden min-[400px]:inline"></i> Leave <span id="rqLeaveDot" class="hidden w-2 h-2 rounded-full bg-teal-500"></span></button>
     </div>
     <p id="rqSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
     <div id="rqStatus" class="empty:hidden"></div>
@@ -1342,6 +1364,7 @@
     <div id="rqItemsPane" class="hidden space-y-5"></div>
     <div id="rqStockPane" class="hidden space-y-3"></div>
     <div id="rqLibraryPane" class="hidden space-y-5"></div>
+    <div id="rqLeavePane" class="hidden space-y-4"></div>
     <div id="rqRequestsPane" class="space-y-5">
     <button id="rqNewBtn" onclick="openRequestForm()" class="w-full h-16 rounded-2xl bg-amber-700 hover:bg-amber-800 active:scale-[0.98] text-white font-extrabold text-base shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition">
       <i class="ph-bold ph-plus-circle text-2xl"></i> New supply request
@@ -1364,6 +1387,11 @@
   <!-- BOOKS & LIBRARY (custodian, assistant, librarian): titles, places, lending, classes -->
   <section id="viewBooks" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
     <div id="bkView" class="space-y-4"></div>
+  </section>
+
+  <!-- LEAVE (AO on the custodian account, pilot school only): CS Form No. 6 applications -->
+  <section id="viewLeave" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
+    <div id="lvView" class="space-y-4"></div>
   </section>
 
   <!-- SCHOOL HEAD (head's phone): approve or return Purchase Requests -->
@@ -1540,6 +1568,11 @@
         <i class="ph-bold ph-book-open-text text-[22px]"></i>
         <span class="flex items-center gap-1">Books &amp; Library</span>
       </button>
+      <button id="sideLeave" onclick="openLeaveView()" data-view="LEAVE" style="display:none" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-calendar-check text-[22px]"></i>
+        <span class="flex items-center gap-1">Leave <span id="sideLeaveCount" class="hidden px-1.5 rounded-full bg-teal-100 text-teal-800 font-mono text-[11px]"></span></span>
+      </button>
       <button id="sideForms" onclick="openCoa()" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
         <i class="ph-bold ph-files text-[22px]"></i>
@@ -1575,6 +1608,7 @@
           <button id="moreSugItem" onclick="openSugSheet()" class="more-item hidden"><i class="ph-bold ph-lightbulb text-violet-600"></i> Suggestions from the School Head <span id="moreSugCount" class="hidden ml-auto px-1.5 rounded-full bg-violet-100 text-violet-800 text-[11px] font-extrabold"></span></button>
           <button onclick="closeMoreMenu(); openTeachersView()" class="more-item"><i class="ph-bold ph-users-three text-teal-600"></i> Released to teachers <span id="moreTeachCount" class="hidden ml-auto px-1.5 rounded-full bg-rose-100 text-rose-800 font-mono text-[11px] font-bold"></span></button>
           <button id="moreBooksItem" onclick="closeMoreMenu(); openBooksView()" class="more-item"><i class="ph-bold ph-book-open-text text-violet-600"></i> Books &amp; Library <span class="ml-auto text-[11px] font-bold text-slate-500">Textbooks · lending</span></button>
+          <button id="moreLeaveItem" onclick="closeMoreMenu(); openLeaveView()" style="display:none" class="more-item"><i class="ph-bold ph-calendar-check text-teal-600"></i> Leave <span class="text-[11px] font-bold text-slate-500">CS Form 6</span><span id="moreLeaveCount" class="hidden ml-auto px-1.5 rounded-full bg-teal-100 text-teal-800 font-mono text-[11px] font-bold"></span></button>
           <button id="moreCoaItem" onclick="openCoa()" class="more-item"><i class="ph-bold ph-stamp text-brand-600"></i> Government forms <span class="ml-auto text-[11px] font-bold text-slate-500">RPCPPE · PTR · IIRUP</span></button>
           <button onclick="closeMoreMenu(); printReport()" class="more-item"><i class="ph-bold ph-printer text-slate-600"></i> Print report</button>
           <button onclick="closeMoreMenu(); exportCSV()" class="more-item"><i class="ph-bold ph-download-simple text-emerald-600"></i> Export inventory (CSV)</button>
@@ -2061,6 +2095,11 @@
   <div id="bkModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeBkModal()" onkeydown="if (event.key === 'Escape') closeBkModal()">
     <div id="bkModalBox" role="dialog" aria-modal="true" class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 safe-pad max-h-[94vh] overflow-y-auto">
       <div id="bkModalBody" class="space-y-4"></div>
+    </div>
+  </div>
+  <div id="lvModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeLvModal()" onkeydown="if (event.key === 'Escape') closeLvModal()">
+    <div id="lvModalBox" role="dialog" aria-modal="true" class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 safe-pad max-h-[94vh] overflow-y-auto">
+      <div id="lvModalBody" class="space-y-4"></div>
     </div>
   </div>
   <datalist id="bkAreaList"><option value="Mother Tongue"><option value="Filipino"><option value="English"><option value="Reading &amp; Literacy"><option value="Mathematics"><option value="Science"><option value="Araling Panlipunan"><option value="Makabansa"><option value="GMRC / Values Education"><option value="MAPEH"><option value="EPP / TLE"><option value="Kindergarten"><option value="Senior High School"><option value="General"></datalist>
@@ -3445,11 +3484,12 @@
     // =========================================================================
     // 4. VIEW NAVIGATION (DASHBOARD <-> CATALOG)
     // =========================================================================
-    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester', TEACHERS: 'viewTeachers', HEAD: 'viewHead', BOOKS: 'viewBooks' };
+    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester', TEACHERS: 'viewTeachers', HEAD: 'viewHead', BOOKS: 'viewBooks', LEAVE: 'viewLeave' };
 
     function switchMainView(viewName) {
       if (viewName === 'DASHBOARD') viewName = 'REPORTS'; // old name
       if (!MAIN_VIEWS[viewName]) viewName = 'HOME';
+      if (viewName === 'LEAVE' && !(leaveOn() && isCustodianDevice())) viewName = 'HOME';   // the Leave pilot
       if (isTeacherDevice()) viewName = viewName === 'BOOKS' && isLibrarianDevice() ? 'BOOKS' : 'REQUESTER'; // a teacher's phone: supply requests (the librarian: also the Library desk)
       else if (isHeadDevice()) viewName = 'HEAD';    // the School Head's phone: PR approvals only
       else if (viewName === 'REQUESTER' || viewName === 'HEAD') viewName = 'HOME';
@@ -3475,6 +3515,7 @@
       if (viewName === 'HEAD') renderHeadView();
       if (viewName === 'TEACHERS') renderTeachersView();
       if (viewName === 'BOOKS') renderBooksView();
+      if (viewName === 'LEAVE') renderLeaveView();
       syncPageArt();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -9697,6 +9738,8 @@
         [...outOf, ...low].slice(0, 3).map(i => i.name).join(' · '), 'stock', "switchMainView('ITEMS'); setLedgerFilter('LOW'); window.scrollTo({ top: 0 })");
       const bs = typeof bkDashSummary === 'function' ? bkDashSummary() : null;
       if (bs && bs.od) add('amber', 'ph-books', `${plural(bs.od, 'library book')} overdue`, 'Books & Library', 'books', "switchMainView('BOOKS')");
+      const lvN = leaveOn() && isCustodianDevice() ? lvTodo().length : 0;
+      if (lvN) add('brand', 'ph-calendar-check', `${plural(lvN, 'leave application')} to act on`, 'Leave · CS Form 6', 'leave', 'openLeaveView()');
       return out;
     }
     var HOME_REPORT_DAYS = 3;
@@ -11524,6 +11567,7 @@
       myMember = null; myMemberLoaded = false; myMemberSrv = null;
       reqUnsubs.forEach(off => { try { off(); } catch (e) {} });
       reqUnsubs = [];
+      leaveStop();
       memberList = []; releaseList = []; releaseAll = []; releasesLoaded = false; teamError = '';
       myReleases = []; tReports = [];
       myRelLoaded = false; tRepLoaded = false;
@@ -11577,6 +11621,7 @@
         subscribeHeads(F);
         subscribeStaff(F);
         subscribeApprovals(F, onErr);
+        leaveSync();
         subscribeSuggestions();
         subscribeTeam(F);
         subscribeInspections(F);
@@ -15780,8 +15825,8 @@
     var dashDoc = null, dashLoaded = false, dashSentHash = '', dashTimer = null;
     const apCol = () => cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'approvals');
     const dashRef = () => cloud.sdk.doc(cloud.db, 'schools', reqRole.schoolId, 'dashboard', 'summary');
-    const AP_KIND = { ris: 'Supply request (RIS)', writeoff: 'Write-off', count: 'Physical count report', books: 'Disposal of books' };
-    const AP_ICON = { ris: 'ph-hand-arrow-up', writeoff: 'ph-seal-check', count: 'ph-clipboard-text', books: 'ph-books' };
+    const AP_KIND = { ris: 'Supply request (RIS)', writeoff: 'Write-off', count: 'Physical count report', books: 'Disposal of books', leave: 'Leave application' };
+    const AP_ICON = { ris: 'ph-hand-arrow-up', writeoff: 'ph-seal-check', count: 'ph-clipboard-text', books: 'ph-books', leave: 'ph-calendar-check' };
     const apStamp = a => (a && a.decision ? `${a.decision.byName || 'The School Head'} · ${iarStamp(a.decision.atMs)}` : '');
     function apLatest(kind, refId) {
       return apList.filter(a => a.kind === kind && a.refId === refId && a.status !== 'cancelled')
@@ -15793,7 +15838,7 @@
       apLoaded = true;
       if (isHeadDevice()) renderHeadView(); else renderRequestsEverywhere();
       notifFromApprovals(snap.metadata);
-      if (!(snap.metadata && snap.metadata.fromCache)) { applyApprovedWriteOffs(); bkScheduleApply(); }
+      if (!(snap.metadata && snap.metadata.fromCache)) { applyApprovedWriteOffs(); bkScheduleApply(); leaveApplyDecisions(); }
       if (bkSheet && bkSheet.view === 'disposal') renderBkModal();
       if (yeIsOpen()) renderYearEnd();
       if (unitsModalCode) { try { renderUnitsModal(null, true); } catch (e) {} }
@@ -15801,6 +15846,1198 @@
     }
     function subscribeApprovals(F, onErr) {
       reqUnsubs.push(listenSynced(apCol(), ['createdAt', 'updatedAt'], onApprovals, onErr));
+    }
+
+    // =========================================================================
+    // LEAVE (CS Form No. 6, Revised 2020) · pilot school only
+    // The teacher applies (or the AO, on the custodian account, encodes a paper form). The AO
+    // receives it and recommends the kind of leave, the days and the credits (with the memo), and
+    // sends it to the School Head (Approve tab, approvals kind 'leave'). Once approved the AO
+    // prepares Form 6 and sends it to the teacher to review and print (a ₱250 whole-day absence:
+    // Form 6 is kept on hold). Then: handed in, signed by the School Head, received by the Division.
+    //   schools/{schoolId}/leaves/{id}   one application (the teacher reads only their own)
+    // =========================================================================
+    const LEAVE_PILOT = ['97JbEODfGJhWcejYDWhO'];            // Testing ES (firestore.rules leavePilot)
+    const LEAVE_PILOT_KEY = 'custodian_leave_pilot_v1';      // trying it on another school (the rules still decide)
+    function leaveOn() {
+      try {
+        if (!reqRole || !reqRole.schoolId) return false;
+        return LEAVE_PILOT.includes(reqRole.schoolId) || (localStorage.getItem(LEAVE_PILOT_KEY) || '').split(',').includes(reqRole.schoolId);
+      } catch (e) { return false; }   // early, before this part of the script ran
+    }
+    // 6.A, in the order of the form
+    const LV_TYPES = {
+      VL: { label: 'Vacation Leave', law: 'Sec. 51, Rule XVI, Omnibus Rules Implementing E.O. No. 292' },
+      FL: { label: 'Mandatory/Forced Leave', law: 'Sec. 25, Rule XVI, Omnibus Rules Implementing E.O. No. 292' },
+      SL: { label: 'Sick Leave', law: 'Sec. 43, Rule XVI, Omnibus Rules Implementing E.O. No. 292' },
+      ML: { label: 'Maternity Leave', law: 'R.A. No. 11210 / IRR issued by CSC, DOLE and SSS' },
+      PL: { label: 'Paternity Leave', law: 'R.A. No. 8187 / CSC MC No. 71, s. 1998, as amended' },
+      SPL: { label: 'Special Privilege Leave', law: 'Sec. 21, Rule XVI, Omnibus Rules Implementing E.O. No. 292' },
+      SOLO: { label: 'Solo Parent Leave', law: 'R.A. No. 8972 / CSC MC No. 8, s. 2004' },
+      STUDY: { label: 'Study Leave', law: 'Sec. 68, Rule XVI, Omnibus Rules Implementing E.O. No. 292' },
+      VAWC: { label: '10-Day VAWC Leave', law: 'R.A. No. 9262 / CSC MC No. 15, s. 2005' },
+      RP: { label: 'Rehabilitation Privilege', law: 'Sec. 55, Rule XVI, Omnibus Rules Implementing E.O. No. 292' },
+      SLBW: { label: 'Special Leave Benefits for Women', law: 'R.A. No. 9710 / CSC MC No. 25, s. 2010' },
+      CAL: { label: 'Special Emergency (Calamity) Leave', law: 'CSC MC No. 2, s. 2012, as amended' },
+      ADOPT: { label: 'Adoption Leave', law: 'R.A. No. 8552' },
+      OTH: { label: 'Others', law: '' }
+    };
+    const LV_USE = {
+      vsc: { label: 'Vacation Service Credits', short: 'Service credits', hint: 'Division memo' },
+      lsc: { label: 'Local Service Credits', short: 'Local service credits', hint: 'School memo · not reflected in the DTR' },
+      vlsl: { label: 'Leave credits (VL / SL)', short: 'VL / SL', hint: 'Non-teaching staff' },
+      p250: { label: '₱250 · whole-day absence', short: '₱250', hint: 'Up to 2 a month · Form 6 kept on hold' },
+      none: { label: 'Without pay', short: 'Without pay', hint: '' }
+    };
+    const LV_P250_MAX = 2;   // a month, per person
+    const LV_STATUS = {
+      applied: { label: 'Applied', tone: 'bg-amber-50 text-amber-800 border-amber-200' },
+      sh: { label: 'With the School Head', tone: 'bg-violet-50 text-violet-800 border-violet-200' },
+      approved: { label: 'Approved · Form 6 being prepared', tone: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+      hold: { label: 'Approved · Form 6 on hold', tone: 'bg-slate-100 text-slate-700 border-slate-200' },
+      returned: { label: 'Returned by the School Head', tone: 'bg-rose-50 text-rose-800 border-rose-200' },
+      review: { label: 'Form 6 ready · review and print', tone: 'bg-sky-50 text-sky-800 border-sky-200' },
+      handed: { label: 'Handed in · for the School Head’s signature', tone: 'bg-sky-50 text-sky-800 border-sky-200' },
+      signed: { label: 'Signed · for the Division', tone: 'bg-teal-50 text-teal-800 border-teal-200' },
+      done: { label: 'Received by the Division', tone: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+      declined: { label: 'Declined', tone: 'bg-rose-50 text-rose-800 border-rose-200' },
+      cancelled: { label: 'Cancelled', tone: 'bg-slate-100 text-slate-600 border-slate-200' }
+    };
+    // The AO's list, in the order things happen
+    const LV_STAGES = [
+      ['applied', 'New applications', 'ph-tray-arrow-down'],
+      ['returned', 'Returned by the School Head', 'ph-arrow-u-up-left'],
+      ['sh', 'With the School Head', 'ph-hourglass-medium'],
+      ['approved', 'Prepare Form 6', 'ph-file-text'],
+      ['review', 'With the teacher · review and print', 'ph-user'],
+      ['handed', 'For the School Head’s signature', 'ph-pen-nib'],
+      ['signed', 'To the Division', 'ph-paper-plane-tilt'],
+      ['hold', 'Approved · Form 6 on hold', 'ph-pause-circle']
+    ];
+    const LV_OPEN = ['applied', 'returned', 'sh', 'approved', 'review', 'handed', 'signed', 'hold'];
+    var lvList = [], lvLoaded = false, lvUnsub = null, lvError = '', lvSheet = null, lvFilter = 'todo', lvQuery = '';
+    const lvCol = () => cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'leaves');
+    const lvById = id => lvList.find(l => l.id === id) || null;
+    const lvE = v => escapeHTML(v == null ? '' : String(v));
+    const lvDays = n => { const v = Number(n) || 0; return `${v % 1 ? v.toFixed(1) : v} ${v === 1 ? 'day' : 'days'}`; };
+    const lvShort = iso => (iso ? new Date(iso + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : '');
+    function lvDatesText(l) {
+      if (!l.from) return '';
+      if (!l.to || l.to === l.from) return longDate(l.from);
+      const a = new Date(l.from + 'T00:00:00'), b = new Date(l.to + 'T00:00:00');
+      if (a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()) return `${a.toLocaleDateString('en-PH', { month: 'long' })} ${a.getDate()}–${b.getDate()}, ${b.getFullYear()}`;
+      return `${lvShort(l.from)} to ${longDate(l.to)}`;
+    }
+    // Monday to Friday between two dates (both counted)
+    function lvWorkDays(from, to) {
+      if (!from || !to || to < from) return 0;
+      let n = 0;
+      const d = new Date(from + 'T00:00:00'), end = new Date(to + 'T00:00:00');
+      for (let i = 0; i < 400 && d <= end; i++) { const w = d.getDay(); if (w && w < 6) n++; d.setDate(d.getDate() + 1); }
+      return n;
+    }
+    function lvTypeText(l, type) {
+      const t = type || l.type;
+      const base = t === 'OTH' ? (l.typeOther || 'Others') : (LV_TYPES[t] || LV_TYPES.OTH).label;
+      const d = l.detail || {};
+      const more = (t === 'VL' || t === 'SPL') ? (d.where === 'abroad' ? `abroad${d.abroad ? ` (${d.abroad})` : ''}` : 'within the Philippines')
+        : t === 'SL' ? `${d.sick === 'hospital' ? 'in hospital' : 'out patient'}${d.illness ? ` · ${d.illness}` : ''}`
+        : t === 'SLBW' ? d.illness || ''
+        : t === 'STUDY' ? (d.study === 'bar' ? 'BAR/Board Examination Review' : 'Completion of Master’s Degree') : '';
+      return more ? `${base} · ${more}` : base;
+    }
+    const lvUseOf = l => (l.rec && l.rec.use) || l.use || 'none';
+    const lvMonth = iso => String(iso || '').slice(0, 7);
+    // ₱250 days already asked for in that month (not declined or cancelled)
+    function lvP250Used(uid, name, month, exceptId) {
+      return lvList.filter(l => l.id !== exceptId && lvUseOf(l) === 'p250' && !['declined', 'cancelled'].includes(l.status)
+        && (uid ? l.uid === uid : (l.name || '').toLowerCase() === String(name || '').toLowerCase()) && lvMonth(l.from) === month)
+        .reduce((n, l) => n + (Number((l.rec && l.rec.withPay) != null ? (Number(l.rec.withPay) || 0) + (Number(l.rec.withoutPay) || 0) : l.days) || 0), 0);
+    }
+    const lvActor = () => (isTeacherDevice() ? ((reqRole.me || {}).name || 'Teacher') : (actorName() || 'Property custodian'));
+    const lvCanManage = () => isCustodianDevice() && !isViewOnly();
+    const lvTodo = () => lvList.filter(l => ['applied', 'returned', 'approved', 'review', 'handed', 'signed'].includes(l.status));
+    const lvChip = s => { const x = LV_STATUS[s] || LV_STATUS.applied; return `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md border text-[11px] font-bold ${x.tone}" data-lv-status="${lvE(s)}">${lvE(x.label)}</span>`; };
+
+    // ---- Reading --------------------------------------------------------------------------
+    function leaveSync() {
+      if (lvUnsub || !leaveOn() || !cloud.db || !cloud.user || !cloud.sdk) return;
+      if (isHeadDevice() || isIncomingDevice()) return;
+      if (isTeacherDevice() && myMemberStatus() !== 'active') return;
+      if (isCustodianDevice() && (viewOnlyEnded() || assistantRemoved())) return;
+      const F = cloud.sdk;
+      const on = snap => {
+        lvList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
+        lvList.sort((a, b) => (b.filedMs || 0) - (a.filedMs || 0));
+        if (!fromCacheOf(snap.metadata)) lvLoaded = true;
+        lvError = '';
+        lvRender();
+        notifFromLeaves(snap.metadata);
+        if (!fromCacheOf(snap.metadata)) { leaveApplyDecisions(); lcSweep(); }
+      };
+      const fail = err => { console.warn('leaves', err); lvError = cloudErrorText(err); lvLoaded = true; lvRender(); };
+      lvUnsub = isTeacherDevice()
+        ? F.onSnapshot(F.query(lvCol(), F.where('uid', '==', cloud.user.uid)), { includeMetadataChanges: true }, on, fail)
+        : listenSynced(lvCol(), ['createdAt', 'updatedAt'], on, fail);
+      // Leave cards (the teacher: their own)
+      const onCards = snap => {
+        lcList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+        lcList.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+        if (!fromCacheOf(snap.metadata)) lcLoaded = true;
+        lcError = '';
+        lvRender();
+        notifFromCards(snap.metadata);
+        if (!fromCacheOf(snap.metadata)) lcSweep();
+      };
+      const failCards = err => { console.warn('leave cards', err); lcError = cloudErrorText(err); lcLoaded = true; lvRender(); };
+      lcUnsub = isTeacherDevice()
+        ? F.onSnapshot(F.query(lcCol(), F.where('uid', '==', cloud.user.uid)), { includeMetadataChanges: true }, onCards, failCards)
+        : listenSynced(lcCol(), ['createdAt', 'updatedAt'], onCards, failCards);
+    }
+    function leaveStop() {
+      if (lvUnsub) { try { lvUnsub(); } catch (e) {} }
+      if (lcUnsub) { try { lcUnsub(); } catch (e) {} }
+      lvUnsub = null; lvList = []; lvLoaded = false; lvError = '';
+      lcUnsub = null; lcList = []; lcLoaded = false; lcError = '';
+    }
+    function lvRender() {
+      try {
+        lvNav();
+        if (activeMainView === 'LEAVE') renderLeaveView();
+        if (activeMainView === 'REQUESTER' && isTeacherDevice()) { lvTeacherDot(); if (teacherTab === 'leave') renderTeacherLeave(); }
+        if (lvSheet) renderLvModal();
+        if (activeMainView === 'HOME' && typeof renderHomeAttention === 'function') renderHomeAttention();
+      } catch (e) { console.warn('leave render', e); }
+    }
+    // The menu entries (custodian) show only at the pilot school
+    function lvNav() {
+      const on = leaveOn() && isCustodianDevice();
+      const n = on ? lvTodo().length : 0;
+      const side = document.getElementById('sideLeave');
+      if (side) side.style.display = on ? '' : 'none';
+      const more = document.getElementById('moreLeaveItem');
+      if (more) more.style.display = on ? '' : 'none';
+      [['sideLeaveCount', n], ['moreLeaveCount', n]].forEach(([id, v]) => {
+        const el = document.getElementById(id);
+        if (el) { el.textContent = v || ''; el.classList.toggle('hidden', !v); }
+      });
+    }
+
+    // ---- Writing --------------------------------------------------------------------------
+    function lvUpdate(l, patch, x) {
+      if (!cloud.db || !cloud.user || !leaveOn()) return;
+      const F = cloud.sdk;
+      const log = [...(l.log || []), { at: Date.now(), by: String(lvActor()).slice(0, 80), x: String(x || '').slice(0, 300) }].slice(-80);
+      const body = cleanJSON({ ...patch, log });
+      cloudWrite(F.updateDoc(F.doc(lvCol(), l.id), { ...body, updatedAt: F.serverTimestamp() }), 'Saving the leave');
+      Object.assign(l, body);
+      lvRender();
+    }
+    // The School Head decided in the Approve tab: the application follows (custodian's devices)
+    function leaveApplyDecisions() {
+      if (!lvCanManage() || !leaveOn() || !apLoaded || !lvLoaded || !cloud.user) return;
+      lvList.filter(l => l.status === 'sh').forEach(l => {
+        const a = apLatest('leave', l.id);
+        if (!a || !['approved', 'returned'].includes(a.status)) return;
+        const d = a.decision || {};
+        const who = d.byName || 'the School Head';
+        if (a.status === 'approved') lvUpdate(l, { status: 'approved', approval: { byName: d.byName || '', byDesig: d.byDesig || '', atMs: d.atMs || Date.now(), apId: a.id } }, `Approved by ${who} in the app`);
+        else lvUpdate(l, { status: 'returned', returned: { byName: d.byName || '', atMs: d.atMs || Date.now(), note: d.note || '' } }, `Returned by ${who}${d.note ? `: “${d.note}”` : ''}`);
+      });
+    }
+
+    // ---- Notifications --------------------------------------------------------------------
+    function notifFromLeaves(meta) {
+      if (!leaveOn()) return;
+      const list = lvList.filter(l => !l.sending);
+      if (isCustodianDevice()) {
+        notifCheck('leaves', list.map(l => ({
+          key: 'lv:' + l.id, sig: l.status,
+          make: prev => (prev === undefined && l.status === 'applied' && l.by === 'teacher')
+            ? { title: `Leave application from ${l.name || 'a teacher'}`, body: `${lvTypeText(l)} · ${lvDatesText(l)} · ${lvDays(l.days)}`, icon: 'ph-calendar-plus', tone: 'amber', go: 'leave', person: l.uid || null, who: l.name || '' }
+            : null
+        })), fromCacheOf(meta));
+      } else if (isTeacherDevice()) {
+        notifCheck('leaves', list.map(l => ({
+          key: 'lv:' + l.id, sig: l.status,
+          make: prev => {
+            if (prev === undefined && l.status === 'applied') return null;
+            const what = `${lvTypeText(l)} · ${lvDatesText(l)}`;
+            const t = {
+              sh: ['Your leave application was received', 'The AO sent it to the School Head', 'ph-tray-arrow-down', 'brand'],
+              approved: ['Your leave was approved', `${what} · the AO is preparing Form 6`, 'ph-seal-check', 'emerald'],
+              hold: ['Your leave was approved', `${what} · Form 6 is kept on hold`, 'ph-seal-check', 'emerald'],
+              returned: ['Your leave application was returned', `${what}${l.returned && l.returned.note ? ` · “${l.returned.note}”` : ''}`, 'ph-arrow-u-up-left', 'rose'],
+              review: ['Form 6 is ready · review and print it', `${what} · sign the printed copy and hand it in at the office`, 'ph-printer', 'teal'],
+              signed: ['Form 6 signed by the School Head', what, 'ph-pen-nib', 'teal'],
+              done: ['Form 6 received by the Division', what, 'ph-check-circle', 'emerald'],
+              declined: ['Your leave application was declined', `${what}${l.declined && l.declined.note ? ` · ${l.declined.note}` : ''}`, 'ph-x-circle', 'rose']
+            }[l.status];
+            return t ? { title: t[0], body: t[1], icon: t[2], tone: t[3], go: 'teacher-leave' } : null;
+          }
+        })), fromCacheOf(meta));
+      }
+    }
+
+    // ---- The teacher's Leave tab ----------------------------------------------------------
+    function lvSteps(l) {
+      const at = { applied: 0, sh: 1, returned: 1, approved: 2, hold: 2, review: 3, handed: 3, signed: 4, done: 5 }[l.status];
+      if (at === undefined) return '';
+      const steps = [['Applied', 0], ['School Head', 1], ['Form 6', 2], ['Signed', 4], ['Division', 5]];
+      return `<div class="flex items-center gap-1 mt-2" aria-label="Progress" data-lv-steps="${at}">${steps.map(([n, min]) => {
+        const on = at >= min;
+        const bad = l.status === 'returned' && min === 1;
+        return `<span class="flex-1 min-w-0"><span class="block h-1.5 rounded-full ${bad ? 'bg-rose-500' : on ? 'bg-teal-500' : 'bg-slate-200'}"></span><span class="block mt-0.5 text-[10px] font-semibold truncate ${on ? 'text-slate-700' : 'text-slate-500'}">${n}</span></span>`;
+      }).join('')}</div>`;
+    }
+    const lvCanPrint = l => ['review', 'handed', 'signed', 'done'].includes(l.status) || (lvCanManage() && l.status === 'hold');
+    function lvCardHTML(l, mine) {
+      const use = LV_USE[lvUseOf(l)] || LV_USE.none;
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3" data-lv="${lvE(l.id)}">
+          <button type="button" onclick="openLvSheet('view', '${lvE(l.id)}')" class="w-full text-left flex items-start gap-3">
+            <span class="w-10 h-10 shrink-0 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center"><i class="ph-duotone ph-calendar-check text-2xl"></i></span>
+            <span class="min-w-0 flex-1">
+              ${mine ? '' : `<span class="block text-sm font-extrabold text-slate-900 truncate">${lvE(l.name)}</span>`}
+              <span class="block text-sm ${mine ? 'font-extrabold text-slate-900' : 'font-semibold text-slate-700'} leading-snug">${lvE(lvTypeText(l))}</span>
+              <span class="block text-[11px] text-slate-500">${lvE(lvDatesText(l))} · ${lvDays(l.rec ? (Number(l.rec.withPay) || 0) + (Number(l.rec.withoutPay) || 0) : l.days)} · ${lvE(use.short)}</span>
+              <span class="mt-1 flex flex-wrap items-center gap-1.5">${lvChip(l.status)}${l.sending ? '<span class="text-[11px] text-slate-500"><i class="ph-bold ph-cloud-arrow-up"></i> sending</span>' : ''}</span>
+            </span>
+            <i class="ph-bold ph-caret-right text-slate-400 mt-3"></i>
+          </button>
+          ${mine ? lvSteps(l) : ''}
+          ${l.status === 'returned' && l.returned && l.returned.note ? `<p class="mt-2 text-[11px] text-rose-800 bg-rose-50 rounded-lg px-2 py-1">“${lvE(l.returned.note)}”</p>` : ''}
+          ${l.status === 'declined' && l.declined && l.declined.note ? `<p class="mt-2 text-[11px] text-rose-800 bg-rose-50 rounded-lg px-2 py-1">${lvE(l.declined.note)}</p>` : ''}
+          ${mine && lvCanPrint(l) ? `<button onclick="lvPrint('${lvE(l.id)}')" data-lv-print="${lvE(l.id)}" class="mt-2 w-full h-10 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> Print Form 6</button>` : ''}
+          ${mine && l.status === 'review' ? '<p class="mt-1.5 text-[11px] text-slate-600">Check the details, print it, sign the printed copy and hand it in at the office.</p>' : ''}
+        </div>`;
+    }
+    // The Leave tab's dot: Form 6 is ready to print, or the application came back
+    function lvTeacherDot() {
+      const dot = document.getElementById('rqLeaveDot');
+      if (dot) dot.classList.toggle('hidden', !lvList.some(l => ['review', 'returned'].includes(l.status)));
+    }
+    function renderTeacherLeave() {
+      const pane = document.getElementById('rqLeavePane');
+      if (!pane) return;
+      if (myMemberStatus() !== 'active') { pane.innerHTML = teacherStatusBanner(); return; }
+      leaveSync();
+      const open = lvList.filter(l => LV_OPEN.includes(l.status));
+      const past = lvList.filter(l => !LV_OPEN.includes(l.status));
+      const card = lcMine();
+      pane.innerHTML = `
+        <button id="lvApplyBtn" onclick="openLvSheet('apply')" class="w-full h-16 rounded-2xl bg-teal-700 hover:bg-teal-800 active:scale-[0.98] text-white font-extrabold text-base shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 transition">
+          <i class="ph-bold ph-calendar-plus text-2xl"></i> Apply for leave
+        </button>
+        <p class="text-[11px] text-slate-500 px-1">Goes to the AO, who checks it and sends it to the School Head. You get Form 6 here to print and sign.</p>
+        ${card ? `<button type="button" onclick="openLvSheet('card', '${lvE(card.id)}')" id="lcMineBtn" class="w-full text-left rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-center gap-3">
+          <span class="min-w-0 flex-1"><span class="block text-[11px] font-bold uppercase tracking-wider text-slate-500">My leave credits</span><span class="mt-1.5 flex flex-wrap gap-1.5" data-lc-mine>${lcChips(card)}</span></span>
+          <span class="shrink-0 text-xs font-bold text-teal-700 flex items-center gap-1">Leave card <i class="ph-bold ph-caret-right"></i></span></button>` : ''}
+        ${lvError ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2">${lvE(lvError)}</p>` : ''}
+        <div>
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">My leave applications</h2>
+          <div id="lvMine" class="space-y-2">${open.length ? open.map(l => lvCardHTML(l, true)).join('')
+            : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500"><i class="ph-duotone ph-calendar-check text-3xl text-slate-400"></i><p class="mt-1 font-bold text-slate-700 text-sm">${lvLoaded ? 'No leave applications' : 'Loading…'}</p><p>${lvLoaded ? 'Your applications and their status show up here.' : ''}</p></div>`}</div>
+        </div>
+        ${past.length ? `<details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-lv-past><summary class="text-xs font-bold text-slate-700 cursor-pointer">Earlier · ${past.length}</summary><div class="mt-2 space-y-2">${past.slice(0, 40).map(l => lvCardHTML(l, true)).join('')}</div></details>` : ''}`;
+    }
+
+    // ---- The AO's Leave page (custodian account) ------------------------------------------
+    function openLeaveView() {
+      if (!leaveOn() || !isCustodianDevice()) return;
+      switchMainView('LEAVE');
+    }
+    function setLvFilter(f) { lvFilter = f; renderLeaveView(); }
+    function setLvQuery(v) { lvQuery = v; const box = document.getElementById('lvList'); if (box) box.innerHTML = lvPageHTML(); }
+    function setLvPage(p) { lvPage = p; lvQuery = ''; renderLeaveView(); }
+    const lvPageHTML = () => (lvPage === 'cards' ? lcListHTML() : lvListHTML());
+    function lvListHTML() {
+      const q = lvQuery.trim().toLowerCase();
+      const match = l => !q || `${l.name} ${lvTypeText(l)} ${lvDatesText(l)} ${l.office || ''} ${(l.rec && l.rec.memo) || ''} ${(l.form && l.form.memo) || ''}`.toLowerCase().includes(q);
+      if (lvFilter === 'todo') {
+        const groups = LV_STAGES.map(([s, title, icon]) => [s, title, icon, lvList.filter(l => l.status === s && match(l))]).filter(g => g[3].length);
+        if (!groups.length) return `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-6 text-center text-xs text-slate-500" data-lv-empty><i class="ph-duotone ph-calendar-check text-3xl text-slate-400"></i><p class="mt-1 font-bold text-slate-700 text-sm">${lvLoaded ? 'Nothing to do' : 'Loading…'}</p><p>${lvLoaded ? 'New leave applications from teachers show up here. Encode a paper form with the button above.' : ''}</p></div>`;
+        return groups.map(([s, title, icon, ls]) => `
+          <div data-lv-stage="${s}">
+            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1 flex items-center gap-1.5"><i class="ph-bold ${icon}"></i> ${lvE(title)} <span class="text-slate-400">${ls.length}</span></h2>
+            <div class="space-y-2 lv-grid">${ls.map(l => lvCardHTML(l, false)).join('')}</div>
+          </div>`).join('');
+      }
+      const list = lvList.filter(l => (lvFilter === 'done' ? !LV_OPEN.includes(l.status) : true) && match(l));
+      return list.length ? `<div class="space-y-2 lv-grid">${list.slice(0, 200).map(l => lvCardHTML(l, false)).join('')}</div>`
+        : `<p class="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-center text-xs text-slate-500">${q ? 'No application matches.' : 'None yet.'}</p>`;
+    }
+    function renderLeaveView() {
+      const box = document.getElementById('lvView');
+      if (!box) return;
+      if (!leaveOn()) { box.innerHTML = ''; return; }
+      leaveSync();
+      if (document.activeElement && document.activeElement.id === 'lvSearch') { const l = document.getElementById('lvList'); if (l) { l.innerHTML = lvPageHTML(); return; } }
+      const cards = lvPage === 'cards';
+      const seg = (k, label, icon) => `<button type="button" onclick="setLvPage('${k}')" data-lv-page="${k}" aria-pressed="${lvPage === k}" class="h-10 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 ${lvPage === k ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5' : 'text-slate-500'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
+      const n = lvTodo().length;
+      const chip = (k, label) => `<button type="button" onclick="setLvFilter('${k}')" data-lv-filter="${k}" aria-pressed="${lvFilter === k}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${lvFilter === k ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700'}">${label}</button>`;
+      box.innerHTML = `
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Leave</h1>
+            <p class="text-xs text-slate-500">Applications for leave · CS Form No. 6 (Revised 2020)${n ? ` · ${n} to act on` : ''}</p>
+          </div>
+          <span class="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">Pilot</span>
+        </div>
+        <div class="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-200/70" role="tablist">${seg('apps', 'Applications', 'ph-tray')}${seg('cards', 'Leave cards', 'ph-address-book')}</div>
+        ${lvCanManage() && !cards ? `<button onclick="openLvSheet('apply')" id="lvEncodeBtn" class="w-full h-12 rounded-2xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-2"><i class="ph-bold ph-keyboard text-teal-700"></i> Encode a paper form</button>` : ''}
+        ${(cards ? lcError : lvError) ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2" data-lv-error>${lvE(cards ? lcError : lvError)} · Ask the app owner to publish the latest database rules.</p>` : ''}
+        <div class="space-y-2">
+          <div class="relative"><i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+            <input id="lvSearch" type="search" value="${lvE(lvQuery)}" oninput="setLvQuery(this.value)" placeholder="${cards ? 'Search names, positions' : 'Search names, kinds of leave, dates, memos'}" class="w-full h-11 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-teal-500 outline-none"></div>
+          ${cards ? '' : `<div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('todo', `To do${n ? ` <span class="font-mono">${n}</span>` : ''}`)}${chip('all', 'All')}${chip('done', 'Done')}</div>`}
+        </div>
+        <div id="lvList" class="space-y-${cards ? '3' : '5'}">${lvPageHTML()}</div>`;
+    }
+
+    // ---- Sheets -----------------------------------------------------------------------------
+    function openLvSheet(view, id, mode) {
+      if (!leaveOn()) return;
+      lvSheet = { view, id: id || null, mode: mode || '', drawn: false };
+      document.getElementById('lvModal').classList.remove('hidden');
+      renderLvModal();
+      const box = document.getElementById('lvModalBox');
+      if (box) box.scrollTop = 0;
+    }
+    function closeLvModal() {
+      lvSheet = null;
+      document.getElementById('lvModal').classList.add('hidden');
+      document.getElementById('lvModalBody').innerHTML = '';
+    }
+    function renderLvModal() {
+      const body = document.getElementById('lvModalBody');
+      if (!body || !lvSheet) return;
+      const v = lvSheet.view;
+      if (v !== 'view' && v !== 'card' && lvSheet.drawn) return;   // forms keep what is being typed
+      const html = v === 'apply' ? lvApplyHTML() : v === 'receive' ? lvReceiveHTML() : v === 'prepare' ? lvPrepareHTML() : v === 'do' ? lvDoHTML()
+        : v === 'card' ? lcCardHTML() : v === 'cardNew' ? lcNewHTML() : v === 'cardEntry' ? lcEntryHTML() : v === 'monthly' ? lcMonthlyHTML() : lvViewHTML();
+      if (!html) { closeLvModal(); return; }
+      body.innerHTML = html;
+      lvSheet.drawn = true;
+      if (v === 'apply') { lvApplyDetail(); lvApplyUse(); }
+      if (v === 'receive') lvRecBal();
+      if (v === 'cardEntry') lcEntryHint();
+      if (v === 'monthly') lcMonthlyHint();
+    }
+    const lvHead = (icon, title, sub) => `
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center"><i class="ph-bold ${icon} text-xl"></i></span>
+          <div class="min-w-0"><h3 class="font-extrabold text-base text-slate-900 leading-tight" data-lv-sheet-title>${title}</h3>${sub ? `<p class="text-xs font-semibold text-slate-500 mt-0.5">${sub}</p>` : ''}</div>
+        </div>
+        <button onclick="closeLvModal()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>`;
+    const lvLbl = (label, inner, cls = '') => `<label class="block ${cls}"><span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">${label}</span>${inner}</label>`;
+    const LV_IN = 'w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-sm font-medium outline-none focus:border-teal-500';
+    const lvVal = id => { const el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; };
+    const lvRadio = name => { const el = document.querySelector(`input[name="${name}"]:checked`); return el ? el.value : ''; };
+    const lvErr = (msg) => { const el = document.getElementById('lvErr'); if (el) { el.textContent = msg; el.classList.toggle('hidden', !msg); if (msg) el.scrollIntoView({ block: 'nearest' }); } };
+
+    // Apply (teacher) or encode a paper form (AO)
+    function lvApplyHTML() {
+      const enc = isCustodianDevice();
+      if (enc && !lvCanManage()) return '';
+      if (!enc && myMemberStatus() !== 'active') return '';
+      const today = localISODate();
+      const roster = enc ? teacherRoster().filter(t => t.uid) : [];
+      const myCard = enc ? null : lcMine();
+      const myBal = myCard ? lcBalances(myCard) : null;
+      const left = k => (!myBal ? '' : k === 'vsc' || k === 'lsc' ? `${lcNum(myBal[k])} left` : k === 'vlsl' && (lcHas(myCard, 'vl') || lcHas(myCard, 'sl')) ? `VL ${lcNum(myBal.vl)} · SL ${lcNum(myBal.sl)} left` : '');
+      return `
+        ${lvHead('ph-calendar-plus', enc ? 'Encode a leave application' : 'Apply for leave', enc ? 'From a paper Form 6 handed in at the office' : 'CS Form No. 6 · the AO checks it first')}
+        <div class="grid grid-cols-2 gap-3">
+          ${enc ? `
+            ${lvLbl('Teacher or staff', `<select id="lvWho" onchange="lvApplyWho()" class="${LV_IN}"><option value="">Someone else (type the name)</option>${roster.map(t => `<option value="${lvE(t.uid)}">${lvE(t.name)}</option>`).join('')}</select>`, 'col-span-2')}
+            ${lvLbl('Name', `<input id="lvName" type="text" maxlength="120" class="${LV_IN}" placeholder="e.g. Ana B. Reyes">`, 'col-span-2')}
+            ${lvLbl('Position', `<input id="lvPos" type="text" maxlength="80" class="${LV_IN}" placeholder="e.g. Teacher III">`)}
+            ${lvLbl('Office / grade', `<input id="lvOffice" type="text" maxlength="80" class="${LV_IN}" placeholder="e.g. Grade 4">`)}
+            ${lvLbl('Date received', `<input id="lvRecv" type="date" value="${today}" max="${today}" class="${LV_IN}">`, 'col-span-2')}` : ''}
+          ${lvLbl('6.A Type of leave', `<select id="lvType" onchange="lvApplyDetail()" class="${LV_IN}">${Object.entries(LV_TYPES).map(([k, t]) => `<option value="${k}">${lvE(t.label)}</option>`).join('')}</select>`, 'col-span-2')}
+          <div id="lvDetail" class="col-span-2 space-y-2"></div>
+          ${lvLbl('From', `<input id="lvFrom" type="date" value="${today}" onchange="lvApplyDates()" class="${LV_IN}">`)}
+          ${lvLbl('To', `<input id="lvTo" type="date" value="${today}" onchange="lvApplyDates()" class="${LV_IN}">`)}
+          ${lvLbl('6.C Working days', `<input id="lvDays" type="number" inputmode="decimal" min="0.5" step="0.5" value="${lvWorkDays(today, today) || 1}" oninput="lvApplyUse()" class="${LV_IN} font-mono font-bold">`)}
+          ${lvLbl('6.D Commutation', `<select id="lvComm" class="${LV_IN}"><option value="no">Not requested</option><option value="yes">Requested</option></select>`)}
+          <div class="col-span-2">
+            <span class="block text-[11px] font-bold uppercase text-slate-500 mb-1">What to use</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">${Object.entries(LV_USE).map(([k, u], i) => `
+              <label class="flex items-start gap-2 rounded-xl border border-slate-200 px-3 py-2 cursor-pointer has-[:checked]:border-teal-500 has-[:checked]:bg-teal-50">
+                <input type="radio" name="lvUse" value="${k}" ${i === 0 ? 'checked' : ''} onchange="lvApplyUse()" class="mt-0.5 accent-teal-700">
+                <span class="min-w-0"><span class="block text-xs font-bold text-slate-800">${lvE(u.label)}</span>${u.hint ? `<span class="block text-[11px] text-slate-500">${lvE(u.hint)}</span>` : ''}${left(k) ? `<span class="block text-[11px] font-bold text-teal-700" data-lv-left="${k}">${lvE(left(k))}</span>` : ''}</span>
+              </label>`).join('')}</div>
+            <p id="lvUseNote" class="hidden mt-1.5 text-[11px] font-semibold"></p>
+          </div>
+          ${lvLbl('Reason or note to the AO (optional)', `<textarea id="lvReason" maxlength="600" rows="2" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-teal-500" placeholder="e.g. Family matter in Bohol"></textarea>`, 'col-span-2')}
+        </div>
+        <p id="lvErr" class="hidden rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2"></p>
+        <button onclick="lvSaveApply()" id="lvApplySave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-paper-plane-tilt"></i> ${enc ? 'Save the application' : 'Send to the AO'}</button>`;
+    }
+    function lvApplyWho() {
+      const t = teacherRoster().find(x => x.uid === lvVal('lvWho'));
+      if (!t) return;
+      [['lvName', t.name], ['lvPos', t.position], ['lvOffice', t.office]].forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v || ''; });
+    }
+    function lvApplyDetail() {
+      const box = document.getElementById('lvDetail');
+      if (!box) return;
+      const t = lvVal('lvType');
+      const radio = (name, opts) => `<div class="flex flex-wrap gap-x-4 gap-y-1">${opts.map(([v, label], i) => `<label class="flex items-center gap-1.5 text-sm text-slate-700"><input type="radio" name="${name}" value="${v}" ${i === 0 ? 'checked' : ''} class="accent-teal-700"> ${label}</label>`).join('')}</div>`;
+      box.innerHTML = (t === 'VL' || t === 'SPL') ? `<span class="block text-[11px] font-bold uppercase text-slate-500">6.B Where</span>${radio('lvWhere', [['ph', 'Within the Philippines'], ['abroad', 'Abroad']])}<input id="lvAbroad" type="text" maxlength="80" placeholder="If abroad: where" class="${LV_IN}">`
+        : t === 'SL' ? `<span class="block text-[11px] font-bold uppercase text-slate-500">6.B Sick leave</span>${radio('lvSick', [['out', 'Out patient'], ['hospital', 'In hospital']])}<input id="lvIllness" type="text" maxlength="120" placeholder="Illness (only the AO and the School Head see it)" class="${LV_IN}">`
+        : t === 'SLBW' ? `<input id="lvIllness" type="text" maxlength="120" placeholder="6.B Specify illness" class="${LV_IN}">`
+        : t === 'STUDY' ? `<span class="block text-[11px] font-bold uppercase text-slate-500">6.B Study leave</span>${radio('lvStudy', [['masters', 'Completion of Master’s Degree'], ['bar', 'BAR/Board Examination Review']])}`
+        : t === 'OTH' ? `<input id="lvTypeOther" type="text" maxlength="120" placeholder="Others: specify (e.g. Monetization of leave credits)" class="${LV_IN}">` : '';
+    }
+    function lvApplyDates() {
+      const f = lvVal('lvFrom'), to = document.getElementById('lvTo');
+      if (to && f && (!to.value || to.value < f)) to.value = f;
+      const n = lvWorkDays(f, lvVal('lvTo'));
+      const d = document.getElementById('lvDays');
+      if (d && n) d.value = n;
+      lvApplyUse();
+    }
+    function lvApplyWhoKey() {
+      if (!isCustodianDevice()) return { uid: cloud.user ? cloud.user.uid : '', name: (reqRole.me || {}).name || '' };
+      return { uid: lvVal('lvWho'), name: lvVal('lvName') };
+    }
+    function lvApplyUse() {
+      const note = document.getElementById('lvUseNote');
+      if (!note) return;
+      const use = lvRadio('lvUse');
+      if (use !== 'p250') { note.classList.add('hidden'); return; }
+      const w = lvApplyWhoKey();
+      const used = lvP250Used(w.uid, w.name, lvMonth(lvVal('lvFrom')), null);
+      const days = Number(lvVal('lvDays')) || 0;
+      const over = used + days > LV_P250_MAX;
+      note.textContent = `₱250 days this month: ${used} of ${LV_P250_MAX} used${over ? ` · ${days > 1 ? `${days} more` : 'one more'} is over the limit` : ''}. Pay at the office; the AO logs it and turns it over to the Faculty President.`;
+      note.className = `mt-1.5 text-[11px] font-semibold ${over ? 'text-rose-700' : 'text-slate-600'}`;
+    }
+    function lvReadDetail(type) {
+      const d = {};
+      if (type === 'VL' || type === 'SPL') { d.where = lvRadio('lvWhere') || 'ph'; if (d.where === 'abroad') d.abroad = lvVal('lvAbroad').slice(0, 80); }
+      if (type === 'SL') { d.sick = lvRadio('lvSick') || 'out'; d.illness = lvVal('lvIllness').slice(0, 120); }
+      if (type === 'SLBW') d.illness = lvVal('lvIllness').slice(0, 120);
+      if (type === 'STUDY') d.study = lvRadio('lvStudy') || 'masters';
+      return d;
+    }
+    async function lvSaveApply() {
+      if (!leaveOn() || !cloud.db || !cloud.user) return;
+      const enc = isCustodianDevice();
+      if (enc && !lvCanManage()) return;
+      const type = lvVal('lvType'), from = lvVal('lvFrom'), to = lvVal('lvTo') || from, use = lvRadio('lvUse') || 'none';
+      const days = Math.round((Number(lvVal('lvDays')) || 0) * 2) / 2;
+      const typeOther = type === 'OTH' ? lvVal('lvTypeOther').slice(0, 120) : '';
+      const me = reqRole.me || {};
+      const t = enc ? teacherRoster().find(x => x.uid === lvVal('lvWho')) : null;
+      const name = (enc ? lvVal('lvName') || (t && t.name) : me.name) || '';
+      if (enc && !name) return lvErr('Type the name, or pick the teacher.');
+      if (!from) return lvErr('Pick the first day of the leave.');
+      if (to < from) return lvErr('The last day is before the first day.');
+      if (!(days > 0) || days > 60) return lvErr('Type the number of working days (up to 60).');
+      if (type === 'OTH' && !typeOther) return lvErr('Others: write what kind of leave.');
+      if (use === 'p250') {
+        if (days % 1) return lvErr('₱250 is for a whole-day absence.');
+        const used = lvP250Used(enc ? lvVal('lvWho') : cloud.user.uid, name, lvMonth(from), null);
+        if (used + days > LV_P250_MAX) return lvErr(`₱250 is allowed ${LV_P250_MAX} times a month. ${used ? `${used} already this month.` : ''}`.trim());
+      }
+      lvErr('');
+      const F = cloud.sdk;
+      const ref = F.doc(lvCol());
+      const now = Date.now();
+      const doc = cleanJSON({
+        uid: enc ? (t ? t.uid : '') : cloud.user.uid,
+        name: name.slice(0, 120), position: String(enc ? lvVal('lvPos') || (t && t.position) || '' : me.position || '').slice(0, 80),
+        office: String(enc ? lvVal('lvOffice') || (t && t.office) || '' : me.office || '').slice(0, 80),
+        school: String(reqRole.schoolName || '').slice(0, 160), by: enc ? 'ao' : 'teacher',
+        type, typeOther, detail: lvReadDetail(type), from, to, days, comm: lvVal('lvComm') || 'no', use, reason: lvVal('lvReason').slice(0, 600),
+        status: 'applied', filedISO: enc ? (lvVal('lvRecv') || localISODate()) : localISODate(), filedMs: now,
+        ...(enc ? { receivedISO: lvVal('lvRecv') || localISODate() } : {}),
+        log: [{ at: now, by: String(lvActor()).slice(0, 80), x: enc ? 'Encoded from a paper form' : 'Applied in the app' }]
+      });
+      cloudWrite(F.setDoc(ref, { ...doc, createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp() }), enc ? 'Saving the application' : 'Sending the application');
+      lvList = [{ ...doc, id: ref.id, sending: true }, ...lvList];
+      closeLvModal();
+      lvRender();
+      showToast(enc ? 'Saved · now tap Receive to recommend it' : 'Sent to the AO', 'ph-paper-plane-tilt');
+    }
+
+    // Receive and recommend (AO), then to the School Head
+    function lvReceiveHTML() {
+      const l = lvById(lvSheet.id);
+      if (!l || !lvCanManage() || !['applied', 'returned'].includes(l.status)) return '';
+      const r = l.rec || {};
+      const days = r.withPay != null ? r.withPay : l.days;
+      const head = !!currentHead();
+      return `
+        ${lvHead('ph-tray-arrow-down', `${l.status === 'returned' ? 'Fix and send again' : 'Receive'} · ${lvE(l.name)}`, `${lvE(lvTypeText(l))} · ${lvE(lvDatesText(l))} · ${lvDays(l.days)}`)}
+        ${l.status === 'returned' && l.returned ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs px-3 py-2"><b>Returned by ${lvE(l.returned.byName || 'the School Head')}:</b> ${lvE(l.returned.note || '')}</p>` : ''}
+        ${l.reason ? `<p class="text-xs text-slate-600"><b>Reason:</b> ${lvE(l.reason)}</p>` : ''}
+        <div class="grid grid-cols-2 gap-3">
+          ${lvLbl('Date received', `<input id="lvRecv" type="date" value="${lvE(l.receivedISO || localISODate())}" max="${localISODate()}" class="${LV_IN}">`, 'col-span-2')}
+          ${lvLbl('Recommend: type of leave', `<select id="lvRecType" class="${LV_IN}">${Object.entries(LV_TYPES).map(([k, t]) => `<option value="${k}" ${(r.type || l.type) === k ? 'selected' : ''}>${lvE(t.label)}</option>`).join('')}</select>`, 'col-span-2')}
+          ${lvLbl('Days with pay', `<input id="lvWith" type="number" inputmode="decimal" min="0" step="0.5" value="${lvUseOf(l) === 'none' ? 0 : days}" oninput="lvRecBal()" class="${LV_IN} font-mono font-bold">`)}
+          ${lvLbl('Days without pay', `<input id="lvWithout" type="number" inputmode="decimal" min="0" step="0.5" value="${r.withoutPay != null ? r.withoutPay : lvUseOf(l) === 'none' ? l.days : 0}" class="${LV_IN} font-mono font-bold">`)}
+          ${lvLbl('Credits to use', `<select id="lvRecUse" onchange="lvRecBal()" class="${LV_IN}">${Object.entries(LV_USE).map(([k, u]) => `<option value="${k}" ${lvUseOf(l) === k ? 'selected' : ''}>${lvE(u.label)}</option>`).join('')}</select>`, 'col-span-2')}
+          <p id="lvRecBal" class="col-span-2 -mt-1 text-[11px] font-semibold text-slate-600"></p>
+          ${lvLbl('Memo No. (service credits)', `<input id="lvMemo" type="text" maxlength="120" value="${lvE(r.memo || '')}" class="${LV_IN}" placeholder="e.g. School Memo No. 12, s. 2026">`, 'col-span-2')}
+          ${lvLbl('Note to the School Head (optional)', `<input id="lvRecNote" type="text" maxlength="300" value="${lvE(r.note || '')}" class="${LV_IN}" placeholder="e.g. Has 4 days of service credits left">`, 'col-span-2')}
+        </div>
+        <p id="lvErr" class="hidden rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2"></p>
+        <button onclick="lvSendToHead('${lvE(l.id)}')" id="lvSendHead" class="w-full h-12 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-seal-check"></i> ${head ? 'Send to the School Head' : 'Approved by the School Head on paper'}</button>
+        <p class="text-[11px] text-slate-500">${head ? 'It shows in the School Head’s Approve tab. You are told when it is approved or returned.' : 'No School Head in the app yet: tap this once the School Head agreed.'}</p>`;
+    }
+    // Receive: what the person has left on their leave card for the credits chosen
+    function lvRecBal() {
+      const el = document.getElementById('lvRecBal');
+      const l = lvSheet && lvById(lvSheet.id);
+      if (!el || !l) return;
+      const cr = lcCrOfUse(lvVal('lvRecUse'), lvVal('lvRecType'));
+      if (!cr) { el.textContent = ''; return; }
+      const card = lcCardFor(l.uid, l.name);
+      if (!card) { el.textContent = `${l.name} has no leave card yet: the days are deducted from a new one (Leave cards).`; el.className = 'col-span-2 -mt-1 text-[11px] font-semibold text-amber-700'; return; }
+      const have = lcBalances(card)[cr], want = lcRound(lvVal('lvWith'));
+      const short = want > have;
+      el.textContent = `Leave card: ${lcNum(have)} ${LC_CR[cr].short} left${short ? ` · ${lcNum(want - have)} short (the rest could be without pay)` : ` · ${lcNum(have - want)} after this`}`;
+      el.className = `col-span-2 -mt-1 text-[11px] font-semibold ${short ? 'text-rose-700' : 'text-teal-700'}`;
+    }
+    function lvSendToHead(id) {
+      const l = lvById(id);
+      if (!l || !lvCanManage() || !['applied', 'returned'].includes(l.status)) return;
+      const withPay = Math.round((Number(lvVal('lvWith')) || 0) * 2) / 2, withoutPay = Math.round((Number(lvVal('lvWithout')) || 0) * 2) / 2;
+      const use = lvVal('lvRecUse') || 'none', type = lvVal('lvRecType') || l.type, memo = lvVal('lvMemo').slice(0, 120), note = lvVal('lvRecNote').slice(0, 300);
+      const recv = lvVal('lvRecv') || localISODate();
+      if (!(withPay + withoutPay > 0)) return lvErr('Type the days with pay or without pay.');
+      if ((use === 'vsc' || use === 'lsc') && !memo) return lvErr('Type the memo number for the service credits.');
+      if (use === 'p250') {
+        const used = lvP250Used(l.uid, l.name, lvMonth(l.from), l.id);
+        if (used + withPay + withoutPay > LV_P250_MAX) return lvErr(`₱250 is allowed ${LV_P250_MAX} times a month (${used} already this month).`);
+      }
+      const rec = { type, withPay, withoutPay, use, memo, note, byName: String(actorName() || '').slice(0, 80), atMs: Date.now() };
+      const recText = `${lvTypeText(l, type)}, ${lvDays(withPay)} with pay${withoutPay ? `, ${lvDays(withoutPay)} without pay` : ''} · ${(LV_USE[use] || LV_USE.none).label}${memo ? ` · ${memo}` : ''}`;
+      if (currentHead()) {
+        const apId = submitApproval('leave', l.id, {
+          title: String(l.name || 'Leave').slice(0, 160),
+          summary: [l.position, l.office, `${lvDatesText(l)}`, `Filed ${longDate(l.filedISO)}`, `Received ${longDate(recv)}`, l.reason && `Reason: ${l.reason}`, note && `AO: ${note}`].filter(Boolean).join(' · ').slice(0, 600),
+          lines: [
+            { desc: lvTypeText(l, type).slice(0, 200), qty: withPay + withoutPay, unit: 'days' },
+            { desc: 'With pay', qty: withPay, unit: 'days' },
+            ...(withoutPay ? [{ desc: 'Without pay', qty: withoutPay, unit: 'days' }] : []),
+            { desc: `Uses: ${(LV_USE[use] || LV_USE.none).label}${memo ? ` · ${memo}` : ''}`.slice(0, 200), qty: '', unit: '' }
+          ]
+        });
+        if (!apId) return lvErr('Could not send it to the School Head. Check your connection and try again.');
+        lvUpdate(l, { status: 'sh', receivedISO: recv, rec, apId }, `Received ${longDate(recv)} · sent to the School Head: ${recText}`);
+        showToast('Sent to the School Head', 'ph-seal-check');
+      } else {
+        lvUpdate(l, { status: 'approved', receivedISO: recv, rec, approval: { paper: true, byName: headName() || '', byDesig: headDesig() || '', atMs: Date.now() } }, `Received ${longDate(recv)} · approved by the School Head on paper: ${recText}`);
+        showToast('Approved · prepare Form 6 next', 'ph-seal-check');
+      }
+      closeLvModal();
+    }
+    async function lvDecline(id) {
+      const l = lvById(id);
+      if (!l || !lvCanManage() || !['applied', 'returned'].includes(l.status)) return;
+      const why = await appPrompt(`${l.name} · ${lvTypeText(l)} · ${lvDatesText(l)}`, '', { title: 'Decline this application?', ok: 'Decline', tone: 'warn', label: 'Why? (the teacher sees it)', multiline: true, maxLength: 300 });
+      if (why === null) return;
+      const note = String(why).trim().slice(0, 300);
+      if (!note) { appAlert('Write why, so the teacher knows.'); return; }
+      lvUpdate(l, { status: 'declined', declined: { byName: String(actorName() || '').slice(0, 80), atMs: Date.now(), note } }, `Declined: ${note}`);
+      closeLvModal();
+    }
+    async function lvCancel(id) {
+      const l = lvById(id);
+      if (!l || !isTeacherDevice() || l.uid !== (cloud.user && cloud.user.uid) || l.status !== 'applied') return;
+      if (!await appConfirm(`${lvTypeText(l)} · ${lvDatesText(l)}`, { title: 'Cancel this application?', ok: 'Cancel it', tone: 'warn', icon: 'ph-x-circle' })) return;
+      lvUpdate(l, { status: 'cancelled', cancelledMs: Date.now() }, 'Cancelled by the applicant');
+      closeLvModal();
+    }
+
+    // Prepare Form 6 (AO)
+    function lvSplitName(name) {
+      const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+      if (parts.length < 2) return { last: parts[0] || '', first: '', middle: '' };
+      const last = parts.pop();
+      const mid = parts.length > 1 && /^[A-Z]\.?$/.test(parts[parts.length - 1]) ? parts.pop() : '';
+      return { last, first: parts.join(' '), middle: mid };
+    }
+    function lvPrepareHTML() {
+      const l = lvById(lvSheet.id);
+      if (!l || !lvCanManage() || !['approved', 'hold', 'review'].includes(l.status)) return '';
+      const f = l.form || {}, r = l.rec || {};
+      const nm = f.last || f.first ? f : lvSplitName(l.name);
+      const auto = f.cred ? null : lc7A(l);
+      const cr = f.cred || auto || {};
+      const credIn = (k, row) => `<input id="lvC_${k}_${row}" type="number" step="0.001" value="${cr[k] && cr[k][row] != null ? lvE(cr[k][row]) : ''}" class="w-full h-10 px-2 rounded-lg border border-slate-200 bg-white text-sm font-mono text-right outline-none focus:border-teal-500">`;
+      const p250 = lvUseOf(l) === 'p250';
+      return `
+        ${lvHead('ph-file-text', `Prepare Form 6 · ${lvE(l.name)}`, `${lvE(lvTypeText(l, r.type))} · ${lvE(lvDatesText(l))}`)}
+        <div class="grid grid-cols-3 gap-2">
+          ${lvLbl('Last name', `<input id="lvLast" type="text" maxlength="60" value="${lvE(nm.last)}" class="${LV_IN}">`)}
+          ${lvLbl('First name', `<input id="lvFirst" type="text" maxlength="60" value="${lvE(nm.first)}" class="${LV_IN}">`)}
+          ${lvLbl('Middle', `<input id="lvMiddle" type="text" maxlength="40" value="${lvE(nm.middle)}" class="${LV_IN}">`)}
+          ${lvLbl('1. Office / school', `<input id="lvFOffice" type="text" maxlength="160" value="${lvE(f.office || l.school || reqRole.schoolName || '')}" class="${LV_IN}">`, 'col-span-3')}
+          ${lvLbl('4. Position', `<input id="lvFPos" type="text" maxlength="80" value="${lvE(f.position || l.position || '')}" class="${LV_IN}">`, 'col-span-2')}
+          ${lvLbl('5. Salary', `<input id="lvSalary" type="text" maxlength="40" value="${lvE(f.salary || '')}" class="${LV_IN}" placeholder="optional">`)}
+        </div>
+        <div class="rounded-2xl border border-slate-200 p-3 space-y-2">
+          <p class="text-xs font-extrabold text-slate-800">7.A Certification of leave credits</p>
+          ${auto ? `<p class="text-[11px] font-semibold text-teal-700" data-lv-auto7a>Filled in from the leave card (${lvE(LC_CR[lcCrOfUse(r.use, r.type)].label)}). Check it before sending.</p>` : ''}
+          ${lvLbl('As of', `<input id="lvAsOf" type="date" value="${lvE(f.asOf || localISODate())}" class="${LV_IN}">`)}
+          <div class="grid grid-cols-3 gap-1.5 items-center text-[11px] font-bold text-slate-500">
+            <span></span><span class="text-center">Vacation Leave</span><span class="text-center">Sick Leave</span>
+            ${[['earned', 'Total earned'], ['less', 'Less this application'], ['bal', 'Balance']].map(([row, label]) => `<span>${label}</span>${credIn('vl', row)}${credIn('sl', row)}`).join('')}
+          </div>
+          ${lvLbl('Service credits used and memo', `<input id="lvFMemo" type="text" maxlength="200" value="${lvE(f.memo || (r.memo ? `${(LV_USE[r.use] || LV_USE.none).label}: ${lvDays(r.withPay)} · ${r.memo}${r.use === 'lsc' ? ' · not reflected in the DTR' : ''}` : ''))}" class="${LV_IN}" placeholder="e.g. Vacation Service Credits: 2 days · Memo No. 45, s. 2026">`)}
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          ${lvLbl('7.C Days with pay', `<input id="lvFWith" type="number" step="0.5" min="0" value="${lvE(f.withPay != null ? f.withPay : r.withPay != null ? r.withPay : l.days)}" class="${LV_IN} font-mono font-bold">`)}
+          ${lvLbl('7.C Days without pay', `<input id="lvFWithout" type="number" step="0.5" min="0" value="${lvE(f.withoutPay != null ? f.withoutPay : r.withoutPay || 0)}" class="${LV_IN} font-mono font-bold">`)}
+          ${lvLbl('7.C Others (specify)', `<input id="lvFOthers" type="text" maxlength="120" value="${lvE(f.others || '')}" class="${LV_IN}">`, 'col-span-2')}
+          ${lvLbl('Certified by (7.A)', `<input id="lvAoName" type="text" maxlength="80" value="${lvE(f.aoName || schoolInfo.custodian || actorName() || '')}" class="${LV_IN}">`)}
+          ${lvLbl('Designation', `<input id="lvAoDesig" type="text" maxlength="80" value="${lvE(f.aoDesig || 'Administrative Officer')}" class="${LV_IN}">`)}
+          ${lvLbl('School Head (7.B, 7.C)', `<input id="lvShName" type="text" maxlength="80" value="${lvE(f.shName || (l.approval && l.approval.byName) || headName() || '')}" class="${LV_IN}">`)}
+          ${lvLbl('Designation', `<input id="lvShDesig" type="text" maxlength="80" value="${lvE(f.shDesig || (l.approval && l.approval.byDesig) || headDesig() || 'School Head')}" class="${LV_IN}">`)}
+        </div>
+        <p id="lvErr" class="hidden rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2"></p>
+        ${p250 && l.status !== 'review' ? `
+          <button onclick="lvSaveForm('${lvE(l.id)}', 'hold')" id="lvHoldBtn" class="w-full h-12 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-pause-circle"></i> Keep Form 6 on hold (₱250)</button>
+          <button onclick="lvSaveForm('${lvE(l.id)}', 'review')" class="w-full h-11 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800 flex items-center justify-center gap-2"><i class="ph-bold ph-paper-plane-tilt"></i> Send to the teacher instead</button>`
+          : `<button onclick="lvSaveForm('${lvE(l.id)}', 'review')" id="lvSendTeacher" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-paper-plane-tilt"></i> ${l.status === 'review' ? 'Save the changes' : 'Send to the teacher to review and print'}</button>`}`;
+    }
+    function lvSaveForm(id, next) {
+      const l = lvById(id);
+      if (!l || !lvCanManage() || !['approved', 'hold', 'review'].includes(l.status)) return;
+      const num = v => (v === '' ? null : Math.round(Number(v) * 1000) / 1000);
+      const cred = {};
+      ['vl', 'sl'].forEach(k => { cred[k] = {}; ['earned', 'less', 'bal'].forEach(row => { const v = num(lvVal(`lvC_${k}_${row}`)); if (v !== null && isFinite(v)) cred[k][row] = v; }); });
+      const form = {
+        last: lvVal('lvLast').slice(0, 60), first: lvVal('lvFirst').slice(0, 60), middle: lvVal('lvMiddle').slice(0, 40),
+        office: lvVal('lvFOffice').slice(0, 160), position: lvVal('lvFPos').slice(0, 80), salary: lvVal('lvSalary').slice(0, 40),
+        asOf: lvVal('lvAsOf'), cred, memo: lvVal('lvFMemo').slice(0, 200),
+        withPay: Number(lvVal('lvFWith')) || 0, withoutPay: Number(lvVal('lvFWithout')) || 0, others: lvVal('lvFOthers').slice(0, 120),
+        aoName: lvVal('lvAoName').slice(0, 80), aoDesig: lvVal('lvAoDesig').slice(0, 80), shName: lvVal('lvShName').slice(0, 80), shDesig: lvVal('lvShDesig').slice(0, 80),
+        division: String(schoolInfo.division || '').slice(0, 120), preparedMs: Date.now()
+      };
+      if (!form.last) return lvErr('Type the last name.');
+      if (!(form.withPay + form.withoutPay > 0)) return lvErr('Type the days with pay or without pay (7.C).');
+      const status = l.status === 'review' ? 'review' : next;
+      lvUpdate(l, { status, form }, l.status === 'review' ? 'Form 6 changed' : status === 'hold' ? 'Form 6 prepared · kept on hold (₱250)' : 'Form 6 prepared · sent to the teacher to review and print');
+      closeLvModal();
+      showToast(status === 'hold' ? 'Form 6 kept on hold' : l.status === 'review' ? 'Saved' : 'Sent to the teacher', status === 'hold' ? 'ph-pause-circle' : 'ph-paper-plane-tilt');
+    }
+    async function lvStep(id, step) {
+      const l = lvById(id);
+      if (!l || !lvCanManage()) return;
+      if (step === 'unhold' && l.status === 'hold') {
+        if (!await appConfirm(`${l.name} · ${lvDatesText(l)}`, { title: 'Use the Form 6 on hold?', ok: 'Send to the teacher', icon: 'ph-paper-plane-tilt' })) return;
+        lvUpdate(l, { status: 'review' }, 'Form 6 taken off hold · sent to the teacher');
+      } else if (step === 'handed' && l.status === 'review') {
+        lvUpdate(l, { status: 'handed', handedMs: Date.now() }, 'Signed copy handed in at the office');
+        showToast('Handed in · for the School Head’s signature', 'ph-pen-nib');
+      } else if (step === 'signed' && l.status === 'handed') {
+        lvUpdate(l, { status: 'signed', signedMs: Date.now() }, 'Signed by the School Head');
+        showToast('Signed · send it to the Division', 'ph-paper-plane-tilt');
+      }
+      if (lvSheet) renderLvModal();
+    }
+    // Received by the Division (the date stamped on the copy)
+    function lvDoHTML() {
+      const l = lvById(lvSheet.id);
+      if (!l || !lvCanManage() || l.status !== 'signed') return '';
+      return `
+        ${lvHead('ph-stamp', `Received by the Division · ${lvE(l.name)}`, `${lvE(lvTypeText(l))} · ${lvE(lvDatesText(l))}`)}
+        ${lvLbl('Date on the received stamp', `<input id="lvDoDate" type="date" value="${localISODate()}" max="${localISODate()}" class="${LV_IN}">`)}
+        ${lvLbl('Tracking or reference No. (optional)', `<input id="lvDoRef" type="text" maxlength="80" class="${LV_IN}" placeholder="from the Division’s document tracking">`)}
+        <button onclick="lvSaveDo('${lvE(l.id)}')" id="lvDoSave" class="w-full h-12 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-check-circle"></i> Received by the Division</button>`;
+    }
+    function lvSaveDo(id) {
+      const l = lvById(id);
+      if (!l || !lvCanManage() || l.status !== 'signed') return;
+      const doISO = lvVal('lvDoDate') || localISODate(), doRef = lvVal('lvDoRef').slice(0, 80);
+      lvUpdate(l, { status: 'done', doISO, doRef }, `Received by the Division ${longDate(doISO)}${doRef ? ` · ${doRef}` : ''}`);
+      closeLvModal();
+      showToast('Done · received by the Division', 'ph-check-circle');
+    }
+
+    // One application: the details, its history and what can be done now
+    function lvViewHTML() {
+      const l = lvById(lvSheet.id);
+      if (!l) return `${lvHead('ph-calendar-check', 'Not found', '')}<p class="text-sm text-slate-600">This application is no longer listed.</p>`;
+      const mine = isTeacherDevice();
+      const r = l.rec, f = l.form;
+      const row = (k, v) => (v ? `<div class="flex justify-between gap-3 px-3 py-2 text-xs"><span class="text-slate-500 shrink-0">${k}</span><span class="font-semibold text-slate-800 text-right min-w-0">${v}</span></div>` : '');
+      const btn = (label, icon, onclick, tone, attr = '') => `<button onclick="${onclick}" ${attr} class="h-11 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 ${tone === 'teal' ? 'bg-teal-700 hover:bg-teal-800 text-white' : tone === 'violet' ? 'bg-violet-700 hover:bg-violet-800 text-white' : tone === 'emerald' ? 'bg-emerald-700 hover:bg-emerald-800 text-white' : tone === 'rose' ? 'bg-white border border-rose-200 text-rose-700' : 'bg-white border border-slate-200 text-slate-800'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
+      const acts = [];
+      if (lvCanManage()) {
+        if (l.status === 'applied') acts.push(btn('Receive', 'ph-tray-arrow-down', `openLvSheet('receive', '${l.id}')`, 'violet', 'data-lv-act="receive"'), btn('Decline', 'ph-x-circle', `lvDecline('${l.id}')`, 'rose'));
+        if (l.status === 'returned') acts.push(btn('Fix and send again', 'ph-arrow-clockwise', `openLvSheet('receive', '${l.id}')`, 'violet', 'data-lv-act="receive"'), btn('Decline', 'ph-x-circle', `lvDecline('${l.id}')`, 'rose'));
+        if (l.status === 'approved') acts.push(btn('Prepare Form 6', 'ph-file-text', `openLvSheet('prepare', '${l.id}')`, 'teal', 'data-lv-act="prepare"'));
+        if (l.status === 'hold') acts.push(btn('Send Form 6 to the teacher', 'ph-paper-plane-tilt', `lvStep('${l.id}', 'unhold')`, 'teal', 'data-lv-act="unhold"'));
+        if (l.status === 'review') acts.push(btn('Handed in', 'ph-hand-arrow-down', `lvStep('${l.id}', 'handed')`, 'teal', 'data-lv-act="handed"'), btn('Change Form 6', 'ph-pencil-simple', `openLvSheet('prepare', '${l.id}')`));
+        if (l.status === 'handed') acts.push(btn('Signed by the School Head', 'ph-pen-nib', `lvStep('${l.id}', 'signed')`, 'teal', 'data-lv-act="signed"'));
+        if (l.status === 'signed') acts.push(btn('Received by the Division', 'ph-stamp', `openLvSheet('do', '${l.id}')`, 'emerald', 'data-lv-act="do"'));
+      }
+      if (mine && l.status === 'applied' && l.uid === (cloud.user && cloud.user.uid)) acts.push(btn('Cancel the application', 'ph-x-circle', `lvCancel('${l.id}')`, 'rose', 'data-lv-act="cancel"'));
+      if (lvCanPrint(l)) acts.push(btn('Print Form 6', 'ph-printer', `lvPrint('${l.id}')`, mine ? 'teal' : '', `data-lv-print="${l.id}"`));
+      return `
+        ${lvHead('ph-calendar-check', lvE(mine ? lvTypeText(l) : l.name), lvE(mine ? lvDatesText(l) : `${[l.position, l.office].filter(Boolean).join(' · ')}`))}
+        <div class="flex flex-wrap items-center gap-1.5">${lvChip(l.status)}${l.by === 'ao' ? '<span class="text-[11px] font-bold text-slate-500">Encoded from paper</span>' : ''}</div>
+        ${mine ? lvSteps(l) : ''}
+        <div class="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+          ${mine ? '' : row('Type of leave', lvE(lvTypeText(l)))}
+          ${row('Dates', lvE(lvDatesText(l)))}
+          ${row('Working days', lvDays(l.days))}
+          ${row('Commutation', l.comm === 'yes' ? 'Requested' : 'Not requested')}
+          ${row('Asked to use', lvE((LV_USE[l.use] || LV_USE.none).label))}
+          ${row('Reason', lvE(l.reason))}
+          ${row('Filed', lvE(longDate(l.filedISO)))}
+          ${row('Received by the AO', lvE(longDate(l.receivedISO)))}
+          ${r ? row('Recommended', lvE(`${lvTypeText(l, r.type)} · ${lvDays(r.withPay)} with pay${r.withoutPay ? `, ${lvDays(r.withoutPay)} without pay` : ''}`)) : ''}
+          ${r ? row('Credits', lvE(`${(LV_USE[r.use] || LV_USE.none).label}${r.memo ? ` · ${r.memo}` : ''}`)) : ''}
+          ${(() => { const d = lcDeduction(l); return d ? row('Leave card', lvE(`${lcNum(-d.days)} ${LC_CR[d.cr].short} deducted${d.cr === 'lsc' ? ' · not reflected in the DTR' : ''}`)) : ''; })()}
+          ${l.approval ? row('Approved', lvE(`${l.approval.paper ? 'On paper' : 'In the app'}${l.approval.byName ? ` · ${l.approval.byName}` : ''}${l.approval.atMs && !l.approval.paper ? ` · ${iarStamp(l.approval.atMs)}` : ''}`)) : ''}
+          ${l.doISO ? row('Received by the Division', lvE(`${longDate(l.doISO)}${l.doRef ? ` · ${l.doRef}` : ''}`)) : ''}
+        </div>
+        ${l.status === 'returned' && l.returned ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs px-3 py-2"><b>Returned by ${lvE(l.returned.byName || 'the School Head')}:</b> ${lvE(l.returned.note || '')}</p>` : ''}
+        ${l.status === 'declined' && l.declined ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs px-3 py-2"><b>Declined:</b> ${lvE(l.declined.note || '')}</p>` : ''}
+        ${f && f.preparedMs ? `<p class="text-[11px] text-slate-500">Form 6 prepared ${lvE(iarStamp(f.preparedMs))}${f.memo ? ` · ${lvE(f.memo)}` : ''}</p>` : ''}
+        ${acts.length ? `<div class="grid ${acts.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2" data-lv-actions>${acts.join('')}</div>` : ''}
+        ${(l.log || []).length ? `<details class="rounded-2xl bg-slate-50 px-3 py-2"><summary class="text-xs font-bold text-slate-700 cursor-pointer">History · ${l.log.length}</summary>
+          <ul class="mt-2 space-y-1.5 text-[11px] text-slate-600">${[...l.log].reverse().map(x => `<li><b class="text-slate-800">${lvE(iarStamp(x.at))}</b> · ${lvE(x.by || '')}<br>${lvE(x.x || '')}</li>`).join('')}</ul></details>` : ''}`;
+    }
+
+    // ---- Leave cards (the credits ledger) -----------------------------------------------------
+    //   schools/{schoolId}/leaveCards/{uid, or an id for someone without the app}
+    // One card per person: opening balances (from the AO's paper cards, with their memo), credits
+    // earned (Vacation Service Credits: Division memo; Local Service Credits: School memo, no
+    // limit; VL/SL 1.25 days a month for non-teaching staff), approved leaves (deducted by
+    // themselves) and adjustments. Wrong lines are voided, not deleted. A teacher reads their own.
+    const LC_CR = {
+      vsc: { label: 'Vacation Service Credits', short: 'VSC', memo: 'Division memo' },
+      lsc: { label: 'Local Service Credits', short: 'Local SC', memo: 'School memo' },
+      vl: { label: 'Vacation Leave', short: 'VL', memo: '' },
+      sl: { label: 'Sick Leave', short: 'SL', memo: '' }
+    };
+    const LC_ORDER = ['vsc', 'lsc', 'vl', 'sl'];
+    const LC_VSC_YEAR = 30;      // DO 13 s. 2024: up to 30 days of VSC a calendar year (45 for some new hires)
+    const LC_MONTHLY = 1.25;     // VL and SL earned a month (non-teaching staff)
+    const LC_MAX_LINES = 800;
+    var lcList = [], lcLoaded = false, lcUnsub = null, lcError = '', lvPage = 'apps';
+    const lcCol = () => cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'leaveCards');
+    const lcById = id => lcList.find(c => c.id === id) || null;
+    const lcRound = n => Math.round((Number(n) || 0) * 1000) / 1000;
+    const lcNum = n => String(lcRound(n));
+    const lcLive = c => ((c && c.entries) || []).filter(e => !e.void);
+    function lcBalances(c) {
+      const b = { vsc: 0, lsc: 0, vl: 0, sl: 0 };
+      lcLive(c).forEach(e => { if (b[e.cr] !== undefined) b[e.cr] = lcRound(b[e.cr] + (Number(e.days) || 0)); });
+      return b;
+    }
+    const lcHas = (c, cr) => lcLive(c).some(e => e.cr === cr);
+    // The kinds of credit a card shows: the ones it has lines for, else the usual ones for the person
+    function lcCrs(c) {
+      const have = LC_ORDER.filter(cr => lcHas(c, cr));
+      return have.length ? have : (c && c.staff === 'nonteaching' ? ['vl', 'sl'] : ['vsc', 'lsc']);
+    }
+    function lcCardFor(uid, name) {
+      if (uid) { const c = lcList.find(x => x.uid === uid); if (c) return c; }
+      const k = String(name || '').trim().toLowerCase();
+      return k ? lcList.find(x => !x.uid && String(x.name || '').trim().toLowerCase() === k) || null : null;
+    }
+    const lcMine = () => (cloud.user ? lcList.find(c => c.uid === cloud.user.uid) || null : null);
+    const lcSorted = c => [...((c && c.entries) || [])].sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')) || (a.ms || 0) - (b.ms || 0));
+    const lcCrOfUse = (use, type) => (use === 'vsc' ? 'vsc' : use === 'lsc' ? 'lsc' : use === 'vlsl' ? (type === 'SL' ? 'sl' : 'vl') : '');
+    const lcGuessStaff = pos => (/teacher|instructor|professor|guidance|librarian/i.test(String(pos || '')) || !pos ? 'teaching' : 'nonteaching');
+    const lcDeduction = l => { for (const c of lcList) { const e = (c.entries || []).find(x => x.leaveId === l.id && !x.void); if (e) return e; } return null; };
+    function lcParticulars(e) {
+      if (e.src === 'open') return `Balance forwarded${e.note ? ` · ${e.note}` : ''}`;
+      if (e.src === 'earn') return `${e.mo ? `Earned ${new Date(e.mo + '-01T00:00:00').toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}` : 'Earned'}${e.note ? ` · ${e.note}` : ''}`;
+      if (e.src === 'leave') return e.note || 'Leave';
+      return `Adjustment${e.note ? ` · ${e.note}` : ''}`;
+    }
+
+    // Saving: the whole list of lines (only the AO's devices write cards)
+    function lcSave(card, person, entries, what) {
+      if (!lvCanManage() || !cloud.db || !leaveOn()) return null;
+      const F = cloud.sdk;
+      if (entries.length > LC_MAX_LINES) { appAlert(`A leave card holds up to ${LC_MAX_LINES} lines. Start a new card for the next years.`); return null; }
+      if (card) {
+        cloudWrite(F.updateDoc(F.doc(lcCol(), card.id), { entries: cleanJSON(entries), updatedAt: F.serverTimestamp() }), what || 'Saving the leave card');
+        card.entries = cleanJSON(entries);
+        lvRender();
+        return card;
+      }
+      const id = person.uid || F.doc(lcCol()).id;
+      const doc = cleanJSON({
+        uid: person.uid || '', name: String(person.name || '').slice(0, 120), position: String(person.position || '').slice(0, 80),
+        office: String(person.office || '').slice(0, 80), staff: person.staff === 'nonteaching' ? 'nonteaching' : 'teaching', entries, createdMs: Date.now()
+      });
+      cloudWrite(F.setDoc(F.doc(lcCol(), id), { ...doc, createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp() }), what || 'Saving the leave card');
+      const c = { ...doc, id };
+      lcList = [...lcList.filter(x => x.id !== id), c].sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+      lvRender();
+      return c;
+    }
+    function lcLine(e) {
+      const now = Date.now();
+      return cleanJSON({
+        id: now.toString(36) + Math.random().toString(36).slice(2, 7), by: String(actorName() || '').slice(0, 80), ms: now,
+        ...e, days: lcRound(e.days), memo: String(e.memo || '').slice(0, 160), note: String(e.note || '').slice(0, 200)
+      });
+    }
+    function lcAdd(card, person, lines, what) {
+      return lcSave(card, person, [...((card && card.entries) || []), ...lines.map(lcLine)], what);
+    }
+    // An approved leave comes off the card it uses (once; the AO's devices)
+    function lcSweep() {
+      if (!lvCanManage() || !leaveOn() || !lvLoaded || !lcLoaded || !cloud.user) return;
+      lvList.filter(l => ['approved', 'hold', 'review', 'handed', 'signed', 'done'].includes(l.status) && l.rec).forEach(l => {
+        const cr = lcCrOfUse(l.rec.use, l.rec.type);
+        const days = lcRound(l.rec.withPay);
+        if (!cr || !(days > 0)) return;
+        if (lcList.some(c => (c.entries || []).some(e => e.leaveId === l.id))) return;   // done before (or voided on purpose)
+        const card = lcCardFor(l.uid, l.name);
+        lcAdd(card, { uid: l.uid, name: l.name, position: l.position, office: l.office, staff: lcGuessStaff(l.position) }, [{
+          at: l.from, cr, days: -days, src: 'leave', leaveId: l.id, memo: l.rec.memo || '',
+          note: `${lvTypeText(l, l.rec.type)} · ${lvDatesText(l)}${cr === 'lsc' ? ' · not reflected in the DTR' : ''}`
+        }], 'Deducting the leave');
+        lvUpdate(l, {}, `${lvDays(days)} deducted from ${LC_CR[cr].label} on the leave card${cr === 'lsc' ? ' (not reflected in the DTR)' : ''}`);
+      });
+    }
+    // 7.A from the leave card: what the person had before this leave, this leave, and what is left
+    function lc7A(l) {
+      const r = l.rec || {};
+      const card = lcCardFor(l.uid, l.name);
+      const cr = lcCrOfUse(r.use, r.type);
+      if (!card || !cr) return null;
+      const before = c => lcRound(lcLive(card).filter(e => e.cr === c && e.leaveId !== l.id).reduce((n, e) => n + (Number(e.days) || 0), 0));
+      const less = lcRound(r.withPay);
+      const out = { vl: {}, sl: {} };
+      if (cr === 'vl' || cr === 'sl') {
+        ['vl', 'sl'].forEach(c => {
+          if (!lcHas(card, c) && c !== cr) return;
+          const b = before(c);
+          out[c] = c === cr ? { earned: b, less, bal: lcRound(b - less) } : { earned: b, bal: b };
+        });
+      } else {
+        const b = before(cr);
+        out.vl = { earned: b, less, bal: lcRound(b - less) };   // service credits: in the first column, named on the memo line
+      }
+      return out;
+    }
+
+    // Teachers: a line when credits are added to their card
+    function notifFromCards(meta) {
+      if (!leaveOn() || !isTeacherDevice()) return;
+      const c = lcMine();
+      if (!c) return;
+      notifCheck('leaveCards', lcLive(c).filter(e => e.src !== 'leave' && e.days > 0).map(e => ({
+        key: 'lc:' + e.id, sig: '1',
+        make: () => ({
+          title: e.src === 'open' ? `Leave card: ${lvDays(e.days)} of ${LC_CR[e.cr].short} brought forward` : `Leave credits added: ${lvDays(e.days)} of ${LC_CR[e.cr].short}`,
+          body: `${LC_CR[e.cr].label}${e.memo ? ` · ${e.memo}` : ''} · balance ${lcNum(lcBalances(c)[e.cr])}`, icon: 'ph-calendar-plus', tone: 'teal', go: 'teacher-leave'
+        })
+      })), fromCacheOf(meta));
+    }
+
+    // ---- Leave cards: screens ----
+    function lcChips(c, big) {
+      const b = lcBalances(c);
+      return lcCrs(c).map(cr => `<span class="inline-flex items-baseline gap-1 px-2 ${big ? 'py-1.5' : 'py-0.5'} rounded-lg border ${b[cr] < 0 ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-teal-50 border-teal-200 text-teal-900'}" data-lc-bal="${cr}"><span class="text-[11px] font-bold">${LC_CR[cr].short}</span><span class="font-mono font-extrabold ${big ? 'text-base' : 'text-xs'}">${lcNum(b[cr])}</span></span>`).join('');
+    }
+    function lcListHTML() {
+      const q = lvQuery.trim().toLowerCase();
+      const list = lcList.filter(c => !q || `${c.name} ${c.position || ''} ${c.office || ''}`.toLowerCase().includes(q));
+      const nonT = lcList.filter(c => c.staff === 'nonteaching').length;
+      const head = lvCanManage() ? `
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="openLvSheet('cardNew')" id="lcNewBtn" class="h-12 rounded-2xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-2"><i class="ph-bold ph-plus-circle text-teal-700"></i> New leave card</button>
+          <button onclick="openLvSheet('monthly')" id="lcMonthlyBtn" ${nonT ? '' : 'disabled'} class="h-12 rounded-2xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-2 disabled:opacity-50"><i class="ph-bold ph-calendar-plus text-teal-700"></i> Monthly VL/SL</button>
+        </div>` : '';
+      if (!list.length) return `${head}<div class="rounded-2xl bg-slate-50 border border-slate-200 p-6 text-center text-xs text-slate-500" data-lc-empty><i class="ph-duotone ph-address-book text-3xl text-slate-400"></i><p class="mt-1 font-bold text-slate-700 text-sm">${lcLoaded ? (q ? 'No card matches' : 'No leave cards yet') : 'Loading…'}</p><p>${lcLoaded && !q ? 'Add a card for each teacher and staff member, with the opening balances from the paper leave cards and their memos.' : ''}</p></div>`;
+      return `${head}<div class="space-y-2 lv-grid">${list.map(c => `
+        <button type="button" onclick="openLvSheet('card', '${lvE(c.id)}')" data-lc="${lvE(c.id)}" class="w-full text-left rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-start gap-3">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center"><i class="ph-duotone ph-address-book text-2xl"></i></span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-extrabold text-slate-900 truncate">${lvE(c.name)}</span>
+            <span class="block text-[11px] text-slate-500 truncate">${lvE([c.position, c.office].filter(Boolean).join(' · ') || (c.staff === 'nonteaching' ? 'Non-teaching' : 'Teaching'))}${c.uid ? '' : ' · not in the app'}</span>
+            <span class="mt-1.5 flex flex-wrap gap-1.5">${lcChips(c)}</span>
+          </span>
+          <i class="ph-bold ph-caret-right text-slate-400 mt-3"></i>
+        </button>`).join('')}</div>`;
+    }
+    // One card: balances, what to do, and every line with the running balance
+    function lcCardHTML() {
+      const c = lcById(lvSheet.id);
+      if (!c) return `${lvHead('ph-address-book', 'Not found', '')}<p class="text-sm text-slate-600">This leave card is no longer listed.</p>`;
+      const man = lvCanManage();
+      const run = { vsc: 0, lsc: 0, vl: 0, sl: 0 };
+      const rows = lcSorted(c).map(e => {
+        if (!e.void) run[e.cr] = lcRound(run[e.cr] + (Number(e.days) || 0));
+        return { e, bal: run[e.cr] };
+      }).reverse();
+      const btn = (label, icon, onclick, attr = '') => `<button onclick="${onclick}" ${attr} class="h-11 rounded-xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5"><i class="ph-bold ${icon} text-teal-700"></i> ${label}</button>`;
+      return `
+        ${lvHead('ph-address-book', `Leave card · ${lvE(c.name)}`, lvE([c.position, c.office, c.staff === 'nonteaching' ? 'Non-teaching' : 'Teaching'].filter(Boolean).join(' · ')))}
+        <div class="flex flex-wrap gap-2" data-lc-balances>${lcChips(c, true)}</div>
+        ${lcHas(c, 'lsc') ? '<p class="text-[11px] text-slate-500">Leave taken on Local Service Credits is not reflected in the DTR.</p>' : ''}
+        <div class="grid grid-cols-2 gap-2">
+          ${man ? `${btn('Opening balance', 'ph-flag-banner', `openLvSheet('cardEntry', '${lvE(c.id)}', 'open')`, 'data-lc-act="open"')}
+          ${btn('Add credits', 'ph-plus-circle', `openLvSheet('cardEntry', '${lvE(c.id)}', 'earn')`, 'data-lc-act="earn"')}
+          ${btn('Adjust', 'ph-plus-minus', `openLvSheet('cardEntry', '${lvE(c.id)}', 'adjust')`, 'data-lc-act="adjust"')}` : ''}
+          ${btn('Print leave card', 'ph-printer', `lcPrint('${lvE(c.id)}')`, `data-lc-print="${lvE(c.id)}"`)}
+        </div>
+        <div>
+          <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Lines · newest first</h4>
+          ${rows.length ? `<ul class="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden" data-lc-lines>${rows.map(({ e, bal }) => `
+            <li class="px-3 py-2 flex items-start gap-2 ${e.void ? 'opacity-50' : ''}" data-lc-line="${lvE(e.id)}">
+              <span class="min-w-0 flex-1">
+                <span class="block text-xs font-bold text-slate-800 ${e.void ? 'line-through' : ''}">${lvE(lcParticulars(e))}</span>
+                <span class="block text-[11px] text-slate-500">${lvE(longDate(e.at))} · ${lvE(LC_CR[e.cr] ? LC_CR[e.cr].label : e.cr)}${e.memo ? ` · ${lvE(e.memo)}` : ''}${e.void ? ` · voided${e.voidNote ? `: ${lvE(e.voidNote)}` : ''}` : ''}</span>
+              </span>
+              <span class="shrink-0 text-right">
+                <span class="block font-mono text-sm font-extrabold ${e.src === 'open' ? 'text-slate-700' : e.days < 0 ? 'text-rose-700' : 'text-emerald-700'}">${e.src === 'open' ? '=' : e.days > 0 ? '+' : '−'}${lcNum(Math.abs(e.days))}</span>
+                ${e.void ? '' : `<span class="block font-mono text-[11px] text-slate-500">bal ${lcNum(bal)}</span>`}
+              </span>
+              ${man && !e.void ? `<button onclick="lcVoid('${lvE(c.id)}', '${lvE(e.id)}')" data-lc-void="${lvE(e.id)}" class="shrink-0 w-8 h-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center" aria-label="Void this line"><i class="ph-bold ph-x"></i></button>` : ''}
+            </li>`).join('')}</ul>` : '<p class="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-center text-xs text-slate-500">No lines yet. Start with the opening balance from the paper leave card.</p>'}
+        </div>`;
+    }
+    function lcNewHTML() {
+      if (!lvCanManage()) return '';
+      const roster = teacherRoster().filter(t => t.uid && !lcList.some(c => c.uid === t.uid));
+      return `
+        ${lvHead('ph-address-book', 'New leave card', 'One for each teacher or staff member')}
+        <div class="grid grid-cols-2 gap-3">
+          ${lvLbl('Teacher or staff', `<select id="lcWho" onchange="lcNewWho()" class="${LV_IN}"><option value="">Someone not in the app (type the name)</option>${roster.map(t => `<option value="${lvE(t.uid)}">${lvE(t.name)}</option>`).join('')}</select>`, 'col-span-2')}
+          ${lvLbl('Name', `<input id="lcName" type="text" maxlength="120" class="${LV_IN}" placeholder="e.g. Carlo D. Mendoza">`, 'col-span-2')}
+          ${lvLbl('Position', `<input id="lcPos" type="text" maxlength="80" oninput="lcNewStaff()" class="${LV_IN}" placeholder="e.g. Administrative Assistant II">`)}
+          ${lvLbl('Office / grade', `<input id="lcOffice" type="text" maxlength="80" class="${LV_IN}">`)}
+          ${lvLbl('Credits', `<select id="lcStaff" class="${LV_IN}"><option value="teaching">Teaching · service credits</option><option value="nonteaching">Non-teaching · VL and SL</option></select>`, 'col-span-2')}
+        </div>
+        <p id="lvErr" class="hidden rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2"></p>
+        <button onclick="lcSaveNew()" id="lcNewSave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-check"></i> Make the card</button>`;
+    }
+    function lcNewWho() {
+      const t = teacherRoster().find(x => x.uid === lvVal('lcWho'));
+      if (!t) return;
+      [['lcName', t.name], ['lcPos', t.position], ['lcOffice', t.office]].forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v || ''; });
+      lcNewStaff();
+    }
+    function lcNewStaff() { const s = document.getElementById('lcStaff'); if (s) s.value = lcGuessStaff(lvVal('lcPos')); }
+    function lcSaveNew() {
+      const uid = lvVal('lcWho'), name = lvVal('lcName');
+      if (!name) return lvErr('Type the name, or pick the teacher.');
+      if (lcCardFor(uid, name)) return lvErr(`${name} already has a leave card.`);
+      const c = lcSave(null, { uid, name, position: lvVal('lcPos'), office: lvVal('lcOffice'), staff: lvVal('lcStaff') }, [], 'Making the leave card');
+      if (c) { openLvSheet('card', c.id); showToast('Leave card made · add the opening balance', 'ph-address-book'); }
+    }
+    // Opening balance, credits earned, or an adjustment
+    function lcEntryHTML() {
+      const c = lcById(lvSheet.id);
+      const mode = lvSheet.mode;
+      if (!c || !lvCanManage()) return '';
+      const crs = c.staff === 'nonteaching' ? ['vl', 'sl', 'vsc', 'lsc'] : ['vsc', 'lsc', 'vl', 'sl'];
+      const title = mode === 'open' ? 'Opening balance' : mode === 'earn' ? 'Add credits' : 'Adjust';
+      const sub = mode === 'open' ? 'From the paper leave card: the balance as of a date' : mode === 'earn' ? 'Credits earned, with the memo that grants them' : 'A correction, plus or minus';
+      return `
+        ${lvHead(mode === 'open' ? 'ph-flag-banner' : mode === 'earn' ? 'ph-plus-circle' : 'ph-plus-minus', `${title} · ${lvE(c.name)}`, sub)}
+        <div class="grid grid-cols-2 gap-3">
+          ${lvLbl('Credit', `<select id="lcCr" onchange="lcEntryHint()" class="${LV_IN}">${crs.map(cr => `<option value="${cr}">${lvE(LC_CR[cr].label)}</option>`).join('')}</select>`, 'col-span-2')}
+          ${lvLbl(mode === 'open' ? 'Balance (days)' : mode === 'adjust' ? 'Days (minus to take off)' : 'Days', `<input id="lcDays" type="number" inputmode="decimal" step="0.001" ${mode === 'adjust' ? '' : 'min="0"'} class="${LV_IN} font-mono font-bold">`)}
+          ${lvLbl(mode === 'open' ? 'As of' : 'Date', `<input id="lcAt" type="date" value="${localISODate()}" class="${LV_IN}">`)}
+          ${lvLbl('Memo No.', `<input id="lcMemo" type="text" maxlength="160" class="${LV_IN}" placeholder="e.g. Division Memo No. 45, s. 2026">`, 'col-span-2')}
+          ${lvLbl('Note (optional)', `<input id="lcNote" type="text" maxlength="200" class="${LV_IN}" placeholder="${mode === 'earn' ? 'e.g. Brigada Eskwela, 4 days' : mode === 'open' ? 'e.g. from the 2025 leave card' : 'e.g. typing error on the opening balance'}">`, 'col-span-2')}
+        </div>
+        <p id="lcHint" class="text-[11px] text-slate-500"></p>
+        <p id="lvErr" class="hidden rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2"></p>
+        <button onclick="lcSaveEntry()" id="lcEntrySave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-check"></i> Save</button>`;
+    }
+    function lcEntryHint() {
+      const el = document.getElementById('lcHint');
+      const c = lvSheet && lcById(lvSheet.id);
+      if (!el || !c) return;
+      const cr = lvVal('lcCr');
+      const memo = document.getElementById('lcMemo');
+      if (memo) memo.placeholder = cr === 'lsc' ? 'e.g. School Memo No. 12, s. 2026' : cr === 'vsc' ? 'e.g. Division Memo No. 45, s. 2026' : 'optional';
+      const now = lcBalances(c)[cr];
+      el.textContent = `${LC_CR[cr].label} now: ${lcNum(now)}${lvSheet.mode === 'open' && lcLive(c).some(e => e.cr === cr && e.src === 'open') ? ' · the earlier opening balance is replaced' : ''}${cr === 'lsc' ? ' · School memo, no limit; leave on these is not reflected in the DTR' : cr === 'vsc' ? ` · up to ${LC_VSC_YEAR} days a year (DO 13, s. 2024)` : cr === 'vl' || cr === 'sl' ? ` · ${LC_MONTHLY} days a month` : ''}`;
+    }
+    async function lcSaveEntry() {
+      const c = lcById(lvSheet.id), mode = lvSheet.mode;
+      if (!c || !lvCanManage()) return;
+      const cr = lvVal('lcCr'), at = lvVal('lcAt'), memo = lvVal('lcMemo'), note = lvVal('lcNote');
+      const days = lcRound(lvVal('lcDays'));
+      if (!LC_CR[cr]) return;
+      if (!at) return lvErr('Pick the date.');
+      if (lvVal('lcDays') === '' || !isFinite(days) || (mode !== 'adjust' && days < 0) || (mode !== 'open' && !days)) return lvErr('Type the number of days.');
+      if (Math.abs(days) > 1000) return lvErr('That is too many days.');
+      if (mode === 'earn' && (cr === 'vsc' || cr === 'lsc') && !memo) return lvErr(`Type the ${LC_CR[cr].memo} number.`);
+      if (mode === 'adjust' && !note) return lvErr('Write why, for the record.');
+      if (mode === 'earn' && cr === 'vsc') {
+        const yr = at.slice(0, 4);
+        const had = lcRound(lcLive(c).filter(e => e.cr === 'vsc' && e.src === 'earn' && String(e.at || '').slice(0, 4) === yr).reduce((n, e) => n + e.days, 0));
+        if (had + days > LC_VSC_YEAR && !await appConfirm(`${c.name} would have ${lcNum(had + days)} days of Vacation Service Credits earned in ${yr}. DepEd Order 13, s. 2024 allows up to ${LC_VSC_YEAR} days a calendar year (45 for teachers hired later in the school year; teaching overload is not counted).`, { title: `More than ${LC_VSC_YEAR} days this year?`, ok: 'Add anyway', tone: 'warn', icon: 'ph-warning' })) return;
+      }
+      let entries = [...(c.entries || [])];
+      if (mode === 'open') entries = entries.map(e => (e.cr === cr && e.src === 'open' && !e.void ? { ...e, void: true, voidNote: 'replaced by a new opening balance', voidMs: Date.now() } : e));
+      entries.push(lcLine({ at, cr, days, src: mode, memo, note }));
+      lcSave(c, null, entries);
+      openLvSheet('card', c.id);
+      showToast(mode === 'open' ? 'Opening balance saved' : mode === 'earn' ? `${lvDays(days)} added` : 'Adjusted', 'ph-check-circle');
+    }
+    async function lcVoid(cardId, lineId) {
+      const c = lcById(cardId);
+      const e = c && (c.entries || []).find(x => x.id === lineId);
+      if (!e || e.void || !lvCanManage()) return;
+      const why = await appPrompt(`${lcParticulars(e)} · ${LC_CR[e.cr] ? LC_CR[e.cr].label : ''} ${e.days > 0 ? '+' : ''}${lcNum(e.days)}`, '', { title: 'Void this line?', ok: 'Void', tone: 'warn', label: 'Why? (kept on the card)', maxLength: 200 });
+      if (why === null) return;
+      const note = String(why).trim().slice(0, 200);
+      if (!note) { appAlert('Write why, for the record.'); return; }
+      lcSave(c, null, (c.entries || []).map(x => (x.id === lineId ? { ...x, void: true, voidNote: note, voidMs: Date.now(), voidBy: String(actorName() || '').slice(0, 80) } : x)), 'Voiding the line');
+      if (lvSheet) { lvSheet.drawn = false; renderLvModal(); }
+    }
+    // VL and SL earned for a month, for every non-teaching card (once per month)
+    function lcMonthlyHTML() {
+      if (!lvCanManage()) return '';
+      const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
+      const mo = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const cards = lcList.filter(c => c.staff === 'nonteaching');
+      return `
+        ${lvHead('ph-calendar-plus', 'Monthly VL and SL', `${LC_MONTHLY} days of Vacation Leave and ${LC_MONTHLY} of Sick Leave for each non-teaching staff member`)}
+        ${lvLbl('Month', `<input id="lcMonth" type="month" value="${mo}" oninput="lcMonthlyHint()" class="${LV_IN}">`)}
+        <ul class="rounded-2xl border border-slate-200 divide-y divide-slate-100 text-xs" id="lcMonthlyList">${cards.map(c => `<li class="px-3 py-2 flex justify-between gap-2" data-lc-month="${lvE(c.id)}"><span class="font-bold text-slate-800">${lvE(c.name)}</span><span class="text-slate-500" data-lc-month-state></span></li>`).join('')}</ul>
+        <p class="text-[11px] text-slate-500">Leave without pay that month means less is earned: fix it with Adjust on that card.</p>
+        <button onclick="lcSaveMonthly()" id="lcMonthlySave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-check"></i> Add to the cards</button>`;
+    }
+    const lcMonthDone = (c, mo) => lcLive(c).some(e => e.mo === mo && e.src === 'earn');
+    function lcMonthlyHint() {
+      const mo = lvVal('lcMonth');
+      document.querySelectorAll('[data-lc-month]').forEach(li => {
+        const c = lcById(li.dataset.lcMonth);
+        li.querySelector('[data-lc-month-state]').textContent = c && lcMonthDone(c, mo) ? 'already added' : `+${LC_MONTHLY} VL · +${LC_MONTHLY} SL`;
+      });
+    }
+    function lcSaveMonthly() {
+      const mo = lvVal('lcMonth');
+      if (!/^\d{4}-\d{2}$/.test(mo)) return;
+      const end = new Date(+mo.slice(0, 4), +mo.slice(5, 7), 0);
+      const at = localISODate(end);
+      let n = 0;
+      lcList.filter(c => c.staff === 'nonteaching' && !lcMonthDone(c, mo)).forEach(c => {
+        lcAdd(c, null, [{ at, cr: 'vl', days: LC_MONTHLY, src: 'earn', mo }, { at, cr: 'sl', days: LC_MONTHLY, src: 'earn', mo }], 'Adding VL and SL');
+        n++;
+      });
+      closeLvModal();
+      showToast(n ? `VL and SL added to ${plural(n, 'card')}` : 'Already added for that month', 'ph-calendar-plus');
+    }
+
+    // Print: the person's leave card, every kind of credit it has
+    function lcPrint(id) {
+      const c = lcById(id);
+      if (c) printFormHTML(lcPrintHTML(c));
+    }
+    function lcPrintHTML(c) {
+      const e = lvE;
+      const crs = lcCrs(c);
+      const run = { vsc: 0, lsc: 0, vl: 0, sl: 0 };
+      const rows = lcSorted(c).filter(x => !x.void && LC_CR[x.cr]).map(x => {
+        run[x.cr] = x.src === 'open' ? lcRound(run[x.cr] + x.days) : lcRound(run[x.cr] + (Number(x.days) || 0));
+        const cells = crs.map(cr => (cr === x.cr
+          ? `<td class="r">${x.days > 0 && x.src !== 'open' ? lcNum(x.days) : ''}</td><td class="r">${x.days < 0 ? lcNum(-x.days) : ''}</td><td class="r"><b>${lcNum(run[cr])}</b></td>`
+          : '<td></td><td></td><td></td>')).join('');
+        return `<tr><td class="c">${e(x.at ? new Date(x.at + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '')}</td><td>${e(lcParticulars(x))}</td><td>${e(x.memo || '')}</td>${cells}</tr>`;
+      }).join('');
+      const b = lcBalances(c);
+      const wide = crs.length > 2;
+      return `
+        <div class="pr-form ${wide ? 'pr-wide' : ''}">
+          <div class="lv-agency">Republic of the Philippines<br><b>DEPARTMENT OF EDUCATION</b>${schoolInfo.division ? `<br>${e(schoolInfo.division)}` : ''}<br>${e(reqRole.schoolName || schoolInfo.school || '')}</div>
+          <h1>LEAVE CARD</h1>
+          <div class="pr-top"><div>Name: <b>${e(c.name)}</b><br>Position: <b>${e(c.position || '')}</b></div><div>Office / grade: <b>${e(c.office || '')}</b><br>${c.staff === 'nonteaching' ? 'Non-teaching personnel' : 'Teaching personnel'}</div></div>
+          <table class="pr-table">
+            <colgroup><col style="width:${wide ? 9 : 11}%"><col style="width:${wide ? 21 : 24}%"><col style="width:${wide ? 14 : 17}%">${crs.map(() => '<col><col><col>').join('')}</colgroup>
+            <tr><th rowspan="2">Date</th><th rowspan="2">Particulars</th><th rowspan="2">Memo / reference</th>${crs.map(cr => `<th colspan="3">${e(LC_CR[cr].label)}</th>`).join('')}</tr>
+            <tr class="lc-sub">${crs.map(() => '<th>Earned</th><th>Used</th><th>Balance</th>').join('')}</tr>
+            ${rows || `<tr><td colspan="${3 + crs.length * 3}" class="c">No lines yet</td></tr>`}
+            <tr><td colspan="3" class="r"><b>Balance as of ${e(longDate(localISODate()))}</b></td>${crs.map(cr => `<td colspan="3" class="c"><b>${lcNum(b[cr])}</b></td>`).join('')}</tr>
+          </table>
+          ${lcHas(c, 'lsc') ? '<p style="font-size:8pt;margin-top:4pt"><i>Leave on Local Service Credits (School memo) is not reflected in the DTR.</i></p>' : ''}
+          <div class="lv-sig" style="text-align:left;margin-top:18pt">Certified correct:<br><br><b>${e(String(schoolInfo.custodian || actorName() || '').toUpperCase())}</b><br><span>Administrative Officer</span></div>
+        </div>`;
+    }
+
+    // ---- Print: CS Form No. 6 (Revised 2020) -------------------------------------------------
+    function lvPrint(id) {
+      const l = lvById(id);
+      if (!l || !lvCanPrint(l)) return;
+      printFormHTML(lvFormHTML(l));
+    }
+    function lvFormHTML(l) {
+      const e = lvE;
+      const f = l.form || {}, r = l.rec || {}, d = l.detail || {};
+      const type = r.type || l.type;
+      const box = on => `<span class="lv-box">${on ? 'X' : ''}</span>`;
+      const blank = (v, w = '30mm') => `<span class="lv-line" style="min-width:${w}">${e(v)}</span>`;
+      const vlsp = type === 'VL' || type === 'SPL';
+      const num = v => (v == null || v === '' ? '' : String(Math.round(Number(v) * 1000) / 1000));
+      const cr = f.cred || {};
+      const with7 = f.withPay != null ? f.withPay : r.withPay;
+      const without7 = f.withoutPay != null ? f.withoutPay : r.withoutPay;
+      const nm = f.last || f.first ? f : lvSplitName(l.name);
+      const types = Object.entries(LV_TYPES).filter(([k]) => k !== 'OTH').map(([k, t]) => `<div class="lv-opt">${box(type === k)} ${e(t.label)} <span class="lv-law">(${e(t.law)})</span></div>`).join('')
+        + `<div class="lv-opt" style="margin-top:4pt">Others: ${blank(type === 'OTH' ? l.typeOther : '', '50mm')}</div>`;
+      const details = `
+        <div class="lv-sub"><i>In case of Vacation/Special Privilege Leave:</i></div>
+        <div class="lv-opt">${box(vlsp && d.where !== 'abroad')} Within the Philippines ${blank('', '35mm')}</div>
+        <div class="lv-opt">${box(vlsp && d.where === 'abroad')} Abroad (Specify) ${blank(vlsp && d.where === 'abroad' ? d.abroad : '', '35mm')}</div>
+        <div class="lv-sub"><i>In case of Sick Leave:</i></div>
+        <div class="lv-opt">${box(type === 'SL' && d.sick === 'hospital')} In Hospital (Specify Illness) ${blank(type === 'SL' && d.sick === 'hospital' ? d.illness : '', '25mm')}</div>
+        <div class="lv-opt">${box(type === 'SL' && d.sick !== 'hospital')} Out Patient (Specify Illness) ${blank(type === 'SL' && d.sick !== 'hospital' ? d.illness : '', '25mm')}</div>
+        <div class="lv-sub"><i>In case of Special Leave Benefits for Women:</i></div>
+        <div class="lv-opt">(Specify Illness) ${blank(type === 'SLBW' ? d.illness : '', '45mm')}</div>
+        <div class="lv-sub"><i>In case of Study Leave:</i></div>
+        <div class="lv-opt">${box(type === 'STUDY' && d.study !== 'bar')} Completion of Master’s Degree</div>
+        <div class="lv-opt">${box(type === 'STUDY' && d.study === 'bar')} BAR/Board Examination Review</div>
+        <div class="lv-sub"><i>Other purpose:</i></div>
+        <div class="lv-opt">${box(type === 'OTH' && /moneti/i.test(l.typeOther || ''))} Monetization of Leave Credits</div>
+        <div class="lv-opt">${box(type === 'OTH' && /terminal/i.test(l.typeOther || ''))} Terminal Leave</div>`;
+      const sig = (name, role) => `<div class="lv-sig"><b>${e(String(name || '').toUpperCase()) || '&nbsp;'}</b><br><span>${e(role)}</span></div>`;
+      return `
+        <div class="pr-form lv-form">
+          <div class="lv-cs"><i>Civil Service Form No. 6<br>Revised 2020</i></div>
+          <div class="lv-agency">Republic of the Philippines<br><b>DEPARTMENT OF EDUCATION</b>${f.division ? `<br>${e(f.division)}` : ''}<br>${e(f.office || l.school || '')}</div>
+          <h1>APPLICATION FOR LEAVE</h1>
+          <table class="pr-table lv-t">
+            <colgroup><col style="width:25%"><col style="width:25%"><col style="width:25%"><col style="width:25%"></colgroup>
+            <tr><td colspan="2">1. OFFICE/DEPARTMENT<br><b>${e(f.office || l.school || '')}</b></td>
+              <td colspan="2">2. NAME: <span class="lv-law">(Last) (First) (Middle)</span><br><b>${e(nm.last)}</b>, <b>${e(nm.first)}</b> <b>${e(nm.middle)}</b></td></tr>
+            <tr><td>3. DATE OF FILING<br><b>${e(longDate(l.filedISO))}</b></td><td colspan="2">4. POSITION<br><b>${e(f.position || l.position || '')}</b></td><td>5. SALARY<br><b>${e(f.salary || '')}</b></td></tr>
+            <tr><th colspan="4">6. DETAILS OF APPLICATION</th></tr>
+            <tr><td colspan="2">6.A TYPE OF LEAVE TO BE AVAILED OF<div class="lv-list">${types}</div></td><td colspan="2">6.B DETAILS OF LEAVE<div class="lv-list">${details}</div></td></tr>
+            <tr><td colspan="2">6.C NUMBER OF WORKING DAYS APPLIED FOR<br><b class="lv-big">${e(num(l.days))}</b><br>INCLUSIVE DATES<br><b>${e(lvDatesText(l))}</b></td>
+              <td colspan="2">6.D COMMUTATION<div class="lv-opt">${box(l.comm !== 'yes')} Not Requested</div><div class="lv-opt">${box(l.comm === 'yes')} Requested</div>${sig(l.name, '(Signature of Applicant)')}</td></tr>
+            <tr><th colspan="4">7. DETAILS OF ACTION ON APPLICATION</th></tr>
+            <tr><td colspan="2">7.A CERTIFICATION OF LEAVE CREDITS<br>As of ${blank(f.asOf ? longDate(f.asOf) : '', '35mm')}
+                <table class="lv-cred"><tr><th></th><th>Vacation Leave</th><th>Sick Leave</th></tr>
+                  <tr><td><i>Total Earned</i></td><td>${e(num(cr.vl && cr.vl.earned))}</td><td>${e(num(cr.sl && cr.sl.earned))}</td></tr>
+                  <tr><td><i>Less this application</i></td><td>${e(num(cr.vl && cr.vl.less))}</td><td>${e(num(cr.sl && cr.sl.less))}</td></tr>
+                  <tr><td><i>Balance</i></td><td>${e(num(cr.vl && cr.vl.bal))}</td><td>${e(num(cr.sl && cr.sl.bal))}</td></tr></table>
+                ${f.memo ? `<div class="lv-memo">${e(f.memo)}</div>` : ''}
+                ${sig(f.aoName, f.aoDesig ? `${f.aoDesig} · (Authorized Officer)` : '(Authorized Officer)')}</td>
+              <td colspan="2">7.B RECOMMENDATION<div class="lv-opt">${box(true)} For approval</div><div class="lv-opt">${box(false)} For disapproval due to ${blank('', '30mm')}</div>
+                ${sig(f.shName, f.shDesig ? `${f.shDesig} · (Authorized Officer)` : '(Authorized Officer)')}</td></tr>
+            <tr><td colspan="2">7.C APPROVED FOR:<div class="lv-opt">${blank(num(with7), '14mm')} days with pay</div><div class="lv-opt">${blank(num(without7) === '0' ? '' : num(without7), '14mm')} days without pay</div><div class="lv-opt">${blank(f.others || '', '14mm')} others (Specify)</div></td>
+              <td colspan="2">7.D DISAPPROVED DUE TO:<div class="lv-opt">${blank('', '60mm')}</div></td></tr>
+            <tr><td colspan="4">${sig(f.shName, f.shDesig ? `${f.shDesig} · (Authorized Official)` : '(Authorized Official)')}</td></tr>
+          </table>
+        </div>`;
     }
 
     // Sends something to the School Head (an earlier one for the same thing is cancelled).
@@ -15826,6 +17063,9 @@
           key: 'ap:' + a.id, sig: a.status,
           make: () => {
             const who = (a.decision && a.decision.byName) || 'The School Head';
+            if (a.kind === 'leave') return a.status === 'returned'
+              ? { title: `${who} returned ${a.title}’s leave application`, body: (a.decision && a.decision.note) || 'Tap to see it', icon: 'ph-arrow-u-up-left', tone: 'rose', go: 'leave' }
+              : { title: `${who} approved ${a.title}’s leave`, body: 'Prepare Form 6 next', icon: 'ph-seal-check', tone: 'emerald', go: 'leave' };
             const what = a.kind === 'ris' ? `${a.title}’s supply request` : a.kind === 'count' ? 'the physical count report' : a.kind === 'books' ? `the disposal of books (${a.title})` : `the write-off (${a.title})`;
             logHistory('system', `${who} ${a.status === 'approved' ? 'approved' : 'returned'} ${what} in the app · ${iarStamp(a.decision && a.decision.atMs)}${a.decision && a.decision.note ? ` – ${a.decision.note}` : ''}`);
             if (a.status === 'returned') return { title: `${who} returned ${what}`, body: (a.decision && a.decision.note) || 'Tap to see it', icon: 'ph-arrow-u-up-left', tone: 'rose', go: a.kind === 'ris' ? 'requests' : a.kind === 'books' ? 'books' : 'yearend' };
@@ -16599,7 +17839,7 @@
             ${a.total ? `<p class="shrink-0 text-base font-extrabold font-mono text-slate-900">₱${peso2(a.total)}</p>` : ''}
           </div>
           ${a.summary ? `<p class="text-xs text-slate-600">${escapeHTML(a.summary)}</p>` : ''}
-          ${lines.length ? `<details ${wait && lines.length <= 6 ? 'open' : ''} class="rounded-xl bg-slate-50 px-3 py-2"><summary class="text-xs font-bold text-slate-700 cursor-pointer">${a.kind === 'count' ? 'Summary' : 'Items'} (${lines.length})</summary><ul class="mt-1.5 text-xs text-slate-800 space-y-1">${rows}</ul></details>` : ''}
+          ${lines.length ? `<details ${wait && lines.length <= 6 ? 'open' : ''} class="rounded-xl bg-slate-50 px-3 py-2"><summary class="text-xs font-bold text-slate-700 cursor-pointer">${a.kind === 'count' ? 'Summary' : a.kind === 'leave' ? 'Details' : 'Items'} (${lines.length})</summary><ul class="mt-1.5 text-xs text-slate-800 space-y-1">${rows}</ul></details>` : ''}
           ${wait ? `
             <div class="grid grid-cols-2 gap-2">
               <button onclick="headDecideAp('${a.id}', false)" data-ap-return="${a.id}" class="h-11 rounded-xl bg-white border border-slate-300 hover:border-rose-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrow-u-up-left"></i> Return</button>
@@ -16626,7 +17866,7 @@
       const what = `${AP_KIND[ap.kind] || 'Approval'}: ${ap.title}${ap.total ? ` · ₱${peso2(ap.total)}` : ''}`;
       let note = '';
       if (ok) {
-        const extra = ap.kind === 'writeoff' ? '\n\nThe property leaves the inventory and stays on record under Written off.' : ap.kind === 'ris' ? '\n\nThe property custodian can then release the items.' : '';
+        const extra = ap.kind === 'writeoff' ? '\n\nThe property leaves the inventory and stays on record under Written off.' : ap.kind === 'ris' ? '\n\nThe property custodian can then release the items.' : ap.kind === 'leave' ? '\n\nThe AO then prepares Form 6 for the teacher to print and sign.' : '';
         if (!await appConfirm(`${what}${extra}\n\nYour name (${name}), the date and the time are recorded, and the property custodian is told.`,
           { title: `Approve this ${kind}?`, ok: 'Approve', tone: 'good', icon: 'ph-seal-check' })) return;
       } else {
@@ -19905,13 +21145,20 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const stillHeld = new Set(h.equipment.map(x => x.rel.id));
       const toAck = myReleases.filter(r => (r.kind === 'RIS' || (isIssueKind(r.kind) && (stillHeld.has(r.id) || !(r.lines || []).some(l => (l.units || []).length)))) && !r.sameHolder && !tAcked(r.id));
       if (!teacherTab) teacherTab = myReleases.length ? 'items' : 'requests';
+      const lvOn = leaveOn();
+      if (teacherTab === 'leave' && !lvOn) teacherTab = 'requests';
       const tab = teacherTab;
-      document.getElementById('rqTitle').textContent = tab === 'items' ? 'My items' : tab === 'stock' ? 'School stock' : tab === 'library' ? 'Library' : 'Request supplies';
+      document.getElementById('rqTitle').textContent = tab === 'items' ? 'My items' : tab === 'stock' ? 'School stock' : tab === 'library' ? 'Library' : tab === 'leave' ? 'Leave' : 'Request supplies';
       setTimeout(renderTeacherAvatars, 0);
-      document.getElementById('rqSchool').textContent = tab === 'stock' ? `Supplies left at ${reqRole.schoolName}` : tab === 'library' ? `Books at ${reqRole.schoolName} · what is free and where` : `To the property custodian of ${reqRole.schoolName}`;
-      ['items', 'requests', 'stock', 'library'].forEach(t => {
+      document.getElementById('rqSchool').textContent = tab === 'stock' ? `Supplies left at ${reqRole.schoolName}` : tab === 'leave' ? `Applications for leave at ${reqRole.schoolName} · CS Form 6` : tab === 'library' ? `Books at ${reqRole.schoolName} · what is free and where` : `To the property custodian of ${reqRole.schoolName}`;
+      const tabsEl = document.getElementById('rqTabs');
+      tabsEl.classList.toggle('grid-cols-4', !lvOn);
+      tabsEl.classList.toggle('grid-cols-5', lvOn);
+      tabsEl.classList.toggle('rq-five', lvOn);
+      ['items', 'requests', 'stock', 'library', 'leave'].forEach(t => {
         const b = document.getElementById(`rqTab-${t}`);
         const on = t === tab;
+        if (t === 'leave' && !lvOn) { b.className = 'hidden'; return; }
         b.className = `h-11 rounded-xl text-[13px] sm:text-sm font-extrabold flex items-center justify-center gap-1 sm:gap-1.5 transition ${on ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5 seg-on' : 'text-slate-500 hover:text-slate-800'}`;
         b.setAttribute('aria-selected', on ? 'true' : 'false');
       });
@@ -19923,11 +21170,14 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       document.getElementById('rqRequestsPane').classList.toggle('hidden', tab !== 'requests');
       document.getElementById('rqStockPane').classList.toggle('hidden', tab !== 'stock');
       document.getElementById('rqLibraryPane').classList.toggle('hidden', tab !== 'library');
+      document.getElementById('rqLeavePane').classList.toggle('hidden', tab !== 'leave');
+      if (lvOn) { leaveSync(); lvTeacherDot(); }
       const me = cloud.user ? cloud.user.uid : '';
       document.getElementById('rqLibDot').classList.toggle('hidden', !(bk.moves.some(m => m.toUid === me && m.status === 'sent') || bk.loans.some(l => l.keeperUid === me && l.status === 'requested')));
       if (tab === 'items') renderTeacherItems(h, toAck);
       if (tab === 'stock') renderTeacherStock();
       if (tab === 'library') renderTeacherLibrary();
+      if (tab === 'leave') renderTeacherLeave();
     }
 
     // ---- A teacher's My Items: overview, needs your attention, clearance (Nov 2026) ----------
@@ -26299,7 +27549,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         const name = (h && h.name) || n.who || '';
         return name ? { name, photo: (h && h.photo) || '' } : null;
       }
-      if (isTeacherDevice() && /^teacher-(items|requests)$/.test(n.go || '') && (reqRole.custName || reqRole.custPhoto))
+      if (isTeacherDevice() && /^teacher-(items|requests|leave)$/.test(n.go || '') && (reqRole.custName || reqRole.custPhoto))
         return { name: reqRole.custName || 'Property Custodian', photo: reqRole.custPhoto || '' };
       return null;
     }
@@ -27067,6 +28317,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       } else if (n.go === 'head') {                  // School Head: their approvals; custodian: the School Head panel
         if (isHeadDevice()) { headTab = 'approve'; switchMainView('HEAD'); renderHeadView(); }
         else openHeadPanel();
+      } else if (n.go === 'leave') {                 // the AO (custodian account): the Leave page
+        openLeaveView();
+      } else if (n.go === 'teacher-leave') {
+        switchMainView('REQUESTER');
+        setTeacherTab('leave');
       } else if (n.go === 'teacher-items' || n.go === 'teacher-requests') {
         switchMainView('REQUESTER');
         setTeacherTab(n.go === 'teacher-items' ? 'items' : 'requests');
@@ -27237,6 +28492,23 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-leave-cards', date: 'Nov 2026', title: 'Leave cards: credits earned and used · pilot at this school', points: [
+        'AO: the Leave page has a new Leave cards tab, one card for each teacher and staff member (also those not in the app). Start each card with the opening balance from the paper leave card and its memo.',
+        'Add credits with the memo that grants them: Vacation Service Credits (Division memo, up to 30 days a year; the app asks before going over), Local Service Credits (School memo, no limit), and VL/SL. Monthly VL/SL adds 1.25 days of each for every non-teaching staff member, once a month.',
+        'An approved leave comes off the card by itself. Leave on Local Service Credits is marked not reflected in the DTR. Form 6 item 7.A is filled in from the card.',
+        'Receiving an application shows how many days the person has left. A wrong line is voided with a reason and stays on the card. Print leave card prints the whole card.',
+        'Teachers: My leave credits on the Leave tab, how many days are left under each option when applying, and a notification when credits are added.',
+        'Property custodian: publish the updated database rules (firestore.rules) again.'
+      ], pilot: 'leave' },
+      { id: '2026-11-leave-pilot', date: 'Nov 2026', title: 'Leave applications (CS Form 6) · pilot at this school', points: [
+        'This is a pilot: it shows only at this school for now.',
+        'Teachers: a new Leave tab. Apply for leave on your phone (type of leave, dates, and what to use: service credits, local service credits, VL/SL or \u20b1250 for a whole-day absence). Follow it step by step, and print Form 6 when the AO sends it to you. Sign the printed copy and hand it in at the office.',
+        'AO (on the property custodian\u2019s account): a new Leave page in More and in the computer sidebar. Receive each application (the date it came in), recommend the kind of leave, the days with and without pay and the credits with their memo, and send it to the School Head. Paper forms can be encoded too.',
+        'School Head: leave applications show in the Approve tab. Approve, or Return with a note.',
+        'Once approved, the AO prepares CS Form No. 6 (Revised 2020) and sends it to the teacher. Then tap Handed in, Signed by the School Head, and Received by the Division with the date on the stamp. A \u20b1250 day is approved too, and its Form 6 is kept on hold.',
+        'Everyone is told at each step, and each application keeps its history.',
+        'Property custodian: publish the updated database rules (firestore.rules) to turn it on.'
+      ], pilot: 'leave' },
       { id: '2026-11-head-books', date: 'Nov 2026', title: 'School Head: books under Items, and icons on School stock', points: [
         'The School Head\u2019s Items tab has a new Books chip: every title in the school with how many copies there are and how many are free, by kind (textbook, teacher\u2019s manual, reference\u2026). By subject adds up the titles and copies for each subject. It is view only, handy during technical assistance to check that there are enough references for a school plan.',
         'Searching All on the Items tab also finds books. Tap a title to see where the copies are and who borrowed them.',
@@ -27751,7 +29023,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         ${bgSyncNoteHTML()}
         <div>
           <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">What’s new</p>
-          <div class="space-y-3">${WHATS_NEW.slice(0, 3).map((r, i) => `
+          <div class="space-y-3">${wnList().slice(0, 3).map((r, i) => `
             <div data-release="${r.id}">
               <p class="text-sm font-extrabold text-slate-800 flex flex-wrap items-center gap-x-2 gap-y-0.5">${escapeHTML(r.title)}
                 <span class="text-[11px] font-bold text-slate-500 whitespace-nowrap">${escapeHTML(r.date)}</span>
@@ -27776,6 +29048,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       catch (e) { appPrompt('Select the link and copy it.', url, { title: 'Copy this link', ok: 'Done', readOnly: true, icon: 'ph-link', tone: 'info' }); }
     }
 
+    // What's new on this phone: a pilot's note only where the pilot is on
+    function wnList() { return WHATS_NEW.filter(r => !r.pilot || (r.pilot === 'leave' && leaveOn())); }
     function initAppUpdates() {
       syncTitleBarMode();
       if (navigator.windowControlsOverlay && navigator.windowControlsOverlay.addEventListener) {
@@ -27783,14 +29057,14 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       }
       renderAppTitle();
       // "What's new" once after each update (existing users only, not on the first ever open).
-      const latest = WHATS_NEW[0].id;
+      const latest = wnList()[0].id;
       const seen = localStorage.getItem(SEEN_RELEASE_KEY);
       const updating = sessionStorage.getItem('custodian_updating') === '1';
       sessionStorage.removeItem('custodian_updating');
       if (seen !== latest) {
         localStorage.setItem(SEEN_RELEASE_KEY, latest);
         const existingUser = !!seen || RETURNING_USER;
-        if (existingUser) setTimeout(() => showToast(`Updated · ${WHATS_NEW[0].title}`, 'ph-sparkle', { label: 'What’s new', onClick: openAbout }), 800);
+        if (existingUser) setTimeout(() => showToast(`Updated · ${wnList()[0].title}`, 'ph-sparkle', { label: 'What’s new', onClick: openAbout }), 800);
       } else if (updating) {
         setTimeout(() => showToast('CustodianPro is up to date', 'ph-check-circle'), 800);
       }
@@ -28201,7 +29475,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     // so nothing syncs back. Typed RESET confirms; the page reloads clean.
     var resetScope = 'device';
     var resetBusy = false;
-    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites', 'turnovers', 'turnoverInvites', 'staff', 'staffInvites', 'approvals', 'suggestions', 'dashboard', 'books', 'bookMeta', 'bookIndex', 'bookMoves', 'loans', 'classBooks'];
+    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites', 'turnovers', 'turnoverInvites', 'staff', 'staffInvites', 'approvals', 'suggestions', 'dashboard', 'books', 'bookMeta', 'bookIndex', 'bookMoves', 'loans', 'classBooks', 'leaves', 'leaveCards'];
     const canEraseCloud = () => isCustodianDevice() && !isViewOnly() && !isAssistant() && !!cloud.user && !!cloud.db && !!(reqRole && reqRole.schoolId);
     function openResetApp() {
       if (typeof closeMoreMenu === 'function') { try { closeMoreMenu(); } catch (e) {} }
@@ -28317,6 +29591,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       await F.updateDoc(F.doc(db, 'schools', sid), { erasing: Date.now() });
       const refs = [];
       for (const sub of RESET_SUBS) {
+        if ((sub === 'leaves' || sub === 'leaveCards') && !leaveOn()) continue;   // the Leave pilot: other schools can't read it (and have none)
         const snap = await F.getDocs(F.collection(db, 'schools', sid, sub));
         snap.docs.forEach(d => refs.push(F.doc(db, 'schools', sid, sub, d.id)));
       }

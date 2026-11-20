@@ -387,6 +387,37 @@ Books are scattered across rooms, so the app keeps one list of every title and *
 
 Books added while exploring (before signing in) are offered to the school's account at the first sign-in. **Publish `firestore.rules` again** after this update (new: `books`, `bookMeta`, `bookIndex`, `bookMoves`, `loans`, `classBooks`, and the librarian). Until you do, the Books page and the teachers' Library show a permissions error.
 
+### Leave applications (CS Form 6) · pilot
+
+A pilot of the first **admin tool for the School Administrative Officer (AO)**. It is on only at the pilot school (Testing ES, school code `97JbEODfGJhWcejYDWhO`, listed in `LEAVE_PILOT` in `index.html` and in `leavePilot()` in `firestore.rules`). Other schools see no Leave tab, page or What's new note, and the rules refuse leave documents for them. The AO uses the property custodian's account.
+
+It follows the school's own process:
+
+| # | Who | In the app | Status |
+|---|---|---|---|
+| 1 | Teacher (or the AO, for a paper form) | **Leave** tab → **Apply for leave**: type of leave (6.A) and details (6.B), dates and working days (6.C), commutation (6.D), and what to use: Vacation Service Credits, Local Service Credits, VL/SL, ₱250 for a whole-day absence, or without pay | Applied |
+| 2 | AO | **Leave** page → **Receive**: the date it came in, then the recommended type of leave, days with and without pay, credits and memo number. **Send to the School Head** (or *Approved on paper* when there is no School Head in the app). **Decline** needs a reason | With the School Head |
+| 3 | School Head | **Approve** tab: *Leave application* card, **Approve**, or **Return** with a note (the AO fixes it and sends it again) | Approved / Returned |
+| 4 | AO | **Prepare Form 6**: name, office, position, salary (optional), 7.A leave credits, the service credits used and their memo, 7.C days, the AO and School Head names. **Send to the teacher**. A ₱250 day: **Keep Form 6 on hold** (it can be sent later) | Form 6 ready / On hold |
+| 5 | Teacher or AO | **Print Form 6** (CS Form No. 6, Revised 2020, one A4 page). The teacher signs and hands it in; the AO taps **Handed in** | Handed in |
+| 6 | AO | **Signed by the School Head** | Signed |
+| 7 | AO | **Received by the Division** with the date on the received stamp (and a tracking number) | Done |
+
+The teacher is told at each step and sees a progress bar; the AO is told about new applications and the School Head's decisions, and Home lists the applications to act on. Each application keeps its history. ₱250 is allowed twice a month per person (a third is refused). A teacher reads only their own applications and may cancel one while it is still *Applied*.
+
+**Leave cards** (the *Leave cards* tab of the Leave page) keep each person's credits:
+
+- **New leave card** for a teacher in the app (the card has their uid) or someone who isn't (non-teaching staff, by name). Teaching staff use service credits; non-teaching staff use VL and SL.
+- **Opening balance**: the balance as of a date, from the paper leave card, with its memo. A new opening balance for the same credit replaces the old one (voided, kept).
+- **Add credits** with the memo that grants them: **Vacation Service Credits** (Division memo; more than 30 days in a calendar year asks first, as DepEd Order 13, s. 2024 allows up to 30, or 45 for some new hires), **Local Service Credits** (School memo, no limit), VL and SL. **Monthly VL/SL** adds 1.25 days of each to every non-teaching card, once per month.
+- **Approved leaves are deducted by themselves** (once) from the credits recommended, dated the first day of the leave. Leave on Local Service Credits is marked *not reflected in the DTR*, on the card and on Form 6. A person without a card gets one.
+- **Receive** shows the days left and what remains after the leave. **Prepare Form 6** fills in 7.A from the card: VL/SL in their columns, and service credits in the first column, named on the memo line.
+- **Adjust** (plus or minus, with a reason) and **void** a wrong line (with a reason; it stays on the card, struck out).
+- **Print leave card**: every line with earned, used and the running balance for each kind of credit, the balance as of today, and *Certified correct*.
+- Teachers see **My leave credits** on the Leave tab (their own card, view only, with Print), the days left under each option when applying, and a notification when credits are added.
+
+Data: `schools/{schoolId}/leaves/{id}` and `schools/{schoolId}/leaveCards/{uid or id}` (written by the AO only; a teacher reads their own). The School Head's decision goes through `approvals` (kind `leave`). **Publish `firestore.rules` again** to turn it on. Next: the ₱250 log and turnover to the Faculty President.
+
 ### School stock and “I took this” (teachers)
 
 Teachers kept asking *“Sir, meron pa ba nito?”*. The teacher's phone now has a third tab, **Stock**:

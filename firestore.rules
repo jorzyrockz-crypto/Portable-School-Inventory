@@ -28,6 +28,8 @@ rules_version = '2';
 //   schools/{schoolId}/bookMoves/{id}         books issued to an adviser (Book Issuance List), taken back, moved
 //   schools/{schoolId}/loans/{id}             borrowing: the borrower, the keeper of the copies, the librarian
 //   schools/{schoolId}/classBooks/{sy_uid}    an adviser's class: textbooks with learners (adviser + custodian only)
+//   schools/{schoolId}/leaves/{id}            an application for leave, CS Form 6 (pilot schools only)
+//   schools/{schoolId}/leaveCards/{uid|id}    a person's leave card: credits earned and used (pilot schools only)
 //   schoolIds/{schoolNo}                      DepEd School ID (6 digits) → school, so teachers can type it
 //
 // Members: a teacher who joins waits for the custodian's approval (status 'pending'), then is
@@ -98,6 +100,8 @@ service cloud.firestore {
         && after.get('viewOnly', {}).keys().hasOnly(resource.data.custodians.concat(resource.data.get('viewerUids', [])));
     }
     function shortText(v, max) { return v is string && v.size() <= max; }
+    // Leave (CS Form 6) and leave cards: a pilot, only at these schools
+    function leavePilot(schoolId) { return schoolId in ['97JbEODfGJhWcejYDWhO']; }
     // A card's photo: the person's Google profile photo (lhN.googleusercontent.com), or empty.
     function googlePhotoOk() {
       return request.resource.data.get('photo', '') == ''
@@ -502,7 +506,7 @@ service cloud.firestore {
       match /approvals/{apId} {
         function apBodyOk() {
           let d = request.resource.data;
-          return d.kind in ['ris', 'writeoff', 'count', 'books']
+          return d.kind in ['ris', 'writeoff', 'count', 'books', 'leave']
             && d.refId is string && d.refId.size() > 0 && d.refId.size() <= 120
             && shortText(d.get('title', ''), 160) && shortText(d.get('summary', ''), 600)
             && d.get('lines', []) is list && d.get('lines', []).size() <= 200;
@@ -657,6 +661,46 @@ service cloud.firestore {
       // An adviser's class sheet ({schoolYear}_{uid}): the textbooks with their learners, returned,
       // damaged, lost and paid, and (optional) learner NAMES only. Only the adviser and the
       // custodian / assistants read it (Data Privacy Act); not the librarian, not other teachers.
+      // Leave (CS Form No. 6), a pilot: only the schools listed in leavePilot(). The teacher applies
+      // (their own, status 'applied') and may cancel it while it is still 'applied'; the AO (the
+      // custodian's account, or an assistant) receives, recommends, prepares Form 6 and records each
+      // step. The School Head approves through approvals (kind 'leave'). A teacher reads only their own.
+      match /leaves/{leaveId} {
+        function leaveBodyOk() {
+          let d = request.resource.data;
+          return d.status in ['applied', 'sh', 'approved', 'hold', 'returned', 'review', 'handed', 'signed', 'done', 'declined', 'cancelled']
+            && d.get('uid', '') is string && shortText(d.get('name', ''), 120) && d.get('name', '').size() > 0
+            && shortText(d.get('reason', ''), 600) && shortText(d.get('type', ''), 12)
+            && d.get('log', []) is list && d.get('log', []).size() <= 80;
+        }
+        allow read: if leavePilot(schoolId) && (canView(schoolId) || isHead(schoolId)
+          || (signedIn() && resource.data.uid == request.auth.uid));
+        allow create: if leavePilot(schoolId) && leaveBodyOk() && (isStaff(schoolId)
+          || (isMember(schoolId) && request.resource.data.uid == request.auth.uid
+              && request.resource.data.status == 'applied' && request.resource.data.by == 'teacher'));
+        allow update: if leavePilot(schoolId) && leaveBodyOk() && (
+          (isStaff(schoolId) && request.resource.data.get('uid', '') == resource.data.get('uid', ''))
+          || (isMember(schoolId) && resource.data.uid == request.auth.uid && resource.data.status == 'applied'
+              && request.resource.data.status == 'cancelled'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledMs', 'log', 'updatedAt'])));
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+
+      // Leave cards (the credits ledger): one per person, written by the AO (custodian or
+      // assistant) only. The card of someone in the app has their uid as its id. A teacher reads
+      // their own card.
+      match /leaveCards/{cardId} {
+        allow read: if leavePilot(schoolId) && (canView(schoolId) || isHead(schoolId)
+          || (signedIn() && resource.data.uid == request.auth.uid));
+        allow create, update: if leavePilot(schoolId) && isStaff(schoolId)
+          && request.resource.data.get('uid', '') is string
+          && (request.resource.data.get('uid', '') == '' || request.resource.data.uid == cardId)
+          && (resource == null || request.resource.data.get('uid', '') == resource.data.get('uid', ''))
+          && shortText(request.resource.data.get('name', ''), 120) && request.resource.data.get('name', '').size() > 0
+          && request.resource.data.get('entries', []) is list && request.resource.data.get('entries', []).size() <= 800;
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+
       match /classBooks/{classId} {
         allow read: if canView(schoolId) || (signedIn() && resource.data.uid == request.auth.uid);
         allow create, update: if isStaff(schoolId)
