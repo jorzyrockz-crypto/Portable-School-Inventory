@@ -272,11 +272,12 @@ try {
     const files = fflate.unzipSync(bytes);
     const sheet = fflate.strFromU8(files['xl/worksheets/sheet1.xml']);
     const n = pr.lines.length, padIdx = pr.lines.findIndex(l => !l.stockNo);
-    return { parts: Object.keys(files).sort().join(','), sheet, n, prNo: pr.prNo, padIdx, office: pr.office, html: prPrintHTML(pr) };
+    return { parts: Object.keys(files).sort().join(','), sheet, n, prNo: pr.prNo, padIdx, office: pr.office, html: prPrintHTML(pr), g: prHasExp(pr) ? expGroups(pr.lines).length : 0 };
   });
   check(xl.parts.includes('xl/workbook.xml') && xl.parts.includes('xl/styles.xml') && xl.parts.includes('[Content_Types].xml'), 'Excel file has a workbook, a sheet and styles');
   check(/Appendix 60/.test(xl.sheet) && /PURCHASE REQUEST/.test(xl.sheet) && xl.sheet.includes(`>${xl.prNo}<`) && /paperSize="9"/.test(xl.sheet), 'laid out as Appendix 60 on A4, with the PR No.');
-  check(xl.sheet.includes('<f>D9*E9</f>') && xl.sheet.includes(`<f>SUM(F9:F${8 + Math.max(15, xl.n)})</f>`), 'Total Cost = Quantity × Unit Cost and the total are live formulas');
+  // one expense group: its heading takes row 9, the lines start on row 10
+  check(xl.g <= 1 && xl.sheet.includes(`<f>D${9 + xl.g}*E${9 + xl.g}</f>`) && xl.sheet.includes(`<f>SUM(F9:F${8 + Math.max(15, xl.n + xl.g)})</f>`), `Total Cost = Quantity × Unit Cost and the total are live formulas (${xl.g} expense group)`);
   check(xl.padIdx < 0 || (xl.html.includes(`<td class="pr-sn c">${xl.padIdx + 1}</td>`) && xl.sheet.includes(`<t xml:space="preserve">${xl.padIdx + 1}</t>`)), 'a line with no stock no. shows its line number (print and Excel)');
   await ev(a, id => exportPrXlsxById(id), await ev(a, () => prList[0].id));
   await sleep(300);
@@ -293,7 +294,7 @@ try {
     setPrLine(l.id, 'qty', '4'); setPrLine(l.id, 'unitCost', '35');
     const listed = document.getElementById('prItemList').options.length;
     document.getElementById('prNo').value = 'EDITED-01';
-    return { added: { ...l }, listed, rows: document.querySelectorAll('#prLines > div').length };
+    return { added: { ...l }, listed, rows: document.querySelectorAll('#prLines [data-pr-line]').length };
   });
   check(ed.added.desc === 'Whiteboard marker, refillable' && !ed.added.code && ed.rows === pre.n + 1 && ed.listed > 0, 'Add item on the PR screen (typed new item; Inventory items listed)');
   const invAdd = await ev(a, () => {
