@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="b98059b03125">
+  <meta name="app-version" content="d8d5df2c4895">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1542,6 +1542,7 @@
           <p class="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Reports &amp; files</p>
           <button onclick="closeMoreMenu(); openSummaryModal()" class="more-item"><i class="ph-bold ph-receipt text-brand-600"></i> APP-CSE summary</button>
           <button id="moreReqItem" onclick="closeMoreMenu(); openRequestsView()" class="more-item"><i class="ph-bold ph-tray text-amber-600"></i> Supply requests &amp; purchase requests</button>
+          <button id="moreSugItem" onclick="openSugSheet()" class="more-item hidden"><i class="ph-bold ph-lightbulb text-violet-600"></i> Suggestions from the School Head <span id="moreSugCount" class="hidden ml-auto px-1.5 rounded-full bg-violet-100 text-violet-800 text-[11px] font-extrabold"></span></button>
           <button onclick="closeMoreMenu(); openTeachersView()" class="more-item"><i class="ph-bold ph-users-three text-teal-600"></i> Released to teachers <span id="moreTeachCount" class="hidden ml-auto px-1.5 rounded-full bg-rose-100 text-rose-800 font-mono text-[11px] font-bold"></span></button>
           <button id="moreBooksItem" onclick="closeMoreMenu(); openBooksView()" class="more-item"><i class="ph-bold ph-book-open-text text-violet-600"></i> Books &amp; Library <span class="ml-auto text-[11px] font-bold text-slate-500">Textbooks · lending</span></button>
           <button id="moreCoaItem" onclick="openCoa()" class="more-item"><i class="ph-bold ph-stamp text-brand-600"></i> Government forms <span class="ml-auto text-[11px] font-bold text-slate-500">RPCPPE · PTR · IIRUP</span></button>
@@ -9849,6 +9850,7 @@
     // ---- More menu ------------------------------------------------------------
     function openMoreMenu() {
       updateBackupReminder();
+      renderMoreSug();
       renderMoreAccount();
       renderMoreSample();
       document.getElementById('moreMenu').classList.remove('hidden');
@@ -12547,10 +12549,11 @@
           return;
         }
       }
-      let made = null;
+      let made = null, knownNo = '';
       if (found.docs.length) {
         schoolId = found.docs[0].id;
         name = found.docs[0].data().name;
+        knownNo = String(found.docs[0].data().schoolNo || '');   // already on the school's card: not written again
       } else {
         // No school on this account: a School ID is needed (asked on the next card when missing).
         if (!fromNewStep && !(/^\d{6}$/.test(String(want.no || '')) && want.name)) {
@@ -12573,7 +12576,7 @@
         name = made.name;
       }
       custNew = null; readNewSchoolCache = null;
-      reqRole = { role: 'custodian', schoolId, schoolName: name, email, ...(made ? { schoolNo: made.no, schoolNoListed: made.no } : {}) };
+      reqRole = { role: 'custodian', schoolId, schoolName: name, email, ...(made ? { schoolNo: made.no, schoolNoListed: made.no } : knownNo ? { schoolNo: knownNo } : {}) };
       saveReqRole();
       saveCustLast(user, name);
       if (!schoolInfo.school) {
@@ -12655,8 +12658,14 @@
         const stale = cur.exists() && cur.data().schoolId !== sid
           && !(await F.getDoc(F.doc(cloud.db, 'schools', String(cur.data().schoolId)))).exists();   // (the rules allow only this case)
         if (!reqRole || reqRole.schoolId !== sid || resetBusy) return;
-        if (cur.exists() && cur.data().schoolId !== sid && !stale) {
+        const listing = { schoolId: sid, name: String(reqRole.schoolName || schoolInfo.school || 'School').slice(0, 120), ...(reqRole.viewOnly ? {} : { hint: accountHint(cloud.user) }) };
+        const d = cur.exists() ? cur.data() || {} : null;
+        if (d && d.schoolId !== sid && !stale) {
           reqRole.schoolNoTaken = no;
+        } else if (d && d.schoolId === sid && d.name === listing.name && (!listing.hint || d.hint === listing.hint)) {
+          // Already listed for this school, as it is (another custodian device signing in): nothing to write.
+          reqRole.schoolNoListed = no;
+          delete reqRole.schoolNoTaken;
         } else {
           await F.setDoc(ref, { schoolId: sid, name: String(reqRole.schoolName || schoolInfo.school || 'School').slice(0, 120), updatedMs: Date.now(),
             ...(reqRole.viewOnly ? {} : { hint: accountHint(cloud.user) }) });
@@ -17286,11 +17295,75 @@
       document.getElementById('sugModal').classList.remove('hidden');
       renderSugSheet();
     }
-    function closeSugSheet() { document.getElementById('sugModal').classList.add('hidden'); }
+    function closeSugSheet() { document.getElementById('sugModal').classList.add('hidden'); sugHistShown = 15; }
+    // More → Suggestions from the School Head: shown once the school has a School Head (or had suggestions).
+    function renderMoreSug() {
+      const item = document.getElementById('moreSugItem');
+      if (!item) return;
+      let head = null;
+      try { head = currentHead(); } catch (e) {}
+      const on = isCustodianDevice() && !!(head || sugList.length);
+      item.classList.toggle('hidden', !on);
+      const n = on ? sugPending().length : 0;
+      const badge = document.getElementById('moreSugCount');
+      badge.textContent = n ? String(n) : '';
+      badge.classList.toggle('hidden', !n);
+    }
+    var sugHistShown = 15;
+    const sugTsMs = v => !v ? 0 : typeof v === 'number' ? v : typeof v.toMillis === 'function' ? v.toMillis() : v.seconds ? v.seconds * 1000 : 0;
+    const sugWhen = s => (s.decision && s.decision.atMs) || Math.max(sugTsMs(s.updatedAt), s.submittedMs || 0);   // taken back: never before it was sent
+    const SUG_STATUS = {
+      accepted: { label: 'Accepted', tone: 'bg-emerald-50 text-emerald-800 border-emerald-200', icon: 'ph-check-circle' },
+      declined: { label: 'Declined', tone: 'bg-rose-50 text-rose-800 border-rose-200', icon: 'ph-x-circle' },
+      cancelled: { label: 'Taken back', tone: 'bg-slate-100 text-slate-700 border-slate-200', icon: 'ph-arrow-u-up-left' }
+    };
+    // Answered and taken-back suggestions, newest first: what was asked, who answered, the reason.
+    function sugHistoryHTML() {
+      const past = sugList.filter(s => SUG_STATUS[s.status]).sort((a, b) => sugWhen(b) - sugWhen(a));
+      if (!past.length) return '';
+      const day = ms => ms ? escapeHTML(formatShortDate(new Date(ms).toISOString())) : '';
+      const row = s => {
+        const st = SUG_STATUS[s.status];
+        const lines = sugLines((s.ops || []).filter(o => sugKeyOk(o.k)));
+        const keys = s.decision && Array.isArray(s.decision.keys) ? s.decision.keys : null;
+        const partial = s.status === 'accepted' && keys && keys.length < (s.ops || []).length;
+        const who = s.status === 'cancelled' ? `${escapeHTML((s.byName || 'The School Head').split(' ')[0])} took it back`
+          : `${s.status === 'accepted' ? 'Accepted' : 'Declined'}${s.decision && s.decision.byName ? ` by ${escapeHTML(s.decision.byName)}` : ''}`;
+        const li = lines.map(l => {
+          const took = s.status !== 'accepted' || !keys || l.ks.some(k => keys.includes(k));
+          const open = items.some(i => i.code === l.code);
+          return `<li class="py-1 text-xs ${took ? '' : 'opacity-60'}" data-sug-hist-line>
+            ${open ? `<button type="button" onclick="closeSugSheet(); openItemSheet('${escapeHTML(l.code)}')" class="ip-link font-bold text-slate-900 text-left">${escapeHTML(l.name)}</button>` : `<b class="text-slate-900">${escapeHTML(l.name)}</b>`}
+            <span class="font-mono text-[11px] text-slate-500">${escapeHTML(l.code)}</span>${took ? '' : ' <span class="text-[11px] font-bold text-slate-500">· not accepted</span>'}<br><span class="text-slate-700">${escapeHTML(l.text)}</span></li>`;
+        }).join('');
+        return `<details class="rounded-xl border border-slate-200 bg-white" data-sug-hist="${s.status}">
+          <summary class="list-none cursor-pointer px-3 py-2.5 flex items-start gap-2.5">
+            <i class="ph-bold ${st.icon} text-lg mt-0.5 ${s.status === 'accepted' ? 'text-emerald-600' : s.status === 'declined' ? 'text-rose-600' : 'text-slate-400'}"></i>
+            <span class="flex-1 min-w-0">
+              <span class="block text-xs font-bold text-slate-900 truncate">${escapeHTML(s.title || 'Inventory')}</span>
+              <span class="block text-[11px] text-slate-600">${who}${sugWhen(s) ? ` · ${day(sugWhen(s))}` : ''}</span>
+            </span>
+            <span class="shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded border ${st.tone}">${st.label}${partial ? ` · ${keys.length} of ${(s.ops || []).length}` : ''}</span>
+          </summary>
+          <div class="px-3 pb-3 pt-0.5 border-t border-slate-100">
+            <p class="pt-2 text-[11px] text-slate-500">From ${escapeHTML(s.byName || 'the School Head')}${s.submittedMs ? `, sent ${day(s.submittedMs)}` : ''} · ${plural(lines.length, 'item')}</p>
+            ${s.decision && s.decision.note ? `<p class="mt-1.5 rounded-lg ${s.status === 'declined' ? 'bg-rose-50 text-rose-900' : 'bg-slate-50 text-slate-700'} px-2.5 py-1.5 text-xs" data-sug-hist-note>${s.status === 'declined' ? 'Reason: ' : ''}“${escapeHTML(s.decision.note)}”</p>` : ''}
+            <ul class="mt-1 divide-y divide-slate-100">${li}</ul>
+          </div>
+        </details>`;
+      };
+      const shown = past.slice(0, sugHistShown);
+      return `<section data-sug-history>
+        <h4 class="pt-1 pb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 flex items-center gap-1.5"><i class="ph-bold ph-clock-counter-clockwise"></i> History · ${past.length}</h4>
+        <div class="space-y-1.5">${shown.map(row).join('')}</div>
+        ${past.length > shown.length ? `<button type="button" onclick="sugHistShown += 30; renderSugSheet()" data-sug-more class="mt-2 w-full h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Show ${Math.min(30, past.length - shown.length)} more</button>` : ''}
+      </section>`;
+    }
     function renderSugBanner() {
       const el = document.getElementById('sugBanner');
       if (!el) return;
       const n = isCustodianDevice() ? sugPending().length : 0;
+      renderMoreSug();
       el.classList.toggle('hidden', !n);
       if (!n) { el.innerHTML = ''; return; }
       const s = sugPending()[0];
@@ -17307,7 +17380,6 @@
       const ro = isViewOnly();
       const local = localInvDocs();
       const pend = sugPending();
-      const done = sugList.filter(s => ['accepted', 'declined'].includes(s.status)).sort((a, b) => ((b.decision && b.decision.atMs) || 0) - ((a.decision && a.decision.atMs) || 0)).slice(0, 10);
       const card = s => {
         const lines = sugLines((s.ops || []).filter(o => sugKeyOk(o.k)));
         const rows = lines.map(l => {
@@ -17332,8 +17404,7 @@
         </div>`;
       };
       body.innerHTML = (pend.length ? pend.map(card).join('') : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500" data-sug-none><i class="ph-bold ph-check-circle text-3xl text-slate-300"></i><p class="mt-1 font-bold text-slate-700 text-sm">Nothing to review</p><p>When the School Head suggests a change to the inventory, it shows here.</p></div>`) +
-        (done.length ? `<details class="rounded-2xl border border-slate-200 px-3 py-2.5"><summary class="text-xs font-bold text-slate-600 cursor-pointer">Answered · ${done.length}</summary><div class="mt-2 space-y-1.5">${done.map(s => `
-          <p class="text-xs text-slate-700 flex justify-between gap-3"><span class="min-w-0 truncate">${escapeHTML(s.title || '')}</span><span class="shrink-0 font-bold ${s.status === 'accepted' ? 'text-emerald-700' : 'text-rose-700'}">${s.status === 'accepted' ? 'Accepted' : 'Declined'}</span></p>`).join('')}</div></details>` : '');
+        sugHistoryHTML();
     }
     function notifFromSuggestions(meta) {
       if (isCustodianDevice() && !isViewOnly()) {
@@ -26480,6 +26551,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-suggestion-history', date: 'Nov 2026', title: 'All the School Head\u2019s suggestions in one place', points: [
+        'More \u2192 Suggestions from the School Head opens the suggestions waiting for you (the number shows beside it) and their history: accepted, declined and taken back, newest first, with who answered, when, the reason for a decline and each item. Tap an item to open it.',
+        'Fixes: signing in as the property custodian on another phone no longer saves the School ID to the school account again (two fewer cloud writes each time).'
+      ] },
       { id: '2026-11-units-tab', date: 'Nov 2026', title: 'Property numbers are now a tab in the Item preview', points: [
         'The Item preview has a new Units tab for equipment and anything with property numbers. It replaces the separate Property Numbers window: tag units, edit the property no., serial no., room, who has it, ICS / PAR no., date acquired, useful life and condition, print QR labels and scan, without leaving the item.',
         'On a computer it stays in the side panel next to your list. Everything that opened Property Numbers before (Edit details, the scanner, Useful life, a teacher\u2019s page) now opens this tab.',
