@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="d8d5df2c4895">
+  <meta name="app-version" content="1d430b0a755e">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -2320,8 +2320,8 @@
       </div>
       <div id="ipMore" class="hidden absolute right-4 bottom-[5.25rem] z-10 w-64 rounded-2xl bg-white border border-slate-200 shadow-xl p-1.5"></div>
       <div id="ipFoot" class="flex gap-2 p-4 border-t border-slate-200 bg-slate-50">
-        <button id="isRelease" data-ip-write onclick="itemSheetGo('release')" class="flex-1 h-14 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex flex-col items-center justify-center gap-0.5">
-          <i class="ph-bold ph-hand-arrow-up text-lg"></i> Release
+        <button id="isRelease" data-ip-write data-rel-mode="release" onclick="itemSheetGo('release')" class="flex-1 h-14 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex flex-col items-center justify-center gap-0.5 leading-tight text-center px-1">
+          <i id="isReleaseIcon" class="ph-bold ph-hand-arrow-up text-lg"></i> <span id="isReleaseLabel">Release</span>
         </button>
         <button id="isEdit" data-ip-write onclick="itemSheetGo('edit')" class="flex-1 h-14 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 text-xs font-bold flex flex-col items-center justify-center gap-0.5">
           <i class="ph-bold ph-pencil-simple text-lg"></i> <span id="isEditLabel">Edit details</span>
@@ -2373,7 +2373,7 @@
           class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-brand-500 outline-none">
       </div>
       <div class="flex items-center gap-2 pt-1">
-        <button onclick="encodeMoreDetails()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition">More details</button>
+        <button id="encEditBtn" onclick="encodeMoreDetails()" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition flex items-center gap-1.5"><i class="ph-bold ph-pencil-simple"></i> Edit details</button>
         <button id="encSaveBtn" onclick="saveEncode()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 transition">
           <i class="ph-bold ph-check"></i> Save &amp; next
         </button>
@@ -4022,6 +4022,7 @@
         countBtn.className = `w-full h-12 rounded-xl text-sm font-bold flex items-center justify-center gap-2 ${done ? 'bg-slate-100 text-slate-700' : 'bg-sky-700 hover:bg-sky-800 text-white'}`;
       }
       document.getElementById('isRelease').classList.toggle('hidden', !isCustodianDevice());
+      ipSetReleaseMode(item);
 
       // Status chips under the name
       document.getElementById('ipChips').innerHTML = ipChipsHTML(item, units, c);
@@ -4043,6 +4044,28 @@
     function ipMarkRow() {
       document.querySelectorAll('.ip-sel').forEach(r => { if (r.dataset.code !== sheetCode) r.classList.remove('ip-sel'); });
       if (sheetCode) document.querySelectorAll(`#dashboardLedgerContainer .inv-row[data-code="${CSS.escape(sheetCode)}"], #itemsContainer .cat-row[data-code="${CSS.escape(sheetCode)}"]`).forEach(r => r.classList.add('ip-sel'));
+    }
+
+    // The first button: Release while something is free; when every unit is with someone,
+    // Transfer or return (PTR / ITR, or back to stock with an RRSP); nothing on hand: Stock in.
+    function relModeOf(item) {
+      if (!item || relMax(item) > 0) return 'release';
+      if (relIsEquip(item) && getUnits(item.code).some(u => u.to || u.toUid)) return 'transfer';
+      return 'stockin';
+    }
+    const REL_MODES = {
+      release: ['ph-hand-arrow-up', 'Release'],
+      transfer: ['ph-arrows-left-right', 'Transfer or return'],
+      stockin: ['ph-package', 'Stock in']
+    };
+    function ipSetReleaseMode(item) {
+      const mode = relModeOf(item);
+      const btn = document.getElementById('isRelease');
+      btn.dataset.relMode = mode;
+      document.getElementById('isReleaseIcon').className = `ph-bold ${REL_MODES[mode][0]} text-lg`;
+      document.getElementById('isReleaseLabel').textContent = REL_MODES[mode][1];
+      btn.title = mode === 'transfer' ? 'Every unit is with someone: transfer it to another person or take it back to stock'
+        : mode === 'stockin' ? (relIsEquip(item) ? 'None on hand: record a delivery or add it to a Purchase Request' : 'None in stock: record a delivery or add it to a Purchase Request') : '';
     }
 
     const IP_CHIP = {
@@ -4231,7 +4254,7 @@
     // =========================================================================
     const SAMPLE_INVENTORY = {
       "12191601-AL-E04": { qty: 45, note: "School Clinic" },
-      "12191601-AL-E03": { qty: 12, note: "Central Stockroom" },
+      "12191601-AL-E03": { qty: 3, note: "Central Stockroom" },
       "14111507-PP-M01": { qty: 120, note: "Central Stockroom" },
       "14111507-PP-M02": { qty: 85, note: "Central Stockroom" },
       "45111609-MM-P01": { qty: 4, note: "ICT / Computer Lab" },
@@ -4248,7 +4271,7 @@
       "47121701-TB-P04": { qty: 30, note: "Utility / Janitorial Room" },
       "44121708-MW-B01": { qty: 50, note: "Faculty Room" },
       "44103105-EP-B17": { qty: 18, note: "Principal / Admin Office" },
-      "44103105-EP-C17": { qty: 4, note: "Principal / Admin Office" },
+      "44103105-EP-C17": { qty: 0, note: "Principal / Admin Office" },
       "39101628-LT-L01": { qty: 4, note: "Central Stockroom" },
       "80141505-TS-012": { qty: 5, customPrice: 18500, note: "Grade 10 Classrooms" },
       "80141505-TS-018": { qty: 4, customPrice: 8200, note: "Principal / Admin Office" }
@@ -10155,8 +10178,8 @@
     })();
     try { reqRole = JSON.parse(localStorage.getItem(REQ_ROLE_KEY) || 'null'); } catch (e) { reqRole = null; }
     var cloud = { state: 'idle', sdk: null, auth: null, db: null, user: null, error: '', ready: null };
-    let reqList = [];           // custodian: every request of the school · teacher: own requests
-    let prList = [];            // custodian: saved Purchase Requests
+    let reqList = sampleList('requests');   // custodian: every request of the school · teacher: own requests
+    let prList = sampleList('prs');         // custodian: saved Purchase Requests
     let reqUnsubs = [];
     let reqTab = 'pending';     // 'pending' | 'approved' | 'prs' | 'closed'
     const reqUnpicked = new Set(); // approved requests the custodian left off the next PR
@@ -10472,7 +10495,7 @@
 
     function subscribeInspections(F) {
       const onInsp = snap => {
-        inspList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+        inspList = sampleList('insp', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id })));
         renderRequestsEverywhere();
         if (iarDraft && iarDraft.inspId) renderIar();
         notifFromInspections(snap.metadata);
@@ -11439,7 +11462,7 @@
         console.error('sync', err); cloud.error = cloudErrorText(err); renderRequestsEverywhere();
       };
       const onRequests = snap => {
-        reqList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
+        reqList = sampleList('requests', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) })));
         reqList.sort((a, b) => reqTime(b) - reqTime(a));
         cloud.error = '';
         renderRequestsEverywhere();
@@ -11451,7 +11474,7 @@
         : F.onSnapshot(F.query(reqCol(), F.where('uid', '==', cloud.user.uid)), { includeMetadataChanges: true }, onRequests, onErr));
       if (isCustodianDevice()) {
         reqUnsubs.push(listenSynced(prCol(), ['createdAt', 'updatedAt'], snap => {
-          prList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+          prList = sampleList('prs', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id })));
           prList.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
           renderRequestsEverywhere();
           notifFromPrs(snap.metadata);
@@ -15507,7 +15530,7 @@
     }
     const apPending = () => apList.filter(a => a.status === 'pending');
     function onApprovals(snap) {
-      apList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+      apList = sampleList('approvals', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id })));
       apLoaded = true;
       if (isHeadDevice()) renderHeadView(); else renderRequestsEverywhere();
       notifFromApprovals(snap.metadata);
@@ -15747,7 +15770,7 @@
       const st = loadNotifs();
       const due = [];
       allTaggedUnits().forEach(({ item, unit }) => {
-        if (!unit.lostMs || woPendingFor(unit.id)) return;
+        if (!unit.lostMs || woPendingFor(unit.id) || isSampleId(unit.id)) return;
         const left = reliefLeft(unit, now);
         const stage = left <= 0 ? 2 : left <= 7 ? 1 : 0;
         if (stage && (st.seen['rl:' + unit.id] || 0) < stage) due.push({ item, unit, left, stage });
@@ -15849,12 +15872,12 @@
       return { m: ym, mo: agg(ris.filter(r => r.date.slice(0, 7) === ym)), yr: agg(ris.filter(r => r.date.slice(0, 4) === y)) };
     }
     function scheduleDash(ms = 4000) {
-      if (!isCustodianDevice() || isViewOnly() || !cloud.user || !currentHead()) return;
+      if (!isCustodianDevice() || isViewOnly() || !cloud.user || !currentHead() || sampleStore()) return;   // not with sample data
       clearTimeout(dashTimer);
       dashTimer = setTimeout(publishDash, ms);
     }
     function publishDash() {
-      if (!isCustodianDevice() || isViewOnly() || !cloud.user || !currentHead() || !invReady || !releasesLoaded) return;
+      if (!isCustodianDevice() || isViewOnly() || !cloud.user || !currentHead() || !invReady || !releasesLoaded || sampleStore()) return;
       const body = dashSummary();
       // Property value at the start of each month (kept with the school info; one save a month)
       const ym = localISODate().slice(0, 7);
@@ -16907,7 +16930,7 @@
     }
 
     function onSuggestions(snap) {
-      sugList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+      sugList = sampleList('suggestions', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id })));
       sugLoaded = true;
       if (isHeadDevice()) { onHeadInventory(); renderHeadView(); }
       else { renderSugBanner(); if (sugIsOpen()) renderSugSheet(); }
@@ -18992,11 +19015,69 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       placeToast(); // a toast shown just before (e.g. "Approved") moves off the Release button
       renderRelease();
     }
-    function openReleaseForItem(code) {
+    // From the Item preview: Release when something is free; otherwise what can be done instead
+    // (see relModeOf): transfer / take back the units with teachers, or stock in.
+    async function openReleaseForItem(code) {
       const item = items.find(i => i.code === code);
       if (!item) return;
-      if (!relMax(item)) { showToast(relIsEquip(item) ? 'Every unit is already with someone' : 'None in stock to release', 'ph-info'); return; }
-      openRelease({ lines: [{ code, qty: 1 }] });
+      const mode = relModeOf(item);
+      if (mode === 'release') { openRelease({ lines: [{ code, qty: 1 }] }); return; }
+      if (!isCustodianDevice() && reqRole) { showToast(relIsEquip(item) ? 'Every unit is already with someone' : 'None in stock to release', 'ph-info'); return; }
+      if (mode === 'stockin') { relStockInFor(item); return; }
+      // Every unit is with someone: whose (when more than one person has it), then what to do.
+      const groups = new Map();
+      getUnits(code).filter(u => u.to || u.toUid).forEach(u => {
+        const key = personId(u.toUid, u.to);
+        if (!groups.has(key)) groups.set(key, { key, uid: u.toUid || null, name: unitHolder(u), units: [] });
+        groups.get(key).units.push(u);
+      });
+      const list = [...groups.values()];
+      const nosOf = g => uniqNos(g.units.map(u => u.no).filter(Boolean));
+      const docsOf = g => [...new Set(g.units.map(unitDocLabel).filter(Boolean))];
+      let g = list[0];
+      if (list.length > 1) {
+        const key = await appPick({ title: `Whose ${item.name}?`, message: 'Every unit is with someone. Pick whose unit to transfer or take back.',
+          options: list.map(x => ({ value: x.key, label: x.name, badge: personInitials(x.name), photo: memberPhoto(x.uid), tone: x.uid ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500',
+            sub: [plural(x.units.length, 'unit'), docsOf(x).join(', ')].filter(Boolean).join(' · ') })) });
+        g = list.find(x => x.key === key);
+        if (!g) return;
+      }
+      const nos = nosOf(g);
+      const what = await appPick({
+        title: list.length > 1 ? `${g.name}’s ${item.name}` : `${item.name} is with ${g.name}`,
+        message: `${nos.length ? nos.join(', ') : plural(g.units.length, 'unit')}${docsOf(g).length ? ` · ${docsOf(g).join(', ')}` : ''}. Nothing is left to release.`,
+        options: [
+          { value: 'transfer', icon: 'ph-arrows-left-right', tone: 'bg-brand-50 text-brand-700', label: 'Transfer to another person', sub: `${isPPE(item, g.units[0]) ? 'PTR' : 'ITR'} · the item moves to the new holder’s name` },
+          { value: 'back', icon: 'ph-arrow-u-down-left', tone: 'bg-teal-50 text-teal-700', label: 'Take back to stock', sub: `RRSP for ${g.name} · back in stock` },
+          { value: 'stockin', icon: 'ph-package', tone: 'bg-slate-100 text-slate-600', label: 'Stock in more', sub: 'A delivery, or add it to a Purchase Request' }
+        ]
+      });
+      if (what === 'transfer') { openTransfer({ fromKey: g.key, unitIds: g.units.map(u => u.id) }); return; }
+      if (what === 'stockin') { relStockInFor(item); return; }
+      if (what !== 'back') return;
+      if (g.units.length === 1) { takeBackUnit(code, g.units[0].id); return; }
+      if (!await appConfirm(`${nos.length ? nos.join(', ') : plural(g.units.length, 'unit')} go back to stock, not assigned to anyone. One RRSP is made for ${g.name}.`,
+        { title: `Take back ${plural(g.units.length, 'unit')} from ${g.name}?`, ok: 'Take back', icon: 'ph-arrow-u-down-left' })) return;
+      const still = g.units.filter(u => personId(u.toUid, u.to) === g.key);
+      if (still.length) takeBackPairs(still.map(unit => ({ item, unit })), 'Returned to stock');
+    }
+    // Nothing on hand: record a delivery for this item, or put it on a Purchase Request.
+    async function relStockInFor(item) {
+      const canPr = isCustodianDevice() && !!cloud.user && !isViewOnly();
+      const options = [{ value: 'dlv', icon: 'ph-package', tone: 'bg-brand-50 text-brand-700', label: 'Stock in (a delivery)', sub: 'IAR, DR or a donation · this item is filled in' }];
+      if (canPr) options.push({ value: 'pr', icon: 'ph-file-text', tone: 'bg-slate-100 text-slate-600', label: 'Add to a Purchase Request', sub: 'Appendix 60 · needs the School Head’s approval' });
+      const what = await appPick({ title: `${item.name}: none ${relIsEquip(item) ? 'on hand' : 'in stock'}`, message: 'Nothing is left to release.', options });
+      if (what === 'dlv') {
+        startStockIn('receive', { header: {}, source: 'hand', text: '', lines: [{ desc: item.name, stockNo: /^CUSTOM-/.test(item.code) ? '' : item.code, unit: item.unit, qty: 1, unitCost: item.price || null }] });
+        const l = dlvState && dlvState.draft && dlvState.draft.lines[0];
+        if (l && l.target !== item.code) { l.target = item.code; l.targetChosen = true; renderDlv(); }
+      } else if (what === 'pr') {
+        openPrDraft({
+          lines: [{ id: newReqLineId(), code: item.code, stockNo: /^CUSTOM-/.test(item.code) ? '' : item.code, unit: item.unit, desc: item.name, qty: Math.max(1, 2 * (item.minQty || 0) - (item.qty || 0)), unitCost: item.price || 0 }],
+          purpose: `Replenishment of ${item.name}`,
+          sub: 'Appendix 60 · from the Item preview · check the quantity and cost before saving'
+        });
+      }
     }
     // Fewer than asked: each line of the teacher's request against what the release gives them
     // (the teacher is told "Supplied 3 of 5 box Chalk").
@@ -21084,7 +21165,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         document.getElementById('pickMsg').textContent = message;
         document.getElementById('pickList').innerHTML = options.map((o, i) => `
           <button type="button" data-pick="${escapeHTML(o.value)}" onclick="closePick(${i})" class="w-full min-h-12 px-3 py-2 rounded-xl border border-slate-200 hover:border-brand-400 hover:bg-brand-50 text-left flex items-center gap-3">
-            ${o.photo ? avatarHTML(o.label, o.photo, 'w-9 h-9 text-xs', o.tone || 'bg-slate-100 text-slate-500') : `<span class="w-9 h-9 shrink-0 rounded-full ${o.tone || 'bg-slate-100 text-slate-500'} flex items-center justify-center text-xs font-extrabold">${escapeHTML(o.badge || '')}</span>`}
+            ${o.photo ? avatarHTML(o.label, o.photo, 'w-9 h-9 text-xs', o.tone || 'bg-slate-100 text-slate-500') : o.icon ? `<span class="w-9 h-9 shrink-0 rounded-full ${o.tone || 'bg-slate-100 text-slate-500'} flex items-center justify-center"><i class="ph-bold ${o.icon} text-lg"></i></span>` : `<span class="w-9 h-9 shrink-0 rounded-full ${o.tone || 'bg-slate-100 text-slate-500'} flex items-center justify-center text-xs font-extrabold">${escapeHTML(o.badge || '')}</span>`}
             <span class="min-w-0 flex-1"><span class="block text-sm font-bold text-slate-900 truncate">${escapeHTML(o.label)}</span>${o.sub ? `<span class="block text-[11px] text-slate-500 truncate">${escapeHTML(o.sub)}</span>` : ''}</span>
             <i class="ph-bold ph-caret-right text-slate-400"></i>
           </button>`).join('');
@@ -21489,12 +21570,14 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (activeMainView === 'TEACHERS') renderTeachersView();
     }
 
-    // ---- Sample teachers (Load sample data) ------------------------------------------------
-    // Sample people, slips and reports live only on this device (localStorage), mixed into the
-    // lists the cloud provides. Anything the app writes about them (Remind, take back, merge,
-    // a report answered…) is caught before it reaches the account (sampleGuardSDK), so the
-    // school's real records never contain them. Clear sample data puts the touched items back
-    // as they were before the sample was loaded.
+    // ---- Sample data (Load sample data) ------------------------------------------------------
+    // Sample items get counts, property numbers and dates (like any inventory, so Clear puts them
+    // back). Sample people, slips, reports, supply requests, Purchase Requests, the School Head's
+    // suggestions, books and loans live only on this device (localStorage), mixed into the lists
+    // the cloud provides. Anything the app writes about them (Remind, approve, release, PR,
+    // a report answered, a loan…) is caught before it reaches the account (sampleGuardSDK), so
+    // the school's real records never contain them. Clear sample data removes them and puts the
+    // touched items back as they were before the sample was loaded.
     var sampleCache;
     function sampleStore() {
       if (sampleCache === undefined) {
@@ -21506,6 +21589,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       sampleCache = st || null;
       if (st) localStorage.setItem('custodian_sample_v1', JSON.stringify(st)); else localStorage.removeItem('custodian_sample_v1');
     }
+    // Firestore collection → the list kept in the store
+    const SAMPLE_COLS = { releases: 'releases', teacherReports: 'reports', requests: 'requests', purchaseRequests: 'prs', inspections: 'insp',
+      approvals: 'approvals', suggestions: 'suggestions', books: 'books', loans: 'loans', bookMoves: 'bookMoves', classBooks: 'classBooks' };
+    const isSampleId = id => String(id || '').startsWith('sample-');
     // Real list + the sample entries (copies, so changes go through the store).
     function sampleList(kind, list = []) {
       const st = sampleStore();
@@ -21521,27 +21608,49 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       memberList = sampleList('members', memberList);
       releaseList = sampleList('releases', releaseList).sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
       tReports = sampleList('reports', tReports);
+      reqList = sampleList('requests', reqList).sort((a, b) => reqTime(b) - reqTime(a));
+      prList = sampleList('prs', prList).sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
+      inspList = sampleList('insp', inspList);
+      apList = sampleList('approvals', apList);
+      sugList = sampleList('suggestions', sugList);
+      if (bkOnline() && isCustodianDevice()) {
+        bk.books = sampleList('books', bk.books);
+        bk.loans = sampleList('loans', bk.loans);
+        bk.moves = sampleList('bookMoves', bk.moves);
+        bk.classes = sampleList('classBooks', bk.classes);
+      }
       if (typeof onTeamChange === 'function') onTeamChange();
       if (typeof renderRequestsEverywhere === 'function') renderRequestsEverywhere();
+      try { renderSugBanner(); if (sugIsOpen()) renderSugSheet(); bkRender(); } catch (e) { console.warn('sample', e); }
     }
-    // Writes about sample people stay on the device.
+    // Writes about sample people and sample records stay on the device.
     function sampleCatch(ref, data, op) {
       const st = sampleStore();
       if (!st || !ref) return false;
-      const path = String(ref.path || '');
-      const kind = /\/releases\//.test(path) ? 'releases' : /\/teacherReports\//.test(path) ? 'reports' : null;
+      const parts = String(ref.path || '').split('/');
+      const kind = SAMPLE_COLS[parts[parts.length - 2]];
       if (!kind) return false;
       const plain = obj => { const o = { ...(obj || {}) }; delete o.createdAt; delete o.updatedAt; return JSON.parse(JSON.stringify(o)); };
-      const found = (st[kind] || []).find(x => x.id === ref.id);
-      if (op === 'update') {
+      if (!Array.isArray(st[kind])) st[kind] = [];
+      const found = st[kind].find(x => x.id === ref.id);
+      if (op === 'delete') {
+        if (!found) return false;
+        st[kind] = st[kind].filter(x => x !== found);
+      } else if (op === 'update') {
         if (!found) return false;
         Object.assign(found, plain(data));
       } else if (found) {
         Object.assign(found, plain(data));
       } else {
-        const units = (data && data.lines || []).flatMap(l => (l.units || []).map(u => u.id));
-        // a slip for a real account always goes online, even with sample units on it
-        const about = kind === 'releases' && (data.teacherUid ? sampleWho(data.teacherUid) : (sampleWho(null, data.teacherName) || units.some(id => (st.unitIds || []).includes(id))));
+        let about = false;
+        if (kind === 'releases') {
+          const units = (data && data.lines || []).flatMap(l => (l.units || []).map(u => u.id));
+          // a slip for a real account always goes online, even with sample units on it
+          about = data.teacherUid ? sampleWho(data.teacherUid) : (sampleWho(null, data.teacherName) || units.some(id => (st.unitIds || []).includes(id)));
+        } else if (kind !== 'reports') {
+          // made from a sample record (a PR from sample requests, a loan of a sample book…)
+          about = isSampleId(ref.id) || /"sample-/.test(JSON.stringify(plain(data)));
+        }
         if (!about) return false;
         st[kind].push({ ...plain(data), id: ref.id, createdMs: (data && data.createdMs) || Date.now() });
       }
@@ -21554,13 +21663,14 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         ...S,
         setDoc: (ref, data, opts) => (sampleCatch(ref, data, 'set') ? Promise.resolve() : S.setDoc(ref, data, opts)),
         updateDoc: (ref, data) => (sampleCatch(ref, data, 'update') ? Promise.resolve() : S.updateDoc(ref, data)),
+        deleteDoc: ref => (sampleCatch(ref, null, 'delete') ? Promise.resolve() : S.deleteDoc(ref)),
         writeBatch: db => {
           const b = S.writeBatch(db);
           let n = 0;
           const w = {
             set: (ref, data, opts) => { if (!sampleCatch(ref, data, 'set')) { n++; b.set(ref, data, opts); } return w; },
             update: (ref, data) => { if (!sampleCatch(ref, data, 'update')) { n++; b.update(ref, data); } return w; },
-            delete: ref => { n++; b.delete(ref); return w; },
+            delete: ref => { if (!sampleCatch(ref, null, 'delete')) { n++; b.delete(ref); } return w; },
             commit: () => (n ? b.commit() : Promise.resolve())
           };
           return w;
@@ -21574,14 +21684,16 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         showToast('Sample data is already loaded · clear it from More', 'ph-info', { label: 'Teachers', onClick: () => openTeachersView() });
         return;
       }
-      if (ask && !await appConfirm('Sample items, five teachers and their slips, counts and reports are added so you can try every screen. The sample teachers stay on this phone. Clear it any time from More → Clear sample data.',
-        { title: 'Load sample data?', ok: 'Load sample', tone: 'write', icon: 'ph-magic-wand' })) return;
+      const mine = Object.keys(SAMPLE_INVENTORY).filter(c => { const it = items.find(i => i.code === c); return it && it.qty > 0; }).length;
+      const synced = isCustodianDevice() && !!cloud.user;
+      if (ask && !await appConfirm(`Sample items, five teachers with their slips, reports, supply requests, Purchase Requests, deliveries, a School Head suggestion, books and loans are added so you can try every screen. The sample people and their papers stay on this phone.${mine ? ` ${plural(mine, 'item')} you already counted ${mine === 1 ? 'gets' : 'get'} sample counts until you clear it${synced ? ' (the school account sees the counts too)' : ''}.` : ''} Clear it any time from More → Clear sample data.`,
+        { title: 'Load sample data?', ok: 'Load sample', tone: mine ? 'warn' : 'write', icon: 'ph-magic-wand' })) return;
       const clone = v => (v == null ? null : JSON.parse(JSON.stringify(v)));
       const before = { codes: {}, school: schoolInfo.school ? null : clone(schoolInfo) };
       Object.keys(SAMPLE_INVENTORY).forEach(c => { before.codes[c] = clone(userState[c]); });
       await loadSampleInventory({ quiet: true });
       buildSampleTeachers(before);
-      if (ask) showToast('Sample data loaded · see it on the Teachers page', 'ph-magic-wand', { label: 'Teachers', onClick: () => openTeachersView() });
+      if (ask) showToast('Sample data loaded · see Teachers, Supply requests, Deliveries and Books', 'ph-magic-wand', { label: 'Teachers', onClick: () => openTeachersView() });
     }
 
     function buildSampleTeachers(before) {
@@ -21596,18 +21708,29 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         pedro: { uid: null, name: 'Pedro Santos', position: '', office: '' },
         areyes: { uid: null, name: 'A. Reyes', position: '', office: '' }
       };
-      // Property numbers for the sample equipment (replaced, put back by Clear sample data)
+      // Property numbers for the sample equipment (replaced, put back by Clear sample data).
+      // Date acquired: printers past their 5-year useful life, desktops ending within the year.
       const EQUIP = ['45111609-MM-P01', '45121517-DO-C02', '43211507-DSK001', '43211503-LAP001', '43212105-PR-L01'];
-      const units = {};
+      const ACQ = { '45111609-MM-P01': 420, '45121517-DO-C02': 510, '43211507-DSK001': Math.round(4.4 * 365), '43211503-LAP001': 730, '43212105-PR-L01': Math.round(5.6 * 365) };
+      const units = {}, writtenOff = [];
       EQUIP.forEach(code => {
         const it = item(code);
         if (!it) return;
         const state = userState[code] || (userState[code] = { qty: it.qty });
         state.units = [];
+        delete state.writtenOff;
         const { unserv, repair } = getCondition(it);
-        state.units = nextPropertyNumbers(it.qty, undefined, { cost: it.price }).map((no, i) => ({
-          id: newUnitId(), no, serial: '', loc: '', to: '', cond: i < unserv ? 'U' : i < unserv + repair ? 'R' : 'S', seen: null, printed: null, added: now
+        const gone = code === '43211507-DSK001' ? 1 : 0;   // one desktop already written off (IIRUP)
+        const nos = nextPropertyNumbers(it.qty + gone, undefined, { cost: it.price });
+        state.units = nos.slice(0, it.qty).map((no, i) => ({
+          id: 'sample-' + newUnitId(), no, serial: '', loc: '', to: '', cond: i < unserv ? 'U' : i < unserv + repair ? 'R' : 'S', seen: null, printed: null, added: now - ACQ[code] * DAY, acq: iso(ACQ[code])
         }));
+        if (gone) {
+          const rec = { id: 'sample-' + newUnitId(), no: nos[it.qty], serial: '', loc: '', to: '', cond: 'U', added: now - ACQ[code] * DAY, acq: iso(ACQ[code]),
+            cause: 'removed', ref: 'Disposed – unserviceable, IIRUP No. SAMPLE-IIRUP-01', from: '', at: now - 45 * DAY };
+          state.writtenOff = [rec];
+          writtenOff.push(rec);
+        }
         units[code] = state.units;
       });
       const [P, DOC, DSK, LAP, PRN] = EQUIP.map(c => units[c] || []);
@@ -21631,6 +21754,15 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const ris = (who, daysAgo, lines, purpose) => rel(who, 'RIS', daysAgo, lines.map(([code, qty]) => relLine(item(code), qty)), { purpose });
       const report = (who, kind, extra) => { const x = { id: `sample-rep-${reports.length + 1}`, uid: who.uid, name: who.name, kind, releaseId: '', releaseNo: '', code: '', desc: '', units: [], reason: '', note: '', status: 'open', createdMs: now, ...extra }; reports.push(x); return x; };
       const received = (who, r, daysAgo) => report(who, 'received', { releaseId: r.id, releaseNo: `${r.kind} ${r.no}`, desc: r.lines.map(l => l.desc).join(', '), createdMs: now - daysAgo * DAY });
+      // Transfer (ITR, or PTR for ₱50,000 and up) from one teacher to another, with the RETURN for the first
+      const transfer = (from, to, daysAgo, code, list, purpose) => {
+        const kind = isPPE(item(code), list[0]) ? 'PTR' : 'ITR';
+        const lines = [relLine(item(code), list.length, list)];
+        const r = rel(to, kind, daysAgo, lines, { source: 'transfer', purpose, transferType: 'reassignment', transferOther: '', fromUid: from.uid || null, fromName: from.name, fromPosition: from.position || '', loc: '', sameHolder: false });
+        rel(from, 'RETURN', daysAgo, lines, { source: 'transferred', no: '', transferNo: `${kind} ${r.no}`, transferId: r.id, purpose: `Transferred to ${to.name} · ${kind} ${r.no}` });
+        list.forEach(u => { u.to = to.name; if (to.uid) u.toUid = to.uid; else delete u.toUid; u.ics = r.no; u.doc = kind; u.icsDate = r.date; u.released = r.createdMs; });
+        return r;
+      };
       const { ana, ben, carla, liza, pedro, areyes } = people;
       const counted = now - 3 * DAY;
 
@@ -21652,16 +21784,36 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       report(ben, 'count', { releaseNo: `Count ${countSince().year}`, reason: String(countSince().year), applied: true, createdMs: counted,
         desc: '2 items · 1 present · 1 broken', note: 'The second unit no longer turns on.',
         units: [{ id: benA.id, no: benA.no, code: '43211507-DSK001', desc: 'Desktop computer', s: 'ok' }, { id: benB.id, no: benB.no, code: '43211507-DSK001', desc: 'Desktop computer', s: 'broken' }] });
-      // Carla: an unserviceable printer, and a laptop with an open problem report
+      // Ben: a laptop reported lost 10 days ago → lost report started (20 days left to apply for relief)
+      const benLap = LAP[4];
+      if (benLap) {
+        const benLapIcs = issue(ben, 100, '43211503-LAP001', [benLap], { purpose: 'Class records and online classes' });
+        received(ben, benLapIcs, 99);
+        benLap.lostMs = now - 10 * DAY;
+        benLap.lostNote = 'Lost on the way home from a home visit; reported to the barangay.';
+        report(ben, 'problem', { releaseId: benLapIcs.id, releaseNo: `ICS ${benLapIcs.no}`, code: '43211503-LAP001', desc: benLapIcs.lines[0].desc,
+          units: [{ id: benLap.id, no: benLap.no }], reason: 'lost', note: benLap.lostNote, createdMs: now - 11 * DAY,
+          status: 'done', resolution: 'lost', reply: 'Lost report started · it stays under your name until you are relieved of accountability', resolvedMs: now - 10 * DAY, resolvedBy: schoolInfo.custodian || '' });
+      }
+      // Carla: an unserviceable printer on an ICS older than 3 years (renew), a laptop with an open
+      // problem report, and a desktop transferred to her from Ben (ITR)
       const carlaPr = PRN[0], carlaLap = LAP[3];
-      const carlaIcs = issue(carla, 200, '43212105-PR-L01', [carlaPr], { purpose: 'Grade 4 reports' });
-      received(carla, carlaIcs, 199);
+      const carlaIcs = issue(carla, 1200, '43212105-PR-L01', [carlaPr], { purpose: 'Grade 4 reports' });
+      received(carla, carlaIcs, 1199);
       const carlaLapIcs = issue(carla, 75, '43211503-LAP001', [carlaLap], { purpose: 'Class records' });
       received(carla, carlaLapIcs, 74);
       carlaPr.seen = counted;
       report(carla, 'problem', { releaseId: carlaLapIcs.id, releaseNo: `ICS ${carlaLapIcs.no}`, code: '43211503-LAP001', desc: carlaLapIcs.lines[0].desc,
         units: [{ id: carlaLap.id, no: carlaLap.no }], reason: 'repair', note: 'Some keyboard keys no longer work.', createdMs: now - 2 * DAY });
       received(carla, ris(carla, 30, [['12191601-AL-E04', 2]], 'Classroom sanitation'), 29);
+      received(carla, ris(carla, 70, [['44103105-EP-C17', 4]], 'Printing of quarterly grades'), 69);   // the cyan ink: none left now
+      // Both document cameras are with someone (Carla, and Pedro below): its Release button is Transfer or return
+      if (DOC[1]) received(carla, issue(carla, 45, '45121517-DO-C02', [DOC[1]], { purpose: 'Grade 4 reading lessons' }), 44);
+      const moved = DSK[5];
+      if (moved) {
+        received(ben, issue(ben, 140, '43211507-DSK001', [moved], { purpose: 'Mathematics computer corner' }), 139);
+        received(carla, transfer(ben, carla, 25, '43211507-DSK001', [moved], 'Grade 4 computer corner'), 24);
+      }
       // Liza: had a laptop, returned it → nothing left: ready for clearance
       const lizaLap = LAP[2];
       const lizaIcs = issue(liza, 300, '43211503-LAP001', [lizaLap], { purpose: 'Class records' });
@@ -21675,24 +21827,130 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       [[DOC[0], pedro], [DSK[4], areyes]].forEach(([u, who]) => { if (u) u.to = who.name; });
 
       EQUIP.forEach(code => item(code) && syncUnitCondition(item(code)));
+      const extra = buildSampleExtras({ now, DAY, iso, item, people });
       saveSampleStore({
         at: now, before,
         names: [personKey(pedro.name), personKey(areyes.name)],
-        unitIds: Object.values(units).flat().map(u => u.id),
+        unitIds: [...Object.values(units).flat(), ...writtenOff].map(u => u.id),
         members: [...[ana, ben, carla, liza].map(p => ({ uid: p.uid, name: p.name, position: p.position, office: p.office, email: '', joinedMs: now - 320 * DAY })),
           // someone who just opened the invite link: Approve on the Teachers page
           { uid: 'sample-marco', name: 'Marco Villanueva', position: 'Teacher I', office: 'Grade 9 – Filipino', email: '', joinedMs: now - 2 * 3600e3, status: 'pending' }],
-        releases, reports
+        releases, reports,
+        ...extra.store
       });
-      saveStateWith({ summary: { kind: 'system', text: 'Loaded sample teachers (Ana Reyes, Ben Cruz, Carla Mendoza, Liza Ramos, Pedro Santos)' } });
+      saveStateWith({ summary: { kind: 'system', text: 'Loaded sample data (Ana Reyes, Ben Cruz, Carla Mendoza, Liza Ramos, Pedro Santos · requests, PRs, deliveries, books)' } });
       refreshSample();
       renderMoreSample();
+    }
+
+    // The rest of the sample: supply requests at each step, Purchase Requests (waiting for the
+    // School Head, approved and waiting for the supplier, delivered), deliveries (from a PR, a PO
+    // still expected, a donation), the School Head's suggestions, a physical count half done,
+    // books with loans (one overdue).
+    function buildSampleExtras({ now, DAY, iso, item, people }) {
+      const { ana, ben, carla } = people;
+      const cust = schoolInfo.custodian || 'Property Custodian';
+      const it = code => item(code) || { code, name: code, unit: 'piece', price: 0 };
+      // ---- Supply requests ----
+      const requests = [];
+      const req = (n, who, daysAgo, lines, extra = {}) => {
+        const r = { id: `sample-req-${n}`, uid: who.uid, name: who.name, position: who.position, office: who.office, purpose: '', neededBy: '',
+          lines: lines.map(([code, qty, desc], i) => ({ id: `sample-l${n}-${i}`, code: code || null, desc: desc || it(code).name, unit: code ? it(code).unit : 'unit', qty })),
+          status: 'pending', clientAt: now - daysAgo * DAY, createdMs: now - daysAgo * DAY, via: 'teacher', ...extra };
+        requests.push(r);
+        return r;
+      };
+      const reviewed = (r, daysAgo, prQty = () => 0, note = '') => ({
+        lines: r.lines.map(l => { const i = item(l.code); return { id: l.id, code: l.code, desc: l.desc, unit: l.unit, requested: l.qty, approved: l.qty, stock: i ? i.qty : 0, prQty: prQty(l), unitCost: i ? i.price : 0 }; }),
+        note, by: cust, atMs: now - daysAgo * DAY
+      });
+      req(1, ana, 0.15, [['14111507-PP-M01', 5], ['12191601-AL-E04', 2]], { purpose: 'Science fair materials', neededBy: iso(-5) });
+      req(2, carla, 4, [['44103105-EP-C17', 2], ['44121708-MW-B01', 2]], { purpose: 'Printing of Grade 4 report cards' });
+      const r3 = req(3, ben, 3, [['44121708-MW-B01', 3]], { purpose: 'Board work' });
+      Object.assign(r3, { status: 'approved', review: reviewed(r3, 2) });
+      const r4 = req(4, ana, 12, [['39101628-LT-L01', 6]], { purpose: 'Replace busted lights in the Science laboratory' });
+      Object.assign(r4, { status: 'pr', review: reviewed(r4, 11, l => l.qty), prNo: 'SAMPLE-PR-01', prId: 'sample-pr-1' });
+      const r5 = req(5, carla, 50, [['14111507-PP-M01', 10]], { purpose: 'Periodical tests' });
+      Object.assign(r5, { status: 'closed', review: reviewed(r5, 49, l => l.qty), prNo: 'SAMPLE-PR-02', prId: 'sample-pr-2', suppliedAtMs: now - 20 * DAY });
+      const r6 = req(6, ben, 15, [[null, 1, 'Laminating machine, A3']], { purpose: 'Visual aids' });
+      Object.assign(r6, { status: 'declined', declineReason: 'Not in this year’s procurement plan · borrow the one in the Principal’s Office', review: { note: 'Not in this year’s procurement plan · borrow the one in the Principal’s Office', by: cust, atMs: now - 14 * DAY } });
+
+      // ---- Purchase Requests ----
+      const d = (typeof prDefaults === 'function' && prDefaults()) || {};
+      const prLine = (code, qty) => ({ code, stockNo: code, unit: it(code).unit, desc: it(code).name, qty, unitCost: it(code).price || 0 });
+      const prs = [];
+      const pr = (n, daysAgo, lines, extra = {}) => {
+        const total = Math.round(lines.reduce((s, l) => s + l.qty * l.unitCost, 0) * 100) / 100;
+        const p = { id: `sample-pr-${n}`, prNo: `SAMPLE-PR-0${n}`, date: iso(daysAgo), entity: d.entity || schoolInfo.school || 'Sample School', fund: d.fund || 'MOOE', office: d.office || '', rcc: d.rcc || '',
+          purpose: '', lines, total, requestIds: [], requesters: [],
+          requestedBy: { name: d.reqName || cust, designation: d.reqDesig || schoolInfo.position || 'Property Custodian' },
+          approvedBy: { name: d.apprName || schoolInfo.head || 'School Head', designation: d.apprDesig || 'School Principal' },
+          approval: { status: 'pending', submittedMs: now - daysAgo * DAY }, createdMs: now - daysAgo * DAY, createdBy: 'sample', ...extra };
+        prs.push(p);
+        return p;
+      };
+      const signed = (p, daysAgo) => ({ status: 'approved', via: 'paper', byName: p.approvedBy.name, byDesig: p.approvedBy.designation, paperDate: iso(daysAgo), atMs: now - daysAgo * DAY, submittedMs: p.approval.submittedMs });
+      pr(1, 10, [prLine('39101628-LT-L01', 6), prLine('47121701-TB-P04', 10)], { purpose: 'Replacement lights for the Science laboratory; trash bags', requestIds: [r4.id], requesters: [ana.name] });
+      const p2 = pr(2, 48, [prLine('14111507-PP-M01', 50), prLine('44103105-EP-B17', 6)], { purpose: 'Bond paper for periodical tests; printer ink', requestIds: [r5.id], requesters: [carla.name] });
+      p2.approval = signed(p2, 46);
+      p2.deliveredMs = now - 20 * DAY;
+      const p3 = pr(3, 40, [prLine('44121708-MW-B01', 10), prLine('12191601-AL-E03', 12)], { purpose: 'Whiteboard markers and alcohol for the 2nd quarter' });
+      p3.approval = signed(p3, 38);
+
+      // ---- Deliveries (kept with the inventory like any delivery; Clear removes them) ----
+      const dLine = (id, code, qty, unitCost, got) => ({ id, desc: it(code).name, stockNo: code, unit: it(code).unit, code, qty, unitCost, ...(got === undefined ? {} : { received: got }) });
+      const receipt = (id, daysAgo, doc, lines) => ({ id, at: now - daysAgo * DAY, date: iso(daysAgo), iarNo: doc.iarNo || '', drNo: doc.drNo || '', invoiceNo: doc.invoiceNo || '', lines: lines.map(l => ({ l: l.id, c: l.code, q: l.received ?? l.qty, uc: l.unitCost })) });
+      const dl2 = [dLine('L1', '14111507-PP-M01', 50, 226.5, 50), dLine('L2', '44103105-EP-B17', 6, 240, 6)];
+      const dl3 = [dLine('L1', '44121708-MW-B01', 10, it('44121708-MW-B01').price, 0), dLine('L2', '12191601-AL-E03', 12, it('12191601-AL-E03').price, 0)];
+      const dlD = [dLine('L1', '47121701-TB-P04', 20, it('47121701-TB-P04').price), dLine('L2', '39101628-LT-L01', 10, it('39101628-LT-L01').price)];
+      const deliveriesNew = [
+        { id: 'sample-dlv-1', kind: 'stockin', poNo: 'SAMPLE-PO-02', prNo: 'SAMPLE-PR-02', iarNo: 'SAMPLE-IAR-02', date: iso(20), supplier: 'Cebu Office Supplies Trading', status: 'received', createdMs: now - 20 * DAY,
+          lines: dl2, receipts: [receipt('sample-rc-1', 20, { iarNo: 'SAMPLE-IAR-02', invoiceNo: 'SI-10482' }, dl2)] },
+        { id: 'sample-dlv-2', kind: 'po', poNo: 'SAMPLE-PO-03', prNo: 'SAMPLE-PR-03', date: iso(30), supplier: 'Visayan School Supplies', status: 'expected', createdMs: now - 30 * DAY, lines: dl3, receipts: [] },
+        { id: 'sample-dlv-3', kind: 'stockin', poNo: '', prNo: '', date: iso(60), supplier: 'PTA donation (Brigada Eskwela)', status: 'received', createdMs: now - 60 * DAY,
+          lines: dlD, receipts: [receipt('sample-rc-3', 60, { drNo: 'SAMPLE-DR-03' }, dlD)] }
+      ];
+      deliveries = deliveries.filter(x => !isSampleId(x.id)).concat(deliveriesNew);
+      saveDeliveries();
+
+      // ---- The School Head's suggestions (one to accept or decline, two answered) ----
+      const head = { uid: 'sample-head', name: schoolInfo.head || 'Dr. Elena Villareal' };
+      const stateOf = code => JSON.parse(JSON.stringify(userState[code] || { qty: it(code).qty || 0 }));
+      const op = (code, patch) => { const base = { code, state: stateOf(code) }; return { k: 'i:' + code, base, body: { code, state: { ...base.state, ...patch } } }; };
+      const sug = (n, daysAgo, ops, extra = {}) => {
+        const lines = sugLines(ops);
+        return { id: `sample-sug-${n}`, ops, lines: lines.map(l => ({ code: l.code, name: String(l.name).slice(0, 160), text: String(l.text).slice(0, 400) })),
+          title: lines.length === 1 ? lines[0].name : `${plural(lines.length, 'item')}: ${lines.slice(0, 2).map(l => l.name).join(', ')}`,
+          byUid: head.uid, byName: head.name, status: 'pending', submittedMs: now - daysAgo * DAY, createdMs: now - daysAgo * DAY, ...extra };
+      };
+      const suggestions = [
+        sug(1, 0.3, [op('47121804-MP-B01', { qty: 5 }), op('39101628-LT-L01', { note: 'Central Stockroom, shelf B' })]),
+        sug(2, 9, [op('56101504-CM-B01', { qty: 58 })], { status: 'accepted', decision: { byUid: 'sample', byName: cust, atMs: now - 8 * DAY, keys: ['i:56101504-CM-B01'] } }),
+        sug(3, 16, [op('46191601-FE-M01', { note: 'Covered court' })], { status: 'declined', decision: { byUid: 'sample', byName: cust, atMs: now - 15 * DAY, note: 'The extinguishers stay in the corridors (fire safety plan)' } })
+      ];
+
+      // ---- A physical count half done (only when no count is running) ----
+      if (!countSession) {
+        const codes = Object.keys(SAMPLE_INVENTORY).filter(c => item(c));
+        const counted = {};
+        codes.filter((c, i) => i % 2 === 0).forEach((c, i) => { counted[c] = now - (2 * 3600e3) + i * 60e3; });
+        countSession = { name: 'Physical count – sample', startedAt: now - 3 * 3600e3, counted, sample: true };
+        persistCountSession();
+      }
+
+      // ---- Books and loans (online; without an account bkLoadSample keeps them on this phone) ----
+      const books = [], loans = [];
+      if (bkOnline()) {
+        bkSampleBooks(n => `sample-bk-${n}`).forEach(b => books.push(b));
+        bkSampleLoans(books, { ana, ben, carla }).forEach(l => loans.push(l));
+      }
+      return { store: { requests, prs, suggestions, books, loans, insp: [], approvals: [], bookMoves: [], classBooks: [] } };
     }
 
     async function clearSampleData() {
       const st = sampleStore();
       if (!st) return;
-      if (!await appConfirm('The sample teachers, slips, reports and books are removed, and the sample items go back to how they were before (your other items are not touched).',
+      if (!await appConfirm('The sample teachers, slips, reports, requests, Purchase Requests, deliveries, suggestions and books are removed, and the sample items go back to how they were before (your other items are not touched).',
         { title: 'Clear sample data?', ok: 'Clear sample', tone: 'danger', icon: 'ph-broom' })) return;
       const us = { ...userState };
       Object.entries((st.before && st.before.codes) || {}).forEach(([code, prev]) => { if (prev) us[code] = prev; else delete us[code]; });
@@ -21700,12 +21958,20 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       memberList = memberList.filter(x => !x.sample);
       releaseList = releaseList.filter(x => !x.sample);
       tReports = tReports.filter(x => !x.sample);
+      reqList = reqList.filter(x => !x.sample);
+      prList = prList.filter(x => !x.sample);
+      inspList = inspList.filter(x => !x.sample);
+      apList = apList.filter(x => !x.sample);
+      sugList = sugList.filter(x => !x.sample);
+      ['books', 'loans', 'moves', 'classes'].forEach(k => { bk[k] = (bk[k] || []).filter(x => !x.sample); });
       if (typeof bkClearSample === 'function') bkClearSample();
       teachersSel = null; teachersClear = null; tvLastPerson = null;
-      applyData({ userState: us, schoolInfo: (st.before && st.before.school) || schoolInfo, customRawItems });
+      applyData({ userState: us, schoolInfo: (st.before && st.before.school) || schoolInfo, customRawItems,
+        deliveries: deliveries.filter(x => !isSampleId(x.id)), countSession: countSession && countSession.sample ? null : undefined });
       saveStateWith({ summary: { kind: 'system', text: 'Cleared sample data' } });
       refreshSample();
       renderMoreSample();
+      if (typeof scheduleDash === 'function') scheduleDash(1500);   // the School Head's summary again
       showToast('Sample data cleared', 'ph-broom');
     }
     function renderMoreSample() {
@@ -21848,20 +22114,45 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       bk.loaded = bk.metaLoaded = bk.movesLoaded = bk.loansLoaded = bk.classesLoaded = bk.indexLoaded = true;
     }
     // Load sample data (exploring, no books yet): a few titles to look around with.
-    function bkLoadSample() {
-      if (reqRole) return;
-      bkLoadLocal();
-      if (bkBooks().length) return;
+    // Sample titles and loans: kept on this phone without an account (bkLoadSample), or in the
+    // sample store when signed in (buildSampleExtras). idOf(n) gives each title its id.
+    function bkSampleBooks(idOf = () => bkId('b')) {
       const y = new Date().getFullYear();
-      const mk = (title, kind, grades, area, n, cost, extra = {}) => ({ id: bkId('b'), title, kind, grades, area, author: '', publisher: '', year: '', isbn: '', cost, source: 'deped', received: bkToday(),
-        lendable: BK_KINDS[kind].lend, acc: BK_KINDS[kind].acc, note: '', hold: [{ p: 'storage', n, d: 0, u: 0 }], accNos: [], lost: 0, gone: 0, log: [], by: 'Sample', sample: true, updatedMs: Date.now(), ...extra });
-      bk.books.push(
+      let n = 0;
+      const mk = (title, kind, grades, area, count, cost, extra = {}) => ({ id: idOf(++n), title, kind, grades, area, author: '', publisher: '', year: '', isbn: '', cost, source: 'deped', received: bkAddDays(bkToday(), -120),
+        lendable: BK_KINDS[kind].lend, acc: BK_KINDS[kind].acc, note: '', hold: [{ p: 'storage', n: count, d: 0, u: 0 }], accNos: [], lost: 0, gone: 0, log: [], by: 'Sample', sample: true, updatedMs: Date.now(), ...extra });
+      return [
         mk('Science 4 Learner’s Material', 'TX', ['4'], 'Science', 42, 118),
         mk('Mathematics 4 Learner’s Material', 'TX', ['4'], 'Mathematics', 40, 125),
         mk('Science 4 Teacher’s Manual', 'TM', ['4'], 'Science', 2, 160),
         mk('Ang Alamat ng Ampalaya', 'LF', [], 'Reading & Literacy', 3, 95, { author: 'Augie Rivera', accNos: [1, 2, 3].map(i => `LIB-${y}-${String(i).padStart(4, '0')}`) }),
-        mk('Si Pagong at si Matsing (Big Book)', 'BIG', ['1'], 'Reading & Literacy', 2, 250)
-      );
+        mk('Si Pagong at si Matsing (Big Book)', 'BIG', ['1'], 'Reading & Literacy', 2, 250),
+        mk('Philippine Atlas for Schools', 'REF', [], 'Araling Panlipunan', 4, 420, { accNos: [4, 5, 6, 7].map(i => `LIB-${y}-${String(i).padStart(4, '0')}`) })
+      ];
+    }
+    // One overdue, one out, one waiting for an answer, one returned.
+    function bkSampleLoans(books, who) {
+      const find = re => books.find(b => re.test(b.title));
+      const fic = find(/Ampalaya/), big = find(/Big Book/), atlas = find(/Atlas/);
+      const day = 864e5, now = Date.now();
+      const loan = (n, b, t, status, outDaysAgo, dueInDays, extra = {}) => ({
+        id: `sample-ln-${n}`, bookId: b.id, title: b.title, kind: b.kind, qty: 1, acc: [], placeId: 'storage', placeName: bkPlaceName('storage') || 'Supply room', keeperUid: '', keeperName: '',
+        borrowerUid: t.uid || '', borrowerName: t.name, borrowerNote: t.office || '', status, reqMs: now - outDaysAgo * day, ...(status === 'requested' ? {} : { outMs: now - outDaysAgo * day }),
+        dueISO: bkAddDays(bkToday(), dueInDays), by: 'Sample', byUid: '', lentBy: 'Sample', sample: true, updatedMs: now, ...extra });
+      return [
+        fic && loan(1, fic, who.ana, 'out', 12, -5, { acc: fic.accNos.slice(0, 1) }),
+        big && loan(2, big, who.ben, 'out', 3, 4),
+        atlas && loan(3, atlas, who.carla, 'requested', 0.2, 7, { note: 'For the Grade 4 map activity' }),
+        big && loan(4, big, who.carla, 'returned', 40, -33, { returnedMs: now - 34 * day, retBy: 'Sample' })
+      ].filter(Boolean);
+    }
+    function bkLoadSample() {
+      if (reqRole) return;
+      bkLoadLocal();
+      if (bkBooks().length) return;
+      const books = bkSampleBooks();
+      bk.books.push(...books);
+      bk.loans.push(...bkSampleLoans(books, { ana: { uid: '', name: 'Ana Reyes', office: 'Grade 7 – Science' }, ben: { uid: '', name: 'Ben Cruz', office: 'Grade 10 – Mathematics' }, carla: { uid: '', name: 'Carla Mendoza', office: 'Grade 4' } }));
       bkSaveLocal();
       bkChanged();
     }
@@ -21869,6 +22160,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (reqRole) return;
       bkLoadLocal();
       bk.books = bk.books.filter(b => !b.sample);
+      bk.loans = bk.loans.filter(l => !l.sample);
       bkSaveLocal();
       bkChanged();
     }
@@ -21939,20 +22231,20 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       }, soft('library')));
       if (bkSeesAll()) {
         bkUnsubs.push(listenSynced(bkCol('books'), ['createdAt', 'updatedAt'], snap => {
-          bk.books = docsOf(snap, 'books');
+          bk.books = sampleList('books', docsOf(snap, 'books'));
           if (fresh(snap)) { bk.loaded = true; if (!bkUploadAsked && !snap.docs.length) setTimeout(bkOfferLocalUpload, 1500); }
           bkChanged();
           bkScheduleApply();
         }, soft('books')));
         bkUnsubs.push(listenSynced(bkCol('loans'), ['createdAt', 'updatedAt'], snap => {
-          bk.loans = docsOf(snap, 'loans');
+          bk.loans = sampleList('loans', docsOf(snap, 'loans'));
           if (fresh(snap)) bk.loansLoaded = true;
           bkChanged();
           notifFromLoans(snap.metadata);
           bkScheduleApply();
         }, soft('loans')));
         bkUnsubs.push(listenSynced(bkCol('bookMoves'), ['createdAt', 'updatedAt'], snap => {
-          bk.moves = docsOf(snap, 'bookMoves');
+          bk.moves = sampleList('bookMoves', docsOf(snap, 'bookMoves'));
           if (fresh(snap)) bk.movesLoaded = true;
           bkChanged();
           if (isTeacherDevice()) notifFromBookMoves(snap.metadata);
@@ -21960,7 +22252,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       }
       if (isCustodianDevice()) {
         bkUnsubs.push(listenSynced(bkCol('classBooks'), ['createdAt', 'updatedAt'], snap => {
-          bk.classes = docsOf(snap, 'classBooks');
+          bk.classes = sampleList('classBooks', docsOf(snap, 'classBooks'));
           if (fresh(snap)) { bk.classesLoaded = true; if (!isViewOnly()) bkTidyMyClass(bk.classes); }
           bkChanged();
           notifFromClassBooks(snap.metadata);
@@ -22196,7 +22488,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function bkPublish() {
       if (!bkOnline() || !bkCanManage() || isViewOnly()) return;
       if (!bk.loaded || !bk.loansLoaded || !bk.metaLoaded || !bk.indexLoaded) { bkSchedulePublish(3000); return; }
-      const entries = bkIndexEntries();
+      const skip = new Set(bk.books.filter(b => b.sample).map(b => b.id));   // sample titles stay on this phone
+      const entries = bkIndexEntries().filter(e => !skip.has(e.i));
       const shards = Math.ceil(entries.length / BK_SHARD);
       const have = Object.keys(bk.indexDocs).map(Number).filter(n => !isNaN(n));
       const F = cloud.sdk;
@@ -23367,7 +23660,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const me = bkMe();
       const cache = fromCacheOf(meta) || (isTeacherDevice() && !bk.librarian && !(bk.loansLoaded && bk.loansBLoaded));
       const staff = bkCanManage() && !bkLocal();
-      notifCheck('bkLoans', bk.loans.filter(l => l.borrowerUid === me || l.keeperUid === me || staff).map(l => ({
+      notifCheck('bkLoans', bk.loans.filter(l => !l.sample).filter(l => l.borrowerUid === me || l.keeperUid === me || staff).map(l => ({
         key: 'ln:' + l.id, sig: l.status + (l.retSaidMs ? ':said' : ''),
         make: () => {
           const book = `“${l.title}”${(l.qty || 1) > 1 ? ` × ${l.qty}` : ''}`;
@@ -23406,7 +23699,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (!cloud.user || !bk.loansLoaded) return;
       const me = bkMe(), today = localISODate(new Date(now));
       const st = loadNotifs();
-      const late = bk.loans.filter(l => bkLoanOut(l) && l.dueISO && l.dueISO < today && !st.seen['lo:' + l.id]);
+      const late = bk.loans.filter(l => !l.sample && bkLoanOut(l) && l.dueISO && l.dueISO < today && !st.seen['lo:' + l.id]);
       if (!late.length) return;
       late.forEach(l => { st.seen['lo:' + l.id] = 1; });
       saveNotifs();
@@ -25726,6 +26019,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     // snapshot of each source only records what is already there (no flood of old history).
     function notifCheck(source, entries, fromCache) {
       if (!notifScope()) return;
+      entries = entries.filter(e => !String(e.key).includes('sample-'));   // Load sample data: no notifications about it
       const st = loadNotifs();
       if (!st.primed[source]) {
         if (fromCache) return;
@@ -25760,7 +26054,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     const fromCacheOf = meta => !!(meta && meta.fromCache);
 
     function notifFromRequests(meta) {
-      const list = reqList.filter(r => !r.sending);
+      const list = reqList.filter(r => !r.sending && !r.sample);
       if (isCustodianDevice()) {
         notifCheck('requests', list.map(r => ({
           key: 'rq:' + r.id, sig: r.status || 'pending',
@@ -25987,7 +26281,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function notifPrsNotDelivered(now) {
       if (!cloud.user || isViewOnly()) return;
       const st = loadNotifs();
-      const due = prsNotDelivered(now).map(x => ({ ...x, stage: x.days >= PR_LATE_DAYS * 2 ? 2 : 1 })).filter(x => (st.seen['pl:' + x.pr.id] || 0) < x.stage);
+      const due = prsNotDelivered(now).filter(x => !x.pr.sample).map(x => ({ ...x, stage: x.days >= PR_LATE_DAYS * 2 ? 2 : 1 })).filter(x => (st.seen['pl:' + x.pr.id] || 0) < x.stage);
       if (!due.length) return;
       due.forEach(x => { st.seen['pl:' + x.pr.id] = x.stage; });
       saveNotifs();
@@ -26002,7 +26296,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function notifWaitingRequests(now) {
       if (!cloud.user) return;
       const st = loadNotifs();
-      const due = reqList.filter(r => !r.sending && (r.status || 'pending') === 'pending' && reqTime(r)
+      const due = reqList.filter(r => !r.sending && !r.sample && (r.status || 'pending') === 'pending' && reqTime(r)
         && (now - reqTime(r)) / 864e5 >= REQ_WAIT_DAYS && !st.seen['rw:' + r.id]);
       if (!due.length) return;
       due.forEach(r => { st.seen['rw:' + r.id] = 1; });
@@ -26037,7 +26331,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const due = [];
       items.forEach(item => {
         const units = getUnits(item.code);
-        const list = units.length ? units.filter(u => u.cond === 'R').map(u => ({ key: u.id, label: `${item.name} ${u.no}` }))
+        const list = units.length ? units.filter(u => u.cond === 'R' && !isSampleId(u.id)).map(u => ({ key: u.id, label: `${item.name} ${u.no}` }))
           : (item.repair || 0) > 0 ? [{ key: 'i:' + item.code, label: `${item.name} (${item.repair})` }] : [];
         list.forEach(x => {
           const t = since[x.key];
@@ -26551,6 +26845,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-release-sample', date: 'Nov 2026', title: 'Transfer or return from the Item preview, and a fuller sample', points: [
+        'Item preview: when every unit is already with someone, the Release button becomes Transfer or return. Pick whose unit (if more than one person has it), then Transfer to another person (ITR / PTR) or Take back to stock (RRSP). With nothing in stock it becomes Stock in: record a delivery or add the item to a Purchase Request.',
+        'Home: in the quick count window, More details is now called Edit details, because it opens the item in edit mode.',
+        'More \u2192 Load sample data now fills every screen: supply requests (new, approved, on a PR, supplied, declined), Purchase Requests (waiting for the School Head, approved, delivered), deliveries (from a PR, a PO still expected, a donation), a School Head suggestion, a transfer, a lost laptop, a written-off desktop, units near or past their useful life, an old ICS to renew, low and out-of-stock supplies, a physical count half done, and books with loans (one overdue).',
+        'The sample people and their papers stay on your phone and never reach the school account. Clear sample data removes all of it.'
+      ] },
       { id: '2026-11-suggestion-history', date: 'Nov 2026', title: 'All the School Head\u2019s suggestions in one place', points: [
         'More \u2192 Suggestions from the School Head opens the suggestions waiting for you (the number shows beside it) and their history: accepted, declined and taken back, newest first, with who answered, when, the reason for a decline and each item. Tap an item to open it.',
         'Fixes: signing in as the property custodian on another phone no longer saves the School ID to the school account again (two fewer cloud writes each time).'

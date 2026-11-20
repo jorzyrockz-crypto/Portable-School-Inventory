@@ -193,7 +193,7 @@ The app opens on **Home**, which only asks one thing: *What are you encoding?*
 
 1. **Type a few letters** of the item name or its stock code. The catalog and your custom items are searched together.
 2. **Tap a result**, or press Enter for the top one. A sheet slides up with a big quantity stepper, the unit and one-tap room chips. The chips are rooms you already use plus common school rooms.
-3. **Save & next** saves the item, shows an **Undo** toast and clears the search, ready for the next item. Pressing Enter in the quantity field also saves. **More details** opens the full item editor for price, condition, units and so on.
+3. **Save & next** saves the item, shows an **Undo** toast and clears the search, ready for the next item. Pressing Enter in the quantity field also saves. **Edit details** opens the item in edit mode (price, condition, room and so on), keeping the quantity and room you typed.
 
 If nothing matches, the last row offers to add what you typed as a new custom item.
 
@@ -614,6 +614,7 @@ Teachers who join with the invite link are listed automatically (their phone sen
 
 - **From a request:** an approved request with everything in stock, or a delivered one, has a **Release** button. The teacher and the approved items are filled in.
 - **From Inventory:** tap the item, then **Release** in its sheet. Or tap **Release** at the top of Supply requests.
+  - **Nothing free?** When every unit is already with someone, the button reads **Transfer or return**: pick whose unit (if more than one person has it), then **Transfer to another person** (ITR / PTR, the Transfer window opens with that unit ticked), **Take back to stock** (RRSP) or **Stock in more**. With nothing in stock (supplies at 0, or equipment with none on hand) it reads **Stock in**: record a delivery with the item filled in, or add it to a Purchase Request.
 - **Supplies** go on a **RIS** (Requisition and Issue Slip, Appendix 63) and leave the stock count.
 - **Equipment** goes on an **ICS** (Inventory Custodian Slip, Appendix 59). It stays in Inventory, and each unit shows *With Ana Reyes · ICS 2026-11-001*. Pick which property numbers to hand over. Units without one get the next number automatically.
 - **Equipment worth ₱50,000 or more** (PPE under COA Circular 2022-004) goes on a **PAR** (Property Acknowledgment Receipt, Appendix 71) instead. One release can create an ICS and a PAR; each line says which slip it goes on, and the unit shows *With Ana Reyes · PAR 2026-11-001*.
@@ -776,7 +777,7 @@ On a computer or a tablet held sideways, the list stays on the left and the pers
 - **This device and the school in the cloud** (custodian, online): first marks the school as being erased, so teachers' phones can't add anything. Then it deletes every document of the school (inventory, catalog, settings, teachers, RIS / ICS / PAR and returns, reports, requests, PRs, stock, holds, invite links), its School ID entry and the school itself, and finally clears this device. Teachers' phones show *San Jose NHS was reset* with **Leave**, and they join again with the new link or School ID. The custodian's sign-in account stays: signing in again asks for the school name and makes a new, empty school. This needs the current `firestore.rules` published. With older rules Firebase refuses, and nothing is reset.
 - On a teacher's phone, **Reset** (next to Leave) clears only that phone. Their requests and reports stay with the custodian.
 
-**Sample data.** More → *Load sample data* adds sample counts plus six sample people (Ana Reyes, Ben Cruz, Carla Mendoza, Liza Ramos and the typed names Pedro Santos and “A. Reyes”), and Marco Villanueva waiting for approval, with ICS and RIS slips, a teacher count with one broken unit, an open problem report and a returned laptop. That way every filter, Remind, Clearance, the merge and Supply usage have something to show. The sample people, slips and reports live only on that device, in `custodian_sample_v1`. Writes about them are kept local and never reach Firestore, and they raise no notifications. *Clear sample data* removes them and restores the inventory snapshot taken before loading.
+**Sample data.** More → *Load sample data* adds sample counts plus six sample people (Ana Reyes, Ben Cruz, Carla Mendoza, Liza Ramos and the typed names Pedro Santos and “A. Reyes”), and Marco Villanueva waiting for approval, with ICS and RIS slips, a teacher count with one broken unit, an open problem report, a returned laptop, a lost laptop (relief countdown), a desktop transferred on an ITR, a written-off desktop, units past or near their useful life, an ICS older than 3 years, document cameras all with someone (Transfer or return), low and out-of-stock supplies and a physical count half done. It also adds supply requests at every step (new, approved, on a PR, supplied, declined), three Purchase Requests (waiting for the School Head, approved and waiting for the supplier, delivered), deliveries (from the PR, a PO still expected, a PTA donation), suggestions from the School Head (one waiting, one accepted, one declined), and books with loans (one overdue, one waiting for an answer). That way every page has something to show. The sample people, their papers, requests, PRs, suggestions, books and loans live only on that device, in `custodian_sample_v1`. Writes about them (approving, releasing, a PR made from them, a loan) are kept local and never reach Firestore, and they raise no notifications. The library catalogue for teachers never lists sample titles, and the School Head's summary pauses while sample data is loaded. Sample counts and deliveries are part of the inventory, so on a signed-in custodian phone the school account sees them until you clear them (Load asks first when you already counted those items). *Clear sample data* removes everything and restores the inventory snapshot taken before loading.
 
 ## Notifications
 
@@ -882,7 +883,7 @@ node release.mjs                      # teachers, RIS/ICS releases, stock in
 node teacher-items.mjs                # a teacher's My Items, reports and returns
 node teachers-overview.mjs            # Teachers page: filters, Remind, count, clearance, merge, supply usage, two panes
 node iar.mjs                          # Inspect delivery: checklist on the teacher's phone, tap to sign, accept (partial), school ICS, Distribution List
-node sample-data.mjs                  # Load / Clear sample data: sample teachers stay on the device, inventory restored
+node sample-data.mjs                  # Load / Clear sample data: sample people, requests, PRs, books stay on the device; Transfer or return; inventory restored
 node project-switch.mjs               # moving to another Firebase project keeps inventory, resets cloud links
 node notifications.mjs                # bell, phone notifications, shortcuts, install bar
 node app-updates.mjs                  # update notices (title bar), Restart, What's new (own server)
