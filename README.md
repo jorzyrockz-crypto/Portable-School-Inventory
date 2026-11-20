@@ -119,13 +119,15 @@ One window for everything about an item. It opens from **Inventory** (tap a row)
 - **Header:** type icon, name, code and classification, then **status chips**: *In stock / Low stock / Out of stock*, *N for repair*, *N unserviceable*, *N with teachers*, *N lost*, *N past useful life* or *N ending soon* (opens Useful life), *Counted / Not counted yet* during a count, and *View only*.
 - **Tabs** (← / → move between them):
   - **Overview:** on hand, unit cost and total value; the low-stock note; the quantity stepper; room, category, prices, Catalog, condition, useful life, property numbers and who has the units (each name opens that teacher's page).
+  - **Units** (equipment, and anything with property numbers; it replaced the separate Property Numbers window): **Tag N units**, **Add new unit**, **Print QR labels** and **Scan**, then one card per unit: property no., condition, serial no., location, assigned to, ICS / PAR no., date acquired and useful life, with the accountability history, carrying amount and *Written off* units below. Changes save as you go; moving from one field to the next keeps the keyboard up (the cards are drawn again once you leave them, and a cloud update waits while you type). The *Property nos.* line in Overview, *Manage units* in Edit details, the scanner, Useful life (*Dates*) and a teacher's page open this tab, with the unit marked. On a computer it stays in the side panel, two fields per row.
+    - The School Head sees the cards and may fix a serial no., room, date acquired or condition: it is kept as their suggestion (no tagging, removing, scanning or lost reports). A view-only phone sees the fields read-only, with Print QR labels.
   - **People:** *Has it now* (with photo, property numbers, ICS / PAR, lost or for repair), *Received it* / *Had it before* (from the RIS / ICS / PAR slips, with quantities and the last date) and *Asked for it* (supply requests). Each person opens their Teachers page.
   - **History:** the latest 30 changes of this item (this device's log plus the slips and deliveries saved in the school account), and *Open the full history*.
-- **Buttons:** **Release** (custodian's phone), **Edit details** and **More** (*Property numbers*, *Print QR labels*, *Prices*, *Catalog*, *Full history*).
+- **Buttons:** **Release** (custodian's phone), **Edit details** and **More** (*Print QR labels*, *Prices*, *Catalog*, *Full history*).
 - **Edit details opens in place** of the tabs (it replaced the separate item details window): on-hand, unit cost, minimum alert, classification, condition, property numbers and the room. **Save changes** returns to the Overview with a *Changes saved* message; **Cancel** (or Esc) returns without saving. Opening another item drops unsaved edits.
 - **View only** (the outgoing custodian's 30 days, or a removed assistant): no stepper, Release, Edit details or Catalog; everything can still be read.
 - No extra cloud reads: everything shown is already on the device.
-- Property numbers still open their own window; they move into the preview as a **Units** tab in a later update.
+- `tests/e2e/units-tab.mjs` checks the Units tab: tagging, typing from field to field, condition, opening a unit from elsewhere, Edit details → Manage units, the side panel, a cloud update while typing, the School Head and view only.
 - `tests/e2e/item-preview.mjs` checks the tabs, chips, People and History, editing in place, the openers, view-only mode, the phone sheet and the computer side panel.
 - `tests/e2e/unsynced-marks.mjs` checks the Not synced yet marks: rows, Catalog, Item preview, an offline release slip, a delivery, the top chip count, and that they clear once synced.
 
@@ -226,7 +228,7 @@ Teachers request supplies from their own phones; the custodian reviews each requ
 **Teacher**
 1. Open the invite link (or scan the QR code) the custodian shared, or choose **Teacher** on the sign-in screen and paste the link or type the school code. The school's 6-digit DepEd **School ID** (e.g. `114656`) works too. Then type your name, position and grade/section once.
 
-   **School ID.** The ID comes from the school name in School info (`114656 - San Jose NHS`). When the custodian signs in or opens Invite, the app lists it under `schoolIds/114656`. Only an exact ID can be looked up, and each ID belongs to one school: the first to list it keeps it, and the Invite screen tells a second school that it's taken. School IDs are public, so anyone could find the school, but new teachers still wait for the custodian's **Approve**. After **New invite link**, the School ID alone no longer works and teachers need the new link or code.
+   **School ID.** The ID comes from the school name in School info (`114656 - San Jose NHS`). When the custodian signs in or opens Invite, the app lists it under `schoolIds/114656` (only when the listing is missing or out of date: another custodian device signing in writes nothing). Only an exact ID can be looked up, and each ID belongs to one school: the first to list it keeps it, and the Invite screen tells a second school that it's taken. School IDs are public, so anyone could find the school, but new teachers still wait for the custodian's **Approve**. After **New invite link**, the School ID alone no longer works and teachers need the new link or code.
    **Coming back without the code.** A teacher who joined (or later signed in) with Google can come back after **Leave**, on a new phone, or after clearing the browser: **Teacher** on the sign-in screen, then **Continue with Google** under *Joined before with Google?*. The same Google account gives the same Firebase account, and the app finds the school in `teacherSchools/{uid}`, a short list (up to 10) of the teacher's schools. The teacher's own phone writes it once their card exists, and only they can read it. Their name, requests, items and approval come back with no new **Approve**. With two or more schools it asks which one. A card merged into another name (**Same person as…**) is skipped. A teacher who joined **without Google** has no way back to the same name once they leave, since the anonymous account is gone. They join again with the link, code or School ID as a new name, and the custodian can use **Same person as…**. **Leave** says which case applies. In the code box, the school's **name** is not accepted: type the school code (letters and numbers, no spaces), the 6-digit School ID, or paste the whole link.
 2. Tap **New supply request**, search for items (e.g. “bond paper”, “ballpen”) or type anything not in the catalog, set quantities, add a purpose and a needed-by date, and send. **One request can hold up to 50 items:** search results stay open so you can tap several in a row (tap again for one more), and **Pick from the school’s supplies** lists the stock to tap. Items not sent yet stay on the phone if you close the form.
 3. Follow the status on the same screen: *To review → Approved → Being purchased (PR No.) → Supplied*, or *Declined* with the custodian’s reason. A pending request can still be cancelled.
@@ -317,6 +319,7 @@ Once a School Head is confirmed, more goes to their phone than PRs.
 - **View only.** The head's **Items** tab lists the whole school inventory, the same items, units, holders and history the custodian sees. It has a search (name, code, room, property number) and the filters *All, Equipment, Supplies, Low stock*. Tapping an item opens the Item preview with no Release and no stock in. It loads only when the head opens the tab, so the head's other tabs cost no extra reads.
 - **Helping encode.** In the preview, **Suggest a change** opens the usual edit form (room, details, quantity, units, date acquired…). The tab also has **New item** and **Scan ICS / PAR** for old slips. Nothing reaches the inventory yet: the change is kept on the head's phone as *Your change · not sent*. A yellow card lists the changes, with **Send to the custodian** and **Discard**. Once sent, the items show *Suggested · waiting for the custodian*, and the head can **Take it back** while it waits. Other changes (release, stock in, delete…) are refused on the head's phone.
 - **The custodian confirms.** The custodian (or an assistant) gets a notification and a banner on top of **Inventory**: *… suggested changes*. The review sheet shows each item and what the head changed. **Accept** applies the ticked items, so the custodian can untick some. **Decline** asks for a reason. If the custodian changed the same item meanwhile, the sheet says so. Only the fields the head changed are applied, and a quantity change is added to the custodian's current count. Accepted changes go into Change History as *suggested by the School Head* and sync as usual. The head gets *Accepted* or *Declined* (with the reason), and their phone goes back to the account's values.
+- **History.** **More → Suggestions from the School Head** (shown once the school has a School Head; the number beside it is how many are waiting) opens the same sheet: the suggestions waiting on top, then **History**, newest first: *Accepted* (with *2 of 4* when some items were unticked), *Declined* (with the reason) and *Taken back*, who answered and when. Open one to see each item and what the head changed (unticked items say *not accepted*); tap an item to open it. 15 show at first, then *Show more*. It uses the suggestions the custodian's phone already listens to, so no extra reads.
 - **Approvals stay separate.** PRs, RIS, write-offs and count reports still go through **Approve**.
 - **Rules.** The confirmed head can read `inventory`, `catalog`, `settings` and `releases`, but never write them. Suggestions are kept in `suggestions`. Only the head creates one (waiting, with their own uid, 1–150 items) and may cancel their own while it waits. Staff accept or decline a waiting one, and the custodian may delete it. **Publish the updated `firestore.rules`** for this to work.
 
@@ -448,8 +451,8 @@ three extra columns in the CSV export — handy for the RPCPPE physical count an
 
 Equipment can be tracked **per unit** instead of only as a count:
 
-1. In the dashboard ledger, tap the purple **QR** button on an equipment item (or *Tag units* in
-   the item editor), then **Tag N units**. Each unit gets a property number such as
+1. Open an equipment item (tap its row) and go to the **Units** tab (or *Tag units* in Edit
+   details), then **Tag N units**. Each unit gets a property number such as
    `SJNHS-2026-0001` (prefix = school initials, or set your own under *School Info*). Any number
    can be edited to match a sticker that is already on the item. The condition counts already
    recorded for the item carry over to the new units.
@@ -621,7 +624,7 @@ Teachers who join with the invite link are listed automatically (their phone sen
 
 **Items delivered** on a Purchase Request now adds the items to the stock in Inventory. Items that weren't in Inventory yet are added as new items. The requests then show *Ready* to the teacher until you release them.
 
-**Assigned to** (Property Numbers) suggests the teachers. Picking one links the unit to that teacher's account. Names typed earlier or read from a scanned ICS (e.g. *MR. JUAN D. DELA CRUZ*) are linked automatically when *Juan Dela Cruz* joins. Titles, middle initials and *Last, First* order are ignored. Two teachers with the same name are left for you to pick.
+**Assigned to** (the Units tab) suggests the teachers. Picking one links the unit to that teacher's account. Names typed earlier or read from a scanned ICS (e.g. *MR. JUAN D. DELA CRUZ*) are linked automatically when *Juan Dela Cruz* joins. Titles, middle initials and *Last, First* order are ignored. Two teachers with the same name are left for you to pick.
 
 Every release, assignment and return is kept as a record under the school (`releases`), and nothing is ever deleted. A teacher can read only the records made out to their own account. Teachers can't see the school inventory or the list of other teachers.
 
@@ -629,12 +632,12 @@ Every release, assignment and return is kept as a record under the school (`rele
 
 ## Transfers between teachers and rooms
 
-**Transfer** on a person's page (or on a unit in Property Numbers) moves equipment to another teacher, or to a new room with the same teacher:
+**Transfer** on a person's page (or on a unit in the Units tab) moves equipment to another teacher, or to a new room with the same teacher:
 
 - Tick the units, pick the new accountable person (or *Same person, new room*), the new room, the transfer type (**Donation**, **Reassignment**, **Relocate**, **Others**) and the reason.
 - Items below ₱50,000 go on an **ITR** (Inventory Transfer Report, Annex A.5), items of ₱50,000 and up on a **PTR** (Property Transfer Report, Appendix 76). Each line keeps the unit's earlier ICS/PAR no.; the school head signs as *Approved by*.
 - The new holder gets a notification and confirms the slip under **New from the property custodian**. The old holder's list drops the units and their history shows *Transferred out*. A room change alone isn't a new item to confirm.
-- Every unit in Property Numbers has an **Accountability history**: issued, transferred, moved and returned, with the slip numbers.
+- Every unit in the Units tab has an **Accountability history**: issued, transferred, moved and returned, with the slip numbers.
 - **Take back** and accepted returns print an **RRSP** (Receipt of Returned Semi-Expendable Property, Annex A.6) with its own number.
 
 ## Government forms
@@ -644,7 +647,7 @@ Every release, assignment and return is kept as a record under the school (`rele
 | Form | What it uses |
 | --- | --- |
 | **RPCPPE** (Appendix 73) / **RPCSP** (Annex A.8) – physical count | Each tagged unit counts as found when its QR was scanned or it was checked in the physical count since the chosen date. Shortage quantity and value, holder and room in Remarks. |
-| **IIRUP** (Appendix 74) / **IIRUSP** (Annex A.10) – unserviceable property | Units marked *Unserviceable* in Property Numbers, with blank inspection, disposal and sales columns to fill in by hand. |
+| **IIRUP** (Appendix 74) / **IIRUSP** (Annex A.10) – unserviceable property | Units marked *Unserviceable* in the Units tab, with blank inspection, disposal and sales columns to fill in by hand. |
 | **RLSDDP** (Appendix 75) / **RLSDDSP** (Annex A.9) – lost, stolen, damaged or destroyed | Tick the units (those a teacher reported *Lost or missing* start ticked), the nature, police report and circumstances. The accountable officer, designation, office and PAR/ICS no. come from the unit's holder. |
 | **Property Card** (Appendix 69) / **SPC** (Annex A.1) | One card per equipment item. Quantities added or dropped (from the change history) change the balance; every PAR / ICS / PTR / ITR shows who received the units, and RRSPs show returns. Issued units stay on the balance, since they are still the school's property. *Print all* puts one card per page. |
 | **RegSPI** (Annex A.4) – registry of semi-expendable property issued | ICS (issued), ITR (re-issued) and RRSP (returned) in the period, with the quantity still with end users and its amount. |
@@ -655,7 +658,7 @@ Every release, assignment and return is kept as a record under the school (`rele
 
 ### Date acquired, useful life and depreciation
 
-Each tagged unit's card (Property Numbers) has **Date acquired** and **Estimated useful life**. Scanning an ICS on receipt fills the date with the slip's date. Later ICS/PAR/PTR dates are issue dates, so they are not used. Filling in one unit offers to copy the value to the item's other units. A blank useful life uses the usual life for the category (10 years for furniture and measuring equipment, 5 years for the rest), marked *est.* Both are columns in the property register CSV.
+Each tagged unit's card (the Units tab) has **Date acquired** and **Estimated useful life**. Scanning an ICS on receipt fills the date with the slip's date. Later ICS/PAR/PTR dates are issue dates, so they are not used. Filling in one unit offers to copy the value to the item's other units. A blank useful life uses the usual life for the category (10 years for furniture and measuring equipment, 5 years for the rest), marked *est.* Both are columns in the property register CSV.
 
 - They fill the Date Acquired and Estimated Useful Life columns on the Property Card, RegSPI, PAR, ICS/ITR/PTR and IIRUP. A card's first line is the real receipt date instead of *Balance forward* when every unit has one.
 - **Depreciation** (PPE only, ₱50,000 and up): straight-line, 5 % residual value, charged monthly from the month after acquisition. The unit card shows the carrying amount, and the IIRUP fills *Accumulated Depreciation* and *Carrying Amount* with a total row. Semi-expendable property is expensed when issued, so it shows none.
