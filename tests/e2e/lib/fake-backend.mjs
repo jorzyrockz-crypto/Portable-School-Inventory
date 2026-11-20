@@ -363,11 +363,12 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
       if (!okBody) deny('leave body', { path, status: data.status });
       if (kind === 'create') {
         if (isStaff(ctx, sid) || (isMember(ctx, sid) && data.uid === ctx.uid && data.status === 'applied' && data.by === 'teacher')) return;
+        if (isHeadOf(ctx, sid) && data.uid === ctx.uid && data.status === 'applied' && data.by === 'head') return;
         deny('leave create', { path });
       }
       const ch = changedKeys(before, data);
       if (isStaff(ctx, sid) && (data.uid ?? '') === (before.uid ?? '')) return;
-      if (isMember(ctx, sid) && before.uid === ctx.uid && before.status === 'applied' && data.status === 'cancelled' &&
+      if ((isMember(ctx, sid) || isHeadOf(ctx, sid)) && before.uid === ctx.uid && before.status === 'applied' && data.status === 'cancelled' &&
           ch.every(k => ['status', 'cancelledMs', 'log', 'updatedAt'].includes(k))) return;
       deny('leave update', { path, ch, status: data.status });
     }

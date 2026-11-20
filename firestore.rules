@@ -665,6 +665,9 @@ service cloud.firestore {
       // (their own, status 'applied') and may cancel it while it is still 'applied'; the AO (the
       // custodian's account, or an assistant) receives, recommends, prepares Form 6 and records each
       // step. The School Head approves through approvals (kind 'leave'). A teacher reads only their own.
+      // The AO applies for their own leave as staff (by 'self'); the School Head applies for theirs
+      // (by 'head', approved by the Division) and may cancel it while it is still 'applied'.
+      // The ₱250 log (p250: paid, turned over to the Faculty President) is written by the AO.
       match /leaves/{leaveId} {
         function leaveBodyOk() {
           let d = request.resource.data;
@@ -677,10 +680,12 @@ service cloud.firestore {
           || (signedIn() && resource.data.uid == request.auth.uid));
         allow create: if leavePilot(schoolId) && leaveBodyOk() && (isStaff(schoolId)
           || (isMember(schoolId) && request.resource.data.uid == request.auth.uid
-              && request.resource.data.status == 'applied' && request.resource.data.by == 'teacher'));
+              && request.resource.data.status == 'applied' && request.resource.data.by == 'teacher')
+          || (isHead(schoolId) && request.resource.data.uid == request.auth.uid
+              && request.resource.data.status == 'applied' && request.resource.data.by == 'head'));
         allow update: if leavePilot(schoolId) && leaveBodyOk() && (
           (isStaff(schoolId) && request.resource.data.get('uid', '') == resource.data.get('uid', ''))
-          || (isMember(schoolId) && resource.data.uid == request.auth.uid && resource.data.status == 'applied'
+          || ((isMember(schoolId) || isHead(schoolId)) && resource.data.uid == request.auth.uid && resource.data.status == 'applied'
               && request.resource.data.status == 'cancelled'
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledMs', 'log', 'updatedAt'])));
         allow delete: if isCustodian(schoolId);   // Reset app only

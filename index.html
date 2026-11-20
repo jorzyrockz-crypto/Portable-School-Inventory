@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="259291273eac">
+  <meta name="app-version" content="433dd74db13f">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1410,6 +1410,7 @@
       <button id="hdTab-items" role="tab" onclick="setHeadTab('items')"><i class="ph-bold ph-package text-base"></i> Items</button>
       <button id="hdTab-people" role="tab" onclick="setHeadTab('people')"><i class="ph-bold ph-users-three text-base"></i> People</button>
       <button id="hdTab-history" role="tab" onclick="setHeadTab('history')"><i class="ph-bold ph-clock-counter-clockwise text-base"></i> History</button>
+      <button id="hdTab-leave" role="tab" onclick="setHeadTab('leave')" class="hidden"><i class="ph-bold ph-calendar-check text-base"></i> Leave</button>
     </div>
     <p id="hdSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
     <div id="hdBody" class="space-y-5"></div>
@@ -15954,7 +15955,20 @@
         && (uid ? l.uid === uid : (l.name || '').toLowerCase() === String(name || '').toLowerCase()) && lvMonth(l.from) === month)
         .reduce((n, l) => n + (Number((l.rec && l.rec.withPay) != null ? (Number(l.rec.withPay) || 0) + (Number(l.rec.withoutPay) || 0) : l.days) || 0), 0);
     }
-    const lvActor = () => (isTeacherDevice() ? ((reqRole.me || {}).name || 'Teacher') : (actorName() || 'Property custodian'));
+    const lvActor = () => (isTeacherDevice() ? ((reqRole.me || {}).name || 'Teacher') : isHeadDevice() ? ((reqRole.me || {}).name || 'School Head') : (actorName() || 'Property custodian'));
+    // Applying for one's own leave: a teacher, the School Head (their own leave is approved by the
+    // Division, so the AO prepares Form 6 without the Approve tab), or the AO on the custodian's
+    // account ("Apply for my leave": it goes to the School Head like everyone's).
+    function lvApplicant() {
+      const uid = cloud.user ? cloud.user.uid : '';
+      const me = reqRole.me || {};
+      if (isHeadDevice()) return { by: 'head', uid, name: me.name || (headMe && headMe.name) || '', position: (headMe && headMe.designation) || me.designation || 'School Head', office: reqRole.schoolName || '' };
+      if (isCustodianDevice()) return { by: 'self', uid, name: actorName() || '', position: localStorage.getItem(LV_MYPOS_KEY) || 'Administrative Officer', office: reqRole.schoolName || schoolInfo.school || '' };
+      return { by: 'teacher', uid, name: me.name || '', position: me.position || '', office: me.office || '' };
+    }
+    const LV_MYPOS_KEY = 'custodian_leave_my_position_v1';
+    const lvIsOwn = l => !!(l && l.uid && cloud.user && l.uid === cloud.user.uid);
+    const lvHeadOk = () => isHeadDevice() && !!headMe && headMe.status === 'active';
     const lvCanManage = () => isCustodianDevice() && !isViewOnly();
     const lvTodo = () => lvList.filter(l => ['applied', 'returned', 'approved', 'review', 'handed', 'signed'].includes(l.status));
     const lvChip = s => { const x = LV_STATUS[s] || LV_STATUS.applied; return `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md border text-[11px] font-bold ${x.tone}" data-lv-status="${lvE(s)}">${lvE(x.label)}</span>`; };
@@ -15962,7 +15976,8 @@
     // ---- Reading --------------------------------------------------------------------------
     function leaveSync() {
       if (lvUnsub || !leaveOn() || !cloud.db || !cloud.user || !cloud.sdk) return;
-      if (isHeadDevice() || isIncomingDevice()) return;
+      if (isIncomingDevice()) return;
+      if (isHeadDevice() && !lvHeadOk()) return;   // the School Head: their own leave
       if (isTeacherDevice() && myMemberStatus() !== 'active') return;
       if (isCustodianDevice() && (viewOnlyEnded() || assistantRemoved())) return;
       const F = cloud.sdk;
@@ -15976,7 +15991,8 @@
         if (!fromCacheOf(snap.metadata)) { leaveApplyDecisions(); lcSweep(); }
       };
       const fail = err => { console.warn('leaves', err); lvError = cloudErrorText(err); lvLoaded = true; lvRender(); };
-      lvUnsub = isTeacherDevice()
+      const own = isTeacherDevice() || isHeadDevice();
+      lvUnsub = own
         ? F.onSnapshot(F.query(lvCol(), F.where('uid', '==', cloud.user.uid)), { includeMetadataChanges: true }, on, fail)
         : listenSynced(lvCol(), ['createdAt', 'updatedAt'], on, fail);
       // Leave cards (the teacher: their own)
@@ -15990,7 +16006,7 @@
         if (!fromCacheOf(snap.metadata)) lcSweep();
       };
       const failCards = err => { console.warn('leave cards', err); lcError = cloudErrorText(err); lcLoaded = true; lvRender(); };
-      lcUnsub = isTeacherDevice()
+      lcUnsub = own
         ? F.onSnapshot(F.query(lcCol(), F.where('uid', '==', cloud.user.uid)), { includeMetadataChanges: true }, onCards, failCards)
         : listenSynced(lcCol(), ['createdAt', 'updatedAt'], onCards, failCards);
     }
@@ -16005,6 +16021,7 @@
         lvNav();
         if (activeMainView === 'LEAVE') renderLeaveView();
         if (activeMainView === 'REQUESTER' && isTeacherDevice()) { lvTeacherDot(); if (teacherTab === 'leave') renderTeacherLeave(); }
+        if (activeMainView === 'HEAD' && isHeadDevice()) renderHeadLeave();
         if (lvSheet) renderLvModal();
         if (activeMainView === 'HOME' && typeof renderHomeAttention === 'function') renderHomeAttention();
       } catch (e) { console.warn('leave render', e); }
@@ -16053,11 +16070,12 @@
       if (isCustodianDevice()) {
         notifCheck('leaves', list.map(l => ({
           key: 'lv:' + l.id, sig: l.status,
-          make: prev => (prev === undefined && l.status === 'applied' && l.by === 'teacher')
-            ? { title: `Leave application from ${l.name || 'a teacher'}`, body: `${lvTypeText(l)} · ${lvDatesText(l)} · ${lvDays(l.days)}`, icon: 'ph-calendar-plus', tone: 'amber', go: 'leave', person: l.uid || null, who: l.name || '' }
+          make: prev => (prev === undefined && l.status === 'applied' && (l.by === 'teacher' || l.by === 'head'))
+            ? { title: `Leave application from ${l.by === 'head' ? 'the School Head, ' : ''}${l.name || 'a teacher'}`, body: `${lvTypeText(l)} · ${lvDatesText(l)} · ${lvDays(l.days)}`, icon: 'ph-calendar-plus', tone: 'amber', go: 'leave', person: l.uid || null, who: l.name || '' }
             : null
         })), fromCacheOf(meta));
-      } else if (isTeacherDevice()) {
+      } else if (isTeacherDevice() || isHeadDevice()) {
+        const head = isHeadDevice();
         notifCheck('leaves', list.map(l => ({
           key: 'lv:' + l.id, sig: l.status,
           make: prev => {
@@ -16065,15 +16083,15 @@
             const what = `${lvTypeText(l)} · ${lvDatesText(l)}`;
             const t = {
               sh: ['Your leave application was received', 'The AO sent it to the School Head', 'ph-tray-arrow-down', 'brand'],
-              approved: ['Your leave was approved', `${what} · the AO is preparing Form 6`, 'ph-seal-check', 'emerald'],
+              approved: head ? ['Your leave application was received', `${what} · the AO is preparing Form 6 for the Division`, 'ph-tray-arrow-down', 'brand'] : ['Your leave was approved', `${what} · the AO is preparing Form 6`, 'ph-seal-check', 'emerald'],
               hold: ['Your leave was approved', `${what} · Form 6 is kept on hold`, 'ph-seal-check', 'emerald'],
               returned: ['Your leave application was returned', `${what}${l.returned && l.returned.note ? ` · “${l.returned.note}”` : ''}`, 'ph-arrow-u-up-left', 'rose'],
               review: ['Form 6 is ready · review and print it', `${what} · sign the printed copy and hand it in at the office`, 'ph-printer', 'teal'],
-              signed: ['Form 6 signed by the School Head', what, 'ph-pen-nib', 'teal'],
+              signed: head ? null : ['Form 6 signed by the School Head', what, 'ph-pen-nib', 'teal'],
               done: ['Form 6 received by the Division', what, 'ph-check-circle', 'emerald'],
               declined: ['Your leave application was declined', `${what}${l.declined && l.declined.note ? ` · ${l.declined.note}` : ''}`, 'ph-x-circle', 'rose']
             }[l.status];
-            return t ? { title: t[0], body: t[1], icon: t[2], tone: t[3], go: 'teacher-leave' } : null;
+            return t ? { title: t[0], body: t[1], icon: t[2], tone: t[3], go: head ? 'head-leave' : 'teacher-leave' } : null;
           }
         })), fromCacheOf(meta));
       }
@@ -16083,7 +16101,7 @@
     function lvSteps(l) {
       const at = { applied: 0, sh: 1, returned: 1, approved: 2, hold: 2, review: 3, handed: 3, signed: 4, done: 5 }[l.status];
       if (at === undefined) return '';
-      const steps = [['Applied', 0], ['School Head', 1], ['Form 6', 2], ['Signed', 4], ['Division', 5]];
+      const steps = [['Applied', 0], [l.by === 'head' ? 'AO' : 'School Head', 1], ['Form 6', 2], ['Signed', 4], ['Division', 5]];
       return `<div class="flex items-center gap-1 mt-2" aria-label="Progress" data-lv-steps="${at}">${steps.map(([n, min]) => {
         const on = at >= min;
         const bad = l.status === 'returned' && min === 1;
@@ -16098,7 +16116,7 @@
           <button type="button" onclick="openLvSheet('view', '${lvE(l.id)}')" class="w-full text-left flex items-start gap-3">
             <span class="w-10 h-10 shrink-0 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center"><i class="ph-duotone ph-calendar-check text-2xl"></i></span>
             <span class="min-w-0 flex-1">
-              ${mine ? '' : `<span class="block text-sm font-extrabold text-slate-900 truncate">${lvE(l.name)}</span>`}
+              ${mine ? '' : `<span class="block text-sm font-extrabold text-slate-900 truncate">${lvE(l.name)}${l.by === 'self' ? ' <span class="text-[11px] font-bold text-slate-500">· the AO</span>' : l.by === 'head' ? ' <span class="text-[11px] font-bold text-violet-700">· School Head</span>' : ''}</span>`}
               <span class="block text-sm ${mine ? 'font-extrabold text-slate-900' : 'font-semibold text-slate-700'} leading-snug">${lvE(lvTypeText(l))}</span>
               <span class="block text-[11px] text-slate-500">${lvE(lvDatesText(l))} · ${lvDays(l.rec ? (Number(l.rec.withPay) || 0) + (Number(l.rec.withoutPay) || 0) : l.days)} · ${lvE(use.short)}</span>
               <span class="mt-1 flex flex-wrap items-center gap-1.5">${lvChip(l.status)}${l.sending ? '<span class="text-[11px] text-slate-500"><i class="ph-bold ph-cloud-arrow-up"></i> sending</span>' : ''}</span>
@@ -16121,15 +16139,24 @@
       const pane = document.getElementById('rqLeavePane');
       if (!pane) return;
       if (myMemberStatus() !== 'active') { pane.innerHTML = teacherStatusBanner(); return; }
+      pane.innerHTML = lvMineHTML();
+    }
+    // The School Head's Leave tab: their own leave
+    function renderHeadLeave() {
+      const pane = document.querySelector('#hdBody [data-hd-pane="leave"]');
+      if (pane && lvHeadOk()) pane.innerHTML = lvMineHTML();
+    }
+    function lvMineHTML() {
       leaveSync();
+      const head = isHeadDevice();
       const open = lvList.filter(l => LV_OPEN.includes(l.status));
       const past = lvList.filter(l => !LV_OPEN.includes(l.status));
       const card = lcMine();
-      pane.innerHTML = `
+      return `
         <button id="lvApplyBtn" onclick="openLvSheet('apply')" class="w-full h-16 rounded-2xl bg-teal-700 hover:bg-teal-800 active:scale-[0.98] text-white font-extrabold text-base shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 transition">
           <i class="ph-bold ph-calendar-plus text-2xl"></i> Apply for leave
         </button>
-        <p class="text-[11px] text-slate-500 px-1">Goes to the AO, who checks it and sends it to the School Head. You get Form 6 here to print and sign.</p>
+        <p class="text-[11px] text-slate-500 px-1">${head ? 'Goes to the AO, who prepares Form 6 for the Division (your leave is approved there). You get Form 6 here to print and sign.' : 'Goes to the AO, who checks it and sends it to the School Head. You get Form 6 here to print and sign.'}</p>
         ${card ? `<button type="button" onclick="openLvSheet('card', '${lvE(card.id)}')" id="lcMineBtn" class="w-full text-left rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-center gap-3">
           <span class="min-w-0 flex-1"><span class="block text-[11px] font-bold uppercase tracking-wider text-slate-500">My leave credits</span><span class="mt-1.5 flex flex-wrap gap-1.5" data-lc-mine>${lcChips(card)}</span></span>
           <span class="shrink-0 text-xs font-bold text-teal-700 flex items-center gap-1">Leave card <i class="ph-bold ph-caret-right"></i></span></button>` : ''}
@@ -16150,7 +16177,7 @@
     function setLvFilter(f) { lvFilter = f; renderLeaveView(); }
     function setLvQuery(v) { lvQuery = v; const box = document.getElementById('lvList'); if (box) box.innerHTML = lvPageHTML(); }
     function setLvPage(p) { lvPage = p; lvQuery = ''; renderLeaveView(); }
-    const lvPageHTML = () => (lvPage === 'cards' ? lcListHTML() : lvListHTML());
+    const lvPageHTML = () => (lvPage === 'cards' ? lcListHTML() : lvPage === 'p250' ? p250HTML() : lvListHTML());
     function lvListHTML() {
       const q = lvQuery.trim().toLowerCase();
       const match = l => !q || `${l.name} ${lvTypeText(l)} ${lvDatesText(l)} ${l.office || ''} ${(l.rec && l.rec.memo) || ''} ${(l.form && l.form.memo) || ''}`.toLowerCase().includes(q);
@@ -16173,7 +16200,7 @@
       if (!leaveOn()) { box.innerHTML = ''; return; }
       leaveSync();
       if (document.activeElement && document.activeElement.id === 'lvSearch') { const l = document.getElementById('lvList'); if (l) { l.innerHTML = lvPageHTML(); return; } }
-      const cards = lvPage === 'cards';
+      const cards = lvPage === 'cards', p250 = lvPage === 'p250';
       const seg = (k, label, icon) => `<button type="button" onclick="setLvPage('${k}')" data-lv-page="${k}" aria-pressed="${lvPage === k}" class="h-10 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 ${lvPage === k ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5' : 'text-slate-500'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
       const n = lvTodo().length;
       const chip = (k, label) => `<button type="button" onclick="setLvFilter('${k}')" data-lv-filter="${k}" aria-pressed="${lvFilter === k}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${lvFilter === k ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700'}">${label}</button>`;
@@ -16185,10 +16212,12 @@
           </div>
           <span class="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">Pilot</span>
         </div>
-        <div class="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-200/70" role="tablist">${seg('apps', 'Applications', 'ph-tray')}${seg('cards', 'Leave cards', 'ph-address-book')}</div>
-        ${lvCanManage() && !cards ? `<button onclick="openLvSheet('apply')" id="lvEncodeBtn" class="w-full h-12 rounded-2xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-2"><i class="ph-bold ph-keyboard text-teal-700"></i> Encode a paper form</button>` : ''}
+        <div class="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-slate-200/70" role="tablist">${seg('apps', 'Applications', 'ph-tray')}${seg('cards', 'Leave cards', 'ph-address-book')}${seg('p250', '₱250', 'ph-coins')}</div>
+        ${lvCanManage() && !cards && !p250 ? `<div class="grid grid-cols-2 gap-2">
+          <button onclick="openLvSheet('apply')" id="lvEncodeBtn" class="h-12 rounded-2xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-2"><i class="ph-bold ph-keyboard text-teal-700"></i> Encode a paper form</button>
+          <button onclick="openLvSheet('apply', null, 'self')" id="lvSelfBtn" class="h-12 rounded-2xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-2"><i class="ph-bold ph-calendar-plus text-teal-700"></i> Apply for my leave</button></div>` : ''}
         ${(cards ? lcError : lvError) ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2" data-lv-error>${lvE(cards ? lcError : lvError)} · Ask the app owner to publish the latest database rules.</p>` : ''}
-        <div class="space-y-2">
+        <div class="space-y-2 ${p250 ? 'hidden' : ''}">
           <div class="relative"><i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
             <input id="lvSearch" type="search" value="${lvE(lvQuery)}" oninput="setLvQuery(this.value)" placeholder="${cards ? 'Search names, positions' : 'Search names, kinds of leave, dates, memos'}" class="w-full h-11 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-teal-500 outline-none"></div>
           ${cards ? '' : `<div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('todo', `To do${n ? ` <span class="font-mono">${n}</span>` : ''}`)}${chip('all', 'All')}${chip('done', 'Done')}</div>`}
@@ -16216,7 +16245,8 @@
       const v = lvSheet.view;
       if (v !== 'view' && v !== 'card' && lvSheet.drawn) return;   // forms keep what is being typed
       const html = v === 'apply' ? lvApplyHTML() : v === 'receive' ? lvReceiveHTML() : v === 'prepare' ? lvPrepareHTML() : v === 'do' ? lvDoHTML()
-        : v === 'card' ? lcCardHTML() : v === 'cardNew' ? lcNewHTML() : v === 'cardEntry' ? lcEntryHTML() : v === 'monthly' ? lcMonthlyHTML() : lvViewHTML();
+        : v === 'card' ? lcCardHTML() : v === 'cardNew' ? lcNewHTML() : v === 'cardEntry' ? lcEntryHTML() : v === 'monthly' ? lcMonthlyHTML()
+        : v === 'p250pay' ? p250PayHTML() : v === 'p250turn' ? p250TurnHTML() : lvViewHTML();
       if (!html) { closeLvModal(); return; }
       body.innerHTML = html;
       lvSheet.drawn = true;
@@ -16241,16 +16271,22 @@
 
     // Apply (teacher) or encode a paper form (AO)
     function lvApplyHTML() {
-      const enc = isCustodianDevice();
-      if (enc && !lvCanManage()) return '';
-      if (!enc && myMemberStatus() !== 'active') return '';
+      const self = isCustodianDevice() && lvSheet.mode === 'self';
+      const enc = isCustodianDevice() && !self;
+      if (isCustodianDevice() && !lvCanManage()) return '';
+      if (isTeacherDevice() && myMemberStatus() !== 'active') return '';
+      if (isHeadDevice() && !lvHeadOk()) return '';
+      const ap = lvApplicant();
+      const own = ap.by !== 'teacher';           // the AO or the School Head, for themselves
+      const uses = Object.entries(LV_USE).filter(([k]) => !(own && !enc && k === 'p250'));   // ₱250: teachers
+      const pick = own && !enc ? 'vlsl' : uses[0][0];
       const today = localISODate();
       const roster = enc ? teacherRoster().filter(t => t.uid) : [];
       const myCard = enc ? null : lcMine();
       const myBal = myCard ? lcBalances(myCard) : null;
       const left = k => (!myBal ? '' : k === 'vsc' || k === 'lsc' ? `${lcNum(myBal[k])} left` : k === 'vlsl' && (lcHas(myCard, 'vl') || lcHas(myCard, 'sl')) ? `VL ${lcNum(myBal.vl)} · SL ${lcNum(myBal.sl)} left` : '');
       return `
-        ${lvHead('ph-calendar-plus', enc ? 'Encode a leave application' : 'Apply for leave', enc ? 'From a paper Form 6 handed in at the office' : 'CS Form No. 6 · the AO checks it first')}
+        ${lvHead('ph-calendar-plus', enc ? 'Encode a leave application' : self ? 'Apply for my leave' : 'Apply for leave', enc ? 'From a paper Form 6 handed in at the office' : ap.by === 'head' ? 'CS Form No. 6 · the AO prepares it; the Division approves' : self ? 'CS Form No. 6 · receive it next, then it goes to the School Head' : 'CS Form No. 6 · the AO checks it first')}
         <div class="grid grid-cols-2 gap-3">
           ${enc ? `
             ${lvLbl('Teacher or staff', `<select id="lvWho" onchange="lvApplyWho()" class="${LV_IN}"><option value="">Someone else (type the name)</option>${roster.map(t => `<option value="${lvE(t.uid)}">${lvE(t.name)}</option>`).join('')}</select>`, 'col-span-2')}
@@ -16258,6 +16294,9 @@
             ${lvLbl('Position', `<input id="lvPos" type="text" maxlength="80" class="${LV_IN}" placeholder="e.g. Teacher III">`)}
             ${lvLbl('Office / grade', `<input id="lvOffice" type="text" maxlength="80" class="${LV_IN}" placeholder="e.g. Grade 4">`)}
             ${lvLbl('Date received', `<input id="lvRecv" type="date" value="${today}" max="${today}" class="${LV_IN}">`, 'col-span-2')}` : ''}
+          ${own && !enc ? `
+            ${lvLbl('Name', `<input id="lvName" type="text" maxlength="120" value="${lvE(ap.name)}" class="${LV_IN}" placeholder="Your name">`, 'col-span-2')}
+            ${lvLbl('Position', `<input id="lvPos" type="text" maxlength="80" value="${lvE(ap.position)}" class="${LV_IN}" placeholder="e.g. Administrative Officer II">`, 'col-span-2')}` : ''}
           ${lvLbl('6.A Type of leave', `<select id="lvType" onchange="lvApplyDetail()" class="${LV_IN}">${Object.entries(LV_TYPES).map(([k, t]) => `<option value="${k}">${lvE(t.label)}</option>`).join('')}</select>`, 'col-span-2')}
           <div id="lvDetail" class="col-span-2 space-y-2"></div>
           ${lvLbl('From', `<input id="lvFrom" type="date" value="${today}" onchange="lvApplyDates()" class="${LV_IN}">`)}
@@ -16266,9 +16305,9 @@
           ${lvLbl('6.D Commutation', `<select id="lvComm" class="${LV_IN}"><option value="no">Not requested</option><option value="yes">Requested</option></select>`)}
           <div class="col-span-2">
             <span class="block text-[11px] font-bold uppercase text-slate-500 mb-1">What to use</span>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">${Object.entries(LV_USE).map(([k, u], i) => `
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">${uses.map(([k, u]) => `
               <label class="flex items-start gap-2 rounded-xl border border-slate-200 px-3 py-2 cursor-pointer has-[:checked]:border-teal-500 has-[:checked]:bg-teal-50">
-                <input type="radio" name="lvUse" value="${k}" ${i === 0 ? 'checked' : ''} onchange="lvApplyUse()" class="mt-0.5 accent-teal-700">
+                <input type="radio" name="lvUse" value="${k}" ${k === pick ? 'checked' : ''} onchange="lvApplyUse()" class="mt-0.5 accent-teal-700">
                 <span class="min-w-0"><span class="block text-xs font-bold text-slate-800">${lvE(u.label)}</span>${u.hint ? `<span class="block text-[11px] text-slate-500">${lvE(u.hint)}</span>` : ''}${left(k) ? `<span class="block text-[11px] font-bold text-teal-700" data-lv-left="${k}">${lvE(left(k))}</span>` : ''}</span>
               </label>`).join('')}</div>
             <p id="lvUseNote" class="hidden mt-1.5 text-[11px] font-semibold"></p>
@@ -16276,7 +16315,7 @@
           ${lvLbl('Reason or note to the AO (optional)', `<textarea id="lvReason" maxlength="600" rows="2" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-teal-500" placeholder="e.g. Family matter in Bohol"></textarea>`, 'col-span-2')}
         </div>
         <p id="lvErr" class="hidden rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2"></p>
-        <button onclick="lvSaveApply()" id="lvApplySave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-paper-plane-tilt"></i> ${enc ? 'Save the application' : 'Send to the AO'}</button>`;
+        <button onclick="lvSaveApply()" id="lvApplySave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-paper-plane-tilt"></i> ${enc ? 'Save the application' : self ? 'Save my application' : 'Send to the AO'}</button>`;
     }
     function lvApplyWho() {
       const t = teacherRoster().find(x => x.uid === lvVal('lvWho'));
@@ -16303,7 +16342,7 @@
       lvApplyUse();
     }
     function lvApplyWhoKey() {
-      if (!isCustodianDevice()) return { uid: cloud.user ? cloud.user.uid : '', name: (reqRole.me || {}).name || '' };
+      if (!isCustodianDevice() || (lvSheet && lvSheet.mode === 'self')) { const ap = lvApplicant(); return { uid: ap.uid, name: ap.name }; }
       return { uid: lvVal('lvWho'), name: lvVal('lvName') };
     }
     function lvApplyUse() {
@@ -16328,22 +16367,28 @@
     }
     async function lvSaveApply() {
       if (!leaveOn() || !cloud.db || !cloud.user) return;
-      const enc = isCustodianDevice();
-      if (enc && !lvCanManage()) return;
+      const self = isCustodianDevice() && !!lvSheet && lvSheet.mode === 'self';
+      const enc = isCustodianDevice() && !self;
+      if (isCustodianDevice() && !lvCanManage()) return;
+      if (isHeadDevice() && !lvHeadOk()) return;
+      const ap = lvApplicant();
+      const own = ap.by !== 'teacher' && !enc;
       const type = lvVal('lvType'), from = lvVal('lvFrom'), to = lvVal('lvTo') || from, use = lvRadio('lvUse') || 'none';
       const days = Math.round((Number(lvVal('lvDays')) || 0) * 2) / 2;
       const typeOther = type === 'OTH' ? lvVal('lvTypeOther').slice(0, 120) : '';
-      const me = reqRole.me || {};
       const t = enc ? teacherRoster().find(x => x.uid === lvVal('lvWho')) : null;
-      const name = (enc ? lvVal('lvName') || (t && t.name) : me.name) || '';
+      const name = (enc ? lvVal('lvName') || (t && t.name) : own ? lvVal('lvName') : ap.name) || '';
       if (enc && !name) return lvErr('Type the name, or pick the teacher.');
+      if (!name) return lvErr(own ? 'Type your name.' : 'Your name is missing. Ask the property custodian to check your details.');
+      const position = enc ? lvVal('lvPos') || (t && t.position) || '' : own ? lvVal('lvPos') : ap.position;
+      if (self && position) { try { localStorage.setItem(LV_MYPOS_KEY, position.slice(0, 80)); } catch (e) {} }
       if (!from) return lvErr('Pick the first day of the leave.');
       if (to < from) return lvErr('The last day is before the first day.');
       if (!(days > 0) || days > 60) return lvErr('Type the number of working days (up to 60).');
       if (type === 'OTH' && !typeOther) return lvErr('Others: write what kind of leave.');
       if (use === 'p250') {
         if (days % 1) return lvErr('₱250 is for a whole-day absence.');
-        const used = lvP250Used(enc ? lvVal('lvWho') : cloud.user.uid, name, lvMonth(from), null);
+        const used = lvP250Used(enc ? lvVal('lvWho') : ap.uid, name, lvMonth(from), null);
         if (used + days > LV_P250_MAX) return lvErr(`₱250 is allowed ${LV_P250_MAX} times a month. ${used ? `${used} already this month.` : ''}`.trim());
       }
       lvErr('');
@@ -16351,20 +16396,20 @@
       const ref = F.doc(lvCol());
       const now = Date.now();
       const doc = cleanJSON({
-        uid: enc ? (t ? t.uid : '') : cloud.user.uid,
-        name: name.slice(0, 120), position: String(enc ? lvVal('lvPos') || (t && t.position) || '' : me.position || '').slice(0, 80),
-        office: String(enc ? lvVal('lvOffice') || (t && t.office) || '' : me.office || '').slice(0, 80),
-        school: String(reqRole.schoolName || '').slice(0, 160), by: enc ? 'ao' : 'teacher',
+        uid: enc ? (t ? t.uid : '') : ap.uid,
+        name: name.slice(0, 120), position: String(position || '').slice(0, 80),
+        office: String(enc ? lvVal('lvOffice') || (t && t.office) || '' : ap.office || '').slice(0, 80),
+        school: String(reqRole.schoolName || '').slice(0, 160), by: enc ? 'ao' : ap.by,
         type, typeOther, detail: lvReadDetail(type), from, to, days, comm: lvVal('lvComm') || 'no', use, reason: lvVal('lvReason').slice(0, 600),
         status: 'applied', filedISO: enc ? (lvVal('lvRecv') || localISODate()) : localISODate(), filedMs: now,
         ...(enc ? { receivedISO: lvVal('lvRecv') || localISODate() } : {}),
-        log: [{ at: now, by: String(lvActor()).slice(0, 80), x: enc ? 'Encoded from a paper form' : 'Applied in the app' }]
+        log: [{ at: now, by: String(own ? name : lvActor()).slice(0, 80), x: enc ? 'Encoded from a paper form' : self ? 'Applied in the app (the AO’s own leave)' : ap.by === 'head' ? 'Applied in the app (the School Head’s own leave)' : 'Applied in the app' }]
       });
       cloudWrite(F.setDoc(ref, { ...doc, createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp() }), enc ? 'Saving the application' : 'Sending the application');
       lvList = [{ ...doc, id: ref.id, sending: true }, ...lvList];
       closeLvModal();
       lvRender();
-      showToast(enc ? 'Saved · now tap Receive to recommend it' : 'Sent to the AO', 'ph-paper-plane-tilt');
+      showToast(enc || self ? 'Saved · now tap Receive to recommend it' : 'Sent to the AO', 'ph-paper-plane-tilt');
     }
 
     // Receive and recommend (AO), then to the School Head
@@ -16374,9 +16419,11 @@
       const r = l.rec || {};
       const days = r.withPay != null ? r.withPay : l.days;
       const head = !!currentHead();
+      const shOwn = l.by === 'head';
       return `
         ${lvHead('ph-tray-arrow-down', `${l.status === 'returned' ? 'Fix and send again' : 'Receive'} · ${lvE(l.name)}`, `${lvE(lvTypeText(l))} · ${lvE(lvDatesText(l))} · ${lvDays(l.days)}`)}
         ${l.status === 'returned' && l.returned ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs px-3 py-2"><b>Returned by ${lvE(l.returned.byName || 'the School Head')}:</b> ${lvE(l.returned.note || '')}</p>` : ''}
+        ${shOwn ? '<p class="rounded-xl bg-violet-50 border border-violet-200 text-violet-900 text-xs px-3 py-2" data-lv-head-own>The School Head’s own leave is approved by the Division, so it does not go to the Approve tab. Receive it, then prepare Form 6.</p>' : ''}
         ${l.reason ? `<p class="text-xs text-slate-600"><b>Reason:</b> ${lvE(l.reason)}</p>` : ''}
         <div class="grid grid-cols-2 gap-3">
           ${lvLbl('Date received', `<input id="lvRecv" type="date" value="${lvE(l.receivedISO || localISODate())}" max="${localISODate()}" class="${LV_IN}">`, 'col-span-2')}
@@ -16389,8 +16436,8 @@
           ${lvLbl('Note to the School Head (optional)', `<input id="lvRecNote" type="text" maxlength="300" value="${lvE(r.note || '')}" class="${LV_IN}" placeholder="e.g. Has 4 days of service credits left">`, 'col-span-2')}
         </div>
         <p id="lvErr" class="hidden rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2"></p>
-        <button onclick="lvSendToHead('${lvE(l.id)}')" id="lvSendHead" class="w-full h-12 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-seal-check"></i> ${head ? 'Send to the School Head' : 'Approved by the School Head on paper'}</button>
-        <p class="text-[11px] text-slate-500">${head ? 'It shows in the School Head’s Approve tab. You are told when it is approved or returned.' : 'No School Head in the app yet: tap this once the School Head agreed.'}</p>`;
+        <button onclick="lvSendToHead('${lvE(l.id)}')" id="lvSendHead" class="w-full h-12 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ${shOwn ? 'ph-file-text' : 'ph-seal-check'}"></i> ${shOwn ? 'Received · prepare Form 6' : head ? 'Send to the School Head' : 'Approved by the School Head on paper'}</button>
+        <p class="text-[11px] text-slate-500">${shOwn ? 'The Division’s approval goes on Form 6 (7.B and 7.C).' : head ? 'It shows in the School Head’s Approve tab. You are told when it is approved or returned.' : 'No School Head in the app yet: tap this once the School Head agreed.'}</p>`;
     }
     // Receive: what the person has left on their leave card for the credits chosen
     function lvRecBal() {
@@ -16420,7 +16467,10 @@
       }
       const rec = { type, withPay, withoutPay, use, memo, note, byName: String(actorName() || '').slice(0, 80), atMs: Date.now() };
       const recText = `${lvTypeText(l, type)}, ${lvDays(withPay)} with pay${withoutPay ? `, ${lvDays(withoutPay)} without pay` : ''} · ${(LV_USE[use] || LV_USE.none).label}${memo ? ` · ${memo}` : ''}`;
-      if (currentHead()) {
+      if (l.by === 'head') {
+        lvUpdate(l, { status: 'approved', receivedISO: recv, rec, approval: { division: true, atMs: Date.now() } }, `Received ${longDate(recv)} · the School Head’s own leave, for the Division’s approval: ${recText}`);
+        showToast('Received · prepare Form 6 next', 'ph-file-text');
+      } else if (currentHead()) {
         const apId = submitApproval('leave', l.id, {
           title: String(l.name || 'Leave').slice(0, 160),
           summary: [l.position, l.office, `${lvDatesText(l)}`, `Filed ${longDate(l.filedISO)}`, `Received ${longDate(recv)}`, l.reason && `Reason: ${l.reason}`, note && `AO: ${note}`].filter(Boolean).join(' · ').slice(0, 600),
@@ -16452,7 +16502,7 @@
     }
     async function lvCancel(id) {
       const l = lvById(id);
-      if (!l || !isTeacherDevice() || l.uid !== (cloud.user && cloud.user.uid) || l.status !== 'applied') return;
+      if (!l || !lvIsOwn(l) || l.status !== 'applied' || (isCustodianDevice() && !lvCanManage())) return;
       if (!await appConfirm(`${lvTypeText(l)} · ${lvDatesText(l)}`, { title: 'Cancel this application?', ok: 'Cancel it', tone: 'warn', icon: 'ph-x-circle' })) return;
       lvUpdate(l, { status: 'cancelled', cancelledMs: Date.now() }, 'Cancelled by the applicant');
       closeLvModal();
@@ -16501,8 +16551,13 @@
           ${lvLbl('7.C Others (specify)', `<input id="lvFOthers" type="text" maxlength="120" value="${lvE(f.others || '')}" class="${LV_IN}">`, 'col-span-2')}
           ${lvLbl('Certified by (7.A)', `<input id="lvAoName" type="text" maxlength="80" value="${lvE(f.aoName || schoolInfo.custodian || actorName() || '')}" class="${LV_IN}">`)}
           ${lvLbl('Designation', `<input id="lvAoDesig" type="text" maxlength="80" value="${lvE(f.aoDesig || 'Administrative Officer')}" class="${LV_IN}">`)}
+          ${l.by === 'head' ? `
+          ${lvLbl('Recommending (7.B)', `<input id="lvRecName" type="text" maxlength="80" value="${lvE(f.recName || '')}" class="${LV_IN}" placeholder="Name">`)}
+          ${lvLbl('Designation', `<input id="lvRecDesig" type="text" maxlength="80" value="${lvE(f.recDesig || 'Public Schools District Supervisor')}" class="${LV_IN}">`)}
+          ${lvLbl('Approving (7.C)', `<input id="lvShName" type="text" maxlength="80" value="${lvE(f.shName || '')}" class="${LV_IN}" placeholder="Name">`)}
+          ${lvLbl('Designation', `<input id="lvShDesig" type="text" maxlength="80" value="${lvE(f.shDesig || 'Schools Division Superintendent')}" class="${LV_IN}">`)}` : `
           ${lvLbl('School Head (7.B, 7.C)', `<input id="lvShName" type="text" maxlength="80" value="${lvE(f.shName || (l.approval && l.approval.byName) || headName() || '')}" class="${LV_IN}">`)}
-          ${lvLbl('Designation', `<input id="lvShDesig" type="text" maxlength="80" value="${lvE(f.shDesig || (l.approval && l.approval.byDesig) || headDesig() || 'School Head')}" class="${LV_IN}">`)}
+          ${lvLbl('Designation', `<input id="lvShDesig" type="text" maxlength="80" value="${lvE(f.shDesig || (l.approval && l.approval.byDesig) || headDesig() || 'School Head')}" class="${LV_IN}">`)}`}
         </div>
         <p id="lvErr" class="hidden rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2"></p>
         ${p250 && l.status !== 'review' ? `
@@ -16522,12 +16577,14 @@
         asOf: lvVal('lvAsOf'), cred, memo: lvVal('lvFMemo').slice(0, 200),
         withPay: Number(lvVal('lvFWith')) || 0, withoutPay: Number(lvVal('lvFWithout')) || 0, others: lvVal('lvFOthers').slice(0, 120),
         aoName: lvVal('lvAoName').slice(0, 80), aoDesig: lvVal('lvAoDesig').slice(0, 80), shName: lvVal('lvShName').slice(0, 80), shDesig: lvVal('lvShDesig').slice(0, 80),
+        recName: lvVal('lvRecName').slice(0, 80), recDesig: lvVal('lvRecDesig').slice(0, 80),
         division: String(schoolInfo.division || '').slice(0, 120), preparedMs: Date.now()
       };
       if (!form.last) return lvErr('Type the last name.');
       if (!(form.withPay + form.withoutPay > 0)) return lvErr('Type the days with pay or without pay (7.C).');
       const status = l.status === 'review' ? 'review' : next;
-      lvUpdate(l, { status, form }, l.status === 'review' ? 'Form 6 changed' : status === 'hold' ? 'Form 6 prepared · kept on hold (₱250)' : 'Form 6 prepared · sent to the teacher to review and print');
+      const to = l.by === 'head' ? 'the School Head' : l.by === 'self' ? 'you (the AO)' : 'the teacher';
+      lvUpdate(l, { status, form }, l.status === 'review' ? 'Form 6 changed' : status === 'hold' ? 'Form 6 prepared · kept on hold (₱250)' : `Form 6 prepared · sent to ${to} to review and print`);
       closeLvModal();
       showToast(status === 'hold' ? 'Form 6 kept on hold' : l.status === 'review' ? 'Saved' : 'Sent to the teacher', status === 'hold' ? 'ph-pause-circle' : 'ph-paper-plane-tilt');
     }
@@ -16537,6 +16594,9 @@
       if (step === 'unhold' && l.status === 'hold') {
         if (!await appConfirm(`${l.name} · ${lvDatesText(l)}`, { title: 'Use the Form 6 on hold?', ok: 'Send to the teacher', icon: 'ph-paper-plane-tilt' })) return;
         lvUpdate(l, { status: 'review' }, 'Form 6 taken off hold · sent to the teacher');
+      } else if (step === 'handed' && l.status === 'review' && l.by === 'head') {
+        lvUpdate(l, { status: 'signed', handedMs: Date.now(), signedMs: Date.now() }, 'Signed copy handed in · for the Division');
+        showToast('Handed in · send it to the Division', 'ph-paper-plane-tilt');
       } else if (step === 'handed' && l.status === 'review') {
         lvUpdate(l, { status: 'handed', handedMs: Date.now() }, 'Signed copy handed in at the office');
         showToast('Handed in · for the School Head’s signature', 'ph-pen-nib');
@@ -16569,7 +16629,7 @@
     function lvViewHTML() {
       const l = lvById(lvSheet.id);
       if (!l) return `${lvHead('ph-calendar-check', 'Not found', '')}<p class="text-sm text-slate-600">This application is no longer listed.</p>`;
-      const mine = isTeacherDevice();
+      const mine = (isTeacherDevice() || isHeadDevice()) && lvIsOwn(l);
       const r = l.rec, f = l.form;
       const row = (k, v) => (v ? `<div class="flex justify-between gap-3 px-3 py-2 text-xs"><span class="text-slate-500 shrink-0">${k}</span><span class="font-semibold text-slate-800 text-right min-w-0">${v}</span></div>` : '');
       const btn = (label, icon, onclick, tone, attr = '') => `<button onclick="${onclick}" ${attr} class="h-11 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 ${tone === 'teal' ? 'bg-teal-700 hover:bg-teal-800 text-white' : tone === 'violet' ? 'bg-violet-700 hover:bg-violet-800 text-white' : tone === 'emerald' ? 'bg-emerald-700 hover:bg-emerald-800 text-white' : tone === 'rose' ? 'bg-white border border-rose-200 text-rose-700' : 'bg-white border border-slate-200 text-slate-800'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
@@ -16583,11 +16643,11 @@
         if (l.status === 'handed') acts.push(btn('Signed by the School Head', 'ph-pen-nib', `lvStep('${l.id}', 'signed')`, 'teal', 'data-lv-act="signed"'));
         if (l.status === 'signed') acts.push(btn('Received by the Division', 'ph-stamp', `openLvSheet('do', '${l.id}')`, 'emerald', 'data-lv-act="do"'));
       }
-      if (mine && l.status === 'applied' && l.uid === (cloud.user && cloud.user.uid)) acts.push(btn('Cancel the application', 'ph-x-circle', `lvCancel('${l.id}')`, 'rose', 'data-lv-act="cancel"'));
+      if (lvIsOwn(l) && l.status === 'applied' && (!isCustodianDevice() || lvCanManage())) acts.push(btn('Cancel the application', 'ph-x-circle', `lvCancel('${l.id}')`, 'rose', 'data-lv-act="cancel"'));
       if (lvCanPrint(l)) acts.push(btn('Print Form 6', 'ph-printer', `lvPrint('${l.id}')`, mine ? 'teal' : '', `data-lv-print="${l.id}"`));
       return `
         ${lvHead('ph-calendar-check', lvE(mine ? lvTypeText(l) : l.name), lvE(mine ? lvDatesText(l) : `${[l.position, l.office].filter(Boolean).join(' · ')}`))}
-        <div class="flex flex-wrap items-center gap-1.5">${lvChip(l.status)}${l.by === 'ao' ? '<span class="text-[11px] font-bold text-slate-500">Encoded from paper</span>' : ''}</div>
+        <div class="flex flex-wrap items-center gap-1.5">${lvChip(l.status)}${l.by === 'ao' ? '<span class="text-[11px] font-bold text-slate-500">Encoded from paper</span>' : l.by === 'self' ? '<span class="text-[11px] font-bold text-slate-500" data-lv-by="self">The AO’s own leave</span>' : l.by === 'head' && !mine ? '<span class="text-[11px] font-bold text-violet-700" data-lv-by="head">The School Head’s own leave</span>' : ''}</div>
         ${mine ? lvSteps(l) : ''}
         <div class="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
           ${mine ? '' : row('Type of leave', lvE(lvTypeText(l)))}
@@ -16601,7 +16661,9 @@
           ${r ? row('Recommended', lvE(`${lvTypeText(l, r.type)} · ${lvDays(r.withPay)} with pay${r.withoutPay ? `, ${lvDays(r.withoutPay)} without pay` : ''}`)) : ''}
           ${r ? row('Credits', lvE(`${(LV_USE[r.use] || LV_USE.none).label}${r.memo ? ` · ${r.memo}` : ''}`)) : ''}
           ${(() => { const d = lcDeduction(l); return d ? row('Leave card', lvE(`${lcNum(-d.days)} ${LC_CR[d.cr].short} deducted${d.cr === 'lsc' ? ' · not reflected in the DTR' : ''}`)) : ''; })()}
-          ${l.approval ? row('Approved', lvE(`${l.approval.paper ? 'On paper' : 'In the app'}${l.approval.byName ? ` · ${l.approval.byName}` : ''}${l.approval.atMs && !l.approval.paper ? ` · ${iarStamp(l.approval.atMs)}` : ''}`)) : ''}
+          ${l.approval && l.approval.division ? row('Approval', 'By the Division') : ''}
+          ${l.p250 && l.p250.paidISO ? row('₱250', lvE(`₱${(Number(l.p250.amount) || 0).toLocaleString('en-PH')} paid ${longDate(l.p250.paidISO)}${l.p250.turnISO ? ` · turned over to the Faculty President ${longDate(l.p250.turnISO)}` : ''}`)) : ''}
+          ${l.approval && !l.approval.division ? row('Approved', lvE(`${l.approval.paper ? 'On paper' : 'In the app'}${l.approval.byName ? ` · ${l.approval.byName}` : ''}${l.approval.atMs && !l.approval.paper ? ` · ${iarStamp(l.approval.atMs)}` : ''}`)) : ''}
           ${l.doISO ? row('Received by the Division', lvE(`${longDate(l.doISO)}${l.doRef ? ` · ${l.doRef}` : ''}`)) : ''}
         </div>
         ${l.status === 'returned' && l.returned ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs px-3 py-2"><b>Returned by ${lvE(l.returned.byName || 'the School Head')}:</b> ${lvE(l.returned.note || '')}</p>` : ''}
@@ -16610,6 +16672,169 @@
         ${acts.length ? `<div class="grid ${acts.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2" data-lv-actions>${acts.join('')}</div>` : ''}
         ${(l.log || []).length ? `<details class="rounded-2xl bg-slate-50 px-3 py-2"><summary class="text-xs font-bold text-slate-700 cursor-pointer">History · ${l.log.length}</summary>
           <ul class="mt-2 space-y-1.5 text-[11px] text-slate-600">${[...l.log].reverse().map(x => `<li><b class="text-slate-800">${lvE(iarStamp(x.at))}</b> · ${lvE(x.by || '')}<br>${lvE(x.x || '')}</li>`).join('')}</ul></details>` : ''}`;
+    }
+
+    // ---- ₱250 log (AO): whole-day absences paid at the office, turned over to the Faculty President ----
+    // On each application that uses ₱250: p250 { amount, paidISO, paidMs, paidBy, turnISO, turnMs, turnTo, turnBy }.
+    const P250_RATE = 250;
+    const P250_FP_KEY = 'custodian_faculty_president_v1';
+    var p250Month = '';
+    const p250Mo = () => p250Month || localISODate().slice(0, 7);
+    const p250DaysOf = l => Number(l.rec ? (Number(l.rec.withPay) || 0) + (Number(l.rec.withoutPay) || 0) : l.days) || 0;
+    const p250Peso = n => `₱${(Number(n) || 0).toLocaleString('en-PH')}`;
+    const p250MoText = mo => new Date(mo + '-01T00:00:00').toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
+    function p250List(mo) {
+      return lvList.filter(l => lvUseOf(l) === 'p250' && !['declined', 'cancelled'].includes(l.status) && lvMonth(l.from) === mo)
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')) || String(a.from).localeCompare(String(b.from)));
+    }
+    const p250Paid = l => !!(l.p250 && l.p250.paidISO);
+    const p250Turned = l => !!(l.p250 && l.p250.turnISO);
+    function p250FP() {
+      try { const v = localStorage.getItem(P250_FP_KEY); if (v) return v; } catch (e) {}
+      const last = lvList.filter(p250Turned).sort((a, b) => (b.p250.turnMs || 0) - (a.p250.turnMs || 0))[0];
+      return last ? last.p250.turnTo || '' : '';
+    }
+    function setP250Month(v) { if (/^\d{4}-\d{2}$/.test(v || '')) { p250Month = v; renderLeaveView(); } }
+    function p250HTML() {
+      const mo = p250Mo();
+      const list = p250List(mo);
+      const people = [];
+      list.forEach(l => {
+        const k = l.uid || String(l.name || '').trim().toLowerCase();
+        let p = people.find(x => x.k === k);
+        if (!p) { p = { k, name: l.name, ls: [], days: 0 }; people.push(p); }
+        p.ls.push(l); p.days += p250DaysOf(l);
+      });
+      const sum = f => list.filter(f).reduce((n, l) => n + (Number(l.p250 && l.p250.amount) || 0), 0);
+      const days = list.reduce((n, l) => n + p250DaysOf(l), 0);
+      const paid = sum(p250Paid), turned = sum(p250Turned), toTurn = paid - turned;
+      const stat = (label, v, tone) => `<div class="rounded-xl bg-white border border-slate-200 px-3 py-2"><span class="block text-[10px] font-bold uppercase tracking-wider text-slate-500">${label}</span><span class="block text-base font-extrabold ${tone || 'text-slate-900'} font-mono">${v}</span></div>`;
+      const row = l => {
+        const n = p250DaysOf(l), pay = l.p250 || {};
+        const state = p250Turned(l) ? `<span class="text-[11px] font-bold text-emerald-700" data-p250-state="turned"><i class="ph-bold ph-check-circle"></i> Turned over ${lvE(lvShort(pay.turnISO))}${pay.turnTo ? ` · ${lvE(pay.turnTo)}` : ''}</span>`
+          : p250Paid(l) ? `<span class="text-[11px] font-bold text-teal-700" data-p250-state="paid"><i class="ph-bold ph-coins"></i> ${p250Peso(pay.amount)} paid ${lvE(lvShort(pay.paidISO))}</span>`
+          : `<span class="text-[11px] font-bold text-amber-700" data-p250-state="unpaid"><i class="ph-bold ph-hourglass-medium"></i> Not paid yet</span>`;
+        return `
+          <div class="flex items-center gap-2 px-3 py-2" data-p250="${lvE(l.id)}">
+            <button type="button" onclick="openLvSheet('view', '${lvE(l.id)}')" class="min-w-0 flex-1 text-left">
+              <span class="block text-xs font-semibold text-slate-800">${lvE(lvDatesText(l))} · ${lvDays(n)} · ${p250Peso(n * P250_RATE)}</span>
+              <span class="mt-0.5 flex flex-wrap items-center gap-1.5">${lvChip(l.status)}${state}</span>
+            </button>
+            ${lvCanManage() && !p250Turned(l) ? `<button type="button" onclick="openLvSheet('p250pay', '${lvE(l.id)}')" data-p250-pay="${lvE(l.id)}" class="shrink-0 h-9 px-3 rounded-xl ${p250Paid(l) ? 'bg-white border border-slate-200 text-slate-700' : 'bg-teal-700 text-white'} text-xs font-extrabold">${p250Paid(l) ? 'Change' : 'Paid'}</button>` : ''}
+          </div>`;
+      };
+      return `
+        <div class="flex items-center gap-2">
+          <label class="flex-1 min-w-0"><span class="sr-only">Month</span><input id="p250MonthIn" type="month" value="${mo}" onchange="setP250Month(this.value)" class="${LV_IN} font-bold"></label>
+          <button type="button" onclick="p250Print()" id="p250PrintBtn" class="shrink-0 h-11 px-3 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800 flex items-center gap-1.5" ${list.length ? '' : 'disabled'}><i class="ph-bold ph-printer text-teal-700"></i> Print</button>
+        </div>
+        <p class="text-[11px] text-slate-500 px-1">₱250 is for a whole-day absence, up to ${LV_P250_MAX} days a month for each person (the School Head approves them; Form 6 is kept on hold). Log the money when it is paid at the office, then turn it over to the Faculty President.</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" data-p250-sum>
+          ${stat('Days', String(days))}${stat('Paid', p250Peso(paid), 'text-teal-700')}${stat('Turned over', p250Peso(turned), 'text-emerald-700')}${stat('To turn over', p250Peso(toTurn), toTurn ? 'text-amber-700' : 'text-slate-900')}
+        </div>
+        ${lvCanManage() && toTurn ? `<button type="button" onclick="openLvSheet('p250turn')" id="p250TurnBtn" class="w-full h-12 rounded-2xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-hand-coins text-lg"></i> Turn over ${p250Peso(toTurn)} to the Faculty President</button>` : ''}
+        ${people.length ? `<div class="space-y-2 lv-grid">${people.map(p => {
+          const over = p.days > LV_P250_MAX;
+          return `
+          <div class="rounded-2xl bg-white border ${over ? 'border-rose-300' : 'border-slate-200'} shadow-sm overflow-hidden" data-p250-person>
+            <div class="flex items-center justify-between gap-2 px-3 pt-2.5 pb-1">
+              <span class="text-sm font-extrabold text-slate-900 truncate">${lvE(p.name)}</span>
+              <span class="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full border ${over ? 'bg-rose-50 text-rose-800 border-rose-200' : p.days === LV_P250_MAX ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-50 text-slate-700 border-slate-200'}" data-p250-count>${lcNum(p.days)} of ${LV_P250_MAX} this month</span>
+            </div>
+            <div class="divide-y divide-slate-100">${p.ls.map(row).join('')}</div>
+          </div>`;
+        }).join('')}</div>`
+          : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-6 text-center text-xs text-slate-500" data-p250-empty><i class="ph-duotone ph-coins text-3xl text-slate-400"></i><p class="mt-1 font-bold text-slate-700 text-sm">${lvLoaded ? `No ₱250 days in ${lvE(p250MoText(mo))}` : 'Loading…'}</p><p>Applications that use ₱250 show up here by the month of the absence.</p></div>`}`;
+    }
+    // Paid at the office
+    function p250PayHTML() {
+      const l = lvById(lvSheet.id);
+      if (!l || !lvCanManage() || p250Turned(l)) return '';
+      const pay = l.p250 || {}, n = p250DaysOf(l), today = localISODate();
+      return `
+        ${lvHead('ph-coins', `₱250 paid · ${lvE(l.name)}`, `${lvE(lvDatesText(l))} · ${lvDays(n)}`)}
+        <div class="grid grid-cols-2 gap-3">
+          ${lvLbl('Amount', `<input id="p250Amt" type="number" inputmode="numeric" min="0" step="1" value="${pay.amount != null ? pay.amount : n * P250_RATE}" class="${LV_IN} font-mono font-bold">`)}
+          ${lvLbl('Date paid', `<input id="p250Date" type="date" value="${lvE(pay.paidISO || today)}" max="${today}" class="${LV_IN}">`)}
+        </div>
+        <p id="lvErr" class="hidden rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2"></p>
+        <button onclick="p250SavePay('${lvE(l.id)}')" id="p250PaySave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-check"></i> Save</button>
+        ${p250Paid(l) ? `<button onclick="p250SavePay('${lvE(l.id)}', true)" id="p250PayUndo" class="w-full h-11 rounded-xl bg-white border border-slate-200 text-sm font-bold text-rose-700">Not paid after all</button>` : ''}`;
+    }
+    function p250SavePay(id, undo) {
+      const l = lvById(id);
+      if (!l || !lvCanManage() || p250Turned(l)) return;
+      if (undo) {
+        lvUpdate(l, { p250: {} }, '₱250 payment taken back (not paid)');
+        closeLvModal(); return;
+      }
+      const amount = Math.round(Number(lvVal('p250Amt')) || 0), paidISO = lvVal('p250Date') || localISODate();
+      if (!(amount > 0) || amount > 100000) return lvErr('Type the amount paid.');
+      if (paidISO > localISODate()) return lvErr('The date paid is in the future.');
+      lvUpdate(l, { p250: { amount, paidISO, paidMs: Date.now(), paidBy: String(actorName() || '').slice(0, 80) } }, `${p250Peso(amount)} paid at the office ${longDate(paidISO)} (₱250 log)`);
+      closeLvModal();
+      showToast(`${p250Peso(amount)} logged`, 'ph-coins');
+    }
+    // Turn over everything paid this month, not turned over yet
+    function p250TurnHTML() {
+      if (!lvCanManage()) return '';
+      const mo = p250Mo();
+      const ls = p250List(mo).filter(l => p250Paid(l) && !p250Turned(l));
+      if (!ls.length) return '';
+      const total = ls.reduce((n, l) => n + (Number(l.p250.amount) || 0), 0), today = localISODate();
+      return `
+        ${lvHead('ph-hand-coins', 'Turn over to the Faculty President', `${lvE(p250MoText(mo))} · ${plural(ls.length, 'absence')} · ${p250Peso(total)}`)}
+        <ul class="rounded-2xl border border-slate-200 divide-y divide-slate-100 text-xs" data-p250-turn-list>${ls.map(l => `<li class="flex justify-between gap-3 px-3 py-2"><span class="min-w-0"><b class="text-slate-800">${lvE(l.name)}</b> · ${lvE(lvDatesText(l))}</span><span class="shrink-0 font-mono font-bold">${p250Peso(l.p250.amount)}</span></li>`).join('')}</ul>
+        <div class="grid grid-cols-2 gap-3">
+          ${lvLbl('Faculty President', `<input id="p250FPName" type="text" maxlength="80" value="${lvE(p250FP())}" class="${LV_IN}" placeholder="Name">`, 'col-span-2')}
+          ${lvLbl('Date turned over', `<input id="p250TurnDate" type="date" value="${today}" max="${today}" class="${LV_IN}">`, 'col-span-2')}
+        </div>
+        <p id="lvErr" class="hidden rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2"></p>
+        <button onclick="p250SaveTurn()" id="p250TurnSave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-check"></i> Turned over ${p250Peso(total)}</button>
+        <p class="text-[11px] text-slate-500">Then print the turnover list for the Faculty President to sign.</p>`;
+    }
+    function p250SaveTurn() {
+      if (!lvCanManage()) return;
+      const mo = p250Mo();
+      const ls = p250List(mo).filter(l => p250Paid(l) && !p250Turned(l));
+      const to = lvVal('p250FPName').slice(0, 80), turnISO = lvVal('p250TurnDate') || localISODate();
+      if (!to) return lvErr('Type the name of the Faculty President.');
+      if (turnISO > localISODate()) return lvErr('The date is in the future.');
+      try { localStorage.setItem(P250_FP_KEY, to); } catch (e) {}
+      const now = Date.now(), by = String(actorName() || '').slice(0, 80);
+      ls.forEach(l => lvUpdate(l, { p250: { ...l.p250, turnISO, turnMs: now, turnTo: to, turnBy: by } }, `${p250Peso(l.p250.amount)} turned over to the Faculty President, ${to}, ${longDate(turnISO)}`));
+      closeLvModal();
+      showToast('Turned over · print the list for signing', 'ph-hand-coins');
+    }
+    // Print: the month's ₱250 days, what was paid and turned over, with signatures
+    function p250Print() {
+      const mo = p250Mo();
+      const ls = p250List(mo);
+      if (ls.length) printFormHTML(p250PrintHTML(mo, ls));
+    }
+    function p250PrintHTML(mo, ls) {
+      const e = lvE;
+      const paid = ls.filter(p250Paid), turned = ls.filter(p250Turned);
+      const tot = a => a.reduce((n, l) => n + (Number(l.p250 && l.p250.amount) || 0), 0);
+      const fp = (turned.find(l => l.p250.turnTo) || {}).p250;
+      const d = iso => (iso ? new Date(iso + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '');
+      const rows = ls.map((l, i) => `<tr><td class="c">${i + 1}</td><td>${e(l.name)}</td><td>${e(lvDatesText(l))}</td><td class="c">${lcNum(p250DaysOf(l))}</td><td class="r">${p250Paid(l) ? e(p250Peso(l.p250.amount)) : ''}</td><td class="c">${e(d(l.p250 && l.p250.paidISO))}</td><td class="c">${e(d(l.p250 && l.p250.turnISO))}</td></tr>`).join('');
+      return `
+        <div class="pr-form">
+          <div class="lv-agency">Republic of the Philippines<br><b>DEPARTMENT OF EDUCATION</b>${schoolInfo.division ? `<br>${e(schoolInfo.division)}` : ''}<br>${e(reqRole.schoolName || schoolInfo.school || '')}</div>
+          <h1>₱250 WHOLE-DAY ABSENCES · TURNOVER LIST</h1>
+          <div class="pr-top"><div>Month: <b>${e(p250MoText(mo))}</b></div><div>Rate: <b>₱${P250_RATE} a day</b> · up to ${LV_P250_MAX} days a month</div></div>
+          <table class="pr-table">
+            <colgroup><col style="width:6%"><col style="width:28%"><col style="width:24%"><col style="width:8%"><col style="width:12%"><col style="width:11%"><col style="width:11%"></colgroup>
+            <tr><th>No.</th><th>Name</th><th>Date(s) of absence</th><th>Days</th><th>Amount paid</th><th>Date paid</th><th>Turned over</th></tr>
+            ${rows}
+            <tr><td colspan="4" class="r"><b>Total paid</b></td><td class="r"><b>${e(p250Peso(tot(paid)))}</b></td><td colspan="2" class="c">Turned over: <b>${e(p250Peso(tot(turned)))}</b></td></tr>
+          </table>
+          <table style="width:100%;margin-top:22pt;border-collapse:collapse"><tr>
+            <td style="width:50%;vertical-align:top;border:0"><div class="lv-sig" style="text-align:left">Turned over by:<br><br><b>${e(String(schoolInfo.custodian || actorName() || '').toUpperCase())}</b><br><span>Administrative Officer</span></div></td>
+            <td style="width:50%;vertical-align:top;border:0"><div class="lv-sig" style="text-align:left">Received by:<br><br><b>${e(String((fp && fp.turnTo) || '').toUpperCase()) || '&nbsp;'}</b><br><span>Faculty President</span><br><span>Date: ${e(fp ? longDate(fp.turnISO) : '')}</span></div></td>
+          </tr></table>
+        </div>`;
     }
 
     // ---- Leave cards (the credits ledger) -----------------------------------------------------
@@ -17032,7 +17257,7 @@
                 ${f.memo ? `<div class="lv-memo">${e(f.memo)}</div>` : ''}
                 ${sig(f.aoName, f.aoDesig ? `${f.aoDesig} · (Authorized Officer)` : '(Authorized Officer)')}</td>
               <td colspan="2">7.B RECOMMENDATION<div class="lv-opt">${box(true)} For approval</div><div class="lv-opt">${box(false)} For disapproval due to ${blank('', '30mm')}</div>
-                ${sig(f.shName, f.shDesig ? `${f.shDesig} · (Authorized Officer)` : '(Authorized Officer)')}</td></tr>
+                ${f.recName || f.recDesig ? sig(f.recName, f.recDesig ? `${f.recDesig} · (Authorized Officer)` : '(Authorized Officer)') : sig(f.shName, f.shDesig ? `${f.shDesig} · (Authorized Officer)` : '(Authorized Officer)')}</td></tr>
             <tr><td colspan="2">7.C APPROVED FOR:<div class="lv-opt">${blank(num(with7), '14mm')} days with pay</div><div class="lv-opt">${blank(num(without7) === '0' ? '' : num(without7), '14mm')} days without pay</div><div class="lv-opt">${blank(f.others || '', '14mm')} others (Specify)</div></td>
               <td colspan="2">7.D DISAPPROVED DUE TO:<div class="lv-opt">${blank('', '60mm')}</div></td></tr>
             <tr><td colspan="4">${sig(f.shName, f.shDesig ? `${f.shDesig} · (Authorized Official)` : '(Authorized Official)')}</td></tr>
@@ -19093,7 +19318,7 @@
             <i class="ph-bold ph-caret-right text-slate-400"></i>
           </button>`;
         const pane = (k, inner) => `<div data-hd-pane="${k}" class="space-y-5 ${headTab === k ? '' : 'hidden'}">${inner}</div>`;
-        html = pane('approve', left) + pane('school', headDashHTML()) + pane('items', headTab === 'items' ? headItemsHTML() : '') + pane('people', headPeopleHTML()) + pane('history', history);
+        html = pane('approve', left) + pane('school', headDashHTML()) + pane('items', headTab === 'items' ? headItemsHTML() : '') + pane('people', headPeopleHTML()) + pane('history', history) + (leaveOn() ? pane('leave', lvMineHTML()) : '');
       }
       renderHeadTabs(two, nTab);
       const body = document.getElementById('hdBody');
@@ -19108,12 +19333,13 @@
     // Tabs like a teacher's: Approve (with the count waiting) · School · People · History.
     var headTab = 'approve';
     var headPeopleQ = '';
-    var HEAD_TITLES = { approve: 'For your approval', school: 'School property', items: 'School inventory', people: 'Who holds what', history: 'Your decisions' };
+    var HEAD_TITLES = { approve: 'For your approval', school: 'School property', items: 'School inventory', people: 'Who holds what', history: 'Your decisions', leave: 'My leave' };
     function setHeadTab(t) {
-      if (!HEAD_TITLES[t]) return;
+      if (!HEAD_TITLES[t] || (t === 'leave' && !leaveOn())) return;
       const was = headTab;
       headTab = t;
       if (t === 'items') { startHeadInventory(); if (was !== 'items') renderHeadView(); }
+      if (t === 'leave') renderHeadLeave();
       document.querySelectorAll('#hdBody [data-hd-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.hdPane !== t));
       renderHeadTabs(!!document.querySelector('#hdBody [data-hd-pane]'));
       window.scrollTo({ top: 0 });
@@ -19123,10 +19349,15 @@
       if (!bar) return;
       bar.classList.toggle('hidden', !on);
       bar.classList.toggle('grid', !!on);
+      const lvTab = leaveOn();
+      if (headTab === 'leave' && !lvTab) headTab = 'approve';
+      bar.classList.toggle('grid-cols-5', !lvTab);
+      bar.classList.toggle('grid-cols-6', lvTab);
       document.getElementById('hdTitle').textContent = on ? HEAD_TITLES[headTab] : HEAD_TITLES.approve;
       Object.keys(HEAD_TITLES).forEach(t => {
         const b = document.getElementById(`hdTab-${t}`);
         const sel = t === headTab;
+        if (t === 'leave' && !lvTab) { b.className = 'hidden'; return; }
         b.className = `relative h-12 sm:h-11 rounded-xl text-[11px] min-[400px]:text-xs sm:text-sm font-extrabold flex flex-col sm:flex-row items-center justify-center gap-0 sm:gap-1.5 transition ${sel ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5 seg-on' : 'text-slate-500 hover:text-slate-800'}`;
         b.setAttribute('aria-selected', sel ? 'true' : 'false');
       });
@@ -28319,6 +28550,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         else openHeadPanel();
       } else if (n.go === 'leave') {                 // the AO (custodian account): the Leave page
         openLeaveView();
+      } else if (n.go === 'head-leave') {
+        if (isHeadDevice()) { headTab = 'leave'; switchMainView('HEAD'); renderHeadView(); }
       } else if (n.go === 'teacher-leave') {
         switchMainView('REQUESTER');
         setTeacherTab('leave');
@@ -28492,6 +28725,13 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-leave-p250-self', date: 'Nov 2026', title: '\u20b1250 log and turnover · the AO and the School Head can apply for leave · pilot at this school', points: [
+        'AO: the Leave page has a new \u20b1250 tab. Pick the month to see every whole-day absence paid with \u20b1250, by person, with how many of the 2 a month each one used.',
+        'Tap Paid when the money is handed in at the office (the amount and the date). Then Turn over to the Faculty President: type the name and the date, and Print the turnover list for signing.',
+        'AO: Apply for my leave, on the Leave page. Your own application goes to the School Head like everyone\u2019s, and you print your Form 6 yourself.',
+        'School Head: a new Leave tab to apply for your own leave and follow it. It goes to the AO, who prepares Form 6 for the Division (your leave is approved there, not in the Approve tab). Print it when it is ready.',
+        'Property custodian: publish the updated database rules (firestore.rules) again.'
+      ], pilot: 'leave' },
       { id: '2026-11-leave-cards', date: 'Nov 2026', title: 'Leave cards: credits earned and used · pilot at this school', points: [
         'AO: the Leave page has a new Leave cards tab, one card for each teacher and staff member (also those not in the app). Start each card with the opening balance from the paper leave card and its memo.',
         'Add credits with the memo that grants them: Vacation Service Credits (Division memo, up to 30 days a year; the app asks before going over), Local Service Credits (School memo, no limit), and VL/SL. Monthly VL/SL adds 1.25 days of each for every non-teaching staff member, once a month.',
