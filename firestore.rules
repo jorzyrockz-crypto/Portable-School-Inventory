@@ -24,7 +24,7 @@ rules_version = '2';
 //   schools/{schoolId}/dashboard/summary      the School Head's summary of the school's property
 //   schools/{schoolId}/books/{id}             Books & Library: one title, its copies per place (staff, librarian)
 //   schools/{schoolId}/bookMeta/places        the places where books are kept, with their keepers
-//   schools/{schoolId}/bookIndex/{n}          the library catalogue every teacher reads (no learner names)
+//   schools/{schoolId}/bookIndex/{n}          the library catalogue every teacher and the School Head read (no learner names)
 //   schools/{schoolId}/bookMoves/{id}         books issued to an adviser (Book Issuance List), taken back, moved
 //   schools/{schoolId}/loans/{id}             borrowing: the borrower, the keeper of the copies, the librarian
 //   schools/{schoolId}/classBooks/{sy_uid}    an adviser's class: textbooks with learners (adviser + custodian only)
@@ -590,19 +590,19 @@ service cloud.firestore {
       // Titles and their copies: the custodian, the assistants and the librarian (never deleted
       // from the app: a removed title is { deleted: true }). The catalogue (bookIndex) and the
       // places are what every active teacher reads: titles, how many copies, where, and who
-      // borrowed them; never learner names.
+      // borrowed them; never learner names. The School Head reads them too (Items · Books).
       match /books/{bookId} {
         allow read: if canView(schoolId) || isLibrarian(schoolId);
         allow create, update: if bookStaff(schoolId);
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
       match /bookMeta/{docId} {
-        allow read: if canView(schoolId) || isMember(schoolId);
+        allow read: if canView(schoolId) || isMember(schoolId) || isHead(schoolId);
         allow create, update: if bookStaff(schoolId) && docId == 'places';
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
       match /bookIndex/{n} {
-        allow read: if canView(schoolId) || isMember(schoolId);
+        allow read: if canView(schoolId) || isMember(schoolId) || isHead(schoolId);
         allow create, update: if bookStaff(schoolId) && n.matches('^[0-9]{1,3}$');
         allow delete: if isCustodian(schoolId);   // Reset app only
       }

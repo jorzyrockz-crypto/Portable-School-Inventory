@@ -86,6 +86,8 @@ try {
   await waitNode(() => (backend.store.get(`schools/${sid}/members/${ana}`) || {}).status === 'active', 'approved');
   check((backend.store.get(`schools/${sid}/members/${ana}`) || {}).status === 'active', 'approved: “active”');
   await until(t, () => stockLoaded && !!document.querySelector('[data-stock]'), 'stock on the teacher', 8000);
+  check(await ev(t, () => [...document.querySelectorAll('[data-stock]')].every(x => x.querySelector('[data-stock-icon] i.ph-duotone'))
+    && [...document.querySelectorAll('[data-stock-icon]')].some(x => x.dataset.stockIcon !== 'ph-package')), 'every stock card has its category icon');
   check(await ev(t, () => loadNotifs().items.some(n => /You’re in/.test(n.title))), 'teacher told: “You’re in!”');
   check(await leftOn(t, PAPER) === 85, 'teacher sees 85 reams of bond paper left');
   await screen(t, 'phone · School stock');

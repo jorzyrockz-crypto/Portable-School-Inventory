@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="a5400e1680f8">
+  <meta name="app-version" content="a63d39cc3d5c">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -3745,6 +3745,18 @@
         if (want !== !!el.firstChild) el.innerHTML = want ? unsyncMark() : '';
       });
     }
+    // One icon per category (the teachers' Stock cards)
+    const CATEGORY_ICONS = {
+      'Antiseptics': 'ph-first-aid-kit', 'Arts & Crafts Supplies': 'ph-palette', 'Audio & Visual Equipment': 'ph-speaker-hifi',
+      'Batteries & Cells': 'ph-battery-charging', 'Cleaning Equipment & Supplies': 'ph-broom', 'Color Compounds & Ink': 'ph-drop',
+      'Consumer Electronics': 'ph-device-mobile', 'Films': 'ph-film-strip', 'Fire Fighting Equipment': 'ph-fire-extinguisher',
+      'Flags & Accessories': 'ph-flag', 'Furniture & Furnishings': 'ph-chair', 'Heating, Ventilation & Fans': 'ph-fan',
+      'ICT Equipment & Devices': 'ph-desktop-tower', 'Lighting & Fixtures': 'ph-lightbulb', 'Manufacturing, Glue & Tapes': 'ph-scissors',
+      'Measuring Equipment': 'ph-ruler', 'Office Equipment & Supplies': 'ph-paperclip', 'Paper Materials & Products': 'ph-files',
+      'Perfumes & Hand Sanitizers': 'ph-hand-soap', 'Pesticides & Pest Repellents': 'ph-bug', 'Printed Publications': 'ph-book-open',
+      'Printer / Copier Consumables': 'ph-printer', 'Software & Cloud Services': 'ph-cloud', 'Airline Tickets & Motor Vehicles': 'ph-car'
+    };
+    const categoryIcon = cat => CATEGORY_ICONS[cat] || 'ph-package';
     const itemTypeIcon = item => item.type === 'EQUIPMENT'
       ? { icon: 'ph-desktop-tower', tone: 'bg-blue-50 text-blue-600', label: 'Equipment (ICS/PAR)' }
       : { icon: 'ph-package', tone: 'bg-indigo-50 text-indigo-600', label: 'Consumable (RIS)' };
@@ -17216,12 +17228,14 @@
         releasesLoaded = true;
         if (sheetCode) renderItemSheet();
       }, err => console.warn('head slips', err)));
+      bkHeadListen();   // the books (view only)
     }
     function stopHeadInventory() {
       headInvUnsubs.forEach(off => { try { off(); } catch (e) {} });
       headInvUnsubs = [];
       headInvLoaded = false;
       invRemote = {};
+      if (typeof bk !== 'undefined' && bk.headOn) { bkStop(); Object.assign(bk, { index: [], indexDocs: {}, indexLoaded: false, meta: null, metaLoaded: false, error: '' }); }
     }
     // The phone shows: the account's inventory + the head's suggestions still waiting + the draft.
     function onHeadInventory() {
@@ -17359,17 +17373,18 @@
           <div class="space-y-2">
             <div class="relative">
               <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
-              <input type="search" id="hdItemsSearch" oninput="headItemsSearch(this.value)" value="${escapeHTML(headItemsQ)}" placeholder="Search items, codes, rooms, property numbers" autocomplete="off" spellcheck="false" aria-label="Search the school inventory"
+              <input type="search" id="hdItemsSearch" oninput="headItemsSearch(this.value)" value="${escapeHTML(headItemsQ)}" placeholder="${headItemsFilter === 'BOOKS' ? 'Search titles, authors, subjects, grades' : 'Search items, codes, rooms, property numbers'}" autocomplete="off" spellcheck="false" aria-label="Search the school inventory"
                 class="w-full h-11 pl-9 pr-3 bg-white rounded-xl border border-slate-200 text-sm font-medium outline-none focus:border-brand-500">
             </div>
-            <div class="flex gap-1.5 flex-wrap" role="group" aria-label="Show">${[['ALL', 'All'], ['EQUIPMENT', 'Equipment'], ['CONSUMABLE', 'Supplies'], ['LOW', 'Low stock']].map(([k, label]) =>
-              `<button onclick="headItemsSetFilter('${k}')" data-head-filter="${k}" aria-pressed="${headItemsFilter === k}" class="h-8 px-3 rounded-full border text-xs font-bold ${headItemsFilter === k ? 'bg-brand-600 border-brand-600 text-white' : 'bg-white border-slate-200 text-slate-700'}">${label}</button>`).join('')}</div>
+            <div class="flex gap-1.5 flex-wrap" role="group" aria-label="Show">${[['ALL', 'All'], ['EQUIPMENT', 'Equipment'], ['CONSUMABLE', 'Supplies'], ['LOW', 'Low stock'], ['BOOKS', `<i class="ph-bold ph-books"></i> Books <span data-head-books-n>${headBooksCount()}</span>`]].map(([k, label]) =>
+              `<button onclick="headItemsSetFilter('${k}')" data-head-filter="${k}" aria-pressed="${headItemsFilter === k}" class="h-8 px-3 rounded-full border text-xs font-bold inline-flex items-center gap-1 ${headItemsFilter === k ? 'bg-brand-600 border-brand-600 text-white' : 'bg-white border-slate-200 text-slate-700'}">${label}</button>`).join('')}</div>
           </div>
           <div id="hdItemsList" class="rounded-2xl bg-white border border-slate-200 divide-y divide-slate-100 overflow-hidden">${headItemsListHTML()}</div>
         </div>`;
     }
     function headItemsListHTML() {
       const q = headItemsQ.trim().toLowerCase();
+      if (headItemsFilter === 'BOOKS') return headBooksListHTML(q);
       const inInv = i => i.qty > 0 || getUnits(i.code).length > 0 || !!headMarkOf(i.code);
       const match = i => !q || `${i.name} ${i.code} ${i.note || ''} ${i.category || ''} ${getUnits(i.code).map(u => `${u.no || ''} ${u.serial || ''} ${u.to || ''}`).join(' ')}`.toLowerCase().includes(q);
       const kind = i => headItemsFilter === 'ALL' || (headItemsFilter === 'LOW' ? i.qty <= i.minQty && i.minQty > 0 : i.type === headItemsFilter);
@@ -17398,7 +17413,81 @@
       return `<p class="px-3 py-2 text-[11px] font-bold text-slate-500 bg-slate-50" data-head-count="${list.length}">${plural(list.length, 'item')} · ${formatCurrency(value)}</p>` +
         (shown.map(i => row(i)).join('') || `<p class="px-3 py-6 text-center text-xs text-slate-500">${q ? 'No item in the inventory matches.' : 'No items yet.'}</p>`) +
         (list.length > shown.length ? `<button onclick="headItemsShown += 200; document.getElementById('hdItemsList').innerHTML = headItemsListHTML()" class="w-full py-3 text-xs font-bold text-brand-700">Show ${Math.min(200, list.length - shown.length)} more</button>` : '') +
-        (more.length ? `<p class="px-3 py-2 text-[11px] font-bold text-slate-500 bg-slate-50">In the Catalog, not in the inventory</p>` + more.map(i => row(i, '<span class="mt-0.5 block text-[11px] text-slate-500">Open it and tap Suggest a change to add it</span>')).join('') : '');
+        (more.length ? `<p class="px-3 py-2 text-[11px] font-bold text-slate-500 bg-slate-50">In the Catalog, not in the inventory</p>` + more.map(i => row(i, '<span class="mt-0.5 block text-[11px] text-slate-500">Open it and tap Suggest a change to add it</span>')).join('') : '')
+        + headBookHitsHTML(q);
+    }
+    // ---- Books on the head's Items tab (view only): the library catalogue every teacher sees,
+    // so the head can tell during TA whether the school has enough references for a plan.
+    var headBookKind = 'ALL';
+    const headBooks = () => (typeof bk === 'undefined' ? [] : bk.index || []);
+    function headBooksCount() { const n = headBooks().length; return n ? String(n) : ''; }
+    function headBookRowHTML(e) {
+      const k = bkKind(e.k);
+      const sub = [k.short, e.g && bkGradeText(String(e.g).split(',')), e.a].filter(Boolean).join(' · ');
+      const out = (e.o || []).reduce((n, o) => n + (Number(o[1]) || 1), 0);
+      return `<button type="button" onclick="openLibTitle('${escapeHTML(e.i)}')" data-head-book="${escapeHTML(e.i)}" class="w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-slate-50">
+          <span class="w-9 h-9 shrink-0 rounded-xl ${k.tone} flex items-center justify-center"><i class="ph-bold ${k.icon} text-xl"></i></span>
+          <span class="flex-1 min-w-0">
+            <span class="block text-sm font-bold text-slate-900 line-clamp-2">${escapeHTML(e.t)}</span>
+            <span class="block text-[11px] text-slate-500 truncate">${escapeHTML(sub)}${e.au ? ` · ${escapeHTML(e.au)}` : ''}</span>
+          </span>
+          <span class="shrink-0 text-right"><span class="block text-sm font-extrabold text-slate-900" data-head-book-n="${e.n || 0}">${e.n || 0} <span class="text-[11px] font-semibold text-slate-500">${(e.n || 0) === 1 ? 'copy' : 'copies'}</span></span>
+          <span class="block text-[11px] font-semibold ${e.av > 0 ? 'text-emerald-700' : 'text-slate-500'}">${e.av || 0} free${out ? ` · ${out} on loan` : ''}</span></span>
+        </button>`;
+    }
+    function headBooksListHTML(q) {
+      const all = headBooks();
+      if (!all.length) {
+        const err = bk.error;
+        return `<div class="px-4 py-6 text-center text-xs text-slate-500" data-head-books="${err ? 'error' : bk.indexLoaded ? 'empty' : 'loading'}">
+          <i class="ph-duotone ph-books text-3xl text-slate-400"></i>
+          <p class="mt-1 font-bold text-slate-700 text-sm">${err ? 'Can’t open the books' : bk.indexLoaded ? 'No books listed yet' : 'Getting the school’s books…'}</p>
+          <p>${err ? `${escapeHTML(err)} · Ask the property custodian to publish the latest database rules.` : bk.indexLoaded ? 'They show up here when the property custodian or the librarian lists them.' : ''}</p></div>`;
+      }
+      const kinds = Object.keys(BK_KINDS).filter(k => all.some(e => e.k === k));
+      if (headBookKind !== 'ALL' && !kinds.includes(headBookKind)) headBookKind = 'ALL';
+      const list = all.filter(e => (headBookKind === 'ALL' || e.k === headBookKind) && libMatches(e, q));
+      const copies = list.reduce((n, e) => n + (e.n || 0), 0), free = list.reduce((n, e) => n + (e.av || 0), 0);
+      const chips = kinds.length > 1 ? `<div class="px-3 py-2 flex gap-1.5 flex-wrap bg-white" role="group" aria-label="Kind of book">${['ALL', ...kinds].map(k =>
+        `<button onclick="headBookSetKind('${k}')" data-head-book-kind="${k}" aria-pressed="${headBookKind === k}" class="h-7 px-2.5 rounded-full border text-[11px] font-bold ${headBookKind === k ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700'}">${k === 'ALL' ? 'All kinds' : escapeHTML(bkKind(k).short)}</button>`).join('')}</div>` : '';
+      // By subject: titles and copies per learning area (what a school plan asks about)
+      const areas = {};
+      list.forEach(e => { const a = e.a || 'No subject given'; (areas[a] = areas[a] || { t: 0, n: 0 }); areas[a].t++; areas[a].n += e.n || 0; });
+      const areaRows = Object.entries(areas).sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0]));
+      const bySubject = !q && areaRows.length > 1 ? `<details class="bg-white" data-head-book-areas>
+          <summary class="px-3 py-2 text-xs font-bold text-slate-700 cursor-pointer">By subject · ${areaRows.length} subjects</summary>
+          <div class="px-3 pb-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4">${areaRows.map(([a, v]) => `
+            <button type="button" onclick="headItemsSearch(${escapeHTML(JSON.stringify(a === 'No subject given' ? '' : a))}); const s = document.getElementById('hdItemsSearch'); if (s) s.value = headItemsQ" class="w-full flex items-center justify-between gap-2 py-1.5 text-xs border-b border-slate-100 text-left" data-head-book-area="${escapeHTML(a)}">
+              <span class="font-semibold text-slate-800 truncate">${escapeHTML(a)}</span><span class="shrink-0 text-slate-500">${plural(v.t, 'title')} · ${bkCopies(v.n)}</span></button>`).join('')}</div>
+        </details>` : '';
+      const shown = list.slice(0, headItemsShown);
+      return `<p class="px-3 py-2 text-[11px] font-bold text-slate-500 bg-slate-50" data-head-books-count="${list.length}">${plural(list.length, 'title')} · ${bkCopies(copies)} · ${free} free · view only</p>`
+        + chips + bySubject
+        + (shown.map(headBookRowHTML).join('') || `<p class="px-3 py-6 text-center text-xs text-slate-500">No book matches.</p>`)
+        + (list.length > shown.length ? `<button onclick="headItemsShown += 200; document.getElementById('hdItemsList').innerHTML = headItemsListHTML()" class="w-full py-3 text-xs font-bold text-brand-700">Show ${Math.min(200, list.length - shown.length)} more</button>` : '');
+    }
+    // Searching All: the titles that match too
+    function headBookHitsHTML(q) {
+      if (headItemsFilter !== 'ALL' || q.length < 2) return '';
+      const hits = headBooks().filter(e => libMatches(e, q));
+      if (!hits.length) return '';
+      return `<p class="px-3 py-2 text-[11px] font-bold text-slate-500 bg-slate-50" data-head-book-hits="${hits.length}">Books · ${plural(hits.length, 'title')}</p>`
+        + hits.slice(0, 10).map(headBookRowHTML).join('')
+        + (hits.length > 10 ? `<button onclick="headItemsSetFilter('BOOKS')" class="w-full py-3 text-xs font-bold text-brand-700">See all ${hits.length} titles</button>` : '');
+    }
+    function headBookSetKind(k) {
+      headBookKind = k;
+      headItemsShown = 120;
+      const el = document.getElementById('hdItemsList');
+      if (el) el.innerHTML = headItemsListHTML();
+    }
+    // New books from the cloud: the list and the count (the search box keeps its focus)
+    function headBooksRefresh() {
+      if (!isHeadDevice() || activeMainView !== 'HEAD' || headTab !== 'items') return;
+      const n = document.querySelector('[data-head-books-n]');
+      if (n) n.textContent = headBooksCount();
+      const el = document.getElementById('hdItemsList');
+      if (el && (headItemsFilter === 'BOOKS' || headItemsQ.trim().length >= 2)) el.innerHTML = headItemsListHTML();
     }
     function headItemsSearch(v) {
       headItemsQ = String(v || '');
@@ -18629,6 +18718,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         return `
           <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3" data-stock="${escapeHTML(s.code)}">
             <div class="flex items-start gap-3">
+              <span class="w-10 h-10 shrink-0 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center" data-stock-icon="${categoryIcon(s.cat)}" title="${escapeHTML(s.cat || 'Supplies')}"><i class="ph-duotone ${categoryIcon(s.cat)} text-2xl"></i></span>
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-bold text-slate-900 leading-snug line-clamp-2">${escapeHTML(s.name)}</p>
                 <p class="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">${tag}${s.cat ? `<span class="truncate">${escapeHTML(s.cat)}</span>` : ''}</p>
@@ -22467,6 +22557,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function bkStop() {
       bkUnsubs.forEach(off => { try { off(); } catch (e) {} });
       bkUnsubs = [];
+      bk.headOn = false;
       clearTimeout(bkPubTimer); clearTimeout(bkApplyTimer);
       Object.assign(bk, { books: [], loaded: false, meta: null, metaLoaded: false, moves: [], movesLoaded: false, loans: [], loansLoaded: false,
         loansA: [], loansB: [], loansBLoaded: false, classes: [], classesLoaded: false, myClass: null, myClasses: [], myClassLoaded: false, indexDocs: {}, index: [], indexLoaded: false, error: '', librarian: null });
@@ -22474,7 +22565,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function bkSubscribe() {
       bkStop();
       if (!reqRole) { bkLoadLocal(); return; }
-      if (!bkOnline() || isHeadDevice() || isIncomingDevice()) return;
+      if (!bkOnline() || isIncomingDevice()) return;
+      if (isHeadDevice()) { if (headMe && headMe.status === 'active') bkHeadListen(); return; }
       if (isCustodianDevice() && (viewOnlyEnded() || assistantRemoved())) return;
       const F = cloud.sdk, uid = bkMe();
       bk.librarian = isLibrarianDevice();
@@ -22556,6 +22648,25 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         }, soft('my class')));
       }
     }
+    // The School Head: the library catalogue and the places, to read (Items tab · Books)
+    function bkHeadListen() {
+      if (!bkOnline() || !isHeadDevice() || bk.headOn) return;
+      bk.headOn = true;
+      const F = cloud.sdk;
+      const fail = what => err => { console.warn(what, err); bk.error = cloudErrorText(err); bk.indexLoaded = true; bkRender(); };
+      bkUnsubs.push(F.onSnapshot(bkMetaRef(), snap => {
+        bk.meta = snap.exists() ? snap.data() : null;
+        bk.metaLoaded = true; bkRender();
+      }, fail('head book places')));
+      bkUnsubs.push(F.onSnapshot(bkCol('bookIndex'), { includeMetadataChanges: true }, snap => {
+        bk.indexDocs = {};
+        snap.docs.forEach(d => { bk.indexDocs[d.id] = d.data(); });
+        bk.index = Object.keys(bk.indexDocs).sort((a, b) => Number(a) - Number(b)).flatMap(k => bk.indexDocs[k].items || []);
+        if (!(snap.metadata && snap.metadata.fromCache)) bk.indexLoaded = true;
+        bk.error = '';
+        bkRender();
+      }, fail('head books')));
+    }
     // Teacher: the librarian badge was given or taken away → listen to what the role needs.
     function bkRoleCheck() {
       if (!isTeacherDevice() || !bkOnline()) return;
@@ -22576,6 +22687,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       try {
         if (activeMainView === 'BOOKS') renderBooksView();
         if (activeMainView === 'REQUESTER') renderRequesterView();
+        if (activeMainView === 'HEAD') headBooksRefresh();
         if (bkSheet) renderBkModal();
         renderHomeBooksCard();
         if (activeMainView === 'HOME') renderHomeAttention();
@@ -23858,7 +23970,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <button id="libAskBtn" onclick="libAsk('${escapeHTML(e.i)}')" class="w-full h-12 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-paper-plane-tilt"></i> Ask to borrow</button>
             <p class="text-[11px] text-violet-900">The keeper of the books gets your request and lends them to you.</p>
           </div>`
-          : `<p class="rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 px-3 py-2">${!e.l ? 'This title is not lent out (textbooks and manuals are issued by the property custodian).' : !places.length ? 'No copy is free right now.' : bkCanManage() ? 'Lend it from the Library desk.' : 'Waiting for the custodian to approve your account.'}</p>`}`;
+          : `<p class="rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 px-3 py-2">${!e.l ? 'This title is not lent out (textbooks and manuals are issued by the property custodian).' : !places.length ? 'No copy is free right now.' : isHeadDevice() ? 'View only · teachers borrow it from the Library tab on their phones.' : bkCanManage() ? 'Lend it from the Library desk.' : 'Waiting for the custodian to approve your account.'}</p>`}`;
     }
     function libAsk(id) {
       const e = libEntry(id);
@@ -27125,6 +27237,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-head-books', date: 'Nov 2026', title: 'School Head: books under Items, and icons on School stock', points: [
+        'The School Head\u2019s Items tab has a new Books chip: every title in the school with how many copies there are and how many are free, by kind (textbook, teacher\u2019s manual, reference\u2026). By subject adds up the titles and copies for each subject. It is view only, handy during technical assistance to check that there are enough references for a school plan.',
+        'Searching All on the Items tab also finds books. Tap a title to see where the copies are and who borrowed them.',
+        'Teachers: School stock now shows an icon for each item\u2019s category (paper, cleaning, office supplies\u2026), like the rest of the app.',
+        'Property custodian: publish the updated database rules (firestore.rules) so the School Head can open the books.'
+      ] },
       { id: '2026-11-teacher-desktop', date: 'Nov 2026', title: 'Teachers: a wider My Items on a computer', points: [
         'On a computer or a tablet held sideways, a teacher\u2019s account now uses the whole screen. The tabs stay the same.',
         'My Items: equipment and supplies on the left, with Report a problem and Return on the same line as each item. The totals, Needs your attention, slips to mark Received, the count and Clearance are on the right.',
