@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="c8a0d0efcba7">
+  <meta name="app-version" content="6382f07e7837">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -191,6 +191,12 @@
     .ip-chip { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 1.625rem; padding: 0 0.5rem; border-radius: 0.5rem; border-width: 1px;
       font-size: 0.6875rem; font-weight: 700; white-space: nowrap; }
     .ip-link:hover { color: #4338ca; text-decoration: underline; }
+    /* Not synced yet: a small cloud on rows / slips saved on this phone but not yet in the school account */
+    .unsync-mark { display: inline-flex; align-items: center; color: #0369a1; font-size: 0.8125rem; line-height: 1; vertical-align: -0.125rem; margin-right: 0.25rem; }
+    .unsync-pill { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0 0.375rem; height: 1.25rem; border-radius: 0.375rem; background: #f0f9ff;
+      color: #0369a1; font-size: 0.6875rem; font-weight: 700; white-space: nowrap; }
+    html.dark .unsync-mark { color: #7dd3fc; }
+    html.dark .unsync-pill { background: rgb(14 165 233 / 0.15); color: #7dd3fc; }
     html.dark .ip-tab { color: #94a3b8; }
     html.dark .ip-tab:hover { color: #e2e8f0; }
     html.dark .ip-tab[aria-selected="true"] { color: #a5b4fc; }
@@ -3695,6 +3701,18 @@
     };
     const flagHTML = ([tone, icon, text]) =>
       `<span class="inv-flag ${FLAG_TONES[tone]}"><i class="ph-fill ${icon}"></i><span class="truncate">${escapeHTML(text)}</span></span>`;
+    const UNSYNC_TIP = 'Not synced yet: saved on this phone, sent to the school account when online';
+    function itemUnsynced(code) { return !!(invUnsynced && (invUnsynced.has('i:' + code) || invUnsynced.has('c:' + code))); }
+    function unsyncMark() { return `<span class="unsync-mark" data-unsynced title="${UNSYNC_TIP}" role="img" aria-label="Not synced yet"><i class="ph-bold ph-cloud-arrow-up"></i></span>`; }
+    function unsyncPill(text = 'Not synced yet') { return `<span class="unsync-pill" data-unsynced title="${UNSYNC_TIP}"><i class="ph-bold ph-cloud-arrow-up"></i> ${text}</span>`; }
+    const unsyncSlot = code => `<span class="unsync-slot" data-unsync-code="${escapeHTML(code)}">${itemUnsynced(code) ? unsyncMark() : ''}</span>`;
+    // Updates the cloud marks on the Inventory / Catalog rows already on screen (no re-render).
+    function paintUnsynced() {
+      document.querySelectorAll('.unsync-slot[data-unsync-code]').forEach(el => {
+        const want = itemUnsynced(el.dataset.unsyncCode);
+        if (want !== !!el.firstChild) el.innerHTML = want ? unsyncMark() : '';
+      });
+    }
     const itemTypeIcon = item => item.type === 'EQUIPMENT'
       ? { icon: 'ph-desktop-tower', tone: 'bg-blue-50 text-blue-600', label: 'Equipment (ICS/PAR)' }
       : { icon: 'ph-package', tone: 'bg-indigo-50 text-indigo-600', label: 'Consumable (RIS)' };
@@ -3769,7 +3787,7 @@
               ${lead}
               <div class="flex-1 min-w-0">
                 <p class="inv-name">${escapeHTML(item.name)}</p>
-                <p class="text-xs text-slate-600 truncate mt-0.5">${item.note ? escapeHTML(item.note) : '<span class="text-slate-500 italic">No room yet</span>'} · <span class="font-mono">${code}</span></p>
+                <p class="text-xs text-slate-600 truncate mt-0.5">${unsyncSlot(item.code)}${item.note ? escapeHTML(item.note) : '<span class="text-slate-500 italic">No room yet</span>'} · <span class="font-mono">${code}</span></p>
                 ${flags.length ? `<div class="flex flex-wrap items-center gap-1 mt-1.5 min-w-0">${flags.slice(0, 2).map(flagHTML).join('')}${flags.length > 2 ? `<span class="inv-flag ${FLAG_TONES.slate} shrink-0">+${flags.length - 2}</span>` : ''}</div>` : ''}
               </div>
               <span class="lap-col w-44 shrink-0 text-xs text-slate-600 truncate" title="${escapeHTML(item.category)}">${escapeHTML(item.category)}</span>
@@ -4026,6 +4044,7 @@
         ? `<button type="button" ${attr} onclick="${onclick}" class="ip-chip ${IP_CHIP[tone]} hover:brightness-95"><i class="ph-bold ${icon}"></i> ${text}</button>`
         : `<span ${attr} class="ip-chip ${IP_CHIP[tone]}"><i class="ph-bold ${icon}"></i> ${text}</span>`);
       if (ipReadOnly()) chip('slate', 'ph-eye', 'View only', '', 'data-ip-chip="viewonly"');
+      if (itemUnsynced(item.code)) chips.push(`<span data-ip-chip="unsynced" class="ip-chip bg-sky-50 text-sky-800 border-sky-200" title="${UNSYNC_TIP}"><i class="ph-bold ph-cloud-arrow-up"></i> Not synced yet</span>`);
       if (item.qty <= 0) chip('rose', 'ph-prohibit', 'Out of stock', '', 'data-ip-chip="out"');
       else if (item.qty <= item.minQty) chip('amber', 'ph-warning', 'Low stock', '', 'data-ip-chip="low"');
       else chip('emerald', 'ph-check-circle', 'In stock', '', 'data-ip-chip="instock"');
@@ -4351,7 +4370,7 @@
             <span class="hidden sm:flex w-11 h-11 shrink-0 rounded-xl ${t.tone} items-center justify-center" title="${t.label}"><i class="ph-duotone ${t.icon} text-2xl"></i></span>
             <span class="flex-1 min-w-0 block">
               <span class="inv-name">${name}</span>
-              <span class="block text-xs text-slate-600 truncate mt-0.5"><span class="font-mono font-semibold ${needsPrice ? 'text-amber-700 underline decoration-dotted' : 'text-slate-800'}">${needsPrice ? 'Set price' : formatCurrency(item.price)}</span> / ${escapeHTML(item.unit.toLowerCase())} · <span class="font-mono">${code}</span><span class="hidden sm:inline lap-hide"> · ${escapeHTML(item.category)}</span></span>
+              <span class="block text-xs text-slate-600 truncate mt-0.5">${unsyncSlot(item.code)}<span class="font-mono font-semibold ${needsPrice ? 'text-amber-700 underline decoration-dotted' : 'text-slate-800'}">${needsPrice ? 'Set price' : formatCurrency(item.price)}</span> / ${escapeHTML(item.unit.toLowerCase())} · <span class="font-mono">${code}</span><span class="hidden sm:inline lap-hide"> · ${escapeHTML(item.category)}</span></span>
               <span id="flags-${code}" class="${flags ? 'flex' : 'hidden'} flex-wrap items-center gap-1 mt-1.5 min-w-0">${flags}</span>
             </span>
           </button>
@@ -8546,7 +8565,7 @@
             <button type="button" onclick="openDelivery('${d.id}')" data-dlv-card="${d.id}" class="w-full text-left rounded-xl border border-slate-200 hover:bg-slate-50 p-3 flex items-start gap-3">
               <span class="w-10 h-10 shrink-0 rounded-xl ${d.kind === 'po' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'} flex items-center justify-center"><i class="ph-bold ${d.kind === 'po' ? 'ph-clipboard-text' : 'ph-truck'} text-xl"></i></span>
               <span class="flex-1 min-w-0">
-                <span class="flex items-center gap-2 flex-wrap"><span class="text-sm font-extrabold text-slate-800">${escapeHTML(dlvLabel(d))}</span><span class="text-[11px] font-bold px-1.5 py-0.5 rounded border ${chip[0]}">${chip[1]}</span></span>
+                <span class="flex items-center gap-2 flex-wrap"><span class="text-sm font-extrabold text-slate-800">${escapeHTML(dlvLabel(d))}</span><span class="text-[11px] font-bold px-1.5 py-0.5 rounded border ${chip[0]}">${chip[1]}</span>${invUnsynced && invUnsynced.has('d:' + d.id) ? unsyncPill() : ''}</span>
                 <span class="block text-xs text-slate-600 truncate mt-0.5">${escapeHTML(d.supplier || 'No supplier')} · ${plural(d.lines.length, 'item')} · ${formatCurrency(val)}</span>
                 ${when ? `<span class="block text-[11px] text-slate-500">${escapeHTML(when)}</span>` : ''}
               </span>
@@ -11406,6 +11425,9 @@
     let invApplying = false;
     let invPushTimer = null;
     const invStatus = { state: 'off', error: '' }; // off | syncing | saving | synced | offline | error
+    // Not synced yet: inventory records (i:CODE, c:CODE, d:ID …) saved on this phone that the school
+    // account doesn't have yet (offline, or still sending). Shown as a small cloud on the rows.
+    var invUnsynced = new Set(), invUnsyncedSig = '', invPendingDocs = {}, invUnsyncTimer = null;
     let invErrorSince = 0;   // when the current sync error started
 
     function loadInvSync() {
@@ -11413,6 +11435,28 @@
       catch (e) { invSync = { schoolId: null, synced: {}, lastAt: 0 }; }
     }
     function saveInvSync() { localStorage.setItem(INV_SYNC_KEY, JSON.stringify(invSync)); }
+    function scheduleUnsynced(ms = 250) { clearTimeout(invUnsyncTimer); invUnsyncTimer = setTimeout(refreshUnsynced, ms); }
+    function refreshUnsynced() {
+      const next = new Set();
+      if (inventorySyncActive() && invRemote.inventory && invRemote.catalog && invRemote.settings) {
+        const local = localInvDocs(), remote = remoteInvDocs();
+        for (const [k, body] of Object.entries(local)) {
+          if (INV_META_KEYS.has(k)) continue;
+          const r = remote[k];
+          if (!r || !r.body || invHash(r.body) !== invHash(body)) next.add(k);   // changed here, not sent yet
+        }
+        Object.values(invPendingDocs).forEach(keys => keys.forEach(k => { if (local[k]) next.add(k); }));   // sent, waiting for the account
+      }
+      const sig = [...next].sort().join('|');
+      if (sig === invUnsyncedSig) return;
+      invUnsyncedSig = sig;
+      invUnsynced = next;
+      renderInvStatus();
+      paintUnsynced();
+      if (typeof sheetCode !== 'undefined' && sheetCode) renderItemSheet();
+      if (typeof dlvState !== 'undefined' && dlvState && dlvState.view === 'list') renderDlv();
+    }
+    function invUnsyncedCount() { return invUnsynced ? invUnsynced.size : 0; }
     function inventorySyncActive() { return invReady && isCustodianDevice() && !!cloud.user && !isViewOnly(); }
 
     // Same text for the same data whatever the key order (Firestore returns maps sorted).
@@ -11498,12 +11542,12 @@
             syncing: ['bg-slate-100 text-slate-600 border-slate-200', 'ph-circle-notch animate-spin', 'Syncing…'],
             saving:  ['bg-sky-50 text-sky-700 border-sky-200', 'ph-cloud-arrow-up', 'Saving…'],
             synced:  ['bg-emerald-50 text-emerald-700 border-emerald-200', 'ph-cloud-check', 'Saved to your account'],
-            offline: ['bg-slate-100 text-slate-600 border-slate-200', 'ph-cloud-slash', 'Offline · syncs later'],
+            offline: ['bg-slate-100 text-slate-600 border-slate-200', 'ph-cloud-slash', invUnsyncedCount() ? `Offline · ${invUnsyncedCount()} to sync` : 'Offline · syncs later'],
             error:   ['bg-rose-50 text-rose-700 border-rose-200', 'ph-warning', 'Not syncing']
           }[s] || ['bg-slate-100 text-slate-600 border-slate-200', 'ph-cloud', ''];
           el.className = `${look[0]} inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-bold whitespace-nowrap`;
           el.innerHTML = `<i class="ph-bold ${look[1]}"></i>${look[2]}`;
-          el.title = invStatus.error || (invSync.lastAt ? `Last synced ${formatTimeAgo(invSync.lastAt)}` : '');
+          el.title = invStatus.error || [invUnsyncedCount() ? `${plural(invUnsyncedCount(), 'change')} saved on this phone, not yet in the school account (marked with a small cloud)` : '', invSync.lastAt ? `Last synced ${formatTimeAgo(invSync.lastAt)}` : ''].filter(Boolean).join(' · ');
         }
       }
       if (typeof updateBackupReminder === 'function') updateBackupReminder();
@@ -11514,7 +11558,9 @@
       invUnsubs.forEach(off => { try { off(); } catch (e) {} });
       invUnsubs = [];
       invReady = false;
+      invPendingDocs = {};
       clearTimeout(invPushTimer);
+      scheduleUnsynced(0);
       if (invStatus.state !== 'off') setInvStatus('off');
     }
 
@@ -11535,6 +11581,10 @@
           snap.docs.forEach(d => { map[d.id] = d.data(); });
           invRemote[col] = map;
           meta[col] = { pending: !!snap.metadata.hasPendingWrites, fromCache: !!snap.metadata.fromCache };
+          invPendingDocs[col] = snap.docs.filter(d => d.metadata && d.metadata.hasPendingWrites).map(d => {
+            const x = d.data() || {};
+            return col === 'inventory' ? 'i:' + x.code : col === 'catalog' ? 'c:' + x.code : String(d.id).startsWith('dlv-') ? 'd:' + x.id : '';
+          }).filter(k => k && !/undefined$/.test(k));
           onInvSnapshot(meta);
         }, err => {
           if (isAssistant() && /permission/i.test(String(err && (err.code || err.message)))) {   // removed as assistant
@@ -11598,6 +11648,7 @@
       if (!fromCache && !metas.some(m => m.pending)) invSync.pendingSince = 0;   // everything reached the account
       saveInvSync();
       setInvStatus(metas.some(m => m.pending) ? 'saving' : fromCache ? (navigator.onLine ? 'syncing' : 'offline') : 'synced');
+      scheduleUnsynced(0);
       linkTypedNamesToTeachers();
       applyCountReports();
       applyLifeReports();
@@ -11742,6 +11793,7 @@
     function scheduleInventorySync() {
       if (invApplying || !invReady || isViewOnly()) return;
       if (!invSync.pendingSince) { invSync.pendingSince = Date.now(); saveInvSync(); }
+      scheduleUnsynced();
       clearTimeout(invPushTimer);
       invPushTimer = setTimeout(() => pushInventory(), 600);
     }
@@ -17132,6 +17184,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     let teamError = '';
     let releaseDraft = null;
     let releaseDone = null;
+    var relSendSig = '';
 
     function memberCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'members'); }
     function relCol() { return cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'releases'); }
@@ -17213,6 +17266,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         releaseAll = sampleList('releases', snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) })));
         releaseAll.sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0));
         releaseList = releaseAll.filter(r => !r.void);   // cancelled slips are hidden everywhere
+        const sendSig = releaseAll.filter(r => r.sending).map(r => r.id).join('|');
+        if (sendSig !== relSendSig) {   // a slip finished sending: drop its Not synced yet mark
+          const was = relSendSig;
+          relSendSig = sendSig;
+          if ((was || sendSig) && coaPage === 'slips' && !document.getElementById('coaModal').classList.contains('hidden')) renderCoa();
+        }
         if (!(snap.metadata && snap.metadata.fromCache)) releasesLoaded = true;
         onTeamChange();
         notifReminders();
@@ -18350,6 +18409,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <span class="mx-auto w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="ph-bold ph-check-circle text-3xl"></i></span>
             <p class="text-base font-extrabold text-slate-900">Released to ${escapeHTML(r.teacherName)}</p>
             <p class="text-xs text-slate-500">${r.docs.map(x => `${x.kind} No. <b class="font-mono">${escapeHTML(x.no)}</b> · ${plural(x.lines.length, 'item')}`).join('<br>')}</p>
+            ${navigator.onLine ? '' : `<p data-rel-offline class="text-xs text-sky-800 flex items-center justify-center gap-1.5"><i class="ph-bold ph-cloud-arrow-up"></i> Saved on this phone · it reaches ${escapeHTML(r.teacherName.split(' ')[0])} when you are back online</p>`}
             <p class="text-xs text-slate-500">${r.docs.some(x => x.kind === 'RIS') ? 'Supplies were taken out of the stock count. ' : ''}${r.docs.some(x => isIssueKind(x.kind)) ? `Equipment stays in Inventory, shown as with ${escapeHTML(r.teacherName.split(' ')[0])}.` : ''}</p>
           </div>`;
         foot.innerHTML = r.docs.map((x, i) => `<button onclick="printReleaseDone(${i})" class="h-12 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> ${x.kind}</button>`).join('') +
@@ -20156,7 +20216,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
               <div class="p-3">
                 <div class="flex items-center justify-between gap-2">
                   <p class="text-xs font-bold text-slate-900">RIS No. <span class="font-mono">${escapeHTML(r.no || '')}</span> · ${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</p>
-                  <span class="flex items-center gap-1.5">${p.uid ? (ok ? '<span class="text-[11px] font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Confirmed</span>' : '<span class="text-[11px] font-bold text-amber-700">Not confirmed yet</span>') : ''}
+                  <span class="flex items-center gap-1.5">${r.sending ? unsyncPill() : p.uid ? (ok ? '<span class="text-[11px] font-bold text-emerald-700 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Confirmed</span>' : '<span class="text-[11px] font-bold text-amber-700">Not confirmed yet</span>') : ''}
                     <button onclick="printReleaseById('${r.id}')" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Print RIS"><i class="ph-bold ph-printer"></i></button></span>
                 </div>
                 <p class="text-[11px] text-slate-600">${r.lines.map(l => `${l.qty} ${escapeHTML(l.unit || '')} ${escapeHTML(l.desc)}`).join(' · ')}</p>
@@ -20184,7 +20244,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
                 <li class="p-3 flex items-start gap-3">
                   <span class="w-8 h-8 shrink-0 rounded-lg ${r.kind === 'RETURN' ? 'bg-slate-100 text-slate-500' : r.kind === 'RIS' ? 'bg-indigo-50 text-indigo-600' : 'bg-blue-50 text-blue-600'} flex items-center justify-center"><i class="ph-bold ${r.kind === 'RETURN' ? 'ph-arrow-u-down-left' : 'ph-hand-arrow-up'}"></i></span>
                   <span class="min-w-0 flex-1">
-                    <span class="block text-xs font-bold text-slate-900">${escapeHTML(label(r))}${relDocName(r) ? ` · ${escapeHTML(relDocName(r))}` : ''}</span>
+                    <span class="block text-xs font-bold text-slate-900">${escapeHTML(label(r))}${relDocName(r) ? ` · ${escapeHTML(relDocName(r))}` : ''}${r.sending ? ` ${unsyncMark()}` : ''}</span>
                     <span class="block text-[11px] text-slate-600 line-clamp-2">${r.lines.map(l => `${l.qty} ${escapeHTML(l.desc)}${(l.units || []).length ? ` (${escapeHTML(nosText(l.units))})` : ''}`).join(' · ')}</span>
                     ${r.purpose ? `<span class="block text-[11px] text-slate-500 truncate">${escapeHTML(r.purpose)}</span>` : ''}
                     ${r.mergedFrom ? `<span class="block text-[11px] text-slate-500 truncate">Was under “${escapeHTML(r.mergedFrom)}”</span>` : ''}
@@ -23463,7 +23523,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
               <ol class="mt-1.5 space-y-1">${trail.map(r => `
                 <li class="flex items-start gap-2 text-[11px] text-slate-600">
                   <span class="shrink-0 w-20 text-slate-500">${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span>
-                  <span class="min-w-0 flex-1"><b class="text-slate-800">${escapeHTML(relDocName(r) || r.kind)}</b> · ${escapeHTML(trailText(r))}</span>
+                  <span class="min-w-0 flex-1"><b class="text-slate-800">${escapeHTML(relDocName(r) || r.kind)}</b>${r.sending ? ` ${unsyncMark()}` : ''} · ${escapeHTML(trailText(r))}</span>
                   ${relPrintable(r) ? `<button onclick="printReleaseById('${r.id}')" class="shrink-0 text-slate-500 hover:text-slate-700" aria-label="Print"><i class="ph-bold ph-printer"></i></button>` : ''}
                 </li>`).join('')}</ol>
             </details>` : '<span class="flex-1"></span>'}
@@ -23966,7 +24026,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           <div class="flex flex-wrap gap-1.5">${kinds.map(k => `<button onclick="coaSlipKind='${k}'; renderCoa()" data-slip-kind="${k}" class="h-8 px-3 rounded-lg border text-[11px] font-bold ${coaSlipKind === k ? 'bg-slate-900 border-slate-900 text-white seg-on' : 'bg-white border-slate-200 text-slate-600'}">${k === 'ALL' ? 'All' : k}</button>`).join('')}</div>
           <div id="coaSlips" class="rounded-xl border border-slate-200 divide-y divide-slate-100">
             ${extraHTML}${list.length ? list.slice(0, 80).map(r => `<div class="px-3 py-2 flex items-center gap-3">
-              <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900">${escapeHTML(relDocName(r))} <span class="font-semibold text-slate-500">· ${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span></span>
+              <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900">${escapeHTML(relDocName(r))} <span class="font-semibold text-slate-500">· ${escapeHTML(r.date ? formatShortDate(r.date + 'T00:00:00') : '')}</span>${r.sending ? ` ${unsyncPill()}` : ''}</span>
                 <span class="block text-[11px] text-slate-500 truncate">${escapeHTML(r.kind === 'RETURN' ? `From ${r.teacherName}` : r.source === 'transfer' ? trailText(r) : `To ${r.teacherName}`)} · ${escapeHTML(relNotifSummary(r))}</span></span>
               <button onclick="printReleaseById('${r.id}')" class="shrink-0 w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Print ${escapeHTML(relDocName(r))}"><i class="ph-bold ph-printer"></i></button>
             </div>`).join('') : extra.length ? '' : `<p class="px-3 py-4 text-center text-xs text-slate-500">${cloud.user ? 'No slips yet. They are made when you release, transfer or take back items.' : 'Sign in to see the slips saved for your school.'}</p>`}
@@ -25830,6 +25890,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-unsynced-marks', date: 'Nov 2026', title: 'See what is not synced yet', points: [
+        'Changes saved on this phone but not yet in your school account now show a small blue cloud: on the item\u2019s row in Inventory and Catalog, a Not synced yet chip in the Item preview, and on deliveries and slips (RIS, ICS, PAR) that are still waiting to be sent.',
+        'The marks go away by themselves once you are online and the change reaches the account. When you are offline, the top chip also says how many changes are waiting, and a slip released offline says it reaches the teacher when you are back online.'
+      ] },
       { id: '2026-11-item-preview', date: 'Nov 2026', title: 'One item preview, from everywhere', points: [
         'Tapping an item now opens one Item preview wherever you are: Inventory, Catalog, the scanner, a teacher\u2019s page, Useful life and low-stock notifications. It shows the stock, cost and value, chips like Low stock, With teachers or Past useful life, and quick buttons: Release, Edit details and More.',
         'Three tabs: Overview, People (who has it now, who received it on slips, who asked for it) and History (the latest changes of this item). Edit details opens right inside it, with Save and Cancel, instead of a separate window.',
