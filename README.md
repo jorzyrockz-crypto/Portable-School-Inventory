@@ -255,6 +255,24 @@ Teachers who joined before approvals existed stay active; only new joins need **
 - **Everyone else.** The School Head's photo is at the top of *For your approval*, and on their card in the custodian's School Head panel. Assistant custodians' photos are on their cards in the Assistant panel. On the custodian's and assistants' own devices, their photo is on the **More** button and in **More → Account**. Teachers see theirs in **Your details** (tap the photo on My items), with **Sign in with Google** when they have none.
 - **What is stored.** Only the address of the Google photo (`photo` on the member, School Head and assistant cards, `custodianPhoto` on the school). The rules accept only `https://lhN.googleusercontent.com/…` addresses. A photo that fails to load falls back to initials.
 
+### Purchase Requests by expense: Office Supplies and Other Supplies
+
+Under the updated forms, supplies used by the office stay under **Office Supplies**, while supplies used by teachers go under **Other Supplies**.
+
+| Charged to | Expense (UACS object code) | Inventory account |
+|---|---|---|
+| Office Supplies | Office Supplies Expenses · 5020301000 | Office Supplies Inventory · 1040401000 |
+| Other Supplies | Other Supplies and Materials Expenses · 5020399000 | Other Supplies and Materials Inventory · 1040499000 |
+| Semi-Expendable Machinery and Equipment | Semi-Expendable Machinery and Equipment Expenses · 5020321000 | (on the ICS) |
+| Semi-Expendable Furniture, Fixtures and Books | Semi-Expendable Furniture, Fixtures and Books Expenses · 5020322000 | (on the ICS) |
+
+- **Who asked decides.** A teacher's request goes under Other Supplies. When you encode a walk-in request, **Used by** asks *Teachers* or *The office*. It picks *The office* by itself when the office is typed as something like *Principal's Office* or *Admin*. A choice you make by hand is kept. The request card shows an **Office** chip, and the review sheet lets you change **Used by** while the request is pending or approved (saved as `use: 'office'` on the request).
+- **One PR, grouped by expense, as on the school's form.** A PR keeps one PR No. Its items are grouped under each expense. The printed form, Excel and CSV show the heading (**OFFICE SUPPLIES EXPENSES**, **OTHER SUPPLIES EXPENSES**, **SEMI-EXPENDABLE MACHINERY AND EQUIPMENT EXPENSES**, **SEMI-EXPENDABLE FURNITURE, FIXTURES AND BOOKS EXPENSES**) in the Stock/Property No. and Unit columns, followed by its items. There are no subtotals, and one **TOTAL** goes under Item Description. The PR screen also shows each group's UACS object code and amount.
+- **Charge to.** Every line has **Charge to**, so you can move it. For example, a laminating machine under ₱5,000 can go under Other Supplies. Equipment starts under Semi-Expendable Furniture, Fixtures and Books (5020322000) when its category is furniture or printed publications, and under Semi-Expendable Machinery and Equipment (5020321000) otherwise. The same item can appear once under each expense, for example 5 reams for the office and 10 for teachers. Lines you add by hand, and stockroom or reorder purchases, start as Office Supplies. The PR card and the School Head's card show the amount for each expense. Change History notes lines that moved (*… moved to Other Supplies*). PRs saved before this update have no groups.
+- **Stock kept apart.** When a PR is delivered, stock-in records each line's expense on the delivery. On the item, `other` counts the units on hand that were bought as Other Supplies, and the rest are Office Supplies. The item sheet shows *Office Supplies x · Other Supplies y* when both are on hand. **Stock in** without a PR asks **Supplies charged to** (Office Supplies to start with).
+- **Releasing.** A release to a teacher takes from Other Supplies first, then Office Supplies. A release for an office request takes from Office Supplies first. Each RIS line records its expense: `office`, `other`, or `mixed` with the quantity from each.
+- **RSMI.** The Report of Supplies and Materials Issued lists each expense on its own row. The recapitulation fills the **UACS Object Code** column, and the page shows the total for each expense.
+
 ### School Head approval of Purchase Requests
 
 Every Purchase Request needs the School Head's approval or signature.

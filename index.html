@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="1d430b0a755e">
+  <meta name="app-version" content="227f4bd55aea">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -464,6 +464,7 @@
     .pr-table th { text-align: center; font-weight: 700; vertical-align: middle; }
     .pr-table .c { text-align: center; } .pr-table .r { text-align: right; }
     .pr-table .pr-blank td { height: 15pt; }
+    .pr-table .pr-exp td { font-size: 9pt; line-height: 1.25; padding-top: 4pt; padding-bottom: 4pt; }
     .pr-table .pr-sig { height: 28pt; }
     .pr-draft { border: 1.5pt solid #000; text-align: center; font-weight: 700; letter-spacing: 1pt; padding: 3pt; margin: 2pt 0 2pt; font-size: 11pt; }
     .pr-esign { display: block; text-align: center; font-size: 8pt; font-style: italic; padding-top: 9pt; }
@@ -1645,7 +1646,11 @@
             <input id="rfName" type="text" maxlength="80" placeholder="Name of teacher / staff" class="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-medium focus:border-amber-500 outline-none">
           </div>
           <input id="rfPosition" type="text" maxlength="80" placeholder="Position, e.g. Teacher III" class="h-10 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
-          <input id="rfOffice" type="text" maxlength="80" placeholder="Office / grade &amp; section" class="h-10 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
+          <input id="rfOffice" type="text" maxlength="80" placeholder="Office / grade &amp; section" oninput="guessReqUse(this.value)" class="h-10 px-3 rounded-xl border border-slate-300 text-sm focus:border-amber-500 outline-none">
+          <div class="col-span-2">
+            <p class="text-[11px] font-bold uppercase text-slate-500 mb-1">Used by</p>
+            <div id="rfUse" class="grid grid-cols-2 gap-2"></div>
+          </div>
         </div>
         <div>
           <label id="rfAddLabel" for="rfSearch" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Add items</label>
@@ -4013,7 +4018,10 @@
       // Quantity stepper (same rules as before: not below the units with property numbers)
       document.getElementById('isQty').textContent = item.qty;
       document.getElementById('isUnit').textContent = item.unit;
-      document.getElementById('isQtyNote').textContent = units.length ? `${plural(units.length, 'unit')} with property numbers: the count can't go lower.` : isHeadDevice() ? 'Wrong count? Tap Suggest a change.' : 'Changes are saved right away and kept in History.';
+      const oth = units.length ? 0 : otherOnHand(item.code);
+      document.getElementById('isQtyNote').textContent = units.length ? `${plural(units.length, 'unit')} with property numbers: the count can't go lower.`
+        : oth ? `Office Supplies ${item.qty - oth} · Other Supplies ${oth} (for teachers)`
+        : isHeadDevice() ? 'Wrong count? Tap Suggest a change.' : 'Changes are saved right away and kept in History.';
       const countBtn = document.getElementById('isCount');
       countBtn.classList.toggle('hidden', !countSession);
       if (countSession) {
@@ -8145,11 +8153,13 @@
         item.price = avg;
         addPriceEntry(code, { d: meta.date || localISODate(), k: meta.kind || 'delivery', c: cost, q: qty, s: meta.supplier || '', doc: meta.doc || '', avg });
       }
+      const type = resolveItemType({ ...item, price: cost || item.price }, s.typeOverride);
+      // Supplies bought as Other Supplies (for the teachers) are counted apart from Office Supplies
+      if (meta.exp === 'other' && type !== 'EQUIPMENT') s.other = Math.max(0, Math.min(before, parseInt(s.other, 10) || 0)) + qty;
       s.qty = before + qty;
       item.qty = s.qty;
       delete s.hidden; delete s.archived;   // something you received is never hidden
       let units = 0, list = [];
-      const type = resolveItemType({ ...item, price: cost || item.price }, s.typeOverride);
       if (meta.makeUnits && type === 'EQUIPMENT') {
         const now = Date.now();
         const fresh = nextPropertyNumbers(qty, undefined, { date: meta.date, cost: cost || item.price }).map(no => ({
@@ -8517,7 +8527,7 @@
               if (hit.qty > left && !hit.qtyUnread) notes.push(`The paper says ${hit.qty}, more than the ${left} still to come on the PO – please check`);
             } else qty = 0;
           }
-          return newDlvLine({ lineId: pl.id, desc: pl.desc, stockNo: pl.stockNo || '', unit: pl.unit || '', qty, unitCost: pl.unitCost || null, target: pl.code, targetChosen: true, ordered: pl.qty, done: pl.received || 0, include: left > 0 || qty > 0, notes });
+          return newDlvLine({ lineId: pl.id, desc: pl.desc, stockNo: pl.stockNo || '', unit: pl.unit || '', qty, unitCost: pl.unitCost || null, target: pl.code, targetChosen: true, ordered: pl.qty, done: pl.received || 0, include: left > 0 || qty > 0, notes, ...(EXP_CLASSES[pl.exp] ? { exp: pl.exp } : {}) });
         }),
         opts: { makeUnits: true }
       };
@@ -8595,6 +8605,36 @@
       refreshDlv();
     }
     // Re-render without losing the cursor (same as the ICS review).
+    // Supplies received under Deliveries: Office or Other Supplies. A line of a PO keeps the class
+    // it was saved with; a delivery for a PR takes the PR line's; otherwise the choice on the form
+    // (Office Supplies unless changed: the stockroom). Equipment has no supplies class.
+    function dlvLinkedPr(h) {
+      return h && h.prNo ? prList.find(p => p.status !== 'cancelled' && normalizePropNo(p.prNo) === normalizePropNo(h.prNo)) || null : null;
+    }
+    function dlvLineExp(dr, l, code) {
+      if (!code || itemIsEquip(code)) return null;
+      if (isSupplyExp(l.exp)) return l.exp;
+      const pr = dlvLinkedPr(dr.header);
+      const pl = pr && prHasExp(pr) ? (pr.lines || []).find(x => x.code === code && isSupplyExp(x.exp)) : null;
+      if (pl) return pl.exp;
+      return dr.header.exp === 'other' ? 'other' : 'office';
+    }
+    function dlvExpHTML(dr) {
+      const pr = dlvLinkedPr(dr.header);
+      const supplies = dr.lines.some(l => l.include !== false && !l.finding && (l.target === 'NEW' || (l.target && l.target !== 'SKIP' && !itemIsEquip(l.target))));
+      if (!supplies) return '';
+      if ((pr && prHasExp(pr)) || dr.lines.some(l => EXP_CLASSES[l.exp])) {
+        return `<p data-dlv-exp="pr" class="text-[11px] text-slate-600 -mt-1 flex items-center gap-1.5"><i class="ph-bold ph-receipt text-brand-600"></i> Supplies keep the expense on ${pr ? `PR No. ${escapeHTML(pr.prNo)}` : 'the PO'} (Office or Other Supplies)</p>`;
+      }
+      const cur = dr.header.exp === 'other' ? 'other' : 'office';
+      const chip = k => `<button type="button" data-dlv-exp-pick="${k}" onclick="setDlvHeader('exp', '${k}')" aria-pressed="${cur === k}" class="h-9 px-3 rounded-lg border text-xs font-bold ${cur === k ? 'bg-brand-600 border-brand-600 text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}">${EXP_CLASSES[k].short}</button>`;
+      return `
+        <div data-dlv-exp="pick" class="rounded-xl border border-slate-200 p-3 space-y-1.5">
+          <p class="text-[11px] font-bold uppercase text-slate-500">Supplies charged to</p>
+          <div class="flex flex-wrap gap-2">${chip('office')}${chip('other')}</div>
+          <p class="text-[11px] text-slate-500">${cur === 'other' ? 'For the teachers: Other Supplies and Materials Expenses (5020399000)' : 'For the office and the stockroom: Office Supplies Expenses (5020301000)'}</p>
+        </div>`;
+    }
     function refreshDlv() {
       setTimeout(() => {
         if (!dlvState) return;
@@ -9012,6 +9052,7 @@
           ${po ? input('PR No.', 'prNo', h.prNo, 'autocapitalize="characters" spellcheck="false" placeholder="Optional"') : input('DR / invoice No.', 'drNo', h.drNo || h.invoiceNo, 'autocapitalize="characters" spellcheck="false" placeholder="Optional"')}
           ${!po && !dr.fromId ? input('PO No.', 'poNo', h.poNo, 'autocapitalize="characters" spellcheck="false" placeholder="Optional"') : ''}
         </div>
+        ${dlvExpHTML(dr)}
         ${pr ? `<p class="text-[11px] text-slate-600 -mt-1 flex items-center gap-1.5"><i class="ph-bold ph-link text-brand-600"></i> For Purchase Request ${escapeHTML(pr.prNo)}${pr.deliveredMs ? ' (already marked delivered)' : ' · it is marked delivered when everything is received'}</p>` : ''}
         ${!po ? `
         <label class="flex items-start gap-2.5 rounded-xl border border-slate-200 p-3 cursor-pointer">
@@ -9064,7 +9105,7 @@
       if (po) {
         const d = cleanJSON({
           id: newDlvId(), kind: 'po', poNo: h.poNo, prNo: h.prNo, date: h.date, supplier: h.supplier, status: 'expected', createdMs: Date.now(),
-          lines: plan.lines.map(l => ({ id: l.id, desc: l.desc || (items.find(i => i.code === l.code) || {}).name || '', stockNo: l.stockNo || '', unit: l.unit || (items.find(i => i.code === l.code) || {}).unit || '', code: l.code, qty: l.qty, unitCost: l.unitCost || 0, received: 0 })),
+          lines: plan.lines.map(l => ({ id: l.id, desc: l.desc || (items.find(i => i.code === l.code) || {}).name || '', stockNo: l.stockNo || '', unit: l.unit || (items.find(i => i.code === l.code) || {}).unit || '', code: l.code, qty: l.qty, unitCost: l.unitCost || 0, received: 0, ...(dlvLineExp(dr, l, l.code) ? { exp: dlvLineExp(dr, l, l.code) } : {}) })),
           receipts: []
         });
         deliveries.push(d);
@@ -9082,7 +9123,7 @@
       let newUnits = 0;
       const receipt = { id: newDlvId(), at: Date.now(), date: h.date, iarNo: h.iarNo, drNo: h.drNo, invoiceNo: h.invoiceNo, lines: [] };
       plan.lines.forEach(l => {
-        const r = receiveIntoStock(l.code, l.qty, l.unitCost, { date: h.date, supplier: h.supplier, doc, kind: 'delivery', makeUnits: dr.opts.makeUnits });
+        const r = receiveIntoStock(l.code, l.qty, l.unitCost, { date: h.date, supplier: h.supplier, doc, kind: 'delivery', makeUnits: dr.opts.makeUnits, exp: dlvLineExp(dr, l, l.code) });
         newUnits += r.units;
         receipt.lines.push({ l: l.lineId || l.id, c: l.code, q: l.qty, uc: l.unitCost || 0 });
       });
@@ -9094,7 +9135,7 @@
       } else {
         d = cleanJSON({
           id: newDlvId(), kind: 'stockin', poNo: h.poNo, prNo: h.prNo, date: h.date, supplier: h.supplier, status: 'received', createdMs: Date.now(),
-          lines: plan.lines.map(l => ({ id: l.id, desc: l.desc || (items.find(i => i.code === l.code) || {}).name || '', stockNo: l.stockNo || '', unit: l.unit || (items.find(i => i.code === l.code) || {}).unit || '', code: l.code, qty: l.qty, unitCost: l.unitCost || 0, received: l.qty })),
+          lines: plan.lines.map(l => ({ id: l.id, desc: l.desc || (items.find(i => i.code === l.code) || {}).name || '', stockNo: l.stockNo || '', unit: l.unit || (items.find(i => i.code === l.code) || {}).unit || '', code: l.code, qty: l.qty, unitCost: l.unitCost || 0, received: l.qty, ...(dlvLineExp(dr, l, l.code) ? { exp: dlvLineExp(dr, l, l.code) } : {}) })),
           receipts: [receipt]
         });
         deliveries.push(d);
@@ -10537,7 +10578,7 @@
         iarNo: before ? `${poNo}-${before + 1}` : poNo, invoice: '', supplier: d.lastPrId === pr.id ? (d.supplier || '') : '',
         date: localISODate(), who: d.inspUid && rosterByUid(d.inspUid) ? d.inspUid : d.inspName ? '__other' : '',
         otherName: d.inspUid ? '' : (d.inspName || ''), otherDesig: d.inspUid ? '' : (d.inspDesig || ''),
-        lines: left.map(l => ({ id: l.id, code: l.code || null, stockNo: l.stockNo || '', desc: l.desc || '', unit: l.unit || '', qty: l.left, received: null, note: '', short: false }))
+        lines: left.map(l => ({ id: l.id, code: l.code || null, stockNo: l.stockNo || '', desc: l.desc || '', unit: l.unit || '', qty: l.left, received: null, note: '', short: false, ...(EXP_CLASSES[l.exp] ? { exp: l.exp } : {}) }))
       };
       if (linked) iarLinkPo(linked, true);
       showIarModal();
@@ -11008,7 +11049,7 @@
       });
       if (created) rebuildCatalogList();
       const docRef = `IAR ${x.iarNo || x.poNo}`;
-      plan.forEach(p => { p.fresh = receiveIntoStock(p.code, Number(p.l.received), p.unitCost, { date, kind: 'pr', doc: docRef, supplier: x.supplier || '', makeUnits: true }).list || []; });
+      plan.forEach(p => { p.fresh = receiveIntoStock(p.code, Number(p.l.received), p.unitCost, { date, kind: 'pr', doc: docRef, supplier: x.supplier || '', makeUnits: true, exp: p.l.exp }).list || []; });
       rebuildCatalogList();
       // The school's ICS: semi-expendable units (below ₱50,000) just numbered
       const coa = numberingMode() === 'coa';
@@ -11030,7 +11071,7 @@
       const onPo = scanned ? plan.filter(p => p.pl) : [];
       const offPo = plan.filter(p => !onPo.includes(p));
       if (onPo.length) {
-        onPo.forEach(p => { p.pl.received = (Number(p.pl.received) || 0) + Number(p.l.received); p.pl.unitCost = p.unitCost; if (!p.pl.code) p.pl.code = p.code; });
+        onPo.forEach(p => { p.pl.received = (Number(p.pl.received) || 0) + Number(p.l.received); p.pl.unitCost = p.unitCost; if (!p.pl.code) p.pl.code = p.code; if (EXP_CLASSES[p.l.exp] && !p.pl.exp) p.pl.exp = p.l.exp; });
         scanned.receipts = [...(scanned.receipts || []), cleanJSON({ id: newDlvId(), at: now, date, iarNo, invoiceNo: x.invoice || '', inspId: x.id,
           lines: onPo.map(p => ({ l: p.pl.id, c: p.code, q: Number(p.l.received), uc: p.unitCost })) })];
         scanned.status = scanned.lines.every(l => (Number(l.received) || 0) >= Number(l.qty)) ? 'received' : 'partial';
@@ -11040,7 +11081,7 @@
       if (offPo.length) {
         deliveries.push(cleanJSON({
           id: newDlvId(), kind: 'stockin', prNo: pr.prNo, poNo: x.poNo || '', iarNo, date, supplier: x.supplier || '', status: 'received', createdMs: now, inspPrId: pr.id,
-          lines: offPo.map((p, i) => ({ id: 'P' + i, desc: p.l.desc, stockNo: p.l.stockNo || '', unit: p.l.unit || '', code: p.code, qty: Number(p.l.qty), unitCost: p.unitCost, received: Number(p.l.received) })),
+          lines: offPo.map((p, i) => ({ id: 'P' + i, desc: p.l.desc, stockNo: p.l.stockNo || '', unit: p.l.unit || '', code: p.code, qty: Number(p.l.qty), unitCost: p.unitCost, received: Number(p.l.received), ...(EXP_CLASSES[p.l.exp] ? { exp: p.l.exp } : {}) })),
           receipts: [{ id: newDlvId(), at: now, date, iarNo, invoiceNo: x.invoice || '', inspId: x.id, lines: offPo.map((p, i) => ({ l: 'P' + i, c: p.code, q: Number(p.l.received), uc: p.unitCost })) }]
         }));
       }
@@ -11079,7 +11120,9 @@
       const lines = x.lines || [];
       const complete = x.status === 'accepted' ? !!x.complete : iarIsComplete(lines);
       const shortText = lines.filter(l => Number(l.received) < Number(l.qty)).map(l => `${l.desc}: ${Number(l.received) || 0} of ${l.qty}`).join('; ');
-      const rows = lines.map((l, i) => `<tr><td class="pr-sn">${e(prStockNo(l, i))}</td><td>${e(l.desc)}${l.note ? `<br><span style="font-size:8.5pt"><i>${e(l.note)}</i></span>` : ''}</td><td class="c">${e(l.unit)}</td><td class="c">${Number(l.received) || 0}</td></tr>`).join('');
+      const iarExp = lines.some(l => EXP_CLASSES[l.exp]);
+      const expHead = (l, i) => (iarExp && (i === 0 || lineExp(lines[i - 1]) !== lineExp(l)) ? `<tr class="pr-exp"><td colspan="4"><b>${e(EXP_CLASSES[lineExp(l)].name)}</b>${EXP_CLASSES[lineExp(l)].uacs ? ` &nbsp;·&nbsp; UACS ${EXP_CLASSES[lineExp(l)].uacs}` : ''}</td></tr>` : '');
+      const rows = lines.map((l, i) => `${expHead(l, i)}<tr><td class="pr-sn">${e(prStockNo(l, i))}</td><td>${e(l.desc)}${l.note ? `<br><span style="font-size:8.5pt"><i>${e(l.note)}</i></span>` : ''}</td><td class="c">${e(l.unit)}</td><td class="c">${Number(l.received) || 0}</td></tr>`).join('');
       const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 14 - lines.length));
       const insp = x.inspectedMs || x.dateInspected;
       return `
@@ -11135,8 +11178,16 @@
       pair(`Requisitioning Office/Dept.: ${x.office || ''}`, `Invoice No.: ${x.invoice || ''}`);
       pair(`Responsibility Center Code: ${x.rcc || ''}`, `Date: ${mdy(x.dateReceived || '')}`);
       row(['Stock/ Property No.', 'Description', 'Unit', 'Quantity'].map(v => ({ v, st: { b: 1, h: 'center', wrap: 1, border: B } })), 30);
-      lines.forEach((l, i) => row([{ v: prStockNo(l, i), st: { h: 'center', border: B } }, { v: l.desc + (l.note ? ` (${l.note})` : ''), st: { wrap: 1, border: B } },
-        { v: l.unit || '', st: { h: 'center', border: B } }, { v: Number(l.received) || 0, st: { h: 'center', border: B } }]));
+      const iarExp = lines.some(l => EXP_CLASSES[l.exp]);
+      lines.forEach((l, i) => {
+        if (iarExp && (i === 0 || lineExp(lines[i - 1]) !== lineExp(l))) {
+          const c = EXP_CLASSES[lineExp(l)];
+          const gh = row([{ v: `${c.name}${c.uacs ? ` · UACS ${c.uacs}` : ''}`, st: { b: 1, border: B } }, { st: { border: B } }, { st: { border: B } }, { st: { border: B } }]);
+          merges.push(`A${gh}:D${gh}`);
+        }
+        row([{ v: prStockNo(l, i), st: { h: 'center', border: B } }, { v: l.desc + (l.note ? ` (${l.note})` : ''), st: { wrap: 1, border: B } },
+          { v: l.unit || '', st: { h: 'center', border: B } }, { v: Number(l.received) || 0, st: { h: 'center', border: B } }]);
+      });
       for (let i = lines.length; i < 12; i += 1) row([0, 1, 2, 3].map(() => ({ st: { border: B } })));
       const hd = row([{ v: 'INSPECTION', st: { b: 1, h: 'center', border: B } }, { st: { border: B } }, { v: 'ACCEPTANCE', st: { b: 1, h: 'center', border: B } }, { st: { border: B } }]); merges.push(`A${hd}:B${hd}`, `C${hd}:D${hd}`);
       pair(`Date Inspected: ${mdy(x.dateInspected)}`, `Date Received: ${mdy(x.dateReceived || '')}`);
@@ -11189,7 +11240,10 @@
         const key = prLineKey(l, i);
         const code = codes[key] || l.code || null;
         const match = rl => (code && rl.code === code) || normItemName(rl.desc) === normItemName(l.desc);
-        const per = people.map(p => p.rels.reduce((n, r) => n + (r.lines || []).filter(match).reduce((m, rl) => m + (Number(rl.qty) || 0), 0), 0));
+        // the same item on two lines (Office and Other Supplies): each line counts what was issued from its class
+        const twice = EXP_CLASSES[l.exp] && (pr.lines || []).some((o, j) => j !== i && ((code && (codes[prLineKey(o, j)] || o.code) === code) || normItemName(o.desc) === normItemName(l.desc)));
+        const qtyOf = rl => (!twice ? Number(rl.qty) || 0 : rl.exp === 'mixed' && rl.expQ ? Number(rl.expQ[l.exp]) || 0 : !rl.exp || rl.exp === l.exp ? Number(rl.qty) || 0 : 0);
+        const per = people.map(p => p.rels.reduce((n, r) => n + (r.lines || []).filter(match).reduce((m, rl) => m + qtyOf(rl), 0), 0));
         const got = prGot(pr, key) || (pr.deliveredMs && !accepted.length ? Number(l.qty) || 0 : 0);
         const out = per.reduce((n, v) => n + v, 0);
         return { l, per, got, out, left: Math.max(0, got - out) };
@@ -12249,7 +12303,7 @@
           <button onclick="openReview('${r.id}')" class="flex-1 min-w-0 p-3 text-left hover:bg-slate-50">
             <span class="flex items-start justify-between gap-2">
               <span class="min-w-0">
-                <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(r.name || 'Unnamed')}${r.kind === 'took' ? ' <span class="ml-1 align-middle inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold"><i class="ph-bold ph-hand-grabbing"></i> Took it</span>' : ''}</span>
+                <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(r.name || 'Unnamed')}${reqUseOf(r) === 'office' ? ' <span data-req-office class="ml-1 align-middle inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-brand-50 text-brand-700 border border-brand-100 text-[11px] font-bold"><i class="ph-bold ph-buildings"></i> Office</span>' : ''}${r.kind === 'took' ? ' <span class="ml-1 align-middle inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold"><i class="ph-bold ph-hand-grabbing"></i> Took it</span>' : ''}</span>
                 <span class="block text-[11px] text-slate-500 truncate">${escapeHTML(reqWho(r) || '—')} · ${escapeHTML(formatTimeAgo(reqTime(r)))}${r.neededBy ? ` · needed ${escapeHTML(formatShortDate(r.neededBy + 'T00:00:00'))}` : ''}</span>
               </span>
               ${reqStatusChip(r)}
@@ -12273,6 +12327,12 @@
       renderRequestsView();
     }
 
+    // Office Supplies ₱… · Other Supplies ₱… on the PR card
+    function prExpChipsHTML(pr) {
+      if (!prHasExp(pr)) return '';
+      const tone = { office: 'bg-brand-50 text-brand-700 border-brand-100', other: 'bg-teal-50 text-teal-700 border-teal-100', semiMe: 'bg-amber-50 text-amber-800 border-amber-100', semiFfb: 'bg-slate-50 text-slate-600 border-slate-200' };
+      return `<p data-pr-exp-chips class="mt-1.5 flex flex-wrap gap-1">${expGroups(pr.lines).map(g => `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[11px] font-bold ${tone[g.key]}">${escapeHTML(g.c.short)} <span class="font-mono">₱${peso2(g.total)}</span></span>`).join('')}</p>`;
+    }
     function prCardHTML(pr) {
       const mine = reqList.filter(r => (pr.requestIds || []).includes(r.id));
       const waiting = mine.filter(r => r.status === 'pr').length;
@@ -12309,6 +12369,7 @@
             <p class="shrink-0 text-sm font-extrabold font-mono text-slate-900">₱${peso2(pr.total)}</p>
           </div>
           <p class="mt-1 text-[11px] text-slate-500 line-clamp-2">${escapeHTML(pr.purpose || '')}</p>
+          ${prExpChipsHTML(pr)}
           ${pr.editedMs ? `<p class="mt-0.5 text-[11px] text-slate-500 flex items-center gap-1"><i class="ph-bold ph-pencil-simple"></i> Changed ${escapeHTML(formatShortDate(new Date(pr.editedMs).toISOString()))}</p>` : ''}
           ${prApprovalHTML(pr)}
           <div class="mt-2 flex flex-wrap gap-2">
@@ -13259,6 +13320,9 @@
         ? `Walk-in request · goes to ${reqRole.schoolName}’s list for review`
         : `From ${[me.name, me.position, me.office].filter(Boolean).join(' · ')} · to ${reqRole.schoolName}`;
       ['rfName', 'rfPosition', 'rfOffice', 'rfSearch', 'rfPurpose', 'rfNeeded'].forEach(id => { document.getElementById(id).value = ''; });
+      reqDraft.use = 'teacher';
+      reqDraft.useTouched = false;
+      renderReqUse();
       renderReqSearch();
       renderReqLines();
       renderReqBrowse();
@@ -13418,6 +13482,47 @@
       renderReqBrowse();
     }
 
+    // Walk-in requests: for the teachers (Other Supplies) or for the office (Office Supplies).
+    function renderReqUse() {
+      const box = document.getElementById('rfUse');
+      if (!box || !reqDraft) return;
+      const cur = reqDraft.use === 'office' ? 'office' : 'teacher';
+      const btn = (k, icon, label, sub) => `<button type="button" data-rf-use="${k}" onclick="setReqDraftUse('${k}')" aria-pressed="${cur === k}" class="min-h-12 px-3 py-1.5 rounded-xl border-2 text-left flex items-center gap-2 ${cur === k ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}">
+        <i class="ph-bold ${icon} text-lg ${cur === k ? 'text-amber-700' : 'text-slate-500'}"></i><span class="min-w-0"><span class="block text-xs font-extrabold text-slate-800">${label}</span><span class="block text-[11px] text-slate-500">${sub}</span></span></button>`;
+      box.innerHTML = btn('teacher', 'ph-chalkboard-teacher', 'Teachers', 'Other Supplies') + btn('office', 'ph-buildings', 'The office', 'Office Supplies');
+    }
+    function setReqDraftUse(use) {
+      if (!reqDraft) return;
+      reqDraft.use = use === 'office' ? 'office' : 'teacher';
+      reqDraft.useTouched = true;
+      renderReqUse();
+    }
+    const OFFICE_WORDS = /\b(office|admin|administrative|principal|clinic|guidance|registrar|records|cashier|accounting|bookkeeping|disbursing|supply|property|canteen)\b/i;
+    function guessReqUse(text) {
+      if (!reqDraft || reqDraft.useTouched) return;
+      const next = OFFICE_WORDS.test(String(text || '')) && !/\b(grade|section|class|room|advis|teacher)\b/i.test(String(text || '')) ? 'office' : 'teacher';
+      if (next !== reqDraft.use) { reqDraft.use = next; renderReqUse(); }
+    }
+    // The custodian changes it on any request (a teacher's own request is for teachers until changed).
+    function setReqUse(id, use) {
+      const r = reqList.find(x => x.id === id);
+      if (!r || !isCustodianDevice() || !cloud.user || isViewOnly()) return;
+      const v = use === 'office' ? 'office' : 'teacher';
+      if (reqUseOf(r) === v) return;
+      r.use = v;
+      const F = cloud.sdk;
+      cloudWrite(F.updateDoc(F.doc(reqCol(), id), { use: v, updatedAt: F.serverTimestamp() }), 'Saving');
+      if (reviewState && reviewState.id === id) renderReviewUse(r);
+      renderRequestsEverywhere();
+    }
+    function renderReviewUse(r) {
+      const box = document.getElementById('revUse');
+      if (!box) return;
+      const cur = reqUseOf(r);
+      const edit = ['pending', 'approved'].includes(r.status) && isCustodianDevice() && !isViewOnly();
+      const chip = (k, icon, label) => `<button type="button" data-rev-use="${k}" ${edit ? `onclick="setReqUse('${r.id}', '${k}')"` : 'disabled'} aria-pressed="${cur === k}" class="h-8 px-2.5 rounded-lg border text-[11px] font-bold flex items-center gap-1 ${cur === k ? 'bg-amber-50 border-amber-400 text-amber-800' : 'bg-white border-slate-200 text-slate-600'} ${edit ? '' : 'opacity-70'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
+      box.innerHTML = `<span class="text-[11px] font-bold uppercase text-slate-500">Used by</span>${chip('teacher', 'ph-chalkboard-teacher', 'Teachers · Other Supplies')}${chip('office', 'ph-buildings', 'The office · Office Supplies')}`;
+    }
     function sendRequest() {
       if (!reqDraft || !cloud.user) return;
       const lines = reqDraft.lines.filter(l => l.qty > 0 && l.desc.trim())
@@ -13435,6 +13540,7 @@
         status: 'pending', createdAt: F.serverTimestamp(), clientAt: Date.now(), via: reqDraft.forOther ? 'custodian' : 'teacher'
       };
       cloudWrite(F.setDoc(ref, data), 'Sending the request');
+      if (reqDraft.forOther && reqDraft.use === 'office') cloudWrite(F.updateDoc(ref, { use: 'office', updatedAt: F.serverTimestamp() }), 'Sending the request');
       if (!reqDraft.forOther) saveReqCart([]);
       closeRequestForm();
       showToast(navigator.onLine ? (isCustodianDevice() ? `Request from ${me.name} added for review` : 'Request sent to the property custodian')
@@ -13477,7 +13583,9 @@
         <div class="flex items-center gap-2"><h3 class="font-extrabold text-base text-slate-900 truncate">${escapeHTML(r.name)}</h3>${reqStatusChip(r)}</div>
         <p class="text-xs text-slate-500">${escapeHTML(reqWho(r) || '—')} · ${escapeHTML(formatShortDate(reqTime(r)))}${r.neededBy ? ` · needed by ${escapeHTML(formatShortDate(r.neededBy + 'T00:00:00'))}` : ''}</p>
         ${r.purpose ? `<p class="text-xs text-slate-700 mt-0.5">Purpose: ${escapeHTML(r.purpose)}</p>` : ''}
-        ${r.status === 'pr' ? `<p class="text-xs font-bold text-brand-700 mt-0.5">On Purchase Request ${escapeHTML(r.prNo || '')} · read only</p>` : ''}`;
+        ${r.status === 'pr' ? `<p class="text-xs font-bold text-brand-700 mt-0.5">On Purchase Request ${escapeHTML(r.prNo || '')} · read only</p>` : ''}
+        <div id="revUse" class="mt-1.5 flex flex-wrap items-center gap-1.5"></div>`;
+      renderReviewUse(r);
       renderReview();
       document.getElementById('reqReviewModal').classList.remove('hidden');
     }
@@ -13655,6 +13763,77 @@
         open.length ? { label: 'Release', onClick: () => setReqTab('closed') } : null);
     }
 
+    // ---- Expense class of supplies: Office Supplies or Other Supplies ------------------------
+    // Supplies the office uses stay under Office Supplies Expenses; supplies for the teachers go
+    // under Other Supplies and Materials Expenses. A request from a teacher is for teachers; the
+    // custodian marks requests for the office (request.use = 'office'). A PR groups its lines by
+    // expense, each with a subtotal (line.exp). The class follows the lines to the IAR and the
+    // delivery and into stock: userState[code].other = how many on hand were bought as Other
+    // Supplies (the rest is Office Supplies). A release to a teacher takes Other Supplies first,
+    // one for the office Office Supplies first; the RIS line keeps which (exp, or 'mixed' with
+    // expQ), and the RSMI shows the UACS object code. Equipment lines have no supplies class.
+    var EXP_CLASSES = {
+      office: { key: 'office', short: 'Office Supplies', name: 'Office Supplies Expenses', uacs: '5020301000', inv: '1040401000' },
+      other: { key: 'other', short: 'Other Supplies', name: 'Other Supplies and Materials Expenses', uacs: '5020399000', inv: '1040499000' },
+      semiMe: { key: 'semiMe', short: 'Semi-Expendable Machinery & Equipment', name: 'Semi-Expendable Machinery and Equipment Expenses', uacs: '5020321000', inv: '' },
+      semiFfb: { key: 'semiFfb', short: 'Semi-Expendable Furniture, Fixtures & Books', name: 'Semi-Expendable Furniture, Fixtures and Books Expenses', uacs: '5020322000', inv: '' }
+    };
+    // Headings on the printed PR, as on the school's form
+    EXP_CLASSES.office.head = 'OFFICE SUPPLIES EXPENSES';
+    EXP_CLASSES.other.head = 'OTHER SUPPLIES EXPENSES';
+    EXP_CLASSES.semiMe.head = 'SEMI-EXPENDABLE MACHINERY AND EQUIPMENT EXPENSES';
+    EXP_CLASSES.semiFfb.head = 'SEMI-EXPENDABLE FURNITURE, FIXTURES AND BOOKS EXPENSES';
+    var EXP_ORDER = ['office', 'other', 'semiMe', 'semiFfb'];
+    function isSupplyExp(k) { return k === 'office' || k === 'other'; }
+    // Equipment: furniture and books under Furniture, Fixtures and Books; the rest under Machinery and Equipment.
+    function equipExp(code) {
+      const it = code ? items.find(i => i.code === code) : null;
+      return it && /furniture|printed publication|\bbooks?\b/i.test(String(it.category || '')) ? 'semiFfb' : 'semiMe';
+    }
+    function expClass(k) { return EXP_CLASSES[k] || null; }
+    function reqUseOf(r) { return r && r.use === 'office' ? 'office' : 'teacher'; }
+    function expForUse(use) { return use === 'office' ? 'office' : 'other'; }
+    function itemIsEquip(code) { const it = code ? items.find(i => i.code === code) : null; return !!(it && it.type === 'EQUIPMENT'); }
+    // A line's class: its own, else Equipment for an equipment item, else the fallback (Office: the stockroom).
+    function lineExp(l, fallback = 'office') {
+      if (l && EXP_CLASSES[l.exp]) return l.exp;
+      return itemIsEquip(l && l.code) ? equipExp(l.code) : fallback;
+    }
+    function prHasExp(pr) { return !!pr && (pr.lines || []).some(l => EXP_CLASSES[l.exp]); }
+    // Lines by expense (Office, Other, Equipment), each line with its place on the form.
+    function expGroups(lines) {
+      const out = [];
+      EXP_ORDER.forEach(key => {
+        const list = [];
+        (lines || []).forEach((l, i) => { if (lineExp(l) === key) list.push({ l, i }); });
+        if (list.length) out.push({ key, c: EXP_CLASSES[key], lines: list, total: Math.round(list.reduce((n, x) => n + (Number(x.l.qty) || 0) * (Number(x.l.unitCost) || 0), 0) * 100) / 100 });
+      });
+      return out;
+    }
+    function expTotalsText(lines) {
+      return expGroups(lines).map(g => `${g.c.short} ₱${peso2(g.total)}`).join(' · ');
+    }
+    // How many on hand were bought as Other Supplies (never more than what is on hand).
+    function otherOnHand(code) {
+      const s = userState[code];
+      if (!s) return 0;
+      const q = parseInt(s.qty, 10) || 0;
+      return Math.max(0, Math.min(q, parseInt(s.other, 10) || 0));
+    }
+    // Releasing supplies: which class they come from. prefer = 'other' (a teacher) or 'office'.
+    function expDraw(code, qty, prefer) {
+      const s = userState[code] || {};
+      const onHand = Math.max(0, parseInt(s.qty, 10) || 0);
+      const oth = otherOnHand(code);
+      const take = Math.min(qty, onHand);
+      const other = prefer === 'office' ? Math.max(0, take - (onHand - oth)) : Math.min(take, oth);
+      return { other, office: qty - other, left: oth - other };
+    }
+    function expOfIssue(l) {
+      if (l && l.exp === 'mixed' && l.expQ) return EXP_ORDER.filter(k => Number(l.expQ[k]) > 0).map(k => [k, Number(l.expQ[k])]);
+      return [[l && EXP_CLASSES[l.exp] ? l.exp : '', Number(l && l.qty) || 0]];
+    }
+
     // ---- Purchase Request (Appendix 60) -------------------------------------------
     function prDefaults() {
       try { return JSON.parse(localStorage.getItem(PR_DEFAULTS_KEY) || '{}') || {}; } catch (e) { return {}; }
@@ -13675,10 +13854,12 @@
       const lines = new Map();
       reqs.forEach(r => reqBuyLines(r).forEach(l => {
         const item = l.code && items.find(i => i.code === l.code);
-        const key = l.code || 'D:' + normItemName(l.desc);
+        // a teacher's request → Other Supplies; one for the office → Office Supplies
+        const exp = item && item.type === 'EQUIPMENT' ? equipExp(item.code) : expForUse(reqUseOf(r));
+        const key = exp + '|' + (l.code || 'D:' + normItemName(l.desc));
         const cur = lines.get(key) || {
           id: newReqLineId(), code: item ? item.code : null, stockNo: item && !/^CUSTOM-/.test(item.code) ? item.code : '',
-          unit: l.unit, desc: item ? item.name : l.desc, qty: 0, unitCost: l.unitCost || 0
+          unit: l.unit, desc: item ? item.name : l.desc, qty: 0, unitCost: l.unitCost || 0, exp
         };
         cur.qty += l.prQty;
         if (!cur.unitCost && l.unitCost) cur.unitCost = l.unitCost;
@@ -13688,7 +13869,7 @@
       const purposes = [...new Set(reqs.map(r => (r.purpose || '').trim()).filter(Boolean))];
       openPrDraft({
         requestIds: reqs.map(r => r.id), requesters: reqs.map(r => r.name),
-        lines: [...lines.values()].sort((a, b) => a.desc.localeCompare(b.desc)),
+        lines: [...lines.values()].sort((a, b) => EXP_ORDER.indexOf(a.exp) - EXP_ORDER.indexOf(b.exp) || a.desc.localeCompare(b.desc)),
         purpose: `Supplies requested by ${listJoin(who)}${purposes.length ? ` · ${purposes.join('; ')}` : ''}`,
         sub: `Appendix 60 · from ${plural(reqs.length, 'approved request')} · check every line before saving`
       });
@@ -13698,6 +13879,7 @@
     function openPrDraft({ requestIds = [], requesters = [], lines, purpose, sub, edit = null }) {
       const d = prDefaults();
       const date = localISODate();
+      (lines || []).forEach(l => { if (!EXP_CLASSES[l.exp]) l.exp = lineExp(l); });   // Office Supplies unless said otherwise
       prDraft = { requestIds, requesters, lines, editId: edit ? edit.id : null };
       const set = (id, v) => { document.getElementById(id).value = v || ''; };
       const pick = (key, fallback) => (edit ? edit[key] : fallback);
@@ -13721,10 +13903,27 @@
     function closePr() { prDraft = null; document.getElementById('prModal').classList.add('hidden'); }
 
     function renderPrLines() {
-      document.getElementById('prLines').innerHTML = prDraft.lines.map((l, i) => `
-        <div class="rounded-xl border border-slate-200 p-2.5 space-y-1.5">
+      let n = 0;
+      const groups = expGroups(prDraft.lines);
+      const expOpts = l => EXP_ORDER.map(k => `<option value="${k}" ${lineExp(l) === k ? 'selected' : ''}>${EXP_CLASSES[k].short}${EXP_CLASSES[k].uacs ? ` · ${EXP_CLASSES[k].uacs}` : ''}</option>`).join('');
+      const tone = { office: 'text-brand-700', other: 'text-teal-700', semiMe: 'text-amber-800', semiFfb: 'text-slate-600' };
+      document.getElementById('prLines').innerHTML = groups.map(g => `
+        <div class="space-y-2" data-pr-grp="${g.key}">
+          <p class="flex items-baseline justify-between gap-2 text-[11px] font-extrabold uppercase ${tone[g.key]}">
+            <span class="min-w-0">${escapeHTML(g.c.name)}${g.c.uacs ? ` <span class="font-mono font-bold normal-case text-slate-500">· ${g.c.uacs}</span>` : ''}</span>
+            <span id="prg-tot-${g.key}" class="shrink-0 font-mono">₱${peso2(g.total)}</span>
+          </p>
+          ${g.lines.map(x => prLineHTML(x.l, ++n, expOpts)).join('')}
+        </div>`).join('') || '<p class="text-xs text-slate-500">No items left on this PR.</p>';
+      document.getElementById('prItemList').innerHTML = items.filter(i => !prDraft.lines.some(l => l.code === i.code && lineExp(l) === lineExp({ code: i.code })))
+        .map(i => `<option value="${escapeHTML(i.name)} · ${escapeHTML(i.code)}"></option>`).join('');
+      updatePrTotal();
+    }
+    function prLineHTML(l, num, expOpts) {
+      return `
+        <div class="rounded-xl border border-slate-200 p-2.5 space-y-1.5" data-pr-line="${l.id}">
           <div class="flex items-center gap-2">
-            <span class="shrink-0 text-[11px] font-bold text-slate-500 w-4">${i + 1}</span>
+            <span class="shrink-0 text-[11px] font-bold text-slate-500 w-4">${num}</span>
             <input value="${escapeHTML(l.desc)}" oninput="setPrLine('${l.id}', 'desc', this.value)" aria-label="Item description" class="flex-1 min-w-0 h-9 px-2.5 rounded-lg border border-slate-200 text-sm font-semibold">
             <button onclick="removePrLine('${l.id}')" class="w-8 h-9 shrink-0 text-slate-300 hover:text-rose-500 flex items-center justify-center" aria-label="Remove"><i class="ph-bold ph-trash"></i></button>
           </div>
@@ -13735,11 +13934,17 @@
             <label class="col-span-2 sm:col-span-2 text-[11px] font-bold uppercase text-slate-500">Unit cost<input type="number" min="0" step="0.01" value="${l.unitCost || ''}" placeholder="0.00" oninput="setPrLine('${l.id}', 'unitCost', this.value)" class="mt-0.5 w-full h-8 px-1.5 rounded-lg border ${l.unitCost ? 'border-slate-200' : 'border-amber-300 bg-amber-50/50'} font-mono font-normal text-slate-800 text-xs"></label>
             <span id="prl-tot-${l.id}" class="col-span-2 sm:col-span-2 h-8 flex items-center justify-end font-mono font-bold text-slate-700">${peso2(l.qty * l.unitCost)}</span>
           </div>
+          <label class="pl-6 flex items-center gap-2 text-[11px] font-bold uppercase text-slate-500">Charge to
+            <select data-pr-exp="${l.id}" onchange="setPrLineExp('${l.id}', this.value)" aria-label="Expense" class="h-8 min-w-0 flex-1 sm:flex-none px-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold normal-case text-slate-800">${expOpts(l)}</select>
+          </label>
           ${l.code && lastPaid(l.code) ? `<p class="pl-6 text-[11px] text-slate-500 flex items-center gap-1"><i class="ph-bold ph-receipt"></i> ${escapeHTML(lastPaidText(l.code))}</p>` : ''}
-        </div>`).join('') || '<p class="text-xs text-slate-500">No items left on this PR.</p>';
-      document.getElementById('prItemList').innerHTML = items.filter(i => !prDraft.lines.some(l => l.code === i.code))
-        .map(i => `<option value="${escapeHTML(i.name)} · ${escapeHTML(i.code)}"></option>`).join('');
-      updatePrTotal();
+        </div>`;
+    }
+    function setPrLineExp(id, value) {
+      const l = prDraft && prDraft.lines.find(x => x.id === id);
+      if (!l || !EXP_CLASSES[value]) return;
+      l.exp = value;
+      renderPrLines();
     }
     // Add a line on the PR screen: an Inventory item (with its stock no., unit and last cost) or
     // anything typed (a new item; it is added to Inventory when the PR is delivered).
@@ -13750,19 +13955,20 @@
       input.value = '';
       const code = text.includes(' · ') ? text.split(' · ').pop().trim() : '';
       const item = (code && items.find(i => i.code === code)) || items.find(i => normItemName(i.name) === normItemName(text)) || null;
-      if (item && prDraft.lines.some(l => l.code === item.code)) {
+      const exp = lineExp({ code: item ? item.code : null });
+      if (item && prDraft.lines.some(l => l.code === item.code && lineExp(l) === exp)) {
         showToast(`${item.name.split(',')[0]} is already on this PR · change its quantity`, 'ph-info');
         return;
       }
       const paid = item && lastPaid(item.code);
+      const id = newReqLineId();
       prDraft.lines.push({
-        id: newReqLineId(), code: item ? item.code : null, stockNo: item && !/^CUSTOM-/.test(item.code) ? item.code : '',
+        id, code: item ? item.code : null, stockNo: item && !/^CUSTOM-/.test(item.code) ? item.code : '',
         unit: item ? item.unit || 'piece' : 'piece', desc: item ? item.name : text.slice(0, 200), qty: 1,
-        unitCost: Math.round(((paid && paid.c) || (item && item.price) || 0) * 100) / 100
+        unitCost: Math.round(((paid && paid.c) || (item && item.price) || 0) * 100) / 100, exp
       });
       renderPrLines();
-      const boxes = document.querySelectorAll('#prLines input[type="number"]');
-      const qty = boxes[boxes.length - 2];
+      const qty = document.querySelectorAll(`[data-pr-line="${id}"] input[type="number"]`)[0];
       if (qty) { qty.focus(); qty.select(); }
     }
     function setPrLine(id, key, value) {
@@ -13782,12 +13988,13 @@
     function updatePrTotal() {
       const total = prDraft.lines.reduce((n, l) => n + l.qty * l.unitCost, 0);
       document.getElementById('prTotal').textContent = `₱${peso2(total)}`;
+      expGroups(prDraft.lines).forEach(g => { const el = document.getElementById('prg-tot-' + g.key); if (el) el.textContent = `₱${peso2(g.total)}`; });
     }
 
     async function savePr() {
       if (!prDraft) return;
-      const lines = prDraft.lines.filter(l => l.qty > 0 && l.desc.trim())
-        .map(l => ({ code: l.code || null, stockNo: l.stockNo.trim(), unit: l.unit.trim(), desc: l.desc.trim(), qty: l.qty, unitCost: Math.round(l.unitCost * 100) / 100 }));
+      const lines = expGroups(prDraft.lines.filter(l => l.qty > 0 && l.desc.trim())).flatMap(g => g.lines.map(x => x.l))
+        .map(l => ({ code: l.code || null, stockNo: l.stockNo.trim(), unit: l.unit.trim(), desc: l.desc.trim(), qty: l.qty, unitCost: Math.round(l.unitCost * 100) / 100, exp: lineExp(l) }));
       if (!lines.length) { appAlert('The Purchase Request has no items.'); return; }
       const prNo = reqVal('prNo');
       if (!prNo) { appAlert('Enter the PR No.'); document.getElementById('prNo').focus(); return; }
@@ -13839,20 +14046,24 @@
       if (!pr || prLocked(pr)) return;
       openPrDraft({
         edit: pr, requestIds: pr.requestIds || [], requesters: pr.requesters || [], purpose: pr.purpose,
-        lines: (pr.lines || []).map(l => ({ id: newReqLineId(), code: l.code || null, stockNo: l.stockNo || '', unit: l.unit || '', desc: l.desc || '', qty: Number(l.qty) || 0, unitCost: Number(l.unitCost) || 0 })),
+        lines: (pr.lines || []).map(l => ({ id: newReqLineId(), code: l.code || null, stockNo: l.stockNo || '', unit: l.unit || '', desc: l.desc || '', qty: Number(l.qty) || 0, unitCost: Number(l.unitCost) || 0, exp: lineExp(l) })),
         sub: `Changing PR No. ${pr.prNo} · saved ${pr.createdMs ? formatShortDate(new Date(pr.createdMs).toISOString()) : ''}`
       });
     }
     // What changed on the lines, for Change History: "+ Bond paper (5), − Stapler, Ink 8 → 10".
     function prLineChanges(before, after) {
-      const key = l => l.code || 'D:' + normItemName(l.desc);
+      const key = l => lineExp(l) + '|' + (l.code || 'D:' + normItemName(l.desc));
       const name = l => String(l.desc || '').split(',')[0].slice(0, 40);
       const old = new Map((before || []).map(l => [key(l), l]));
       const out = [];
       after.forEach(l => {
         const o = old.get(key(l));
         old.delete(key(l));
-        if (!o) { out.push(`+ ${name(l)} (${l.qty})`); return; }
+        if (!o) {
+          const moved = [...old.values()].find(x => (x.code || '') === (l.code || '') && normItemName(x.desc) === normItemName(l.desc) && Number(x.qty) === l.qty);
+          if (moved) { old.delete(key(moved)); out.push(`${name(l)} moved to ${EXP_CLASSES[lineExp(l)].short}`); return; }
+          out.push(`+ ${name(l)} (${l.qty})`); return;
+        }
         const bits = [];
         if (Number(o.qty) !== l.qty) bits.push(`${o.qty} → ${l.qty}`);
         if (Math.abs((Number(o.unitCost) || 0) - l.unitCost) > 0.004) bits.push(`₱${peso2(o.unitCost)} → ₱${peso2(l.unitCost)}`);
@@ -13920,9 +14131,16 @@
     function prPrintHTML(pr) {
       const e = v => escapeHTML(v || '');
       const date = pr.date ? new Date(pr.date + 'T00:00:00').toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
-      const rows = (pr.lines || []).map((l, i) => `
-        <tr><td class="pr-sn c">${e(prStockNo(l, i))}</td><td class="c">${e(l.unit)}</td><td>${e(l.desc)}</td><td class="c">${l.qty}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * l.unitCost)}</td></tr>`).join('');
-      const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 10 - (pr.lines || []).length));
+      const lineRow = (l, i) => `
+        <tr><td class="${String(l.stockNo || '').trim() ? 'pr-sn ' : ''}c">${e(prStockNo(l, i))}</td><td class="c">${e(l.unit)}</td><td>${e(l.desc)}</td><td class="c">${l.qty}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * l.unitCost)}</td></tr>`;
+      // Grouped by expense as on the school's form: the heading (e.g. OFFICE SUPPLIES EXPENSES) in the
+      // Stock No. and Unit columns, then its items; one TOTAL at the end
+      const groups = prHasExp(pr) ? expGroups(pr.lines) : null;
+      const rows = !groups ? (pr.lines || []).map(lineRow).join('') : groups.map(g => `
+        <tr class="pr-exp"><td colspan="2" class="c"><b>${e(g.c.head || g.c.name.toUpperCase())}</b></td><td></td><td></td><td></td><td></td></tr>
+        ${g.lines.map(x => lineRow(x.l, x.i)).join('')}`).join('');
+      const used = (pr.lines || []).length + (groups ? groups.length * 2 : 0);
+      const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 10 - used));
       return `
         <div class="pr-form">
           <div class="pr-appx">Appendix 60</div>
@@ -13935,7 +14153,7 @@
             <tr><td colspan="2">Responsibility Center Code: <b>${e(pr.rcc)}</b></td></tr>
             <tr><th>Stock/ Property No.</th><th>Unit</th><th>Item Description</th><th>Quantity</th><th>Unit Cost</th><th>Total Cost</th></tr>
             ${rows}${blanks}
-            <tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(pr.total)}</b></td></tr>
+            <tr class="pr-total"><td></td><td></td><td class="c"><b>TOTAL</b></td><td></td><td></td><td class="r"><b>${peso2(pr.total)}</b></td></tr>
             <tr><td colspan="6" class="pr-purpose">Purpose: ${e(pr.purpose)}</td></tr>
             <tr><td></td><td colspan="2"><i>Requested by:</i></td><td colspan="3"><i>Approved by:</i></td></tr>
             <tr><td>Signature:</td><td colspan="2" class="pr-sig"></td><td colspan="3" class="pr-sig">${prApprStatus(pr) === 'approved' && (prApproval(pr).via === 'app') ? `<span class="pr-esign">${e(prApprovalText(pr))}</span>` : ''}</td></tr>
@@ -17579,6 +17797,7 @@
             <p class="shrink-0 text-base font-extrabold font-mono text-slate-900">₱${peso2(pr.total)}</p>
           </div>
           ${pr.purpose ? `<p class="text-xs text-slate-600"><b>Purpose:</b> ${escapeHTML(pr.purpose)}</p>` : ''}
+          ${prExpChipsHTML(pr)}
           ${wait && a.resubmitted ? '<p class="text-[11px] font-semibold text-amber-700 flex items-center gap-1"><i class="ph-bold ph-arrows-clockwise"></i> Sent again by the property custodian</p>' : ''}
           <details ${wait && lines.length <= 6 ? 'open' : ''} class="rounded-xl bg-slate-50 px-3 py-2">
             <summary class="text-xs font-bold text-slate-700 cursor-pointer">Items (${lines.length})</summary>
@@ -17628,6 +17847,7 @@
 
     function exportPrCSV(pr) {
       const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const csvLine = (l, i) => [prStockNo(l, i), l.unit, l.desc, l.qty, (Number(l.unitCost) || 0).toFixed(2), ((Number(l.qty) || 0) * (Number(l.unitCost) || 0)).toFixed(2)];
       const rows = [
         ['PURCHASE REQUEST', '', '', '', '', 'Appendix 60'],
         ['Entity Name', pr.entity, '', '', 'Fund Cluster', pr.fund],
@@ -17635,8 +17855,10 @@
         ['Responsibility Center Code', pr.rcc],
         [],
         ['Stock/Property No.', 'Unit', 'Item Description', 'Quantity', 'Unit Cost', 'Total Cost'],
-        ...(pr.lines || []).map((l, i) => [prStockNo(l, i), l.unit, l.desc, l.qty, l.unitCost.toFixed(2), (l.qty * l.unitCost).toFixed(2)]),
-        ['', '', '', '', 'TOTAL', Number(pr.total || 0).toFixed(2)],
+        ...(prHasExp(pr)
+          ? expGroups(pr.lines).flatMap(g => [[g.c.head || g.c.name.toUpperCase()], ...g.lines.map(x => csvLine(x.l, x.i))])
+          : (pr.lines || []).map(csvLine)),
+        ['', '', 'TOTAL', '', '', Number(pr.total || 0).toFixed(2)],
         [],
         ['Purpose', pr.purpose],
         ['Requested by', pr.requestedBy && pr.requestedBy.name, pr.requestedBy && pr.requestedBy.designation],
@@ -17782,16 +18004,26 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       merges.push(`A${o2}:B${o2}`, `C${o2}:D${o2}`, `E${o2}:F${o2}`);
       row(['Stock/ Property No.', 'Unit', 'Item Description', 'Quantity', 'Unit Cost', 'Total Cost'].map(v => ({ v, st: { b: 1, h: 'center', wrap: 1, border: B } })), 30);
       const first = rows.length + 1;
-      lines.forEach((l, i) => {
+      const lineRow = (l, i) => {
         const r = rows.length + 1;
         row([{ v: prStockNo(l, i), st: { h: 'center', border: B } }, { v: l.unit || '', st: { h: 'center', border: B } },
           { v: l.desc || '', st: { h: 'center', wrap: 1, border: B } }, { v: Number(l.qty) || 0, st: { h: 'center', border: B } },
           { v: Number(l.unitCost) || 0, st: { num: '#,##0.00', border: B } },
           { f: `D${r}*E${r}`, v: Math.round((Number(l.qty) || 0) * (Number(l.unitCost) || 0) * 100) / 100, st: { num: '#,##0.00', border: B } }]);
+      };
+      // Grouped by expense as on the school's form: the heading in the Stock No. and Unit columns, then its items
+      const groups = prHasExp(pr) ? expGroups(lines) : null;
+      if (!groups) lines.forEach(lineRow);
+      else groups.forEach(g => {
+        const head = g.c.head || g.c.name.toUpperCase();
+        const gh = row([{ v: head, st: { b: 1, h: 'center', wrap: 1, border: B } }, { st: { border: B } }, ...[2, 3, 4, 5].map(() => ({ st: { border: B } }))],
+          head.length > 50 ? 44 : head.length > 24 ? 30 : undefined);
+        merges.push(`A${gh}:B${gh}`);
+        g.lines.forEach(x => lineRow(x.l, x.i));
       });
-      for (let i = lines.length; i < 15; i += 1) row([0, 1, 2, 3, 4, 5].map(() => ({ st: { border: B } })));
+      for (let i = rows.length - first + 1; i < 15; i += 1) row([0, 1, 2, 3, 4, 5].map(() => ({ st: { border: B } })));
       const last = rows.length;
-      row([0, 1, 2, 3, 4].map(() => ({ st: { border: B } })).concat([{ f: `SUM(F${first}:F${last})`, v: Number(pr.total) || 0, st: { b: 1, num: '#,##0.00', border: B } }]));
+      row([{ st: { border: B } }, { st: { border: B } }, { v: 'TOTAL', st: { b: 1, h: 'center', border: B } }, { st: { border: B } }, { st: { border: B } }].concat([{ f: `SUM(F${first}:F${last})`, v: Number(pr.total) || 0, st: { b: 1, num: '#,##0.00', border: B } }]));
       row([{ v: 'Purpose:', st: { border: { t: 1, l: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1, r: 1 } } }]);
       const pt = row([{ v: pr.purpose || '', st: { h: 'center', wrap: 1, border: bot } }, ...[1, 2, 3, 4].map(() => ({ st: { border: { b: 1 } } })), { st: { border: { b: 1, r: 1 } } }], 32);
       merges.push(`A${pt}:F${pt}`);
@@ -19318,14 +19550,21 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const coaIcs = numberingMode() === 'coa';
       const icsNos = { ICS: icsNo, SPLV: coaIcs ? nextCoaIcsNo('SPLV', d.date) : '', SPHV: coaIcs ? nextCoaIcsNo('SPHV', d.date) : '' };
       const icsOut = { ICS: ics, SPLV: [], SPHV: [] };
+      const relReq = d.requestId ? reqList.find(x => x.id === d.requestId) : null;
+      const prefer = relReq && reqUseOf(relReq) === 'office' ? 'office' : 'other';
       lines.forEach(l => {
         const item = items.find(i => i.code === l.code);
         const state = userState[item.code] || (userState[item.code] = { qty: item.qty });
         if (!l.equip) {
+          const draw = expDraw(item.code, l.qty, prefer);
           item.qty = Math.max(0, (item.qty || 0) - l.qty);
           state.qty = item.qty;
+          if (draw.left > 0) state.other = draw.left; else delete state.other;
           clampCondition(item);
-          ris.push(relLine(item, l.qty));
+          const line = relLine(item, l.qty);
+          if (draw.other && draw.office) Object.assign(line, { exp: 'mixed', expQ: { office: draw.office, other: draw.other } });
+          else line.exp = draw.other ? 'other' : 'office';
+          ris.push(line);
           return;
         }
         const chosen = getUnits(item.code).filter(u => l.unitIds.includes(u.id));
@@ -21877,7 +22116,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
       // ---- Purchase Requests ----
       const d = (typeof prDefaults === 'function' && prDefaults()) || {};
-      const prLine = (code, qty) => ({ code, stockNo: code, unit: it(code).unit, desc: it(code).name, qty, unitCost: it(code).price || 0 });
+      const prLine = (code, qty, exp = 'office') => ({ code, stockNo: code, unit: it(code).unit, desc: it(code).name, qty, unitCost: it(code).price || 0, exp });
       const prs = [];
       const pr = (n, daysAgo, lines, extra = {}) => {
         const total = Math.round(lines.reduce((s, l) => s + l.qty * l.unitCost, 0) * 100) / 100;
@@ -21890,17 +22129,17 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         return p;
       };
       const signed = (p, daysAgo) => ({ status: 'approved', via: 'paper', byName: p.approvedBy.name, byDesig: p.approvedBy.designation, paperDate: iso(daysAgo), atMs: now - daysAgo * DAY, submittedMs: p.approval.submittedMs });
-      pr(1, 10, [prLine('39101628-LT-L01', 6), prLine('47121701-TB-P04', 10)], { purpose: 'Replacement lights for the Science laboratory; trash bags', requestIds: [r4.id], requesters: [ana.name] });
-      const p2 = pr(2, 48, [prLine('14111507-PP-M01', 50), prLine('44103105-EP-B17', 6)], { purpose: 'Bond paper for periodical tests; printer ink', requestIds: [r5.id], requesters: [carla.name] });
+      pr(1, 10, [prLine('47121701-TB-P04', 10), prLine('39101628-LT-L01', 6, 'other'), prLine('45121517-DO-C02', 1, 'semiMe'), prLine('56101504-CM-B01', 10, 'semiFfb')], { purpose: 'Replacement lights for the Science laboratory; trash bags; a document camera and chairs', requestIds: [r4.id], requesters: [ana.name] });
+      const p2 = pr(2, 48, [prLine('44103105-EP-B17', 6), prLine('14111507-PP-M01', 50, 'other')], { purpose: 'Bond paper for periodical tests; printer ink', requestIds: [r5.id], requesters: [carla.name] });
       p2.approval = signed(p2, 46);
       p2.deliveredMs = now - 20 * DAY;
       const p3 = pr(3, 40, [prLine('44121708-MW-B01', 10), prLine('12191601-AL-E03', 12)], { purpose: 'Whiteboard markers and alcohol for the 2nd quarter' });
       p3.approval = signed(p3, 38);
 
       // ---- Deliveries (kept with the inventory like any delivery; Clear removes them) ----
-      const dLine = (id, code, qty, unitCost, got) => ({ id, desc: it(code).name, stockNo: code, unit: it(code).unit, code, qty, unitCost, ...(got === undefined ? {} : { received: got }) });
+      const dLine = (id, code, qty, unitCost, got, exp = 'office') => ({ id, desc: it(code).name, stockNo: code, unit: it(code).unit, code, qty, unitCost, exp, ...(got === undefined ? {} : { received: got }) });
       const receipt = (id, daysAgo, doc, lines) => ({ id, at: now - daysAgo * DAY, date: iso(daysAgo), iarNo: doc.iarNo || '', drNo: doc.drNo || '', invoiceNo: doc.invoiceNo || '', lines: lines.map(l => ({ l: l.id, c: l.code, q: l.received ?? l.qty, uc: l.unitCost })) });
-      const dl2 = [dLine('L1', '14111507-PP-M01', 50, 226.5, 50), dLine('L2', '44103105-EP-B17', 6, 240, 6)];
+      const dl2 = [dLine('L1', '14111507-PP-M01', 50, 226.5, 50, 'other'), dLine('L2', '44103105-EP-B17', 6, 240, 6)];
       const dl3 = [dLine('L1', '44121708-MW-B01', 10, it('44121708-MW-B01').price, 0), dLine('L2', '12191601-AL-E03', 12, it('12191601-AL-E03').price, 0)];
       const dlD = [dLine('L1', '47121701-TB-P04', 20, it('47121701-TB-P04').price), dLine('L2', '39101628-LT-L01', 10, it('39101628-LT-L01').price)];
       const deliveriesNew = [
@@ -25303,7 +25542,16 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function issuedRows(sup, from, to) {
       return releaseList.filter(r => !r.sending && r.kind === (sup ? 'RIS' : 'ICS') && inPeriod(r.date, from, to))
         .slice().sort((a, b) => String(a.no || '').localeCompare(String(b.no || ''), undefined, { numeric: true }))
-        .flatMap(r => (r.lines || []).map(l => ({ r, l, qty: sup ? l.qty : lineQty(l), amount: (sup ? l.qty : lineQty(l)) * (l.unitCost || 0) })));
+        .flatMap(r => (r.lines || []).flatMap(l => (sup
+          ? expOfIssue(l).map(([exp, qty]) => ({ r, l, exp, qty, amount: qty * (l.unitCost || 0) }))
+          : [{ r, l, qty: lineQty(l), amount: lineQty(l) * (l.unitCost || 0) }])));
+    }
+    // RSMI: Office Supplies ₱… · Other Supplies ₱… (RIS lines from before the split: not classed)
+    function issuedExpText(rows) {
+      const by = {};
+      rows.forEach(x => { const k = EXP_CLASSES[x.exp] ? x.exp : ''; by[k] = (by[k] || 0) + x.amount; });
+      const parts = ['office', 'other', ''].filter(k => by[k] > 0).map(k => `${k ? `${EXP_CLASSES[k].short} (${EXP_CLASSES[k].uacs})` : 'Not classed'} ₱${peso2(by[k])}`);
+      return parts.length > 1 || (parts.length === 1 && !by['']) ? `<span data-iss-exp class="block mt-0.5 text-[11px] text-slate-600">${parts.join(' · ')}</span>` : '';
     }
     function printIssuedReport() {
       coaRead();
@@ -25320,13 +25568,13 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       let recap = '';
       if (sup) {
         const by = new Map();
-        rows.forEach(x => { const k = x.l.code || x.l.desc; const c = by.get(k) || { stock: /^CUSTOM-/.test(x.l.code || '') ? '' : (x.l.code || ''), qty: 0, cost: x.l.unitCost || 0, total: 0 }; c.qty += x.qty; c.total += x.amount; by.set(k, c); });
+        rows.forEach(x => { const k = (x.exp || '') + '|' + (x.l.code || x.l.desc) + '|' + round2(x.l.unitCost || 0); const c = by.get(k) || { stock: /^CUSTOM-/.test(x.l.code || '') ? '' : (x.l.code || ''), qty: 0, cost: x.l.unitCost || 0, total: 0, uacs: EXP_CLASSES[x.exp] ? EXP_CLASSES[x.exp].uacs : '' }; c.qty += x.qty; c.total += x.amount; by.set(k, c); });
         recap = `
           <table class="pr-table" style="border-top:0">
             <colgroup><col style="width:20%"><col style="width:14%"><col style="width:6%"><col style="width:20%"><col style="width:20%"><col style="width:20%"></colgroup>
             <tr><th colspan="2">Recapitulation:</th><td style="border-top:0;border-bottom:0"></td><th colspan="3">Recapitulation:</th></tr>
             <tr><th>Stock No.</th><th>Quantity</th><td style="border-top:0;border-bottom:0"></td><th>Unit Cost</th><th>Total Cost</th><th>UACS Object Code</th></tr>
-            ${[...by.values()].map(c => `<tr><td class="pr-sn">${e(c.stock)}</td><td class="c">${c.qty}</td><td style="border-top:0;border-bottom:0"></td><td class="r">${peso2(c.cost)}</td><td class="r">${peso2(c.total)}</td><td></td></tr>`).join('')}
+            ${[...by.values()].map(c => `<tr><td class="pr-sn">${e(c.stock)}</td><td class="c">${c.qty}</td><td style="border-top:0;border-bottom:0"></td><td class="r">${peso2(c.cost)}</td><td class="r">${peso2(c.total)}</td><td class="c" data-uacs>${e(c.uacs)}</td></tr>`).join('')}
           </table>`;
       }
       printFormHTML(`
@@ -25533,7 +25781,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         const slips = new Set(rows.map(x => x.r.id)).size;
         body.innerHTML = `${back}
           ${coaSeg('issuedType', [['sep', 'RSPI', 'ICS · semi-expendable'], ['sup', 'RSMI', 'RIS · supplies']])}
-          <div id="coaIssuedStats" class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-700"><b>${slips} ${sup ? 'RIS' : 'ICS'}</b> · ${plural(rows.length, 'line')} · <b class="font-mono">₱${peso2(total)}</b></div>
+          <div id="coaIssuedStats" class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-700"><b>${slips} ${sup ? 'RIS' : 'ICS'}</b> · ${plural(rows.length, 'line')} · <b class="font-mono">₱${peso2(total)}</b>${sup ? issuedExpText(rows) : ''}</div>
           ${rows.length ? '' : coaNote('amber', `No ${sup ? 'RIS' : 'ICS'} in this period.`)}
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             ${coaField('issFrom', 'From', { type: 'date' })}${coaField('issTo', 'To (report date)', { type: 'date' })}
@@ -25839,14 +26087,14 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (created) rebuildCatalogList();
       const date = localISODate();
       plan.forEach(({ line, code }) => {
-        receiveIntoStock(code, line.qty, line.unitCost || 0, { date, kind: 'pr', doc: `PR ${pr.prNo}` });
+        receiveIntoStock(code, line.qty, line.unitCost || 0, { date, kind: 'pr', doc: `PR ${pr.prNo}`, exp: line.exp });
         added += 1;
       });
       if (added) {
         const now = Date.now();
         deliveries.push(cleanJSON({
           id: newDlvId(), kind: 'stockin', prNo: pr.prNo, date, supplier: '', status: 'received', createdMs: now,
-          lines: plan.map(({ line, code }, i) => ({ id: 'P' + i, desc: line.desc, stockNo: line.stockNo || '', unit: line.unit || '', code, qty: line.qty, unitCost: line.unitCost || 0, received: line.qty })),
+          lines: plan.map(({ line, code }, i) => ({ id: 'P' + i, desc: line.desc, stockNo: line.stockNo || '', unit: line.unit || '', code, qty: line.qty, unitCost: line.unitCost || 0, received: line.qty, ...(EXP_CLASSES[line.exp] ? { exp: line.exp } : {}) })),
           receipts: [{ id: newDlvId(), at: now, date, lines: plan.map(({ line, code }, i) => ({ l: 'P' + i, c: code, q: line.qty, uc: line.unitCost || 0 })) }]
         }));
         rebuildCatalogList();
@@ -26845,6 +27093,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-pr-expense', date: 'Nov 2026', title: 'Purchase Requests by expense: Office Supplies and Other Supplies', points: [
+        'Purchase Requests now group their items by expense, as on the updated form: Office Supplies Expenses for what the office uses, Other Supplies Expenses for supplies the teachers use, and Semi-Expendable Machinery and Equipment or Semi-Expendable Furniture, Fixtures and Books Expenses for equipment. The print, Excel and CSV put each heading above its items, with one total at the end.',
+        'Items from teachers\u2019 requests go under Other Supplies. Requests you add for the office (tap The office under Used by), the reorder list and items you add yourself go under Office Supplies. Change any line with Charge to.',
+        'The expense follows the items to the IAR, the delivery and your stock: an item shows how many are Office Supplies and how many are Other Supplies. A release to a teacher takes Other Supplies first, one for the office Office Supplies first.',
+        'Deliveries without a PR (petty cash, donations) ask which expense the supplies are charged to. The RSMI (Report of Supplies and Materials Issued) now fills in the UACS object code, and the monthly report shows the total for each expense.'
+      ] },
       { id: '2026-11-release-sample', date: 'Nov 2026', title: 'Transfer or return from the Item preview, and a fuller sample', points: [
         'Item preview: when every unit is already with someone, the Release button becomes Transfer or return. Pick whose unit (if more than one person has it), then Transfer to another person (ITR / PTR) or Take back to stock (RRSP). With nothing in stock it becomes Stock in: record a delivery or add the item to a Purchase Request.',
         'Home: in the quick count window, More details is now called Edit details, because it opens the item in edit mode.',
