@@ -416,7 +416,10 @@ The teacher is told at each step and sees a progress bar; the AO is told about n
 - **Print leave card**: every line with earned, used and the running balance for each kind of credit, the balance as of today, and *Certified correct*.
 - Teachers see **My leave credits** on the Leave tab (their own card, view only, with Print), the days left under each option when applying, and a notification when credits are added.
 
-Data: `schools/{schoolId}/leaves/{id}` and `schools/{schoolId}/leaveCards/{uid or id}` (written by the AO only; a teacher reads their own). The School Head's decision goes through `approvals` (kind `leave`). **Publish `firestore.rules` again** to turn it on. Next: the ₱250 log and turnover to the Faculty President.
+Data: `schools/{schoolId}/leaves/{id}` and `schools/{schoolId}/leaveCards/{uid or id}` (written by the AO only; a teacher reads their own). The School Head's decision goes through `approvals` (kind `leave`). **Publish `firestore.rules` again** to turn it on. 
+**₱250 log** (Leave page → ₱250 tab): whole-day absences paid with ₱250 (up to 2 a month for each person), by month and person. The AO taps **Paid** when the money is handed in (amount and date), then **Turn over to the Faculty President** (name and date) and prints the turnover list for signing. Stored on the application as `p250 { amount, paidISO, turnISO, turnTo }`.
+
+**Applying for one's own leave:** the AO (custodian account) uses **Apply for my leave** (`by: 'self'`): it is received and sent to the School Head like any other. The School Head has a **Leave** tab (`by: 'head'`): the AO receives it and prepares Form 6 with the Division as the recommending and approving officials (7.B, 7.C); it does not go to the Approve tab.
 
 ### School stock and “I took this” (teachers)
 
