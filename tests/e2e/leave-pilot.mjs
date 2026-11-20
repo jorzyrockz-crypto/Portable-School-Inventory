@@ -34,7 +34,7 @@ try {
   const { page: t, uid: tUid } = await teacher(backend, sid);
   check(await ev(a, () => document.getElementById('sideLeave').style.display === 'none' && document.getElementById('moreLeaveItem').style.display === 'none'), 'custodian: no Leave in the sidebar or More');
   check(await ev(t, () => document.getElementById('rqTab-leave').classList.contains('hidden') && document.getElementById('rqTabs').classList.contains('grid-cols-4')), 'teacher: four tabs, no Leave');
-  check(await ev(a, () => wnList()[0].id !== '2026-11-leave-pilot' && WHATS_NEW[0].id === '2026-11-leave-pilot'), 'What’s new: the pilot note is not shown here');
+  check(await ev(a, () => !wnList().some(r => r.pilot) && WHATS_NEW.some(r => r.id === '2026-11-leave-pilot') && WHATS_NEW[0].pilot === 'leave'), 'What’s new: the pilot notes are not shown here');
   await ev(a, () => switchMainView('LEAVE'));
   check(await ev(a, () => activeMainView === 'HOME'), 'the Leave page does not open');
   check(await refused(t, (F, uid) => F.setDoc(F.doc(F.collection(cloud.db, 'schools', reqRole.schoolId, 'leaves')), { uid, name: 'Ana Reyes', type: 'VL', status: 'applied', by: 'teacher', log: [] }), tUid), 'rules: a leave at another school is refused');
@@ -47,7 +47,7 @@ try {
   await ev(t, () => setTeacherTab('items'));
   check(await ev(a, () => document.getElementById('sideLeave').style.display === '' && document.getElementById('moreLeaveItem').style.display === ''), 'custodian: Leave in the sidebar and More');
   check(await ev(t, () => !document.getElementById('rqTab-leave').classList.contains('hidden') && document.getElementById('rqTabs').classList.contains('grid-cols-5')), 'teacher: a fifth tab, Leave');
-  check(await ev(t, () => wnList()[0].id === '2026-11-leave-pilot'), 'What’s new: the pilot note shows here');
+  check(await ev(t, () => wnList()[0].pilot === 'leave' && wnList().some(r => r.id === '2026-11-leave-pilot')), 'What’s new: the pilot notes show here');
   const { page: h } = await schoolHead(backend, a, sid);
 
   out('3 the teacher applies');

@@ -371,6 +371,12 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
           ch.every(k => ['status', 'cancelledMs', 'log', 'updatedAt'].includes(k))) return;
       deny('leave update', { path, ch, status: data.status });
     }
+    if (p.length === 4 && sub === 'leaveCards') {
+      if (!leaveOn(sid)) deny('leave card: not a pilot school', { path });
+      const uidOk = typeof (data.uid ?? '') === 'string' && ((data.uid ?? '') === '' || data.uid === p[3]) && (kind === 'create' || !store.has(path) || (data.uid ?? '') === (before.uid ?? ''));
+      if (isStaff(ctx, sid) && uidOk && str(data.name ?? '', 120) && (data.name ?? '').length > 0 && Array.isArray(data.entries ?? []) && (data.entries ?? []).length <= 800) return;
+      deny('leave card write', { path });
+    }
     if (p.length === 4 && sub === 'classBooks') {
       if (isStaff(ctx, sid)) return;
       if (isMember(ctx, sid) && data.uid === ctx.uid && p[3] === `${data.sy ?? ''}_${ctx.uid}` && (!before.uid || before.uid === ctx.uid) &&
@@ -480,6 +486,13 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
       if (!filters.some(f => f.field === 'uid' && f.op === '==' && f.value === ctx.uid)) deny('list leaves', { path, filters });
       return;
     }
+    if (sub === 'leaveCards') {
+      if (!leaveOn(sid)) deny('read leave cards: not a pilot school', { path });
+      if (canView(ctx, sid) || isHeadOf(ctx, sid)) return;
+      if (single) { const d = store.get(path); if (d && d.uid === ctx.uid) return; deny('get leave card', { path }); }
+      if (!filters.some(f => f.field === 'uid' && f.op === '==' && f.value === ctx.uid)) deny('list leave cards', { path, filters });
+      return;
+    }
     if (sub === 'classBooks') {
       if (canView(ctx, sid)) return;
       if (single) { const d = store.get(path); if (!d || d.uid === ctx.uid) return; deny('get classBooks', { path }); }
@@ -532,7 +545,7 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
     let after = kind === 'set' || !before ? resolveTS(data) : { ...before, ...resolveTS(data) };
     const p = parts(path);
     // members/requests/reports/holds rules look at the whole document; others at what was sent
-    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog', 'staff', 'approvals', 'suggestions', 'loans', 'bookMoves', 'classBooks', 'leaves'].includes(p[2]);
+    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog', 'staff', 'approvals', 'suggestions', 'loans', 'bookMoves', 'classBooks', 'leaves', 'leaveCards'].includes(p[2]);
     checkWrite(before ? 'update' : 'create', path, whole ? after : data, before || {}, ctx);
     if (autoApprove && !before && p.length === 4 && p[2] === 'members' && after.status === 'pending') after = { ...after, status: 'active', approvedMs: Date.now() };
     store.set(path, after);

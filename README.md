@@ -405,7 +405,18 @@ It follows the school's own process:
 
 The teacher is told at each step and sees a progress bar; the AO is told about new applications and the School Head's decisions, and Home lists the applications to act on. Each application keeps its history. ₱250 is allowed twice a month per person (a third is refused). A teacher reads only their own applications and may cancel one while it is still *Applied*.
 
-Data: `schools/{schoolId}/leaves/{id}`; the School Head's decision goes through `approvals` (kind `leave`). **Publish `firestore.rules` again** to turn it on. Next: leave cards with opening balances and credits (VSC, Local Service Credits, VL/SL), then the ₱250 log and turnover to the Faculty President.
+**Leave cards** (the *Leave cards* tab of the Leave page) keep each person's credits:
+
+- **New leave card** for a teacher in the app (the card has their uid) or someone who isn't (non-teaching staff, by name). Teaching staff use service credits; non-teaching staff use VL and SL.
+- **Opening balance**: the balance as of a date, from the paper leave card, with its memo. A new opening balance for the same credit replaces the old one (voided, kept).
+- **Add credits** with the memo that grants them: **Vacation Service Credits** (Division memo; more than 30 days in a calendar year asks first, as DepEd Order 13, s. 2024 allows up to 30, or 45 for some new hires), **Local Service Credits** (School memo, no limit), VL and SL. **Monthly VL/SL** adds 1.25 days of each to every non-teaching card, once per month.
+- **Approved leaves are deducted by themselves** (once) from the credits recommended, dated the first day of the leave. Leave on Local Service Credits is marked *not reflected in the DTR*, on the card and on Form 6. A person without a card gets one.
+- **Receive** shows the days left and what remains after the leave. **Prepare Form 6** fills in 7.A from the card: VL/SL in their columns, and service credits in the first column, named on the memo line.
+- **Adjust** (plus or minus, with a reason) and **void** a wrong line (with a reason; it stays on the card, struck out).
+- **Print leave card**: every line with earned, used and the running balance for each kind of credit, the balance as of today, and *Certified correct*.
+- Teachers see **My leave credits** on the Leave tab (their own card, view only, with Print), the days left under each option when applying, and a notification when credits are added.
+
+Data: `schools/{schoolId}/leaves/{id}` and `schools/{schoolId}/leaveCards/{uid or id}` (written by the AO only; a teacher reads their own). The School Head's decision goes through `approvals` (kind `leave`). **Publish `firestore.rules` again** to turn it on. Next: the ₱250 log and turnover to the Faculty President.
 
 ### School stock and “I took this” (teachers)
 
