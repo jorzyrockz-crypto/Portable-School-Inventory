@@ -37,7 +37,7 @@ try {
   check(col >= 650 && col <= 720, `Home column fills most of the tablet (${Math.round(col)} of 800 px)`);
   check(await fits(t), 'Home fits the screen width');
   await t.screenshot({ path: `${SHOTS}/tablet-home.png` });
-  for (const [open, close] of [['switchMainView("ITEMS")', ''], ['switchMainView("CATALOG")', ''], ['switchMainView("REPORTS")', ''], ['openSchoolModal()', 'closeSchoolModal()'], ['openItemModal(items.find(i => i.qty > 0).code)', 'closeItemModal()'], ['openMoreMenu()', '']]) {
+  for (const [open, close] of [['switchMainView("ITEMS")', ''], ['switchMainView("CATALOG")', ''], ['switchMainView("REPORTS")', ''], ['openSchoolModal()', 'closeSchoolModal()'], ['openItemModal(items.find(i => i.qty > 0).code)', 'closeItemSheet()'], ['openMoreMenu()', '']]) {
     await ev(t, s => eval(s), open);
     await sleep(300);
     check(await fits(t), `${open}: fits the screen width`);
@@ -54,7 +54,7 @@ try {
   }).map(el => `${Math.round(el.getBoundingClientRect().height)}px ${(el.getAttribute('aria-label') || el.innerText).trim().slice(0, 30)}`));
   for (const [w, h] of [[800, 1280], [660, 1024]]) {
     await t.setViewport({ width: w, height: h, deviceScaleFactor: 1.5, isMobile: true, hasTouch: true });
-    for (const [open, close] of [['switchMainView("ITEMS")', ''], ['switchMainView("CATALOG")', ''], ['switchMainView("REPORTS")', ''], ['openHistory()', 'closeHistory()'], ['openItemModal(items.find(i => i.qty > 0).code)', 'closeItemModal()'], ['openNotifPanel()', 'closeNotifPanel()'], ['openMoreMenu()', 'closeMoreMenu()']]) {
+    for (const [open, close] of [['switchMainView("ITEMS")', ''], ['switchMainView("CATALOG")', ''], ['switchMainView("REPORTS")', ''], ['openHistory()', 'closeHistory()'], ['openItemModal(items.find(i => i.qty > 0).code)', 'closeItemSheet()'], ['openNotifPanel()', 'closeNotifPanel()'], ['openMoreMenu()', 'closeMoreMenu()']]) {
       await ev(t, s => eval(s), open);
       await sleep(300);
       const bad = await tooSmall();

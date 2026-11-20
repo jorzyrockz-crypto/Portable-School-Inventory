@@ -92,7 +92,7 @@ try {
   await ev(a, () => { countSession = null; persistCountSession(); setLedgerFilter('ALL'); renderDashboard(); });
 
   out('5 pop-ups open as bottom sheets');
-  for (const [open, id, close] of [['openUnitsModal(items.find(i => getUnits(i.code).length).code)', 'unitsModal', 'closeUnitsModal()'], ['openSchoolModal()', 'schoolModal', 'closeSchoolModal()'], ['openItemModal(items.find(i => i.qty > 0).code)', 'itemModal', 'closeItemModal()']]) {
+  for (const [open, id, close] of [['openUnitsModal(items.find(i => getUnits(i.code).length).code)', 'unitsModal', 'closeUnitsModal()'], ['openSchoolModal()', 'schoolModal', 'closeSchoolModal()'], ['openItemModal(items.find(i => i.qty > 0).code)', 'itemSheet', 'closeItemSheet()']]) {
     await ev(a, s => eval(s), open);
     await sleep(300);
     const card = await box(a, `#${id} > div`);
@@ -151,8 +151,8 @@ try {
   await ev(a, () => setCategoryFilter('ALL'));
   await a.click('#itemsContainer .cat-row .cat-main');
   await sleep(300);
-  check(await ev(a, () => !document.getElementById('itemModal').classList.contains('hidden')), 'tapping the name opens room · price · minimum stock');
-  await ev(a, () => closeItemModal());
+  check(await ev(a, () => !document.getElementById('itemSheet').classList.contains('hidden') && !document.getElementById('ipOverview').classList.contains('hidden')), 'tapping the name opens the Item preview');
+  await ev(a, () => closeItemSheet());
   await a.screenshot({ path: `${SHOTS}/phone-catalog.png` });
   check(await ev(a, () => new Set([...document.querySelectorAll('.part-tab')].filter(t => t.offsetParent).map(t => Math.round(t.getBoundingClientRect().top))).size) === 1, 'All / Part I / Part II / In stock on one line');
   check(await ev(a, () => [...document.querySelectorAll('.part-tab')].filter(t => t.offsetParent).every(t => t.getBoundingClientRect().height <= 40)), 'tab labels do not wrap');

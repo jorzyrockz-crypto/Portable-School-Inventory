@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="d19c7bdb3897">
+  <meta name="app-version" content="c8a0d0efcba7">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -178,6 +178,25 @@
        Inventory and Catalog get wider lists with extra columns. Phones and upright tablets keep
        the bottom tab bar. html.no-tabs is set on a teacher's phone (no tabs there).
        Keep SIDEBAR_MQ in the script in step with this query. */
+    /* Item preview: tabs, status chips and item links (the panel itself is in the HTML) */
+    :root { --ip-w: min(26rem, 40vw); }
+    .ip-tab { position: relative; height: 2.75rem; padding: 0 0.75rem; display: inline-flex; align-items: center; gap: 0.375rem;
+      font-size: 0.8125rem; font-weight: 700; color: #475569; }
+    .ip-tab:hover { color: #0f172a; }
+    .ip-tab[aria-selected="true"] { color: #4338ca; }
+    .ip-tab[aria-selected="true"]::after { content: ""; position: absolute; left: 0.5rem; right: 0.5rem; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: #4f46e5; }
+    .ip-tab:focus-visible { outline: 2px solid #6366f1; outline-offset: -2px; border-radius: 0.5rem; }
+    .ip-tab-n { min-width: 1.25rem; height: 1.25rem; padding: 0 0.375rem; border-radius: 9999px; background: #ccfbf1; color: #115e59;
+      font-size: 0.6875rem; display: inline-flex; align-items: center; justify-content: center; }
+    .ip-chip { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 1.625rem; padding: 0 0.5rem; border-radius: 0.5rem; border-width: 1px;
+      font-size: 0.6875rem; font-weight: 700; white-space: nowrap; }
+    .ip-link:hover { color: #4338ca; text-decoration: underline; }
+    html.dark .ip-tab { color: #94a3b8; }
+    html.dark .ip-tab:hover { color: #e2e8f0; }
+    html.dark .ip-tab[aria-selected="true"] { color: #a5b4fc; }
+    html.dark .ip-tab[aria-selected="true"]::after { background: #818cf8; }
+    html.dark .ip-tab-n { background: rgb(20 184 166 / 0.2); color: #5eead4; }
+    html.dark .ip-link:hover { color: #a5b4fc; }
     .lap-only, .lap-col { display: none; }
     :root { --side-w: 14.5rem; }
     /* Teachers page on a phone: the list, or the person picked (side by side on computers, below) */
@@ -251,6 +270,22 @@
       html:not(.no-tabs) #tvDetailPane .rv-track > .rv-card:only-child { flex-basis: min(100%, 28rem); flex-grow: 0; }
       html:not(.no-tabs) #tvChips { flex-wrap: wrap; margin-inline: 0; padding-inline: 0; overflow: visible; }
       #tvDetailPane .tv-board { grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
+      /* The item preview is a panel on the right, under the top bar, and the page beside it stays
+         usable: tap another row and the panel shows that item. The extra list columns come back
+         on wide screens only. */
+      html:not(.no-tabs) #itemSheet { left: auto; top: var(--hdr-h, 3.75rem); width: var(--ip-w); padding: 0; z-index: 40; background: transparent;
+        backdrop-filter: none; -webkit-backdrop-filter: none; align-items: stretch; justify-content: stretch; }
+      html:not(.no-tabs) #itemSheet > .ip-panel { max-width: none; max-height: none; height: 100%; border-radius: 0; border-width: 0 0 0 1px;
+        box-shadow: -16px 0 32px -20px rgb(15 23 42 / 0.3); }
+      html:not(.no-tabs) body.ip-open { padding-right: var(--ip-w); }
+      html:not(.no-tabs) body.ip-open > header { margin-right: calc(-1 * var(--ip-w)); }
+      html:not(.no-tabs) body.ip-open #appToast { margin-left: calc((var(--side-w) - var(--ip-w)) / 2); }
+      html:not(.no-tabs) body.ip-open .ip-sel { background: #eef2ff; box-shadow: inset 3px 0 0 #4f46e5; }
+      html.dark:not(.no-tabs) body.ip-open .ip-sel { background: rgb(99 102 241 / 0.16); box-shadow: inset 3px 0 0 #818cf8; }
+      @media (max-width: 1599.98px) {
+        html:not(.no-tabs) body.ip-open .lap-col, html:not(.no-tabs) body.ip-open .lap-only.lap-head { display: none; }
+        html:not(.no-tabs) body.ip-open .lap-hide { display: inline !important; }
+      }
       /* Government forms open as a page beside the sidebar instead of a pop-up. The page itself
          scrolls (no box scrolling inside the card), and a form's Back / Print bar sticks to the bottom. */
       html:not(.no-tabs) #coaModal.coa-page { left: var(--side-w); top: var(--hdr-h, 3.75rem); z-index: 30; padding: 1rem 1.5rem 0;
@@ -2089,10 +2124,13 @@
   </div>
 
   <!-- ITEM SHEET: one item from the Inventory list (details + actions). Bottom sheet on phones. -->
+  <!-- ITEM PREVIEW: everything about one item. A bottom sheet on phones, a pop-up on tablets, a panel
+       on the right on computers (the list stays usable beside it). Overview / People / History, and
+       Edit details in place (the old item details pop-up). -->
   <div id="itemSheet" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" role="dialog" aria-modal="true" aria-labelledby="isName"
-    onclick="if (event.target === this) closeItemSheet()" onkeydown="if (event.key === 'Escape') closeItemSheet()">
-    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col safe-bottom overflow-hidden">
-      <div class="flex items-start gap-3 p-5 pb-3">
+    onclick="if (event.target === this) closeItemSheet()" onkeydown="ipKey(event)">
+    <div onclick="if (ipView.more && !event.target.closest('#ipMore, #isMoreBtn')) ipToggleMore(false)" class="ip-panel bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col safe-bottom overflow-hidden relative">
+      <div class="flex items-start gap-3 p-5 pb-2">
         <span id="isIcon"></span>
         <div class="flex-1 min-w-0">
           <h3 id="isName" class="font-extrabold text-base text-slate-900 leading-snug inv-name-full"></h3>
@@ -2100,39 +2138,173 @@
         </div>
         <button id="isClose" onclick="closeItemSheet()" class="w-10 h-10 shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
-      <div class="flex-1 min-h-0 overflow-y-auto px-5 pb-4 space-y-3">
-        <div id="isStats" class="grid grid-cols-[auto_1fr_1fr] gap-2"></div>
-        <div id="isAlert"></div>
-        <!-- Quantity -->
-        <div class="rounded-2xl border border-slate-200 p-3">
-          <div class="flex items-center gap-3">
-            <div class="flex-1 min-w-0">
-              <p class="text-xs font-bold text-slate-800">Quantity on hand</p>
-              <p id="isQtyNote" class="text-[11px] text-slate-600 mt-0.5"></p>
-            </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-              <button onclick="adjustQty(sheetCode, -1)" class="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 flex items-center justify-center" aria-label="One less"><i class="ph-bold ph-minus"></i></button>
-              <div class="w-14 text-center leading-tight">
-                <span id="isQty" class="block font-mono font-extrabold text-lg text-slate-900"></span>
-                <span id="isUnit" class="block text-[11px] font-semibold text-slate-500"></span>
+      <div id="ipChips" class="flex flex-wrap gap-1.5 px-5 pb-2 empty:hidden"></div>
+      <div id="ipTabs" role="tablist" aria-label="Item" class="flex gap-1 px-4 border-b border-slate-200">
+        <button type="button" role="tab" id="ipTab-overview" data-ip-tab="overview" onclick="ipTab('overview')" class="ip-tab">Overview</button>
+        <button type="button" role="tab" id="ipTab-people" data-ip-tab="people" onclick="ipTab('people')" class="ip-tab">People <span id="ipPeopleN" class="ip-tab-n empty:hidden"></span></button>
+        <button type="button" role="tab" id="ipTab-history" data-ip-tab="history" onclick="ipTab('history')" class="ip-tab">History</button>
+      </div>
+      <div id="ipEditHead" class="hidden items-center gap-2 px-5 py-2 border-b border-slate-200 bg-brand-50/60">
+        <i class="ph-bold ph-pencil-simple text-brand-700"></i>
+        <p class="flex-1 text-xs font-extrabold text-brand-800">Edit details</p>
+        <span id="modalItemTypeBadge" class="text-[11px] font-bold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-700"></span>
+      </div>
+      <div id="ipBody" class="flex-1 min-h-0 overflow-y-auto px-5 py-3">
+        <div id="ipOverview" role="tabpanel" aria-labelledby="ipTab-overview" class="space-y-3">
+          <div id="isStats" class="grid grid-cols-[auto_1fr_1fr] gap-2"></div>
+          <div id="isAlert"></div>
+          <!-- Quantity -->
+          <div class="rounded-2xl border border-slate-200 p-3">
+            <div class="flex items-center gap-3">
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-slate-800">Quantity on hand</p>
+                <p id="isQtyNote" class="text-[11px] text-slate-600 mt-0.5"></p>
               </div>
-              <button onclick="adjustQty(sheetCode, 1)" class="w-11 h-11 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white flex items-center justify-center" aria-label="One more"><i class="ph-bold ph-plus"></i></button>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button data-ip-write onclick="adjustQty(sheetCode, -1)" class="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 flex items-center justify-center" aria-label="One less"><i class="ph-bold ph-minus"></i></button>
+                <div class="w-14 text-center leading-tight">
+                  <span id="isQty" class="block font-mono font-extrabold text-lg text-slate-900"></span>
+                  <span id="isUnit" class="block text-[11px] font-semibold text-slate-500"></span>
+                </div>
+                <button data-ip-write onclick="adjustQty(sheetCode, 1)" class="w-11 h-11 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white flex items-center justify-center" aria-label="One more"><i class="ph-bold ph-plus"></i></button>
+              </div>
+            </div>
+            <button id="isCount" onclick="itemSheetCounted()" class="hidden mt-3"></button>
+          </div>
+          <div id="isRows" class="divide-y divide-slate-100"></div>
+        </div>
+        <div id="ipPeople" role="tabpanel" aria-labelledby="ipTab-people" class="hidden space-y-4"></div>
+        <div id="ipHistory" role="tabpanel" aria-labelledby="ipTab-history" class="hidden"></div>
+        <div id="ipEdit" role="tabpanel" aria-label="Edit details" class="hidden space-y-4">
+            <div class="grid grid-cols-3 gap-2.5">
+              <div>
+                <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">On-Hand (<span id="modalItemUnit">unit</span>)</label>
+                <input type="number" id="modalItemQty" min="0" oninput="updateModalConditionPreview()" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-mono font-bold text-base focus:border-brand-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Unit cost (₱)</label>
+                <input type="number" id="modalItemPrice" step="0.01" min="0" oninput="refreshModalTypeUI()" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-mono font-bold text-base focus:border-brand-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold uppercase text-amber-700 mb-1">Min Alert Qty</label>
+                <input type="number" id="modalItemMinQty" min="0" placeholder="5" class="w-full h-11 px-3 rounded-xl border border-amber-300 bg-amber-50/40 font-mono font-bold text-base focus:border-amber-500 outline-none">
+              </div>
+            </div>
+
+            <!-- Cost: average of what was received · last paid · APP-CSE reference -->
+            <div class="-mt-1.5 flex items-start justify-between gap-2">
+              <p id="modalPriceRef" class="text-[11px] text-slate-500 leading-snug"></p>
+              <div class="flex gap-1.5 shrink-0">
+                <button type="button" onclick="itemSheetGo('prices')" class="h-8 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1"><i class="ph-bold ph-receipt"></i> Prices</button>
+                <button type="button" onclick="itemSheetGo('catalog')" class="h-8 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1" title="Rename, hide or delete"><i class="ph-bold ph-sliders-horizontal"></i> Catalog</button>
+              </div>
+            </div>
+
+            <!-- Classification: automatic or manual override -->
+            <div>
+              <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Classification</label>
+              <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button type="button" id="modalType-AUTO" onclick="setModalType('AUTO')" class="modal-type-btn h-9 rounded-lg text-xs font-bold transition text-slate-600">
+                  Auto <span id="modalTypeAutoHint" class="font-medium opacity-70"></span>
+                </button>
+                <button type="button" id="modalType-EQUIPMENT" onclick="setModalType('EQUIPMENT')" class="modal-type-btn h-9 rounded-lg text-xs font-bold transition text-slate-600">
+                  Equipment (ICS/PAR)
+                </button>
+                <button type="button" id="modalType-CONSUMABLE" onclick="setModalType('CONSUMABLE')" class="modal-type-btn h-9 rounded-lg text-xs font-bold transition text-slate-600">
+                  Consumable (RIS)
+                </button>
+              </div>
+            </div>
+
+            <!-- Physical Condition (Equipment / ICS-PAR only) -->
+            <div id="modalConditionSection" class="hidden rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-[11px] font-bold uppercase text-slate-500 flex items-center gap-1.5">
+                  <i class="ph-bold ph-wrench text-rose-600"></i> Physical Condition
+                </label>
+                <span class="text-[11px] text-slate-500">of <strong id="modalCondTotal" class="font-mono text-slate-800">0</strong> on-hand</span>
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <div class="rounded-lg bg-white border border-emerald-200 p-2 text-center">
+                  <span class="block text-[11px] font-bold uppercase text-emerald-700">Serviceable</span>
+                  <span id="modalCondServ" class="block h-9 leading-9 font-mono font-extrabold text-lg text-emerald-700">0</span>
+                </div>
+                <div class="rounded-lg bg-white border border-orange-200 p-2 text-center">
+                  <span class="block text-[11px] font-bold uppercase text-orange-700">Needs Repair</span>
+                  <div class="flex items-center justify-center gap-1">
+                    <button aria-label="One less for repair" type="button" onclick="stepModalCondition('modalItemRepair', -1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
+                    <input type="number" id="modalItemRepair" min="0" oninput="updateModalConditionPreview()" class="w-10 h-9 text-center font-mono font-extrabold text-lg text-orange-700 bg-transparent outline-none">
+                    <button aria-label="One more for repair" type="button" onclick="stepModalCondition('modalItemRepair', 1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
+                  </div>
+                </div>
+                <div class="rounded-lg bg-white border border-rose-200 p-2 text-center">
+                  <span class="block text-[11px] font-bold uppercase text-rose-700">Unserviceable</span>
+                  <div class="flex items-center justify-center gap-1">
+                    <button aria-label="One less unserviceable" type="button" onclick="stepModalCondition('modalItemUnserv', -1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
+                    <input type="number" id="modalItemUnserv" min="0" oninput="updateModalConditionPreview()" class="w-10 h-9 text-center font-mono font-extrabold text-lg text-rose-700 bg-transparent outline-none">
+                    <button aria-label="One more unserviceable" type="button" onclick="stepModalCondition('modalItemUnserv', 1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
+                  </div>
+                </div>
+              </div>
+              <p id="modalCondError" class="hidden mt-2 text-[11px] font-semibold text-rose-600 items-center gap-1">
+                <i class="ph-fill ph-warning"></i> Needs Repair + Unserviceable cannot exceed the on-hand quantity.
+              </p>
+              <p id="modalCondLockedNote" class="hidden mt-2 text-[11px] font-semibold text-violet-700 items-center gap-1">
+                <i class="ph-bold ph-tag"></i> Condition is set per unit under Property Numbers below.
+              </p>
+            </div>
+
+            <!-- Property numbers & QR labels (one record per physical unit) -->
+            <div id="modalTagsSection" class="hidden rounded-xl border border-violet-200 bg-violet-50/50 p-3">
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <label class="text-[11px] font-bold uppercase text-violet-700 flex items-center gap-1.5">
+                    <i class="ph-bold ph-qr-code"></i> Property Numbers &amp; QR Labels
+                  </label>
+                  <p id="modalTagsText" class="text-xs text-slate-600 mt-0.5">No units tagged yet</p>
+                </div>
+                <button type="button" onclick="openUnitsFromItemModal()" class="shrink-0 h-9 px-3 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition" title="Saves this form, then opens the unit list">
+                  <i class="ph-bold ph-tag"></i>
+                  <span id="modalTagsBtnText">Tag units</span>
+                </button>
+              </div>
+              <p id="modalTagQtyError" class="hidden mt-2 text-[11px] font-semibold text-rose-600 items-center gap-1">
+                <i class="ph-fill ph-warning"></i> <span></span>
+              </p>
+            </div>
+
+            <!-- Quick Room / Storage Location Pills -->
+            <div>
+              <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1.5">Quick Assign Storage / Room Location</label>
+              <div class="flex flex-wrap gap-1.5 mb-2">
+                <button type="button" onclick="setQuickNote('Central Stockroom')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Central Stockroom</button>
+                <button type="button" onclick="setQuickNote('Principal / Admin Office')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Admin Office</button>
+                <button type="button" onclick="setQuickNote('Faculty Room')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Faculty Room</button>
+                <button type="button" onclick="setQuickNote('ICT / Computer Lab')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">ICT Lab</button>
+                <button type="button" onclick="setQuickNote('School Clinic')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">School Clinic</button>
+                <button type="button" onclick="setQuickNote('School Library')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Library</button>
+                <button type="button" onclick="setQuickNote('Utility / Janitorial Room')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Utility Room</button>
+              </div>
+              <textarea id="modalItemNote" rows="2" placeholder="Room location, custodian remarks, or serial number..." class="w-full p-3 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none"></textarea>
             </div>
           </div>
-          <button id="isCount" onclick="itemSheetCounted()" class="hidden mt-3"></button>
-        </div>
-        <div id="isRows" class="divide-y divide-slate-100"></div>
+
       </div>
-      <div class="flex gap-2 p-4 border-t border-slate-200 bg-slate-50">
-        <button id="isRelease" onclick="itemSheetGo('release')" class="flex-1 h-14 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex flex-col items-center justify-center gap-0.5">
+      <div id="ipMore" class="hidden absolute right-4 bottom-[5.25rem] z-10 w-64 rounded-2xl bg-white border border-slate-200 shadow-xl p-1.5"></div>
+      <div id="ipFoot" class="flex gap-2 p-4 border-t border-slate-200 bg-slate-50">
+        <button id="isRelease" data-ip-write onclick="itemSheetGo('release')" class="flex-1 h-14 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex flex-col items-center justify-center gap-0.5">
           <i class="ph-bold ph-hand-arrow-up text-lg"></i> Release
         </button>
-        <button onclick="itemSheetGo('edit')" class="flex-1 h-14 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 text-xs font-bold flex flex-col items-center justify-center gap-0.5">
+        <button id="isEdit" data-ip-write onclick="itemSheetGo('edit')" class="flex-1 h-14 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 text-xs font-bold flex flex-col items-center justify-center gap-0.5">
           <i class="ph-bold ph-pencil-simple text-lg"></i> Edit details
         </button>
-        <button onclick="itemSheetGo('history')" class="flex-1 h-14 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 text-xs font-bold flex flex-col items-center justify-center gap-0.5">
-          <i class="ph-bold ph-clock-counter-clockwise text-lg"></i> History
+        <button id="isMoreBtn" onclick="ipToggleMore()" aria-haspopup="menu" aria-expanded="false" class="w-16 h-14 shrink-0 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 text-xs font-bold flex flex-col items-center justify-center gap-0.5">
+          <i class="ph-bold ph-dots-three text-lg"></i> More
         </button>
+      </div>
+      <div id="ipEditFoot" class="hidden gap-2 p-4 border-t border-slate-200 bg-slate-50">
+        <button onclick="closeItemModal()" class="h-12 px-5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 font-bold text-xs text-slate-700">Cancel</button>
+        <button id="ipSave" onclick="saveItemModal()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 font-extrabold text-sm text-white shadow-md flex items-center justify-center gap-2"><i class="ph-bold ph-check"></i> Save changes</button>
       </div>
     </div>
   </div>
@@ -2145,7 +2317,10 @@
           <h3 id="encName" class="font-extrabold text-base text-slate-900 leading-snug"></h3>
           <p id="encNow" class="text-xs text-slate-500 mt-0.5"></p>
         </div>
-        <button onclick="closeEncodeSheet()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button id="encSeeAll" onclick="encodeSeeAll()" class="h-8 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1" title="Open the item: everything about it"><i class="ph-bold ph-arrow-square-out"></i> See everything</button>
+          <button onclick="closeEncodeSheet()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+        </div>
       </div>
       <div>
         <label for="encQty" class="block text-[11px] font-bold uppercase text-slate-500 mb-1.5">Quantity on hand</label>
@@ -2174,148 +2349,6 @@
         <button id="encSaveBtn" onclick="saveEncode()" class="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 transition">
           <i class="ph-bold ph-check"></i> Save &amp; next
         </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL 1: EDIT ITEM INVENTORY DETAILS / LOCATION / REORDER ALERT / PRICE -->
-  <div id="itemModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sheet-sm no-print">
-    <div class="bg-white rounded-2xl max-w-md w-full max-h-[94vh] overflow-y-auto p-6 shadow-2xl border border-slate-200">
-      <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
-        <div>
-          <div class="flex items-center gap-2">
-            <span id="modalItemCode" class="font-mono text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded">CODE</span>
-            <span id="modalItemTypeBadge" class="text-[11px] font-bold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-700">TYPE</span>
-          </div>
-          <h3 id="modalItemName" class="font-bold text-base text-slate-900 mt-1.5">Item Name</h3>
-        </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button onclick="openHistory(activeModalCode)" title="Change history of this item" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-brand-50 text-slate-500 hover:text-brand-600 flex items-center justify-center">
-            <i class="ph-bold ph-clock-counter-clockwise"></i>
-          </button>
-          <button aria-label="Close" onclick="closeItemModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
-            <i class="ph-bold ph-x"></i>
-          </button>
-        </div>
-      </div>
-
-      <div class="space-y-4 py-4">
-        <div class="grid grid-cols-3 gap-2.5">
-          <div>
-            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">On-Hand (<span id="modalItemUnit">unit</span>)</label>
-            <input type="number" id="modalItemQty" min="0" oninput="updateModalConditionPreview()" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-mono font-bold text-base focus:border-brand-500 outline-none">
-          </div>
-          <div>
-            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Unit cost (₱)</label>
-            <input type="number" id="modalItemPrice" step="0.01" min="0" oninput="refreshModalTypeUI()" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-mono font-bold text-base focus:border-brand-500 outline-none">
-          </div>
-          <div>
-            <label class="block text-[11px] font-bold uppercase text-amber-700 mb-1">Min Alert Qty</label>
-            <input type="number" id="modalItemMinQty" min="0" placeholder="5" class="w-full h-11 px-3 rounded-xl border border-amber-300 bg-amber-50/40 font-mono font-bold text-base focus:border-amber-500 outline-none">
-          </div>
-        </div>
-
-        <!-- Cost: average of what was received · last paid · APP-CSE reference -->
-        <div class="-mt-1.5 flex items-start justify-between gap-2">
-          <p id="modalPriceRef" class="text-[11px] text-slate-500 leading-snug"></p>
-          <div class="flex gap-1.5 shrink-0">
-            <button type="button" onclick="const c = activeModalCode; openPriceHistory(c)" class="h-8 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1"><i class="ph-bold ph-receipt"></i> Prices</button>
-            <button type="button" onclick="const c = activeModalCode; closeItemModal(); openItemEdit(c)" class="h-8 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1" title="Rename, hide or delete"><i class="ph-bold ph-sliders-horizontal"></i> Catalog</button>
-          </div>
-        </div>
-
-        <!-- Classification: automatic or manual override -->
-        <div>
-          <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Classification</label>
-          <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-            <button type="button" id="modalType-AUTO" onclick="setModalType('AUTO')" class="modal-type-btn h-9 rounded-lg text-xs font-bold transition text-slate-600">
-              Auto <span id="modalTypeAutoHint" class="font-medium opacity-70"></span>
-            </button>
-            <button type="button" id="modalType-EQUIPMENT" onclick="setModalType('EQUIPMENT')" class="modal-type-btn h-9 rounded-lg text-xs font-bold transition text-slate-600">
-              Equipment (ICS/PAR)
-            </button>
-            <button type="button" id="modalType-CONSUMABLE" onclick="setModalType('CONSUMABLE')" class="modal-type-btn h-9 rounded-lg text-xs font-bold transition text-slate-600">
-              Consumable (RIS)
-            </button>
-          </div>
-        </div>
-
-        <!-- Physical Condition (Equipment / ICS-PAR only) -->
-        <div id="modalConditionSection" class="hidden rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-[11px] font-bold uppercase text-slate-500 flex items-center gap-1.5">
-              <i class="ph-bold ph-wrench text-rose-600"></i> Physical Condition
-            </label>
-            <span class="text-[11px] text-slate-500">of <strong id="modalCondTotal" class="font-mono text-slate-800">0</strong> on-hand</span>
-          </div>
-          <div class="grid grid-cols-3 gap-2">
-            <div class="rounded-lg bg-white border border-emerald-200 p-2 text-center">
-              <span class="block text-[11px] font-bold uppercase text-emerald-700">Serviceable</span>
-              <span id="modalCondServ" class="block h-9 leading-9 font-mono font-extrabold text-lg text-emerald-700">0</span>
-            </div>
-            <div class="rounded-lg bg-white border border-orange-200 p-2 text-center">
-              <span class="block text-[11px] font-bold uppercase text-orange-700">Needs Repair</span>
-              <div class="flex items-center justify-center gap-1">
-                <button aria-label="One less for repair" type="button" onclick="stepModalCondition('modalItemRepair', -1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
-                <input type="number" id="modalItemRepair" min="0" oninput="updateModalConditionPreview()" class="w-10 h-9 text-center font-mono font-extrabold text-lg text-orange-700 bg-transparent outline-none">
-                <button aria-label="One more for repair" type="button" onclick="stepModalCondition('modalItemRepair', 1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
-              </div>
-            </div>
-            <div class="rounded-lg bg-white border border-rose-200 p-2 text-center">
-              <span class="block text-[11px] font-bold uppercase text-rose-700">Unserviceable</span>
-              <div class="flex items-center justify-center gap-1">
-                <button aria-label="One less unserviceable" type="button" onclick="stepModalCondition('modalItemUnserv', -1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button>
-                <input type="number" id="modalItemUnserv" min="0" oninput="updateModalConditionPreview()" class="w-10 h-9 text-center font-mono font-extrabold text-lg text-rose-700 bg-transparent outline-none">
-                <button aria-label="One more unserviceable" type="button" onclick="stepModalCondition('modalItemUnserv', 1)" class="cond-step-btn w-7 h-9 rounded-md bg-slate-100 active:scale-95 text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button>
-              </div>
-            </div>
-          </div>
-          <p id="modalCondError" class="hidden mt-2 text-[11px] font-semibold text-rose-600 items-center gap-1">
-            <i class="ph-fill ph-warning"></i> Needs Repair + Unserviceable cannot exceed the on-hand quantity.
-          </p>
-          <p id="modalCondLockedNote" class="hidden mt-2 text-[11px] font-semibold text-violet-700 items-center gap-1">
-            <i class="ph-bold ph-tag"></i> Condition is set per unit under Property Numbers below.
-          </p>
-        </div>
-
-        <!-- Property numbers & QR labels (one record per physical unit) -->
-        <div id="modalTagsSection" class="hidden rounded-xl border border-violet-200 bg-violet-50/50 p-3">
-          <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0">
-              <label class="text-[11px] font-bold uppercase text-violet-700 flex items-center gap-1.5">
-                <i class="ph-bold ph-qr-code"></i> Property Numbers &amp; QR Labels
-              </label>
-              <p id="modalTagsText" class="text-xs text-slate-600 mt-0.5">No units tagged yet</p>
-            </div>
-            <button type="button" onclick="openUnitsFromItemModal()" class="shrink-0 h-9 px-3 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition" title="Saves this form, then opens the unit list">
-              <i class="ph-bold ph-tag"></i>
-              <span id="modalTagsBtnText">Tag units</span>
-            </button>
-          </div>
-          <p id="modalTagQtyError" class="hidden mt-2 text-[11px] font-semibold text-rose-600 items-center gap-1">
-            <i class="ph-fill ph-warning"></i> <span></span>
-          </p>
-        </div>
-
-        <!-- Quick Room / Storage Location Pills -->
-        <div>
-          <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1.5">Quick Assign Storage / Room Location</label>
-          <div class="flex flex-wrap gap-1.5 mb-2">
-            <button type="button" onclick="setQuickNote('Central Stockroom')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Central Stockroom</button>
-            <button type="button" onclick="setQuickNote('Principal / Admin Office')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Admin Office</button>
-            <button type="button" onclick="setQuickNote('Faculty Room')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Faculty Room</button>
-            <button type="button" onclick="setQuickNote('ICT / Computer Lab')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">ICT Lab</button>
-            <button type="button" onclick="setQuickNote('School Clinic')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">School Clinic</button>
-            <button type="button" onclick="setQuickNote('School Library')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Library</button>
-            <button type="button" onclick="setQuickNote('Utility / Janitorial Room')" class="px-2.5 py-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-xs font-semibold text-slate-700 transition">Utility Room</button>
-          </div>
-          <textarea id="modalItemNote" rows="2" placeholder="Room location, custodian remarks, or serial number..." class="w-full p-3 rounded-xl border border-slate-300 text-sm focus:border-brand-500 outline-none"></textarea>
-        </div>
-      </div>
-
-      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-        <button onclick="closeItemModal()" class="h-11 px-4 rounded-xl bg-slate-100 font-semibold text-xs text-slate-700">Cancel</button>
-        <button onclick="saveItemModal()" class="h-11 px-5 rounded-xl bg-brand-600 font-bold text-xs text-white shadow-md">Save Inventory Item</button>
       </div>
     </div>
   </div>
@@ -3382,6 +3415,8 @@
       if (isTeacherDevice()) viewName = viewName === 'BOOKS' && isLibrarianDevice() ? 'BOOKS' : 'REQUESTER'; // a teacher's phone: supply requests (the librarian: also the Library desk)
       else if (isHeadDevice()) viewName = 'HEAD';    // the School Head's phone: PR approvals only
       else if (viewName === 'REQUESTER' || viewName === 'HEAD') viewName = 'HOME';
+      const ipEl = document.getElementById('itemSheet');   // the item preview belongs to the page it was opened on
+      if (ipEl && !ipEl.classList.contains('hidden') && viewName !== activeMainView) closeItemSheet();
       const solo = viewName === 'REQUESTER' || viewName === 'HEAD' || (viewName === 'BOOKS' && isTeacherDevice());
       document.getElementById('tabBar').classList.toggle('hidden', solo);
       document.documentElement.classList.toggle('no-tabs', solo);
@@ -3759,31 +3794,89 @@
       return `${units.length} tagged${out ? `<br><span class="text-teal-700 font-semibold">${out} with teachers</span>` : ''}`;
     }
 
-    // ---- Item sheet: everything about one item, opened from the Inventory list ----------------
+    // ---- Item preview: everything about one item, opened from everywhere -----------------------
+    // (Inventory, Catalog, the scanner, a teacher's page, Useful life, notifications). Overview /
+    // People / History tabs, and Edit details in place. Phones: a bottom sheet; computers and
+    // tablets held sideways: a panel on the right, so the list stays usable beside it.
+    // The old names (openItemSheet, openItemModal, ...) still work.
     let sheetCode = null;
-    function openItemSheet(code) {
+    var ipView = { tab: 'overview', edit: false, more: false };
+    const IP_TABS = ['overview', 'people', 'history'];
+    function ipReadOnly() { return isViewOnly() || (typeof assistantRemoved === 'function' && assistantRemoved()); }
+    function openItemPreview(code, opts = {}) {
       if (!items.some(i => i.code === code)) return;
+      const el = document.getElementById('itemSheet');
+      const wasOpen = !el.classList.contains('hidden');
+      const same = wasOpen && sheetCode === code;
+      if (!same && activeModalCode) { activeModalCode = null; ipView.edit = false; }   // another item: unsaved edits are dropped
       sheetCode = code;
+      if (!same || opts.tab) ipView.tab = IP_TABS.includes(opts.tab) ? opts.tab : 'overview';
+      ipView.more = false;
       renderItemSheet();
-      document.getElementById('itemSheet').classList.remove('hidden');
+      el.classList.remove('hidden');
+      document.body.classList.add('ip-open');
+      if (!same) document.getElementById('ipBody').scrollTop = 0;
       placeToast();
-      setTimeout(() => document.getElementById('isClose').focus({ preventScroll: true }), 50);
+      if (!wasOpen) setTimeout(() => document.getElementById('isClose').focus({ preventScroll: true }), 50);
     }
+    function openItemSheet(code, tab) { openItemPreview(code, { tab }); }
     function closeItemSheet() {
       sheetCode = null;
+      activeModalCode = null;
+      ipView.edit = false;
+      ipView.more = false;
       document.getElementById('itemSheet').classList.add('hidden');
+      document.body.classList.remove('ip-open');
+      ipMarkRow();
       placeToast();
     }
-    // Actions that open another pop-up close this sheet first.
+    function ipTab(tab) {
+      if (!sheetCode || !IP_TABS.includes(tab)) return;
+      if (activeModalCode) closeItemModal();
+      ipView.tab = tab;
+      ipView.more = false;
+      renderItemSheet();
+      document.getElementById('ipBody').scrollTop = 0;
+    }
+    function ipKey(ev) {
+      if (ev.key === 'Escape') {
+        ev.stopPropagation();
+        if (ipView.more) { ipView.more = false; ipApplyView(); return; }
+        if (activeModalCode) closeItemModal(); else closeItemSheet();
+        return;
+      }
+      const tab = ev.target && ev.target.dataset && ev.target.dataset.ipTab;
+      if (tab && (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft')) {
+        ev.preventDefault();
+        const next = IP_TABS[(IP_TABS.indexOf(tab) + (ev.key === 'ArrowRight' ? 1 : IP_TABS.length - 1)) % IP_TABS.length];
+        ipTab(next);
+        document.getElementById('ipTab-' + next).focus();
+      }
+    }
+    function ipToggleMore(force) {
+      ipView.more = force === undefined ? !ipView.more : !!force;
+      ipApplyView();
+    }
+    // Actions that open another pop-up close this sheet first (Prices, Catalog and the full history open on top).
     function itemSheetGo(action) {
       const code = sheetCode;
       if (!code) return;
-      if (action === 'history') return openHistory(code); // shows on top of the sheet
+      ipView.more = false;
+      ipApplyView();
+      if (action === 'history') return ipTab('history');
+      if (action === 'people') return ipTab('people');
+      if (action === 'fullhistory') return openHistory(code); // shows on top of the sheet
       if (action === 'prices') return openPriceHistory(code); // on top too
       if (action === 'catalog') return openItemEdit(code);
+      if (action === 'edit') return openItemModal(code);
+      if (action === 'labels') {
+        const item = items.find(i => i.code === code);
+        const units = getUnits(code);
+        if (item && units.length) printLabels(units.map(unit => ({ item, unit })));
+        return;
+      }
       closeItemSheet();
-      if (action === 'edit') openItemModal(code);
-      else if (action === 'units') openUnitsModal(code);
+      if (action === 'units') openUnitsModal(code);
       else if (action === 'release') openReleaseForItem(code);
     }
     function itemSheetCounted() {
@@ -3791,6 +3884,30 @@
       const was = isCounted(sheetCode);
       toggleCounted(sheetCode);
       if (!was) closeItemSheet();
+    }
+    // Shows the tab picked (or Edit details) and the buttons that go with it.
+    function ipApplyView() {
+      const editing = !!activeModalCode && ipView.edit;
+      const ro = ipReadOnly();
+      const show = (id, on, disp) => { const el = document.getElementById(id); el.classList.toggle('hidden', !on); if (disp) el.classList.toggle(disp, on); };
+      show('ipTabs', !editing, 'flex');
+      show('ipEditHead', editing, 'flex');
+      show('ipFoot', !editing, 'flex');
+      show('ipEditFoot', editing, 'flex');
+      show('ipEdit', editing);
+      IP_TABS.forEach(t => {
+        const on = !editing && ipView.tab === t;
+        show('ip' + t[0].toUpperCase() + t.slice(1), on);
+        const btn = document.getElementById('ipTab-' + t);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+        btn.tabIndex = on || (editing && t === 'overview') ? 0 : -1;
+      });
+      document.querySelectorAll('#itemSheet [data-ip-write]').forEach(b => b.classList.toggle('hidden', ro || (b.id === 'isRelease' && !isCustodianDevice())));
+      const more = document.getElementById('ipMore');
+      more.classList.toggle('hidden', !ipView.more || editing);
+      document.getElementById('isMoreBtn').setAttribute('aria-expanded', ipView.more ? 'true' : 'false');
+      // On a computer it is a side panel next to the list, not a pop-up that blocks the page.
+      document.getElementById('itemSheet').setAttribute('aria-modal', sidebarLayout() ? 'false' : 'true');
     }
 
     function renderItemSheet() {
@@ -3827,15 +3944,21 @@
           ${onclick ? '<i class="ph-bold ph-caret-right text-slate-500 shrink-0"></i>' : ''}
         </${onclick ? 'button' : 'div'}>`;
       const rows = [
-        line('ph-map-pin', 'Room', item.note ? escapeHTML(item.note) : '<span class="text-brand-700">Set a room</span>', "itemSheetGo('edit')"),
+        line('ph-map-pin', 'Room', item.note ? escapeHTML(item.note) : ipReadOnly() ? '<span class="text-slate-500">Not set</span>' : '<span class="text-brand-700">Set a room</span>', ipReadOnly() ? '' : "itemSheetGo('edit')"),
         line('ph-folder', 'Category', escapeHTML(item.category)),
         line('ph-receipt', 'Prices', [`${formatCurrency(item.price)} average`, lastPaidText(item.code) ? escapeHTML(lastPaidText(item.code)) : '<span class="text-slate-500">no delivery recorded yet</span>',
           item.part === 'PART1' && item.defaultPrice > 0 ? `<span class="text-slate-500">PS-DBM ${formatCurrency(item.defaultPrice)} (APP-CSE 2027)</span>` : ''].filter(Boolean).join('<br>'), "itemSheetGo('prices')")
       ];
-      if (isCustodianDevice() || !reqRole) rows.push(line('ph-sliders-horizontal', 'Catalog', /^CUSTOM-/.test(item.code) ? 'Rename, hide or delete' : 'Hide from the Catalog', "itemSheetGo('catalog')"));
+      if ((isCustodianDevice() || !reqRole) && !ipReadOnly()) rows.push(line('ph-sliders-horizontal', 'Catalog', /^CUSTOM-/.test(item.code) ? 'Rename, hide or delete' : 'Hide from the Catalog', "itemSheetGo('catalog')"));
       if (item.type === 'EQUIPMENT') {
         rows.push(line('ph-wrench', 'Condition', !c.repair && !c.unserv ? 'All serviceable'
           : [`${c.serv} serviceable`, c.repair ? `<span class="text-orange-700">${c.repair} for repair</span>` : '', c.unserv ? `<span class="text-rose-700">${c.unserv} unserviceable</span>` : ''].filter(Boolean).join(' · ')));
+      }
+      if (units.length) {
+        const lis = units.filter(u => !u.lostMs && u.cond !== 'U').map(u => lifeInfo(item, u));
+        const lp = lis.filter(x => x.status === 'past').length, ls = lis.filter(x => x.status === 'soon').length;
+        const lifeTxt = escapeHTML((lis[0] || lifeInfo(item, units[0])).life.text);
+        rows.push(line('ph-hourglass-medium', 'Useful life', [lifeTxt, lp ? `<span class="text-rose-700">${lp} past</span>` : '', ls ? `<span class="text-amber-700">${ls} ending within ${LIFE_WARN_MONTHS} months</span>` : ''].filter(Boolean).join(' · '), "closeItemSheet(); openLifeSheet('all')"));
       }
       if (item.type === 'EQUIPMENT' || units.length) {
         rows.push(line('ph-qr-code', 'Property nos.', units.length ? `${units.length} of ${item.qty} tagged` : '<span class="text-brand-700">None yet · add numbers and print QR labels</span>', "itemSheetGo('units')"));
@@ -3873,6 +3996,149 @@
         countBtn.className = `w-full h-12 rounded-xl text-sm font-bold flex items-center justify-center gap-2 ${done ? 'bg-slate-100 text-slate-700' : 'bg-sky-700 hover:bg-sky-800 text-white'}`;
       }
       document.getElementById('isRelease').classList.toggle('hidden', !isCustodianDevice());
+
+      // Status chips under the name
+      document.getElementById('ipChips').innerHTML = ipChipsHTML(item, units, c);
+      // People and History (only built when shown; no extra cloud reads, it is all on this device)
+      const people = ipPeopleOf(item, units);
+      document.getElementById('ipPeopleN').textContent = people.count ? String(people.count) : '';
+      document.getElementById('ipPeople').innerHTML = ipView.tab === 'people' ? ipPeopleHTML(item, people) : '';
+      document.getElementById('ipHistory').innerHTML = ipView.tab === 'history' ? ipHistoryHTML(item) : '';
+      document.getElementById('ipMore').innerHTML = ipMoreHTML(item, units);
+      ipMarkRow();
+      ipApplyView();
+    }
+    // The row of the item shown is marked in the Inventory / Catalog list (seen beside the panel on a computer).
+    function ipMarkRow() {
+      document.querySelectorAll('.ip-sel').forEach(r => { if (r.dataset.code !== sheetCode) r.classList.remove('ip-sel'); });
+      if (sheetCode) document.querySelectorAll(`#dashboardLedgerContainer .inv-row[data-code="${CSS.escape(sheetCode)}"], #itemsContainer .cat-row[data-code="${CSS.escape(sheetCode)}"]`).forEach(r => r.classList.add('ip-sel'));
+    }
+
+    const IP_CHIP = {
+      rose: 'bg-rose-50 text-rose-700 border-rose-200', amber: 'bg-amber-50 text-amber-800 border-amber-200',
+      teal: 'bg-teal-50 text-teal-800 border-teal-200', sky: 'bg-sky-50 text-sky-800 border-sky-200',
+      violet: 'bg-violet-50 text-violet-800 border-violet-200', slate: 'bg-slate-100 text-slate-700 border-slate-200',
+      emerald: 'bg-emerald-50 text-emerald-800 border-emerald-200', orange: 'bg-orange-50 text-orange-800 border-orange-200'
+    };
+    function ipChipsHTML(item, units, c) {
+      const chips = [];
+      const chip = (tone, icon, text, onclick = '', attr = '') => chips.push(onclick
+        ? `<button type="button" ${attr} onclick="${onclick}" class="ip-chip ${IP_CHIP[tone]} hover:brightness-95"><i class="ph-bold ${icon}"></i> ${text}</button>`
+        : `<span ${attr} class="ip-chip ${IP_CHIP[tone]}"><i class="ph-bold ${icon}"></i> ${text}</span>`);
+      if (ipReadOnly()) chip('slate', 'ph-eye', 'View only', '', 'data-ip-chip="viewonly"');
+      if (item.qty <= 0) chip('rose', 'ph-prohibit', 'Out of stock', '', 'data-ip-chip="out"');
+      else if (item.qty <= item.minQty) chip('amber', 'ph-warning', 'Low stock', '', 'data-ip-chip="low"');
+      else chip('emerald', 'ph-check-circle', 'In stock', '', 'data-ip-chip="instock"');
+      if (item.type === 'EQUIPMENT') {
+        if (c.repair) chip('orange', 'ph-wrench', `${c.repair} for repair`, '', 'data-ip-chip="repair"');
+        if (c.unserv) chip('rose', 'ph-x-circle', `${c.unserv} unserviceable`, '', 'data-ip-chip="unserv"');
+      }
+      const held = units.filter(u => u.to || u.toUid).length;
+      if (held) chip('teal', 'ph-users-three', `${held} with teachers`, "ipTab('people')", 'data-ip-chip="held"');
+      const lost = units.filter(u => u.lostMs).length;
+      if (lost) chip('rose', 'ph-question', `${lost} lost`, "ipTab('people')", 'data-ip-chip="lost"');
+      const li = units.filter(u => !u.lostMs && u.cond !== 'U').map(u => lifeInfo(item, u));
+      const past = li.filter(x => x.status === 'past').length, soon = li.filter(x => x.status === 'soon').length;
+      if (past) chip('rose', 'ph-hourglass-low', `${past} past useful life`, "closeItemSheet(); openLifeSheet('past')", 'data-ip-chip="life-past"');
+      else if (soon) chip('amber', 'ph-hourglass-medium', `${soon} ending soon`, "closeItemSheet(); openLifeSheet('soon')", 'data-ip-chip="life-soon"');
+      if (countSession) chip(isCounted(item.code) ? 'sky' : 'slate', isCounted(item.code) ? 'ph-seal-check' : 'ph-clipboard-text', isCounted(item.code) ? 'Counted' : 'Not counted yet', '', 'data-ip-chip="count"');
+      return chips.join('');
+    }
+
+    // Who has it (units with property numbers), who got it on slips (RIS / ICS / PAR) and who asked for it.
+    function ipPeopleOf(item, units) {
+      const holders = new Map();
+      units.filter(u => u.to || u.toUid).forEach(u => {
+        const key = personId(u.toUid, u.to);
+        const g = holders.get(key) || { key, uid: u.toUid || null, name: unitHolder(u), units: [] };
+        g.units.push(u);
+        holders.set(key, g);
+      });
+      const issued = new Map();
+      releaseList.filter(r => isIssueKind(r.kind) && (r.lines || []).some(l => l.code === item.code)).forEach(r => {
+        const key = personId(r.teacherUid, r.teacherName);
+        const g = issued.get(key) || { key, uid: r.teacherUid || null, name: r.teacherName || 'Teacher', qty: 0, slips: [], last: 0 };
+        (r.lines || []).filter(l => l.code === item.code).forEach(l => { g.qty += Number(l.qty) || 0; });
+        g.slips.push(r);
+        g.last = Math.max(g.last, r.createdMs || isoMs(r.date) || 0);
+        issued.set(key, g);
+      });
+      const asked = reqList.filter(r => (r.lines || []).some(l => l.code === item.code))
+        .sort((a, b) => (reqTime(b) || 0) - (reqTime(a) || 0)).slice(0, 8);
+      const keys = new Set([...holders.keys(), ...issued.keys()]);
+      return { holders: [...holders.values()], issued: [...issued.values()].sort((a, b) => b.last - a.last), asked, count: keys.size };
+    }
+    function ipPersonBtn(key, name, uid, sub, tone = 'teal') {
+      const k = escapeHTML(key).replace(/'/g, '&#39;');
+      return `<button type="button" onclick="closeItemSheet(); openTeachersView('${k}')" data-ip-person="${escapeHTML(key)}"
+        class="w-full flex items-center gap-3 rounded-xl border border-slate-200 ${tone === 'teal' ? 'hover:border-teal-300 hover:bg-teal-50' : 'hover:border-slate-300 hover:bg-slate-50'} px-3 py-2 text-left">
+        ${avatarHTML(name, memberPhoto(uid), 'w-9 h-9 text-xs', 'bg-teal-50 text-teal-700')}
+        <span class="flex-1 min-w-0"><span class="block text-sm font-bold text-slate-900 truncate">${escapeHTML(name)}</span>
+        <span class="block text-[11px] text-slate-600">${sub}</span></span>
+        <i class="ph-bold ph-caret-right text-slate-400 shrink-0"></i></button>`;
+    }
+    function ipPeopleHTML(item, pp) {
+      const sec = (icon, title, body) => `<section><h4 class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5 flex items-center gap-1.5"><i class="ph-bold ${icon}"></i> ${title}</h4><div class="space-y-1.5">${body}</div></section>`;
+      let html = '';
+      if (pp.holders.length) {
+        html += sec('ph-hand-heart', 'Has it now', pp.holders.map(g => {
+          const docs = [...new Set(g.units.map(unitDocLabel).filter(Boolean))];
+          const nos = g.units.map(u => u.no).filter(Boolean);
+          const flags = [g.units.some(u => u.lostMs) ? '<span class="text-rose-700 font-bold">reported lost</span>' : '', g.units.some(u => u.cond === 'R') ? '<span class="text-orange-700 font-bold">for repair</span>' : ''].filter(Boolean);
+          return ipPersonBtn(g.key, g.name, g.uid, [plural(g.units.length, 'unit'), nos.length ? `<span class="font-mono">${escapeHTML(nos.slice(0, 3).join(', '))}${nos.length > 3 ? ` +${nos.length - 3}` : ''}</span>` : '', docs.length ? escapeHTML(docs.join(', ')) : '', ...flags].filter(Boolean).join(' · '));
+        }).join(''));
+      }
+      const issuedOnly = pp.issued.filter(g => item.type !== 'EQUIPMENT' || !pp.holders.some(h => h.key === g.key));
+      if (issuedOnly.length) {
+        html += sec('ph-receipt', item.type === 'EQUIPMENT' ? 'Had it before' : 'Received it', issuedOnly.slice(0, 12).map(g =>
+          ipPersonBtn(g.key, g.name, g.uid, [`${g.qty} ${escapeHTML(item.unit || '')}`.trim(), plural(g.slips.length, 'slip'), g.last ? `last ${formatShortDate(new Date(g.last).toISOString())}` : ''].filter(Boolean).join(' · '), 'slate')).join('')
+          + (issuedOnly.length > 12 ? `<p class="text-[11px] text-slate-500 px-1">+ ${issuedOnly.length - 12} more on the Teachers page</p>` : ''));
+      }
+      if (pp.asked.length) {
+        html += sec('ph-hand-pointing', 'Asked for it', pp.asked.map(r => {
+          const l = (r.lines || []).find(x => x.code === item.code) || {};
+          return `<div class="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2">
+            <i class="ph-bold ph-chat-text text-slate-500"></i>
+            <span class="flex-1 min-w-0 text-xs"><span class="block font-bold text-slate-800 truncate">${escapeHTML(r.teacherName || r.name || 'Teacher')}</span>
+            <span class="block text-slate-600">${escapeHTML(String(l.qty || ''))} ${escapeHTML(l.unit || item.unit || '')} · ${escapeHTML((REQ_STATUS[r.status || 'pending'] || {}).short || String(r.status || ''))}${reqTime(r) ? ` · ${formatShortDate(new Date(reqTime(r)).toISOString())}` : ''}</span></span></div>`;
+        }).join(''));
+      }
+      if (!html) html = `<div class="py-10 text-center"><i class="ph-duotone ph-users-three text-4xl text-slate-300 block mb-2"></i>
+        <p class="text-sm font-bold text-slate-700">Nobody has this item yet</p>
+        <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Release it to a teacher and their name shows here, with the slip and the property numbers.</p></div>`;
+      return html;
+    }
+    function ipHistoryHTML(item) {
+      const all = [...changeHistory, ...syncedHistory(item.code)].filter(e => historyHas(e, item.code)).sort((a, b) => b.t - a.t);
+      const full = `<button type="button" onclick="itemSheetGo('fullhistory')" class="mt-3 w-full h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-clock-counter-clockwise"></i> Open the full history</button>`;
+      if (!all.length) return `<div class="py-10 text-center"><i class="ph-duotone ph-clock-counter-clockwise text-4xl text-slate-300 block mb-2"></i>
+        <p class="text-sm font-bold text-slate-700">Nothing recorded for this item yet</p>
+        <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Counts, prices, rooms, condition, releases and deliveries of this item show here.</p></div>` + full;
+      let day = '';
+      const rows = all.slice(0, 30).map(e => {
+        const kind = HISTORY_KINDS[e.k] || HISTORY_KINDS.edit;
+        const label = historyDayLabel(e.t);
+        const head = label !== day ? `<p class="pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">${label}</p>` : '';
+        day = label;
+        const time = new Date(e.t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+        return `${head}<div class="flex items-start gap-3 py-2 border-b border-slate-50 last:border-0" data-ip-hist>
+          <div class="w-8 h-8 shrink-0 rounded-lg ${kind.tone} flex items-center justify-center"><i class="ph-bold ${kind.icon}"></i></div>
+          <div class="min-w-0 flex-1"><p class="text-sm font-semibold text-slate-800 leading-snug break-words">${historyTextHTML(e.x)}</p>
+          <p class="text-[11px] text-slate-500 mt-0.5">${time}${e.by ? ` · ${escapeHTML(e.by)}` : ''}</p></div></div>`;
+      }).join('');
+      return rows + (all.length > 30 ? `<p class="pt-2 text-[11px] text-slate-500">Showing the latest 30 of ${all.length}.</p>` : '') + full;
+    }
+    function ipMoreHTML(item, units) {
+      const ro = ipReadOnly();
+      const opt = (icon, label, action, sub = '') => `<button type="button" role="menuitem" onclick="itemSheetGo('${action}')" data-ip-more="${action}" class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-slate-50 active:bg-slate-100">
+        <i class="ph-bold ${icon} text-lg text-slate-500"></i><span class="flex-1 min-w-0"><span class="block text-sm font-bold text-slate-800">${label}</span>${sub ? `<span class="block text-[11px] text-slate-500">${sub}</span>` : ''}</span></button>`;
+      return `<div role="menu" aria-label="More for this item">
+        ${item.type === 'EQUIPMENT' || units.length ? opt('ph-qr-code', 'Property numbers', 'units', units.length ? `${units.length} of ${item.qty} tagged` : 'Add numbers, print QR labels') : ''}
+        ${units.length ? opt('ph-printer', 'Print QR labels', 'labels', plural(units.length, 'label')) : ''}
+        ${opt('ph-receipt', 'Prices', 'prices', 'Average cost, last paid')}
+        ${!ro && (isCustodianDevice() || !reqRole) ? opt('ph-sliders-horizontal', 'Catalog', 'catalog', /^CUSTOM-/.test(item.code) ? 'Rename, hide or delete' : 'Hide from the Catalog') : ''}
+        ${opt('ph-clock-counter-clockwise', 'Full history', 'fullhistory', 'Every change, with filters')}
+      </div>`;
     }
 
     function printConditionCell(item) {
@@ -4081,7 +4347,7 @@
       const flags = catalogFlagsHTML(item);
       return `
         <div id="card-${code}" class="cat-row ${on ? 'is-on' : ''}" data-code="${code}">
-          <button type="button" class="cat-main" onclick="openItemModal(this.parentElement.dataset.code)" aria-label="${name}: room, price and minimum stock">
+          <button type="button" class="cat-main" onclick="openItemSheet(this.parentElement.dataset.code)" aria-label="${name}: open the item">
             <span class="hidden sm:flex w-11 h-11 shrink-0 rounded-xl ${t.tone} items-center justify-center" title="${t.label}"><i class="ph-duotone ${t.icon} text-2xl"></i></span>
             <span class="flex-1 min-w-0 block">
               <span class="inv-name">${name}</span>
@@ -4271,14 +4537,17 @@
     // =========================================================================
     // 10. MODALS (ITEM DETAILS, CUSTOM ITEM, OFFICIAL SUMMARY, SCHOOL INFO)
     // =========================================================================
+    // Edit details: the form opens inside the item preview (in place of the tabs).
     function openItemModal(code) {
       const item = items.find(i => i.code === code);
       if (!item) return;
+      openItemPreview(code);
+      if (ipReadOnly()) { showToast('View only: changes are not saved on this phone', 'ph-eye'); return; }
       activeModalCode = code;
+      ipView.edit = true;
+      ipView.more = false;
 
-      document.getElementById('modalItemCode').textContent = item.code;
       document.getElementById('modalItemTypeBadge').textContent = item.type === 'EQUIPMENT' ? 'Equipment (ICS/PAR)' : 'Consumable (RIS)';
-      document.getElementById('modalItemName').textContent = item.name;
       document.getElementById('modalItemUnit').textContent = item.unit;
       document.getElementById('modalItemQty').value = item.qty;
       document.getElementById('modalItemPrice').value = item.price;
@@ -4292,7 +4561,8 @@
       setModalType(item.typeOverride || 'AUTO');
       updateModalConditionPreview();
 
-      document.getElementById('itemModal').classList.remove('hidden');
+      ipApplyView();
+      document.getElementById('ipBody').scrollTop = 0;
     }
 
     let modalTypeChoice = 'AUTO';
@@ -4348,7 +4618,7 @@
     function openUnitsFromItemModal() {
       const code = activeModalCode;
       saveItemModal();
-      if (activeModalCode === null && code) openUnitsModal(code);
+      if (activeModalCode === null && code) itemSheetGo('units');
     }
 
     function readModalInt(id) {
@@ -4389,9 +4659,11 @@
       document.getElementById('modalItemNote').value = roomName;
     }
 
+    // Leaves Edit details: back to the item's Overview (the preview stays open).
     function closeItemModal() {
       activeModalCode = null;
-      document.getElementById('itemModal').classList.add('hidden');
+      ipView.edit = false;
+      if (sheetCode) { ipView.tab = 'overview'; renderItemSheet(); }
     }
 
     function saveItemModal() {
@@ -4440,6 +4712,7 @@
       renderItems();
       renderDashboard();
       closeItemModal();
+      showToast('Changes saved', 'ph-check-circle');
     }
 
     // CUSTOM ITEM MODAL
@@ -5780,12 +6053,23 @@
                 ${unit.serial ? `<span>S/N ${escapeHTML(unit.serial)}</span>` : ''}
               </p>
             </div>
-            <button onclick="openUnitFromScanner()" class="shrink-0 h-9 px-3 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1">
-              <i class="ph-bold ph-arrow-square-out"></i> Open
-            </button>
+            <div class="shrink-0 flex flex-col gap-1.5">
+              <button onclick="openUnitFromScanner()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1">
+                <i class="ph-bold ph-arrow-square-out"></i> Open
+              </button>
+              <button id="scanSeeItem" onclick="openItemFromScanner()" class="h-9 px-3 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1">
+                <i class="ph-bold ph-package"></i> Item
+              </button>
+            </div>
           </div>
           ${condButtonsHTML(item.code, unit.id, unit.cond, 'setUnitCond')}
         </div>`;
+    }
+
+    function openItemFromScanner() {
+      const shown = scanShown;
+      closeScanner();
+      if (shown && shown.code) openItemPreview(shown.code);
     }
 
     function openUnitFromScanner() {
@@ -9460,6 +9744,12 @@
       if (activeMainView === 'HOME') clearHomeSearch(true); // ready for the next item
     }
 
+    function encodeSeeAll() {
+      const code = encodeCode;
+      closeEncodeSheet();
+      openItemPreview(code);
+    }
+
     function encodeMoreDetails() {
       const code = encodeCode;
       const qty = document.getElementById('encQty').value.trim();
@@ -9649,7 +9939,7 @@
     function placeToast() {
       const toast = document.getElementById('appToast');
       if (!toast) return;
-      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'tCountModal', 'pickModal', 'notifPanel', 'aboutPanel', 'xferModal', 'coaModal', 'tourModal', 'itemSheet'].some(id => !document.getElementById(id)?.classList.contains('hidden') && !(id === 'coaModal' && coaIsPage()));
+      const sheetOpen = ['encodeSheet', 'moreMenu', 'reqFormModal', 'reqReviewModal', 'prModal', 'inviteModal', 'joinModal', 'releaseModal', 'tReportModal', 'tCountModal', 'pickModal', 'notifPanel', 'aboutPanel', 'xferModal', 'coaModal', 'tourModal', 'itemSheet'].some(id => !document.getElementById(id)?.classList.contains('hidden') && !(id === 'coaModal' && coaIsPage()) && !(id === 'itemSheet' && sidebarLayout()));
       const stickyAction = [...document.querySelectorAll('[data-toast-avoid]')].some(el => el.offsetParent !== null);
       const gated = document.documentElement.classList.contains('gated');
       const top = !gated && (sheetOpen || stickyAction);
@@ -17639,7 +17929,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           <li class="px-3 py-2.5 space-y-1.5" data-life-unit="${u.id}" data-life-status="${li.status}">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
-                <p class="text-xs font-bold text-slate-900 leading-snug">${escapeHTML(x.item.name)}</p>
+                <button type="button" data-ip-open="${x.item.code}" onclick="closeLifeSheet(); openItemSheet('${x.item.code}')" class="ip-link block text-xs font-bold text-slate-900 leading-snug text-left">${escapeHTML(x.item.name)}</button>
                 <p class="text-[11px] text-slate-500"><span class="font-mono font-bold text-slate-700">${escapeHTML(u.no || '—')}</span> · ${who ? escapeHTML(who) : 'In stock'}${isPPE(x.item, u) ? ' · PAR' : ''}</p>
                 <p class="text-[11px] font-bold ${tone}">${escapeHTML(lifeWhen(li))}</p>
                 <p class="text-[11px] text-slate-500">${startTxt}${li.est ? ' <span class="px-1 rounded bg-slate-100 text-slate-600 font-bold">est.</span>' : ''}</p>
@@ -19831,7 +20121,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             <tbody class="divide-y divide-slate-100">
               ${p.equipment.map(({ item, unit }) => `
                 <tr data-tunit="${unit.id}" class="align-top">
-                  <td class="px-3 py-2.5"><p class="font-bold text-slate-900 leading-snug">${escapeHTML(item.name)}</p>${unit.serial || unit.loc ? `<p class="text-[11px] text-slate-500">${escapeHTML([unit.serial && `S/N ${unit.serial}`, unit.loc].filter(Boolean).join(' · '))}</p>` : ''}</td>
+                  <td class="px-3 py-2.5"><button type="button" data-ip-open="${item.code}" onclick="openItemSheet('${item.code}')" class="ip-link font-bold text-slate-900 leading-snug text-left">${escapeHTML(item.name)}</button>${unit.serial || unit.loc ? `<p class="text-[11px] text-slate-500">${escapeHTML([unit.serial && `S/N ${unit.serial}`, unit.loc].filter(Boolean).join(' · '))}</p>` : ''}</td>
                   <td class="px-3 py-2.5 font-mono text-xs font-bold text-slate-700 whitespace-nowrap">${escapeHTML(unit.no || '—')}</td>
                   <td class="px-3 py-2.5 text-xs text-slate-600">${escapeHTML(docLine(unit) || '—')}</td>
                   <td class="px-3 py-2.5"><span class="flex flex-wrap gap-1">${condChip(unit)}${confirmedUnit(unit) ? okChip : ''}${countedChip(unit)}</span></td>
@@ -19843,7 +20133,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         : `<div class="divide-y divide-slate-100">${p.equipment.map(({ item, unit }) => `
               <div class="p-3 flex items-start gap-3" data-tunit="${unit.id}">
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-bold text-slate-900 leading-snug">${escapeHTML(item.name)}</p>
+                  <button type="button" data-ip-open="${item.code}" onclick="openItemSheet('${item.code}')" class="ip-link block text-sm font-bold text-slate-900 leading-snug text-left">${escapeHTML(item.name)}</button>
                   <p class="text-[11px] text-slate-500"><span class="font-mono font-bold text-slate-700">${escapeHTML(unit.no || '—')}</span>${unit.serial ? ` · S/N ${escapeHTML(unit.serial)}` : ''}${unit.ics ? ` · ${escapeHTML(unitDocLabel(unit))}` : ''}${unit.icsDate ? ` · ${escapeHTML(formatShortDate(unit.icsDate + 'T00:00:00'))}` : ''}${unit.loc ? ` · ${escapeHTML(unit.loc)}` : ''}</p>
                   <p class="mt-1 flex flex-wrap gap-1">${condChip(unit)}${confirmedUnit(unit) ? okChip : ''}${countedChip(unit)}</p>
                 </div>
@@ -25402,6 +25692,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         switchMainView('ITEMS');
         setLedgerFilter('LOW');
         window.scrollTo({ top: 0 });
+        if (n.code && items.some(i => i.code === n.code)) openItemPreview(n.code);
       } else if (n.go === 'update') {
         if (appUpdate.ready) applyUpdate(); else openAbout();
       }
@@ -25539,6 +25830,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-item-preview', date: 'Nov 2026', title: 'One item preview, from everywhere', points: [
+        'Tapping an item now opens one Item preview wherever you are: Inventory, Catalog, the scanner, a teacher\u2019s page, Useful life and low-stock notifications. It shows the stock, cost and value, chips like Low stock, With teachers or Past useful life, and quick buttons: Release, Edit details and More.',
+        'Three tabs: Overview, People (who has it now, who received it on slips, who asked for it) and History (the latest changes of this item). Edit details opens right inside it, with Save and Cancel, instead of a separate window.',
+        'On a computer it opens as a panel on the right, so the list stays in view: tap another row to switch items. On phones it is a bottom sheet. On Home, the quick count has a new See everything button.'
+      ] },
       { id: '2026-11-useful-life', date: 'Nov 2026', title: 'Useful life: know what is getting old', points: [
         'Home has a new Useful life card. It shows how many ICS / PAR items are past their useful life, how many end within 12 months, and what replacing them would cost, for next year\u2019s PPMP / APP. The app works it out from the date acquired and the useful life.',
         'Open it to check each item: Still serviceable (asked again in a year) or Unserviceable (goes on the IIRUP). Tap Dates to fix a date, or print the list. You also get a reminder once a month.',
