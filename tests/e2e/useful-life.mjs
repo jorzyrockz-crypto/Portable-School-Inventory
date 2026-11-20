@@ -109,7 +109,7 @@ try {
   const pr = await ev(a, () => document.getElementById('printPrSection').textContent.replace(/\s+/g, ' '));
   check(/PROPERTY PAST OR NEAR THE END OF ESTIMATED USEFUL LIFE/.test(pr) && /End of useful life/.test(pr) && /TOTAL \(\d+\)/.test(pr) && /Noted:/.test(pr), 'print: the list with end dates, total, Prepared by / Noted');
   await ev(a, id => document.querySelector(`[data-life-unit="${id}"] [data-life-dates]`).click(), ids[1]);
-  check(await ev(a, () => document.getElementById('lifeModal').classList.contains('hidden') && !document.getElementById('unitsModal').classList.contains('hidden')), 'Dates: the item’s units, to set the date acquired and useful life');
+  check(await ev(a, () => document.getElementById('lifeModal').classList.contains('hidden') && !document.getElementById('itemSheet').classList.contains('hidden') && ipView.tab === 'units'), 'Dates: the item’s units, to set the date acquired and useful life');
   await ev(a, () => closeUnitsModal && closeUnitsModal());
 
   out('7 the monthly notification, Teachers page, Year-end');

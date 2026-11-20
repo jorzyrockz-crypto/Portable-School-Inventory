@@ -88,7 +88,7 @@ try {
   await a.click('#isMoreBtn');
   await sleep(150);
   const opts = await ev(a, () => [...document.querySelectorAll('#ipMore [data-ip-more]')].filter(b => b.offsetParent).map(b => b.dataset.ipMore));
-  check(['units', 'labels', 'prices', 'catalog', 'fullhistory'].every(x => opts.includes(x)), `More: ${opts.join(', ')}`);
+  check(['labels', 'prices', 'catalog', 'fullhistory'].every(x => opts.includes(x)) && !opts.includes('units'), `More: ${opts.join(', ')}`);
   await a.screenshot({ path: `${SHOTS}/ip_laptop_more.png` });
   await a.click('#ipMore [data-ip-more="fullhistory"]');
   await sleep(200);
@@ -153,8 +153,8 @@ try {
   const sh = await box(ph, '#itemSheet > div');
   check(Math.abs(sh.bottom - 844) <= 2 && sh.w >= 388 && sh.top > 60, `bottom sheet, full width (top ${Math.round(sh.top)})`);
   check(await ev(ph, () => document.getElementById('itemSheet').getAttribute('aria-modal') === 'true'), 'a modal on the phone');
-  const tabs = await ev(ph, () => [...document.querySelectorAll('#ipTabs [role=tab]')].map(t => { const r = t.getBoundingClientRect(); return r.height >= 40 && r.right <= innerWidth; }));
-  check(tabs.length === 3 && tabs.every(Boolean), 'three tabs, finger-sized, inside the screen');
+  const tabs = await ev(ph, () => [...document.querySelectorAll('#ipTabs [role=tab]')].filter(t => !t.classList.contains('hidden')).map(t => { const r = t.getBoundingClientRect(); return r.height >= 40 && r.right <= innerWidth; }));
+  check(tabs.length >= 3 && tabs.every(Boolean), `${tabs.length} tabs, finger-sized, inside the screen`);
   check(await ev(ph, () => [...document.querySelectorAll('#ipChips .ip-chip')].every(c => c.getBoundingClientRect().right <= innerWidth)), 'chips wrap inside the screen');
   await ph.screenshot({ path: `${SHOTS}/ip_phone.png` });
   await ph.tap('#ipTab-people');

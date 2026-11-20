@@ -408,8 +408,8 @@ try {
   out('10c date acquired and useful life of each unit');
   await ev(a, () => closeCoa());
   await ev(a, p => openUnitsModal(p), pick.ppe.code);
-  await until(a, () => document.querySelectorAll('#unitsList .unit-acq').length >= 2, 'unit cards with Date acquired');
-  await ev(a, () => { const el = document.querySelector('#unitsList .unit-acq'); el.value = '2023-06-15'; el.dispatchEvent(new Event('change')); });
+  await until(a, () => document.querySelectorAll('#ipUnits .unit-acq').length >= 2, 'unit cards with Date acquired');
+  await ev(a, () => { const el = document.querySelector('#ipUnits .unit-acq'); el.value = '2023-06-15'; el.dispatchEvent(new Event('change')); });
   await sleep(150);
   const toast10c = await ev(a, () => document.getElementById('appToastText').innerText + ' | ' + document.getElementById('appToastAction').innerText);
   check(/Same date acquired .* for the other \d+ units?\?/.test(toast10c) && /Use for all/.test(toast10c), `offers the same date for the other units: “${toast10c}”`);
@@ -417,13 +417,13 @@ try {
   await sleep(150);
   const acq10c = await ev(a, p => getUnits(p).map(u => u.acq), pick.ppe.code);
   check(acq10c.every(d => d === '2023-06-15'), `Use for all → every unit acquired 2023-06-15 (${acq10c.join(', ')})`);
-  await ev(a, () => { const el = document.querySelector('#unitsList .unit-life'); el.value = '10'; el.dispatchEvent(new Event('change')); });
+  await ev(a, () => { const el = document.querySelector('#ipUnits .unit-life'); el.value = '10'; el.dispatchEvent(new Event('change')); });
   await sleep(150);
   await a.click('#appToastAction');
   await sleep(150);
   const life10c = await ev(a, p => getUnits(p).map(u => u.life), pick.ppe.code);
   check(life10c.every(l => l === '10 years'), `useful life “10” is saved as “10 years” on every unit (${life10c.join(', ')})`);
-  check(await ev(a, () => document.querySelector('#unitsList .unit-life').value === '10 years' && /Date acquired/i.test(document.getElementById('unitsList').innerText)), 'unit card shows both fields');
+  check(await ev(a, () => document.querySelector('#ipUnits .unit-life').value === '10 years' && /Date acquired/i.test(document.getElementById('ipUnits').innerText)), 'unit card shows both fields');
   await a.screenshot({ path: `${SHOTS}/unit-acq-life.png` });
   await ev(a, () => closeUnitsModal());
   // Property Card: the first row is the receipt on the date acquired, not "Balance forward"
@@ -457,7 +457,7 @@ try {
   check(await ev(a, () => /carrying amount ₱/.test(document.getElementById('coaUnservSum').innerText)), 'IIRUP page shows the carrying amount');
   await printShot(a, 'iirup-depreciation.png');
   await ev(a, p => { closeCoa(); openUnitsModal(p); }, pick.ppe.code);
-  check(await ev(a, () => /Carrying amount ₱/.test(document.getElementById('unitsList').innerText)), 'unit card shows the carrying amount');
+  check(await ev(a, () => /Carrying amount ₱/.test(document.getElementById('ipUnits').innerText)), 'unit card shows the carrying amount');
   await ev(a, () => { closeUnitsModal(); openCoa(); });
   // RegSPI: Estimated Useful Life (category estimate when nothing was written)
   await ev(a, () => coaGo('regspi'));

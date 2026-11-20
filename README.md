@@ -119,13 +119,15 @@ One window for everything about an item. It opens from **Inventory** (tap a row)
 - **Header:** type icon, name, code and classification, then **status chips**: *In stock / Low stock / Out of stock*, *N for repair*, *N unserviceable*, *N with teachers*, *N lost*, *N past useful life* or *N ending soon* (opens Useful life), *Counted / Not counted yet* during a count, and *View only*.
 - **Tabs** (← / → move between them):
   - **Overview:** on hand, unit cost and total value; the low-stock note; the quantity stepper; room, category, prices, Catalog, condition, useful life, property numbers and who has the units (each name opens that teacher's page).
+  - **Units** (equipment, and anything with property numbers; it replaced the separate Property Numbers window): **Tag N units**, **Add new unit**, **Print QR labels** and **Scan**, then one card per unit: property no., condition, serial no., location, assigned to, ICS / PAR no., date acquired and useful life, with the accountability history, carrying amount and *Written off* units below. Changes save as you go; moving from one field to the next keeps the keyboard up (the cards are drawn again once you leave them, and a cloud update waits while you type). The *Property nos.* line in Overview, *Manage units* in Edit details, the scanner, Useful life (*Dates*) and a teacher's page open this tab, with the unit marked. On a computer it stays in the side panel, two fields per row.
+    - The School Head sees the cards and may fix a serial no., room, date acquired or condition: it is kept as their suggestion (no tagging, removing, scanning or lost reports). A view-only phone sees the fields read-only, with Print QR labels.
   - **People:** *Has it now* (with photo, property numbers, ICS / PAR, lost or for repair), *Received it* / *Had it before* (from the RIS / ICS / PAR slips, with quantities and the last date) and *Asked for it* (supply requests). Each person opens their Teachers page.
   - **History:** the latest 30 changes of this item (this device's log plus the slips and deliveries saved in the school account), and *Open the full history*.
-- **Buttons:** **Release** (custodian's phone), **Edit details** and **More** (*Property numbers*, *Print QR labels*, *Prices*, *Catalog*, *Full history*).
+- **Buttons:** **Release** (custodian's phone), **Edit details** and **More** (*Print QR labels*, *Prices*, *Catalog*, *Full history*).
 - **Edit details opens in place** of the tabs (it replaced the separate item details window): on-hand, unit cost, minimum alert, classification, condition, property numbers and the room. **Save changes** returns to the Overview with a *Changes saved* message; **Cancel** (or Esc) returns without saving. Opening another item drops unsaved edits.
 - **View only** (the outgoing custodian's 30 days, or a removed assistant): no stepper, Release, Edit details or Catalog; everything can still be read.
 - No extra cloud reads: everything shown is already on the device.
-- Property numbers still open their own window; they move into the preview as a **Units** tab in a later update.
+- `tests/e2e/units-tab.mjs` checks the Units tab: tagging, typing from field to field, condition, opening a unit from elsewhere, Edit details → Manage units, the side panel, a cloud update while typing, the School Head and view only.
 - `tests/e2e/item-preview.mjs` checks the tabs, chips, People and History, editing in place, the openers, view-only mode, the phone sheet and the computer side panel.
 - `tests/e2e/unsynced-marks.mjs` checks the Not synced yet marks: rows, Catalog, Item preview, an offline release slip, a delivery, the top chip count, and that they clear once synced.
 
@@ -448,8 +450,8 @@ three extra columns in the CSV export — handy for the RPCPPE physical count an
 
 Equipment can be tracked **per unit** instead of only as a count:
 
-1. In the dashboard ledger, tap the purple **QR** button on an equipment item (or *Tag units* in
-   the item editor), then **Tag N units**. Each unit gets a property number such as
+1. Open an equipment item (tap its row) and go to the **Units** tab (or *Tag units* in Edit
+   details), then **Tag N units**. Each unit gets a property number such as
    `SJNHS-2026-0001` (prefix = school initials, or set your own under *School Info*). Any number
    can be edited to match a sticker that is already on the item. The condition counts already
    recorded for the item carry over to the new units.
@@ -621,7 +623,7 @@ Teachers who join with the invite link are listed automatically (their phone sen
 
 **Items delivered** on a Purchase Request now adds the items to the stock in Inventory. Items that weren't in Inventory yet are added as new items. The requests then show *Ready* to the teacher until you release them.
 
-**Assigned to** (Property Numbers) suggests the teachers. Picking one links the unit to that teacher's account. Names typed earlier or read from a scanned ICS (e.g. *MR. JUAN D. DELA CRUZ*) are linked automatically when *Juan Dela Cruz* joins. Titles, middle initials and *Last, First* order are ignored. Two teachers with the same name are left for you to pick.
+**Assigned to** (the Units tab) suggests the teachers. Picking one links the unit to that teacher's account. Names typed earlier or read from a scanned ICS (e.g. *MR. JUAN D. DELA CRUZ*) are linked automatically when *Juan Dela Cruz* joins. Titles, middle initials and *Last, First* order are ignored. Two teachers with the same name are left for you to pick.
 
 Every release, assignment and return is kept as a record under the school (`releases`), and nothing is ever deleted. A teacher can read only the records made out to their own account. Teachers can't see the school inventory or the list of other teachers.
 
@@ -629,12 +631,12 @@ Every release, assignment and return is kept as a record under the school (`rele
 
 ## Transfers between teachers and rooms
 
-**Transfer** on a person's page (or on a unit in Property Numbers) moves equipment to another teacher, or to a new room with the same teacher:
+**Transfer** on a person's page (or on a unit in the Units tab) moves equipment to another teacher, or to a new room with the same teacher:
 
 - Tick the units, pick the new accountable person (or *Same person, new room*), the new room, the transfer type (**Donation**, **Reassignment**, **Relocate**, **Others**) and the reason.
 - Items below ₱50,000 go on an **ITR** (Inventory Transfer Report, Annex A.5), items of ₱50,000 and up on a **PTR** (Property Transfer Report, Appendix 76). Each line keeps the unit's earlier ICS/PAR no.; the school head signs as *Approved by*.
 - The new holder gets a notification and confirms the slip under **New from the property custodian**. The old holder's list drops the units and their history shows *Transferred out*. A room change alone isn't a new item to confirm.
-- Every unit in Property Numbers has an **Accountability history**: issued, transferred, moved and returned, with the slip numbers.
+- Every unit in the Units tab has an **Accountability history**: issued, transferred, moved and returned, with the slip numbers.
 - **Take back** and accepted returns print an **RRSP** (Receipt of Returned Semi-Expendable Property, Annex A.6) with its own number.
 
 ## Government forms
@@ -644,7 +646,7 @@ Every release, assignment and return is kept as a record under the school (`rele
 | Form | What it uses |
 | --- | --- |
 | **RPCPPE** (Appendix 73) / **RPCSP** (Annex A.8) – physical count | Each tagged unit counts as found when its QR was scanned or it was checked in the physical count since the chosen date. Shortage quantity and value, holder and room in Remarks. |
-| **IIRUP** (Appendix 74) / **IIRUSP** (Annex A.10) – unserviceable property | Units marked *Unserviceable* in Property Numbers, with blank inspection, disposal and sales columns to fill in by hand. |
+| **IIRUP** (Appendix 74) / **IIRUSP** (Annex A.10) – unserviceable property | Units marked *Unserviceable* in the Units tab, with blank inspection, disposal and sales columns to fill in by hand. |
 | **RLSDDP** (Appendix 75) / **RLSDDSP** (Annex A.9) – lost, stolen, damaged or destroyed | Tick the units (those a teacher reported *Lost or missing* start ticked), the nature, police report and circumstances. The accountable officer, designation, office and PAR/ICS no. come from the unit's holder. |
 | **Property Card** (Appendix 69) / **SPC** (Annex A.1) | One card per equipment item. Quantities added or dropped (from the change history) change the balance; every PAR / ICS / PTR / ITR shows who received the units, and RRSPs show returns. Issued units stay on the balance, since they are still the school's property. *Print all* puts one card per page. |
 | **RegSPI** (Annex A.4) – registry of semi-expendable property issued | ICS (issued), ITR (re-issued) and RRSP (returned) in the period, with the quantity still with end users and its amount. |
@@ -655,7 +657,7 @@ Every release, assignment and return is kept as a record under the school (`rele
 
 ### Date acquired, useful life and depreciation
 
-Each tagged unit's card (Property Numbers) has **Date acquired** and **Estimated useful life**. Scanning an ICS on receipt fills the date with the slip's date. Later ICS/PAR/PTR dates are issue dates, so they are not used. Filling in one unit offers to copy the value to the item's other units. A blank useful life uses the usual life for the category (10 years for furniture and measuring equipment, 5 years for the rest), marked *est.* Both are columns in the property register CSV.
+Each tagged unit's card (the Units tab) has **Date acquired** and **Estimated useful life**. Scanning an ICS on receipt fills the date with the slip's date. Later ICS/PAR/PTR dates are issue dates, so they are not used. Filling in one unit offers to copy the value to the item's other units. A blank useful life uses the usual life for the category (10 years for furniture and measuring equipment, 5 years for the rest), marked *est.* Both are columns in the property register CSV.
 
 - They fill the Date Acquired and Estimated Useful Life columns on the Property Card, RegSPI, PAR, ICS/ITR/PTR and IIRUP. A card's first line is the real receipt date instead of *Balance forward* when every unit has one.
 - **Depreciation** (PPE only, ₱50,000 and up): straight-line, 5 % residual value, charged monthly from the month after acquisition. The unit card shows the carrying amount, and the IIRUP fills *Accumulated Depreciation* and *Carrying Amount* with a total row. Semi-expendable property is expensed when issued, so it shows none.

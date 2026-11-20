@@ -92,7 +92,7 @@ try {
   await ev(a, () => { countSession = null; persistCountSession(); setLedgerFilter('ALL'); renderDashboard(); });
 
   out('5 pop-ups open as bottom sheets');
-  for (const [open, id, close] of [['openUnitsModal(items.find(i => getUnits(i.code).length).code)', 'unitsModal', 'closeUnitsModal()'], ['openSchoolModal()', 'schoolModal', 'closeSchoolModal()'], ['openItemModal(items.find(i => i.qty > 0).code)', 'itemSheet', 'closeItemSheet()']]) {
+  for (const [open, id, close] of [['openUnitsModal(items.find(i => getUnits(i.code).length).code)', 'itemSheet', 'closeUnitsModal()'], ['openSchoolModal()', 'schoolModal', 'closeSchoolModal()'], ['openItemModal(items.find(i => i.qty > 0).code)', 'itemSheet', 'closeItemSheet()']]) {
     await ev(a, s => eval(s), open);
     await sleep(300);
     const card = await box(a, `#${id} > div`);

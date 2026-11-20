@@ -205,7 +205,7 @@ try {
   const wo = await ev(a, (c, id) => {
     const rec = getWrittenOff(c).find(r => r.id === id);
     openUnitsModal(c);
-    const box = document.querySelector('#unitsList details.written-off');
+    const box = document.querySelector('#ipUnits details.written-off');
     const html = box ? box.querySelector('summary').innerText + '\n' + box.textContent : '';
     closeUnitsModal();
     const takenNo = rec && nextPropertyNumbers(1)[0] !== rec.no;

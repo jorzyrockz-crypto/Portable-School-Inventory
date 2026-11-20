@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="ac108a5e7a6c">
+  <meta name="app-version" content="b98059b03125">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -2166,6 +2166,7 @@
       <div id="ipChips" class="flex flex-wrap gap-1.5 px-5 pb-2 empty:hidden"></div>
       <div id="ipTabs" role="tablist" aria-label="Item" class="flex gap-1 px-4 border-b border-slate-200">
         <button type="button" role="tab" id="ipTab-overview" data-ip-tab="overview" onclick="ipTab('overview')" class="ip-tab">Overview</button>
+        <button type="button" role="tab" id="ipTab-units" data-ip-tab="units" onclick="ipTab('units')" class="ip-tab hidden">Units <span id="ipUnitsN" class="ip-tab-n empty:hidden"></span></button>
         <button type="button" role="tab" id="ipTab-people" data-ip-tab="people" onclick="ipTab('people')" class="ip-tab">People <span id="ipPeopleN" class="ip-tab-n empty:hidden"></span></button>
         <button type="button" role="tab" id="ipTab-history" data-ip-tab="history" onclick="ipTab('history')" class="ip-tab">History</button>
       </div>
@@ -2198,6 +2199,7 @@
           </div>
           <div id="isRows" class="divide-y divide-slate-100"></div>
         </div>
+        <div id="ipUnits" role="tabpanel" aria-labelledby="ipTab-units" class="hidden space-y-2.5"></div>
         <div id="ipPeople" role="tabpanel" aria-labelledby="ipTab-people" class="hidden space-y-4"></div>
         <div id="ipHistory" role="tabpanel" aria-labelledby="ipTab-history" class="hidden"></div>
         <div id="ipEdit" role="tabpanel" aria-label="Edit details" class="hidden space-y-4">
@@ -2275,7 +2277,7 @@
                 <i class="ph-fill ph-warning"></i> Needs Repair + Unserviceable cannot exceed the on-hand quantity.
               </p>
               <p id="modalCondLockedNote" class="hidden mt-2 text-[11px] font-semibold text-violet-700 items-center gap-1">
-                <i class="ph-bold ph-tag"></i> Condition is set per unit under Property Numbers below.
+                <i class="ph-bold ph-tag"></i> Condition is set per unit in the Units tab.
               </p>
             </div>
 
@@ -2284,11 +2286,11 @@
               <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0">
                   <label class="text-[11px] font-bold uppercase text-violet-700 flex items-center gap-1.5">
-                    <i class="ph-bold ph-qr-code"></i> Property Numbers &amp; QR Labels
+                    <i class="ph-bold ph-qr-code"></i> Units · property numbers &amp; QR labels
                   </label>
                   <p id="modalTagsText" class="text-xs text-slate-600 mt-0.5">No units tagged yet</p>
                 </div>
-                <button type="button" onclick="openUnitsFromItemModal()" class="shrink-0 h-9 px-3 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition" title="Saves this form, then opens the unit list">
+                <button type="button" onclick="openUnitsFromItemModal()" class="shrink-0 h-9 px-3 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition" title="Saves this form, then opens the Units tab">
                   <i class="ph-bold ph-tag"></i>
                   <span id="modalTagsBtnText">Tag units</span>
                 </button>
@@ -2756,30 +2758,6 @@
   </div>
 
   <!-- MODAL 5: PROPERTY NUMBERS / PER-UNIT RECORDS (equipment) -->
-  <div id="unitsModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sheet-sm no-print">
-    <div class="bg-white rounded-2xl max-w-xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200">
-      <div class="p-5 pb-3 border-b border-slate-100 flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <div class="flex items-center gap-2">
-            <span id="unitsItemCode" class="font-mono text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded">CODE</span>
-            <span class="text-[11px] font-bold uppercase px-2 py-0.5 rounded bg-violet-50 text-violet-700 inline-flex items-center gap-1"><i class="ph-bold ph-qr-code"></i> Property Numbers</span>
-          </div>
-          <h3 id="unitsItemName" class="font-bold text-base text-slate-900 mt-1.5 leading-snug">Item Name</h3>
-          <p id="unitsSummary" class="text-xs text-slate-500 mt-0.5"></p>
-        </div>
-        <button aria-label="Close" onclick="closeUnitsModal()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
-          <i class="ph-bold ph-x"></i>
-        </button>
-      </div>
-      <div id="unitsToolbar" class="px-5 py-3 border-b border-slate-100 space-y-2.5"></div>
-      <div id="unitsList" class="flex-1 min-h-0 overflow-y-auto px-5 py-3 space-y-2.5"></div>
-      <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-2">
-        <p class="text-[11px] text-slate-500 flex items-center gap-1"><i class="ph-bold ph-check"></i> Changes are saved automatically</p>
-        <button onclick="closeUnitsModal()" class="h-11 px-6 rounded-xl bg-brand-600 font-bold text-xs text-white shadow-md">Done</button>
-      </div>
-    </div>
-  </div>
-
   <!-- QR SCANNER (camera): look up a unit by its label and mark it verified -->
   <div id="scannerOverlay" class="hidden fixed inset-0 z-[60] bg-slate-950 flex-col no-print">
     <div class="safe-top">
@@ -3838,7 +3816,7 @@
     // The old names (openItemSheet, openItemModal, ...) still work.
     let sheetCode = null;
     var ipView = { tab: 'overview', edit: false, more: false };
-    const IP_TABS = ['overview', 'people', 'history'];
+    const IP_TABS = ['overview', 'units', 'people', 'history'];
     function ipReadOnly() { return isViewOnly() || isHeadDevice() || (typeof assistantRemoved === 'function' && assistantRemoved()); }
     function openItemPreview(code, opts = {}) {
       if (!items.some(i => i.code === code)) return;
@@ -3848,6 +3826,7 @@
       if (!same && activeModalCode) { activeModalCode = null; ipView.edit = false; }   // another item: unsaved edits are dropped
       sheetCode = code;
       if (!same || opts.tab) ipView.tab = IP_TABS.includes(opts.tab) ? opts.tab : 'overview';
+      if (opts.tab === 'units') ipView.unitsFor = code;   // asked for: shown even for supplies without numbers
       ipView.more = false;
       renderItemSheet();
       el.classList.remove('hidden');
@@ -3859,6 +3838,8 @@
     function openItemSheet(code, tab) { openItemPreview(code, { tab }); }
     function closeItemSheet() {
       sheetCode = null;
+      unitsModalCode = null;
+      ipView.unitsFor = null;
       activeModalCode = null;
       ipView.edit = false;
       ipView.more = false;
@@ -3870,6 +3851,7 @@
     function ipTab(tab) {
       if (!sheetCode || !IP_TABS.includes(tab)) return;
       if (activeModalCode) closeItemModal();
+      if (tab === 'units') ipView.unitsFor = sheetCode;
       ipView.tab = tab;
       ipView.more = false;
       renderItemSheet();
@@ -3885,7 +3867,8 @@
       const tab = ev.target && ev.target.dataset && ev.target.dataset.ipTab;
       if (tab && (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft')) {
         ev.preventDefault();
-        const next = IP_TABS[(IP_TABS.indexOf(tab) + (ev.key === 'ArrowRight' ? 1 : IP_TABS.length - 1)) % IP_TABS.length];
+        const shown = IP_TABS.filter(t => !document.getElementById('ipTab-' + t).classList.contains('hidden'));
+        const next = shown[(shown.indexOf(tab) + (ev.key === 'ArrowRight' ? 1 : shown.length - 1)) % shown.length];
         ipTab(next);
         document.getElementById('ipTab-' + next).focus();
       }
@@ -3902,6 +3885,7 @@
       ipApplyView();
       if (action === 'history') return ipTab('history');
       if (action === 'people') return ipTab('people');
+      if (action === 'units') return ipTab('units');
       if (action === 'fullhistory') return openHistory(code); // shows on top of the sheet
       if (action === 'prices') return openPriceHistory(code); // on top too
       if (action === 'catalog') return openItemEdit(code);
@@ -3913,8 +3897,7 @@
         return;
       }
       closeItemSheet();
-      if (action === 'units') openUnitsModal(code);
-      else if (action === 'release') openReleaseForItem(code);
+      if (action === 'release') openReleaseForItem(code);
     }
     function itemSheetCounted() {
       if (!sheetCode || !countSession) return;
@@ -3939,6 +3922,8 @@
         btn.setAttribute('aria-selected', on ? 'true' : 'false');
         btn.tabIndex = on || (editing && t === 'overview') ? 0 : -1;
       });
+      // The Units tab is where the old Property Numbers window lived: its functions work on the item shown.
+      unitsModalCode = !editing && ipView.tab === 'units' && sheetCode ? sheetCode : null;
       const suggest = headCanSuggest();   // the School Head: Suggest a change instead of Edit details
       document.querySelectorAll('#itemSheet [data-ip-write]').forEach(b => b.classList.toggle('hidden', (ro && !(suggest && b.id === 'isEdit')) || (b.id === 'isRelease' && !isCustodianDevice())));
       document.getElementById('isEditLabel').textContent = suggest ? 'Suggest a change' : 'Edit details';
@@ -4042,6 +4027,11 @@
       // People and History (only built when shown; no extra cloud reads, it is all on this device)
       const people = ipPeopleOf(item, units);
       document.getElementById('ipPeopleN').textContent = people.count ? String(people.count) : '';
+      const hasUnits = ipHasUnits(item, units);
+      document.getElementById('ipTab-units').classList.toggle('hidden', !hasUnits);
+      if (!hasUnits && ipView.tab === 'units') ipView.tab = 'overview';
+      document.getElementById('ipUnitsN').textContent = units.length ? String(units.length) : '';
+      if (ipView.tab === 'units') ipRenderUnits(item, units); else { document.getElementById('ipUnits').innerHTML = ''; ipUnitsStale = false; }
       document.getElementById('ipPeople').innerHTML = ipView.tab === 'people' ? ipPeopleHTML(item, people) : '';
       document.getElementById('ipHistory').innerHTML = ipView.tab === 'history' ? ipHistoryHTML(item) : '';
       document.getElementById('ipMore').innerHTML = ipMoreHTML(item, units);
@@ -4177,7 +4167,6 @@
       const opt = (icon, label, action, sub = '') => `<button type="button" role="menuitem" onclick="itemSheetGo('${action}')" data-ip-more="${action}" class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-slate-50 active:bg-slate-100">
         <i class="ph-bold ${icon} text-lg text-slate-500"></i><span class="flex-1 min-w-0"><span class="block text-sm font-bold text-slate-800">${label}</span>${sub ? `<span class="block text-[11px] text-slate-500">${sub}</span>` : ''}</span></button>`;
       return `<div role="menu" aria-label="More for this item">
-        ${item.type === 'EQUIPMENT' || units.length ? opt('ph-qr-code', 'Property numbers', 'units', units.length ? `${units.length} of ${item.qty} tagged` : 'Add numbers, print QR labels') : ''}
         ${units.length ? opt('ph-printer', 'Print QR labels', 'labels', plural(units.length, 'label')) : ''}
         ${opt('ph-receipt', 'Prices', 'prices', 'Average cost, last paid')}
         ${!ro && (isCustodianDevice() || !reqRole) ? opt('ph-sliders-horizontal', 'Catalog', 'catalog', /^CUSTOM-/.test(item.code) ? 'Rename, hide or delete' : 'Hide from the Catalog') : ''}
@@ -4458,7 +4447,7 @@
     function updateItemQty(item, newQty) {
       const tagged = getUnits(item.code).length;
       if (newQty < tagged) {
-        showToast(`${plural(tagged, 'unit')} of this item ${tagged === 1 ? 'has a' : 'have'} property number${tagged === 1 ? '' : 's'} – remove units under Property Numbers to lower the count`, 'ph-tag');
+        showToast(`${plural(tagged, 'unit')} of this item ${tagged === 1 ? 'has a' : 'have'} property number${tagged === 1 ? '' : 's'} – remove units in the Units tab to lower the count`, 'ph-tag');
         newQty = tagged;
       }
       item.qty = newQty;
@@ -5225,7 +5214,7 @@
       R: { label: 'Needs Repair', on: 'bg-orange-500 text-white border-orange-500', off: 'bg-white text-orange-700 border-orange-200' },
       U: { label: 'Unserviceable', on: 'bg-rose-600 text-white border-rose-600', off: 'bg-white text-rose-700 border-rose-200' }
     };
-    let unitsModalCode = null;
+    var unitsModalCode = null;   // the item whose Units tab is showing in the preview (null otherwise)
     let unitIdSeq = 0;
 
     function escapeHTML(value) {
@@ -5365,81 +5354,128 @@
       ).join('') + `</div>`;
     }
 
-    // ---- Units modal --------------------------------------------------------
+    // ---- Units tab (in the Item preview) ---------------------------------------
+    // One card per unit with a property number: condition, serial, room, holder, ICS / PAR, date acquired,
+    // useful life. It replaced the separate Property Numbers window; the old names still work.
+    // Who may change what: the custodian and assistants change it; the School Head's changes become a
+    // suggestion (sent from Items); a view-only phone only looks.
+    function ipHasUnits(item, units) { return item.type === 'EQUIPMENT' || units.length > 0 || ipView.unitsFor === item.code; }
+    function unitsMode() {
+      if (headCanSuggest()) return 'suggest';
+      return ipReadOnly() ? 'ro' : 'edit';
+    }
     function openUnitsModal(code, highlightId = null) {
       if (!items.find(i => i.code === code)) return;
-      unitsModalCode = code;
-      document.getElementById('unitsModal').classList.remove('hidden');
-      renderUnitsModal(highlightId);
+      if (activeModalCode && sheetCode === code) closeItemModal();
+      ipView.unitsFor = code;
+      openItemPreview(code, { tab: 'units' });
+      if (highlightId) renderUnitsModal(highlightId);
       const card = highlightId && document.getElementById(`unitcard-${highlightId}`);
       if (card) card.scrollIntoView({ block: 'center' });
-      else document.getElementById('unitsList').scrollTop = 0;
+      else document.getElementById('ipBody').scrollTop = 0;
     }
-
     function closeUnitsModal() {
-      unitsModalCode = null;
-      document.getElementById('unitsModal').classList.add('hidden');
+      if (unitsModalCode && sheetCode) closeItemSheet();
       renderItems();
       renderDashboard();
     }
+    // A change in the Units tab: draws it again. soft = a change from elsewhere (the cloud): it waits while
+    // the user is typing in a card.
+    function renderUnitsModal(highlightId = null, soft = false) {
+      if (!unitsModalCode || unitsModalCode !== sheetCode) return;
+      ipUnitsHi = highlightId;
+      ipUnitsForce = !soft;
+      renderItemSheet();
+    }
+    var ipUnitsHi = null, ipUnitsForce = false, ipUnitsStale = false, ipUnitsDue = false;
+    function ipRenderUnits(item, units) {
+      const box = document.getElementById('ipUnits');
+      // A field was just saved (change fires as the focus leaves it): the next field may be getting the
+      // focus right now, so it is drawn once the focus has landed (otherwise the keyboard closes on phones).
+      const ev = window.event;
+      if (ev && ev.target && ev.target !== box && box.contains(ev.target) && /^(change|blur|focusout)$/.test(ev.type)) {
+        ipUnitsStale = true;
+        ipUnitsDue = ipUnitsDue || ipUnitsForce;
+        ipUnitsForce = false;
+        setTimeout(ipUnitsSettle, 0);
+        return;
+      }
+      const force = ipUnitsForce;
+      ipUnitsForce = false;
+      const a = document.activeElement;
+      const typing = a && box.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+      // Saving a field draws the whole preview again; the card being typed in is left alone until the user leaves it.
+      if (typing && !force) { ipUnitsStale = true; return; }
+      const keep = typing && a.dataset.uf ? { uf: a.dataset.uf, s: a.selectionStart, e: a.selectionEnd } : null;
+      box.innerHTML = unitsPaneHTML(item, units, ipUnitsHi);
+      ipUnitsHi = null;
+      ipUnitsStale = false;
+      if (keep) {
+        const el = box.querySelector(`[data-uf="${CSS.escape(keep.uf)}"]`);
+        if (el) { el.focus({ preventScroll: true }); try { if (keep.s != null) el.setSelectionRange(keep.s, keep.e); } catch (e) {} }
+      }
+    }
+    // Draws a waiting Units tab: now if it was asked for (a holder, a condition…) or the user left the cards;
+    // otherwise when they leave them.
+    function ipUnitsSettle() {
+      const box = document.getElementById('ipUnits');
+      if (!ipUnitsStale || !sheetCode || ipView.tab !== 'units' || !box) { ipUnitsDue = false; return; }
+      if (!ipUnitsDue && box.contains(document.activeElement)) return;
+      ipUnitsDue = false;
+      ipUnitsForce = true;
+      renderItemSheet();
+    }
+    document.addEventListener('focusout', e => {
+      const box = document.getElementById('ipUnits');
+      if (!ipUnitsStale || !box || !box.contains(e.target)) return;
+      setTimeout(ipUnitsSettle, 0);
+    });
 
-    function renderUnitsModal(highlightId = null) {
-      const item = items.find(i => i.code === unitsModalCode);
-      if (!item) return;
-      const units = getUnits(item.code);
+    function unitsPaneHTML(item, units, highlightId) {
+      const mode = unitsMode();
       const untagged = Math.max(0, item.qty - units.length);
-
-      document.getElementById('unitsItemCode').textContent = item.code;
-      document.getElementById('unitsItemName').textContent = item.name;
-      document.getElementById('unitsSummary').textContent =
-        `${units.length} of ${item.qty} on-hand tagged` + (item.note ? ` · ${item.note}` : '');
-
-      let toolbar = '';
-      if (untagged > 0) {
+      let top = '';
+      if (untagged > 0 && mode === 'edit') {
         const next = nextPropertyNumbers(untagged, undefined, { cost: item.price });
         const headline = units.length === 0
           ? `${untagged === 1 ? 'The on-hand unit has' : `None of the ${untagged} on-hand units have`} a property number yet.`
           : `${untagged} new ${untagged === 1 ? 'unit has' : 'units have'} no property number yet.`;
-        toolbar += `
-          <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        top += `
+          <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 flex flex-col gap-2.5" data-units-untagged>
             <div class="text-xs text-amber-900 min-w-0">
               <p class="font-bold">${headline}</p>
               <p class="mt-0.5 text-amber-800">${next[0] === next[next.length - 1] && untagged > 1
-                ? `New number: <span class="font-mono font-bold">${escapeHTML(next[0])}</span>, shared by all ${untagged} (one ICS line).`
-                : `New numbers: <span class="font-mono font-bold">${escapeHTML(next[0])}</span>${untagged > 1 ? ` to <span class="font-mono font-bold">${escapeHTML(next[next.length - 1])}</span>` : ''}.`} You can edit any number afterwards to match an existing sticker.</p>
+                ? `New number: <span class="font-mono font-bold break-all">${escapeHTML(next[0])}</span>, shared by all ${untagged} (one ICS line).`
+                : `New numbers: <span class="font-mono font-bold break-all">${escapeHTML(next[0])}</span>${untagged > 1 ? ` to <span class="font-mono font-bold break-all">${escapeHTML(next[next.length - 1])}</span>` : ''}.`} You can edit any number afterwards to match an existing sticker.</p>
             </div>
-            <button onclick="generateUnitTags()" class="shrink-0 h-10 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition">
+            <button onclick="generateUnitTags()" class="h-11 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition">
               <i class="ph-bold ph-tag"></i> Tag ${plural(untagged, 'unit')}
             </button>
           </div>`;
+      } else if (untagged > 0) {
+        top += `<p class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" data-units-untagged>
+          <b>${plural(untagged, 'unit')} without a property number yet.</b> The property custodian gives the numbers.</p>`;
       }
-      toolbar += `
-        <div class="flex flex-wrap items-center gap-2">
-          ${untagged === 0 ? `
-            <button onclick="addUnitTag()" class="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
-              <i class="ph-bold ph-plus"></i> Add new unit
-            </button>` : ''}
-          <button onclick="printItemLabels()" ${units.length ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-40 disabled:pointer-events-none">
-            <i class="ph-bold ph-printer"></i> Print ${units.length ? plural(units.length, 'QR label') : 'QR labels'}
-          </button>
-          <button onclick="openScanner()" ${units.length ? '' : 'disabled'} class="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-40 disabled:pointer-events-none">
-            <i class="ph-bold ph-scan"></i> Scan
-          </button>
-          <button onclick="openHistory('${item.code}')" class="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
-            <i class="ph-bold ph-clock-counter-clockwise"></i> History
-          </button>
-        </div>`;
-      document.getElementById('unitsToolbar').innerHTML = toolbar;
+      const btn = (onclick, icon, label, tone, dis = false) => `<button onclick="${onclick}" ${dis ? 'disabled' : ''} class="h-10 px-3 rounded-xl ${tone} active:scale-95 font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-40 disabled:pointer-events-none">
+        <i class="ph-bold ${icon}"></i> ${label}</button>`;
+      const soft = 'bg-slate-100 hover:bg-slate-200 text-slate-700';
+      const tools = [];
+      if (mode === 'edit' && untagged === 0) tools.push(btn('addUnitTag()', 'ph-plus', 'Add new unit', soft));
+      if (mode !== 'suggest') tools.push(btn('printItemLabels()', 'ph-printer', `Print ${units.length ? plural(units.length, 'QR label') : 'QR labels'}`, 'bg-violet-600 hover:bg-violet-700 text-white', !units.length));
+      if (mode === 'edit') tools.push(btn('openScanner()', 'ph-scan', 'Scan', soft, !units.length));
+      if (tools.length) top += `<div class="flex flex-wrap items-center gap-2" data-units-tools>${tools.join('')}</div>`;
+      if (mode === 'suggest' && units.length) top += `<p class="text-[11px] text-slate-600 flex items-start gap-1.5"><i class="ph-bold ph-lightbulb text-violet-600 mt-px"></i> Fix a serial no., room, date acquired or condition: it is kept as your suggestion. Send it from Items.</p>`;
 
-      const list = document.getElementById('unitsList');
-      list.innerHTML = (units.length
-        ? units.map((u, idx) => unitCardHTML(item, u, idx, u.id === highlightId)).join('')
+      const list = units.length
+        ? units.map((u, idx) => unitCardHTML(item, u, idx, u.id === highlightId, mode)).join('')
         : `
-          <div class="py-10 text-center">
+          <div class="py-8 text-center">
             <i class="ph-duotone ph-qr-code text-4xl text-slate-300 block mb-2"></i>
             <p class="text-sm font-bold text-slate-700">No units tagged yet</p>
             <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Give each unit its own property number, print QR labels, then scan them during the physical count.</p>
-          </div>`) + writtenOffHTML(item);
+          </div>`;
+      const foot = mode === 'edit' && units.length ? `<p class="pt-1 text-[11px] text-slate-500 flex items-center gap-1"><i class="ph-bold ph-check"></i> Changes are saved automatically</p>` : '';
+      return top + list + writtenOffHTML(item) + foot;
     }
 
     // Why a unit was written off: relief after a loss, or removed (disposed, transferred out…).
@@ -5465,39 +5501,41 @@
     }
 
     let unitsWrittenOffOpen = null;   // a written-off unit to show (scanned sticker)
-    function unitCardHTML(item, u, idx, highlight) {
+    function unitCardHTML(item, u, idx, highlight, mode = 'edit') {
       const code = item.code;
+      const ro = mode === 'ro';
+      const lock = ro ? 'readonly tabindex="-1"' : '';
       const field = (key, label, placeholder) => `
         <label class="block min-w-0">
           <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">${label}</span>
-          <input type="text" value="${escapeHTML(u[key] || '')}" placeholder="${escapeHTML(placeholder)}" ${key === 'to' ? 'list="teacherNameList" autocomplete="off"' : ''} onchange="setUnitField('${code}', '${u.id}', '${key}', this.value)" class="w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
+          <input type="text" value="${escapeHTML(u[key] || '')}" placeholder="${ro ? '' : escapeHTML(placeholder)}" ${key === 'to' && !ro ? 'list="teacherNameList" autocomplete="off"' : ''} ${lock} data-uf="${u.id}:${key}" onchange="setUnitField('${code}', '${u.id}', '${key}', this.value)" class="w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
         </label>`;
       return `
         <div id="unitcard-${u.id}" class="rounded-xl border p-3 transition ${highlight ? 'border-emerald-300 ring-2 ring-emerald-400/40 bg-emerald-50/40' : 'border-slate-200 bg-white'}">
           <div class="flex items-center gap-2">
             <span class="w-7 shrink-0 text-[11px] font-bold text-slate-500">#${idx + 1}</span>
-            <input type="text" value="${escapeHTML(u.no)}" aria-label="Property number" autocapitalize="characters" spellcheck="false" onchange="renameUnit('${code}', '${u.id}', this)" class="unit-no-input flex-1 min-w-0 h-10 px-3 rounded-lg border border-slate-300 font-mono font-extrabold text-sm text-slate-900 uppercase focus:border-brand-500 outline-none">
-            <button aria-label="Print this label" onclick="printUnitLabel('${code}', '${u.id}')" title="Print this label" class="w-10 h-10 shrink-0 rounded-lg bg-slate-100 hover:bg-violet-50 text-slate-600 hover:text-violet-700 flex items-center justify-center">
+            <input type="text" value="${escapeHTML(u.no)}" aria-label="Property number" autocapitalize="characters" spellcheck="false" ${lock} data-uf="${u.id}:no" onchange="renameUnit('${code}', '${u.id}', this)" class="unit-no-input flex-1 min-w-0 h-10 px-3 rounded-lg border border-slate-300 font-mono font-extrabold text-sm text-slate-900 uppercase focus:border-brand-500 outline-none">
+            ${mode === 'suggest' ? '' : `<button aria-label="Print this label" onclick="printUnitLabel('${code}', '${u.id}')" title="Print this label" class="w-10 h-10 shrink-0 rounded-lg bg-slate-100 hover:bg-violet-50 text-slate-600 hover:text-violet-700 flex items-center justify-center">
               <i class="ph-bold ph-printer"></i>
-            </button>
-            <button aria-label="Remove unit (disposed, transferred or lost)" onclick="removeUnitTag('${code}', '${u.id}')" title="Remove unit (disposed, transferred or lost)" class="w-10 h-10 shrink-0 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center">
+            </button>`}
+            ${mode !== 'edit' ? '' : `<button aria-label="Remove unit (disposed, transferred or lost)" onclick="removeUnitTag('${code}', '${u.id}')" title="Remove unit (disposed, transferred or lost)" class="w-10 h-10 shrink-0 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center">
               <i class="ph-bold ph-trash"></i>
-            </button>
+            </button>`}
           </div>
-          ${condButtonsHTML(code, u.id, u.cond, 'setUnitCond')}
-          ${unitLostHTML(item, u)}
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+          ${ro ? `<p class="mt-2"><span class="inline-flex items-center h-7 px-2.5 rounded-lg border text-[11px] font-bold ${(UNIT_COND[u.cond] || UNIT_COND.S).on}" data-unit-cond>${(UNIT_COND[u.cond] || UNIT_COND.S).label}</span></p>` : condButtonsHTML(code, u.id, u.cond, 'setUnitCond')}
+          ${mode === 'edit' ? unitLostHTML(item, u) : unitNoActions(unitLostHTML(item, u))}
+          <div class="grid grid-cols-2 gap-2 mt-2">
             ${field('serial', 'Serial No.', 'Optional')}
             ${field('loc', 'Location', item.note || 'Room')}
             ${field('to', 'Assigned to', 'Accountable person')}
             ${field('ics', u.doc && u.doc !== 'ICS' ? `${u.doc} No.` : 'ICS / PAR No.', 'Optional')}
             <label class="block min-w-0">
               <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">Date acquired</span>
-              <input type="date" value="${escapeHTML(u.acq || '')}" max="${localISODate()}" onchange="setUnitField('${code}', '${u.id}', 'acq', this.value)" class="unit-acq w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
+              <input type="date" value="${escapeHTML(u.acq || '')}" max="${localISODate()}" ${lock} ${ro ? 'disabled' : ''} data-uf="${u.id}:acq" onchange="setUnitField('${code}', '${u.id}', 'acq', this.value)" class="unit-acq w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
             </label>
             <label class="block min-w-0">
               <span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">Useful life</span>
-              <input type="text" value="${escapeHTML(u.life || '')}" placeholder="${defaultLifeYears(item)} years" list="lifeList" autocomplete="off" onchange="setUnitField('${code}', '${u.id}', 'life', this.value)" class="unit-life w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
+              <input type="text" value="${escapeHTML(u.life || '')}" placeholder="${defaultLifeYears(item)} years" ${ro ? '' : 'list="lifeList"'} autocomplete="off" ${lock} data-uf="${u.id}:life" onchange="setUnitField('${code}', '${u.id}', 'life', this.value)" class="unit-life w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs font-medium focus:border-brand-500 outline-none">
             </label>
           </div>
           <p class="mt-2 text-[11px] text-slate-500 flex flex-wrap gap-x-3 gap-y-0.5">
@@ -5509,8 +5547,12 @@
             ${(() => { const dep = ppeDepreciation(item, u); return dep ? `<span class="unit-book inline-flex items-center gap-1"><i class="ph-bold ph-trend-down"></i> Carrying amount ₱${peso2(dep.carrying)} (depreciation ₱${peso2(dep.acc)}${dep.est ? ', est. life' : ''})</span>` : ''; })()}
             ${u.icsDate || u.life ? `<span class="inline-flex items-center gap-1"><i class="ph-bold ph-file-text"></i> ${u.icsDate ? `${unitDocKind(u)} dated ${formatShortDate(u.icsDate + 'T00:00:00')}` : ''}${u.icsDate && u.life ? ' · ' : ''}${u.life ? `useful life ${escapeHTML(u.life)}` : ''}</span>` : ''}
           </p>
-          ${unitTrailHTML(item, u)}
+          ${mode === 'edit' ? unitTrailHTML(item, u) : unitNoActions(unitTrailHTML(item, u))}
         </div>`;
+    }
+    // A unit card shown to someone who can't change it: the buttons that would (lost, found, relieve, move) are left out.
+    function unitNoActions(html) {
+      return String(html || '').replace(/<button\b[^>]*(?:data-report-lost|reportLostUnit|relieveLost|markFound|openTransfer)[^>]*>[\s\S]*?<\/button>/g, '');
     }
 
     function findUnit(code, id) {
@@ -9757,7 +9799,7 @@
       const tagged = getUnits(item.code).length;
       if (qty < tagged) {
         // Keep the sheet open: saving would silently put the count back up to the tagged units.
-        showToast(`${tagged === 1 ? '1 unit has a property number' : `${tagged} units have property numbers`} – the count can't be lower. Remove units under Property Numbers first.`, 'ph-tag');
+        showToast(`${tagged === 1 ? '1 unit has a property number' : `${tagged} units have property numbers`} – the count can't be lower. Remove units in the Units tab first.`, 'ph-tag');
         const input = document.getElementById('encQty');
         input.value = tagged;
         input.focus();
@@ -15463,7 +15505,7 @@
       if (!(snap.metadata && snap.metadata.fromCache)) { applyApprovedWriteOffs(); bkScheduleApply(); }
       if (bkSheet && bkSheet.view === 'disposal') renderBkModal();
       if (yeIsOpen()) renderYearEnd();
-      if (unitsModalCode) { try { renderUnitsModal(); } catch (e) {} }
+      if (unitsModalCode) { try { renderUnitsModal(null, true); } catch (e) {} }
       if (activeMainView === 'TEACHERS') renderTeachersView();
     }
     function subscribeApprovals(F, onErr) {
@@ -20427,7 +20469,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           <div class="rounded-2xl bg-white border border-slate-200 p-6 text-center">
             <i class="ph-bold ph-users-three text-3xl text-slate-300"></i>
             <p class="mt-1 text-sm font-bold text-slate-700">No one yet</p>
-            <p class="text-xs text-slate-500">Teachers appear here when they join with your invite link, when you release items to them, or when you fill in “Assigned to” under Property Numbers.</p>
+            <p class="text-xs text-slate-500">Teachers appear here when they join with your invite link, when you release items to them, or when you fill in “Assigned to” on a unit (Units tab).</p>
           </div>${removedMembersHTML()}`;
         return;
       }
@@ -24518,13 +24560,13 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           ${coaSeg('unservType', [['ppe', 'IIRUP', '₱50,000 and up'], ['sep', 'IIRUSP', 'below ₱50,000']])}
           <div id="coaUnservList" class="rounded-xl border border-slate-200 divide-y divide-slate-100">
             ${rows.length ? rows.map(r => `<div class="px-3 py-2 flex items-center gap-3"><span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900 truncate">${escapeHTML(r.item.name)}</span><span class="block text-[11px] text-slate-500 font-mono">${escapeHTML(r.unit ? r.unit.no : `${r.qty} untagged`)}</span></span><span class="shrink-0 text-[11px] font-mono text-slate-600">₱${peso2(r.qty * (r.item.price || 0))}</span></div>`).join('')
-              : `<p class="px-3 py-4 text-center text-xs text-slate-500">Nothing is marked Unserviceable ${ppe ? 'among items of ₱50,000 or more' : 'below ₱50,000'}. Mark units under Property Numbers, or when a teacher reports a problem.</p>`}
+              : `<p class="px-3 py-4 text-center text-xs text-slate-500">Nothing is marked Unserviceable ${ppe ? 'among items of ₱50,000 or more' : 'below ₱50,000'}. Mark units in the item’s Units tab, or when a teacher reports a problem.</p>`}
           </div>
           ${rows.length ? `<p id="coaUnservSum" class="text-xs text-slate-600"><b>${plural(rows.reduce((n, r) => n + r.qty, 0), 'unit')}</b> · total cost <b class="font-mono">₱${peso2(total)}</b>${ppe ? (() => {
             const deps = rows.map(r => r.unit && ppeDepreciation(r.item, r.unit, coaVal('asAt') || localISODate()));
             const known = deps.filter(Boolean);
             return known.length ? ` · carrying amount <b class="font-mono">₱${peso2(known.reduce((n, d) => n + d.carrying, 0))}</b>${known.length < rows.length ? ` <span class="text-slate-500">(${known.length} of ${rows.length} with a date acquired)</span>` : ''}`
-              : ` · <span class="text-slate-500">add the date acquired under Property Numbers to fill in depreciation</span>`;
+              : ` · <span class="text-slate-500">add the date acquired in the item’s Units tab to fill in depreciation</span>`;
           })() : ''}</p>` : ''}
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             ${coaField('asAt', 'As at', { type: 'date' })}
@@ -26438,6 +26480,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-units-tab', date: 'Nov 2026', title: 'Property numbers are now a tab in the Item preview', points: [
+        'The Item preview has a new Units tab for equipment and anything with property numbers. It replaces the separate Property Numbers window: tag units, edit the property no., serial no., room, who has it, ICS / PAR no., date acquired, useful life and condition, print QR labels and scan, without leaving the item.',
+        'On a computer it stays in the side panel next to your list. Everything that opened Property Numbers before (Edit details, the scanner, Useful life, a teacher\u2019s page) now opens this tab.',
+        'School Heads see the units too. A change they make there is kept as their suggestion, like their other changes. View-only phones only look.'
+      ] },
       { id: '2026-11-head-items', date: 'Nov 2026', title: 'School Heads can see the inventory and help build it', points: [
         'The School Head\u2019s page has a new Items tab: every item of the school with the same Item preview (units, who holds them, slips, history), view only. Search by name, code, room or property number.',
         'The head can help encode: Suggest a change on an item, add a New item or Scan an old ICS / PAR. The changes are sent to the property custodian as a suggestion.',
