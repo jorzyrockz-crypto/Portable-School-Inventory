@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="0b86c74ad8bd">
+  <meta name="app-version" content="227f4bd55aea">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -464,7 +464,7 @@
     .pr-table th { text-align: center; font-weight: 700; vertical-align: middle; }
     .pr-table .c { text-align: center; } .pr-table .r { text-align: right; }
     .pr-table .pr-blank td { height: 15pt; }
-    .pr-table .pr-exp td { background: #f1f5f9; font-size: 9.5pt; }
+    .pr-table .pr-exp td { font-size: 9pt; line-height: 1.25; padding-top: 4pt; padding-bottom: 4pt; }
     .pr-table .pr-sig { height: 28pt; }
     .pr-draft { border: 1.5pt solid #000; text-align: center; font-weight: 700; letter-spacing: 1pt; padding: 3pt; margin: 2pt 0 2pt; font-size: 11pt; }
     .pr-esign { display: block; text-align: center; font-size: 8pt; font-style: italic; padding-top: 9pt; }
@@ -8613,9 +8613,9 @@
     }
     function dlvLineExp(dr, l, code) {
       if (!code || itemIsEquip(code)) return null;
-      if (EXP_CLASSES[l.exp] && l.exp !== 'equip') return l.exp;
+      if (isSupplyExp(l.exp)) return l.exp;
       const pr = dlvLinkedPr(dr.header);
-      const pl = pr && prHasExp(pr) ? (pr.lines || []).find(x => x.code === code && EXP_CLASSES[x.exp] && x.exp !== 'equip') : null;
+      const pl = pr && prHasExp(pr) ? (pr.lines || []).find(x => x.code === code && isSupplyExp(x.exp)) : null;
       if (pl) return pl.exp;
       return dr.header.exp === 'other' ? 'other' : 'office';
     }
@@ -12330,7 +12330,7 @@
     // Office Supplies ₱… · Other Supplies ₱… on the PR card
     function prExpChipsHTML(pr) {
       if (!prHasExp(pr)) return '';
-      const tone = { office: 'bg-brand-50 text-brand-700 border-brand-100', other: 'bg-teal-50 text-teal-700 border-teal-100', equip: 'bg-slate-50 text-slate-600 border-slate-200' };
+      const tone = { office: 'bg-brand-50 text-brand-700 border-brand-100', other: 'bg-teal-50 text-teal-700 border-teal-100', semiMe: 'bg-amber-50 text-amber-800 border-amber-100', semiFfb: 'bg-slate-50 text-slate-600 border-slate-200' };
       return `<p data-pr-exp-chips class="mt-1.5 flex flex-wrap gap-1">${expGroups(pr.lines).map(g => `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[11px] font-bold ${tone[g.key]}">${escapeHTML(g.c.short)} <span class="font-mono">₱${peso2(g.total)}</span></span>`).join('')}</p>`;
     }
     function prCardHTML(pr) {
@@ -13775,9 +13775,21 @@
     var EXP_CLASSES = {
       office: { key: 'office', short: 'Office Supplies', name: 'Office Supplies Expenses', uacs: '5020301000', inv: '1040401000' },
       other: { key: 'other', short: 'Other Supplies', name: 'Other Supplies and Materials Expenses', uacs: '5020399000', inv: '1040499000' },
-      equip: { key: 'equip', short: 'Equipment', name: 'Equipment and semi-expendable property', uacs: '', inv: '' }
+      semiMe: { key: 'semiMe', short: 'Semi-Expendable Machinery & Equipment', name: 'Semi-Expendable Machinery and Equipment Expenses', uacs: '5020321000', inv: '' },
+      semiFfb: { key: 'semiFfb', short: 'Semi-Expendable Furniture, Fixtures & Books', name: 'Semi-Expendable Furniture, Fixtures and Books Expenses', uacs: '5020322000', inv: '' }
     };
-    var EXP_ORDER = ['office', 'other', 'equip'];
+    // Headings on the printed PR, as on the school's form
+    EXP_CLASSES.office.head = 'OFFICE SUPPLIES EXPENSES';
+    EXP_CLASSES.other.head = 'OTHER SUPPLIES EXPENSES';
+    EXP_CLASSES.semiMe.head = 'SEMI-EXPENDABLE MACHINERY AND EQUIPMENT EXPENSES';
+    EXP_CLASSES.semiFfb.head = 'SEMI-EXPENDABLE FURNITURE, FIXTURES AND BOOKS EXPENSES';
+    var EXP_ORDER = ['office', 'other', 'semiMe', 'semiFfb'];
+    function isSupplyExp(k) { return k === 'office' || k === 'other'; }
+    // Equipment: furniture and books under Furniture, Fixtures and Books; the rest under Machinery and Equipment.
+    function equipExp(code) {
+      const it = code ? items.find(i => i.code === code) : null;
+      return it && /furniture|printed publication|\bbooks?\b/i.test(String(it.category || '')) ? 'semiFfb' : 'semiMe';
+    }
     function expClass(k) { return EXP_CLASSES[k] || null; }
     function reqUseOf(r) { return r && r.use === 'office' ? 'office' : 'teacher'; }
     function expForUse(use) { return use === 'office' ? 'office' : 'other'; }
@@ -13785,7 +13797,7 @@
     // A line's class: its own, else Equipment for an equipment item, else the fallback (Office: the stockroom).
     function lineExp(l, fallback = 'office') {
       if (l && EXP_CLASSES[l.exp]) return l.exp;
-      return itemIsEquip(l && l.code) ? 'equip' : fallback;
+      return itemIsEquip(l && l.code) ? equipExp(l.code) : fallback;
     }
     function prHasExp(pr) { return !!pr && (pr.lines || []).some(l => EXP_CLASSES[l.exp]); }
     // Lines by expense (Office, Other, Equipment), each line with its place on the form.
@@ -13843,7 +13855,7 @@
       reqs.forEach(r => reqBuyLines(r).forEach(l => {
         const item = l.code && items.find(i => i.code === l.code);
         // a teacher's request → Other Supplies; one for the office → Office Supplies
-        const exp = item && item.type === 'EQUIPMENT' ? 'equip' : expForUse(reqUseOf(r));
+        const exp = item && item.type === 'EQUIPMENT' ? equipExp(item.code) : expForUse(reqUseOf(r));
         const key = exp + '|' + (l.code || 'D:' + normItemName(l.desc));
         const cur = lines.get(key) || {
           id: newReqLineId(), code: item ? item.code : null, stockNo: item && !/^CUSTOM-/.test(item.code) ? item.code : '',
@@ -13894,7 +13906,7 @@
       let n = 0;
       const groups = expGroups(prDraft.lines);
       const expOpts = l => EXP_ORDER.map(k => `<option value="${k}" ${lineExp(l) === k ? 'selected' : ''}>${EXP_CLASSES[k].short}${EXP_CLASSES[k].uacs ? ` · ${EXP_CLASSES[k].uacs}` : ''}</option>`).join('');
-      const tone = { office: 'text-brand-700', other: 'text-teal-700', equip: 'text-slate-600' };
+      const tone = { office: 'text-brand-700', other: 'text-teal-700', semiMe: 'text-amber-800', semiFfb: 'text-slate-600' };
       document.getElementById('prLines').innerHTML = groups.map(g => `
         <div class="space-y-2" data-pr-grp="${g.key}">
           <p class="flex items-baseline justify-between gap-2 text-[11px] font-extrabold uppercase ${tone[g.key]}">
@@ -14120,14 +14132,14 @@
       const e = v => escapeHTML(v || '');
       const date = pr.date ? new Date(pr.date + 'T00:00:00').toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
       const lineRow = (l, i) => `
-        <tr><td class="pr-sn c">${e(prStockNo(l, i))}</td><td class="c">${e(l.unit)}</td><td>${e(l.desc)}</td><td class="c">${l.qty}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * l.unitCost)}</td></tr>`;
-      // Grouped by expense (Office Supplies, Other Supplies…), each with a subtotal when there are several
+        <tr><td class="${String(l.stockNo || '').trim() ? 'pr-sn ' : ''}c">${e(prStockNo(l, i))}</td><td class="c">${e(l.unit)}</td><td>${e(l.desc)}</td><td class="c">${l.qty}</td><td class="r">${peso2(l.unitCost)}</td><td class="r">${peso2(l.qty * l.unitCost)}</td></tr>`;
+      // Grouped by expense as on the school's form: the heading (e.g. OFFICE SUPPLIES EXPENSES) in the
+      // Stock No. and Unit columns, then its items; one TOTAL at the end
       const groups = prHasExp(pr) ? expGroups(pr.lines) : null;
       const rows = !groups ? (pr.lines || []).map(lineRow).join('') : groups.map(g => `
-        <tr class="pr-exp"><td colspan="6"><b>${e(g.c.name)}</b>${g.c.uacs ? ` &nbsp;·&nbsp; UACS Object Code <b>${g.c.uacs}</b>` : ''}</td></tr>
-        ${g.lines.map(x => lineRow(x.l, x.i)).join('')}
-        ${groups.length > 1 ? `<tr class="pr-subtotal"><td colspan="5" class="r"><i>Subtotal · ${e(g.c.short)}</i></td><td class="r"><b>${peso2(g.total)}</b></td></tr>` : ''}`).join('');
-      const used = (pr.lines || []).length + (groups ? groups.length * (groups.length > 1 ? 2 : 1) : 0);
+        <tr class="pr-exp"><td colspan="2" class="c"><b>${e(g.c.head || g.c.name.toUpperCase())}</b></td><td></td><td></td><td></td><td></td></tr>
+        ${g.lines.map(x => lineRow(x.l, x.i)).join('')}`).join('');
+      const used = (pr.lines || []).length + (groups ? groups.length * 2 : 0);
       const blanks = '<tr class="pr-blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>'.repeat(Math.max(0, 10 - used));
       return `
         <div class="pr-form">
@@ -14141,7 +14153,7 @@
             <tr><td colspan="2">Responsibility Center Code: <b>${e(pr.rcc)}</b></td></tr>
             <tr><th>Stock/ Property No.</th><th>Unit</th><th>Item Description</th><th>Quantity</th><th>Unit Cost</th><th>Total Cost</th></tr>
             ${rows}${blanks}
-            <tr><td colspan="5" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(pr.total)}</b></td></tr>
+            <tr class="pr-total"><td></td><td></td><td class="c"><b>TOTAL</b></td><td></td><td></td><td class="r"><b>${peso2(pr.total)}</b></td></tr>
             <tr><td colspan="6" class="pr-purpose">Purpose: ${e(pr.purpose)}</td></tr>
             <tr><td></td><td colspan="2"><i>Requested by:</i></td><td colspan="3"><i>Approved by:</i></td></tr>
             <tr><td>Signature:</td><td colspan="2" class="pr-sig"></td><td colspan="3" class="pr-sig">${prApprStatus(pr) === 'approved' && (prApproval(pr).via === 'app') ? `<span class="pr-esign">${e(prApprovalText(pr))}</span>` : ''}</td></tr>
@@ -17835,17 +17847,18 @@
 
     function exportPrCSV(pr) {
       const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const csvLine = (l, i) => [prStockNo(l, i), l.unit, l.desc, l.qty, (Number(l.unitCost) || 0).toFixed(2), ((Number(l.qty) || 0) * (Number(l.unitCost) || 0)).toFixed(2)];
       const rows = [
         ['PURCHASE REQUEST', '', '', '', '', 'Appendix 60'],
         ['Entity Name', pr.entity, '', '', 'Fund Cluster', pr.fund],
         ['Office/Section', pr.office, 'PR No.', pr.prNo, 'Date', pr.date],
         ['Responsibility Center Code', pr.rcc],
         [],
-        ['Stock/Property No.', 'Unit', 'Item Description', 'Quantity', 'Unit Cost', 'Total Cost', ...(prHasExp(pr) ? ['Expense', 'UACS Object Code'] : [])],
-        ...(pr.lines || []).map((l, i) => [prStockNo(l, i), l.unit, l.desc, l.qty, l.unitCost.toFixed(2), (l.qty * l.unitCost).toFixed(2),
-          ...(prHasExp(pr) ? [EXP_CLASSES[lineExp(l)].name, EXP_CLASSES[lineExp(l)].uacs] : [])]),
-        ...(prHasExp(pr) && expGroups(pr.lines).length > 1 ? expGroups(pr.lines).map(g => ['', '', '', '', `Subtotal · ${g.c.short}`, g.total.toFixed(2), g.c.name, g.c.uacs]) : []),
-        ['', '', '', '', 'TOTAL', Number(pr.total || 0).toFixed(2)],
+        ['Stock/Property No.', 'Unit', 'Item Description', 'Quantity', 'Unit Cost', 'Total Cost'],
+        ...(prHasExp(pr)
+          ? expGroups(pr.lines).flatMap(g => [[g.c.head || g.c.name.toUpperCase()], ...g.lines.map(x => csvLine(x.l, x.i))])
+          : (pr.lines || []).map(csvLine)),
+        ['', '', 'TOTAL', '', '', Number(pr.total || 0).toFixed(2)],
         [],
         ['Purpose', pr.purpose],
         ['Requested by', pr.requestedBy && pr.requestedBy.name, pr.requestedBy && pr.requestedBy.designation],
@@ -17998,25 +18011,19 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
           { v: Number(l.unitCost) || 0, st: { num: '#,##0.00', border: B } },
           { f: `D${r}*E${r}`, v: Math.round((Number(l.qty) || 0) * (Number(l.unitCost) || 0) * 100) / 100, st: { num: '#,##0.00', border: B } }]);
       };
-      // Grouped by expense: a heading with the UACS object code, and a subtotal when there are several
+      // Grouped by expense as on the school's form: the heading in the Stock No. and Unit columns, then its items
       const groups = prHasExp(pr) ? expGroups(lines) : null;
-      const subs = [];
       if (!groups) lines.forEach(lineRow);
       else groups.forEach(g => {
-        const gh = row([{ v: `${g.c.name}${g.c.uacs ? ` · UACS Object Code ${g.c.uacs}` : ''}`, st: { b: 1, border: B } }, ...[1, 2, 3, 4, 5].map(() => ({ st: { border: B } }))]);
-        merges.push(`A${gh}:F${gh}`);
-        const a = rows.length + 1;
+        const head = g.c.head || g.c.name.toUpperCase();
+        const gh = row([{ v: head, st: { b: 1, h: 'center', wrap: 1, border: B } }, { st: { border: B } }, ...[2, 3, 4, 5].map(() => ({ st: { border: B } }))],
+          head.length > 50 ? 44 : head.length > 24 ? 30 : undefined);
+        merges.push(`A${gh}:B${gh}`);
         g.lines.forEach(x => lineRow(x.l, x.i));
-        if (groups.length > 1) {
-          const st = row([{ v: `Subtotal · ${g.c.short}`, st: { i: 1, h: 'right', border: B } }, ...[1, 2, 3, 4].map(() => ({ st: { border: B } })),
-            { f: `SUM(F${a}:F${rows.length})`, v: g.total, st: { b: 1, num: '#,##0.00', border: B } }]);
-          merges.push(`A${st}:E${st}`);
-          subs.push(st);
-        }
       });
       for (let i = rows.length - first + 1; i < 15; i += 1) row([0, 1, 2, 3, 4, 5].map(() => ({ st: { border: B } })));
       const last = rows.length;
-      row([0, 1, 2, 3, 4].map(() => ({ st: { border: B } })).concat([{ f: subs.length ? subs.map(r => `F${r}`).join('+') : `SUM(F${first}:F${last})`, v: Number(pr.total) || 0, st: { b: 1, num: '#,##0.00', border: B } }]));
+      row([{ st: { border: B } }, { st: { border: B } }, { v: 'TOTAL', st: { b: 1, h: 'center', border: B } }, { st: { border: B } }, { st: { border: B } }].concat([{ f: `SUM(F${first}:F${last})`, v: Number(pr.total) || 0, st: { b: 1, num: '#,##0.00', border: B } }]));
       row([{ v: 'Purpose:', st: { border: { t: 1, l: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1 } } }, { st: { border: { t: 1, r: 1 } } }]);
       const pt = row([{ v: pr.purpose || '', st: { h: 'center', wrap: 1, border: bot } }, ...[1, 2, 3, 4].map(() => ({ st: { border: { b: 1 } } })), { st: { border: { b: 1, r: 1 } } }], 32);
       merges.push(`A${pt}:F${pt}`);
@@ -22122,7 +22129,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         return p;
       };
       const signed = (p, daysAgo) => ({ status: 'approved', via: 'paper', byName: p.approvedBy.name, byDesig: p.approvedBy.designation, paperDate: iso(daysAgo), atMs: now - daysAgo * DAY, submittedMs: p.approval.submittedMs });
-      pr(1, 10, [prLine('47121701-TB-P04', 10), prLine('39101628-LT-L01', 6, 'other')], { purpose: 'Replacement lights for the Science laboratory; trash bags', requestIds: [r4.id], requesters: [ana.name] });
+      pr(1, 10, [prLine('47121701-TB-P04', 10), prLine('39101628-LT-L01', 6, 'other'), prLine('45121517-DO-C02', 1, 'semiMe'), prLine('56101504-CM-B01', 10, 'semiFfb')], { purpose: 'Replacement lights for the Science laboratory; trash bags; a document camera and chairs', requestIds: [r4.id], requesters: [ana.name] });
       const p2 = pr(2, 48, [prLine('44103105-EP-B17', 6), prLine('14111507-PP-M01', 50, 'other')], { purpose: 'Bond paper for periodical tests; printer ink', requestIds: [r5.id], requesters: [carla.name] });
       p2.approval = signed(p2, 46);
       p2.deliveredMs = now - 20 * DAY;
@@ -27087,7 +27094,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
       { id: '2026-11-pr-expense', date: 'Nov 2026', title: 'Purchase Requests by expense: Office Supplies and Other Supplies', points: [
-        'Purchase Requests now group their items by expense, each with its own subtotal: Office Supplies Expenses (5020301000) for what the office uses, and Other Supplies and Materials Expenses (5020399000) for supplies the teachers use. Equipment gets a group of its own. The print, Excel and CSV show the groups.',
+        'Purchase Requests now group their items by expense, as on the updated form: Office Supplies Expenses for what the office uses, Other Supplies Expenses for supplies the teachers use, and Semi-Expendable Machinery and Equipment or Semi-Expendable Furniture, Fixtures and Books Expenses for equipment. The print, Excel and CSV put each heading above its items, with one total at the end.',
         'Items from teachers\u2019 requests go under Other Supplies. Requests you add for the office (tap The office under Used by), the reorder list and items you add yourself go under Office Supplies. Change any line with Charge to.',
         'The expense follows the items to the IAR, the delivery and your stock: an item shows how many are Office Supplies and how many are Other Supplies. A release to a teacher takes Other Supplies first, one for the office Office Supplies first.',
         'Deliveries without a PR (petty cash, donations) ask which expense the supplies are charged to. The RSMI (Report of Supplies and Materials Issued) now fills in the UACS object code, and the monthly report shows the total for each expense.'

@@ -2,7 +2,7 @@
 // Expenses (5020399000), supplies for the office stay under Office Supplies Expenses (5020301000).
 // A teacher's request → Other Supplies; a walk-in request marked "The office" → Office Supplies;
 // lines added by hand → Office Supplies (changeable with Charge to). The PR groups its lines with
-// a subtotal each (screen, print, Excel, CSV); the class follows the items into stock
+// headings as on the school's form (screen, print, Excel, CSV); the class follows the items into stock
 // (userState.other), a release to a teacher takes Other Supplies first and one for the office
 // Office Supplies first, Deliveries without a PR ask for the class, and the RSMI fills in the
 // UACS object code.
@@ -118,14 +118,32 @@ try {
     const box = document.createElement('div'); box.innerHTML = html;
     const sheet = prSheet(p);
     const flat = sheet.rows.map(r => (r.cells || []).map(c => (c && typeof c === 'object' ? (c.v ?? c.f ?? '') : c ?? '')).join(' | '));
-    const total = sheet.rows.map(r => (r.cells || [])[5]).filter(c => c && c.f && /\+/.test(c.f)).map(c => c.f);
+    const total = sheet.rows.map(r => (r.cells || [])[5]).filter(c => c && c.f && /^SUM/.test(c.f)).map(c => c.f);
+    const heads = [...box.querySelectorAll('.pr-exp')].map(tr => ({ text: tr.cells[0].innerText.trim(), span: tr.cells[0].colSpan, cells: tr.cells.length }));
+    const totRow = box.querySelector('.pr-total');
     setReqTab('prs');
-    return { txt: box.innerText, heads: box.querySelectorAll('.pr-exp').length, subs: box.querySelectorAll('.pr-subtotal').length, flat, total,
+    return { txt: box.innerText, heads, subs: /Subtotal/.test(box.innerText), flat, total, merges: sheet.merges,
+      totLabel: totRow ? totRow.cells[2].innerText.trim() : '',
       chips: (document.querySelector('[data-pr-exp-chips]') || {}).innerText || '' };
   }, prId);
-  check(pr.heads === 2 && pr.subs === 2 && /Office Supplies Expenses/.test(pr.txt) && /5020301000/.test(pr.txt) && /Other Supplies and Materials Expenses/.test(pr.txt) && /5020399000/.test(pr.txt) && /Subtotal · Office Supplies/.test(pr.txt) && /1,250\.00/.test(pr.txt),
-    'printed PR: a heading with the UACS code and a subtotal for each expense');
-  check(pr.flat.some(r => /Office Supplies Expenses · UACS Object Code 5020301000/.test(r)) && pr.flat.some(r => /Subtotal · Other Supplies/.test(r)) && pr.total.length === 1, `Excel: headings, subtotals, total = ${pr.total[0]}`);
+  check(pr.heads.map(h => h.text).join('|') === 'OFFICE SUPPLIES EXPENSES|OTHER SUPPLIES EXPENSES' && pr.heads.every(h => h.span === 2 && h.cells === 5) && !pr.subs && pr.totLabel === 'TOTAL',
+    `printed PR: like the school's form, a heading in the Stock No. and Unit columns, no subtotals, TOTAL under Item Description (${JSON.stringify(pr.heads)})`);
+  const hRow = pr.flat.findIndex(r => /^OFFICE SUPPLIES EXPENSES/.test(r)) + 1;
+  check(hRow > 0 && pr.merges.includes(`A${hRow}:B${hRow}`) && pr.flat.some(r => /^OTHER SUPPLIES EXPENSES/.test(r)) && !pr.flat.some(r => /Subtotal/.test(r)) && pr.total.length === 1 && pr.flat.some(r => / \| TOTAL \| /.test(r)),
+    `Excel: the same headings (merged A:B), one total = ${pr.total[0]}`);
+  // Equipment: two groups of their own, as on the form
+  const eq = await ev(a, () => {
+    const chair = items.find(i => i.type === 'EQUIPMENT' && /furniture/i.test(i.category || ''));
+    const cam = items.find(i => i.type === 'EQUIPMENT' && !/furniture|publication|book/i.test(i.category || ''));
+    const p = { prNo: 'T-1', date: '2026-11-10', entity: 'X', lines: [
+      { code: cam.code, stockNo: cam.code, unit: 'unit', desc: cam.name, qty: 1, unitCost: 28500, exp: lineExp({ code: cam.code }) },
+      { code: chair.code, stockNo: chair.code, unit: 'unit', desc: chair.name, qty: 2, unitCost: 3200, exp: lineExp({ code: chair.code }) },
+      { code: null, stockNo: '', unit: 'Ream', desc: 'Coupon Bond, A4', qty: 21, unitCost: 215, exp: 'office' }], total: 39415 };
+    const box = document.createElement('div'); box.innerHTML = prPrintHTML(p);
+    return { cam: lineExp({ code: cam.code }), chair: lineExp({ code: chair.code }), heads: [...box.querySelectorAll('.pr-exp')].map(tr => tr.cells[0].innerText.trim()) };
+  });
+  check(eq.cam === 'semiMe' && eq.chair === 'semiFfb' && eq.heads.join('|') === 'OFFICE SUPPLIES EXPENSES|SEMI-EXPENDABLE MACHINERY AND EQUIPMENT EXPENSES|SEMI-EXPENDABLE FURNITURE, FIXTURES AND BOOKS EXPENSES',
+    `equipment: Semi-Expendable Machinery and Equipment, Semi-Expendable Furniture, Fixtures and Books (${eq.heads.join(' | ')})`);
   check(/Office Supplies\s*₱1,250\.00/.test(pr.chips) && /Other Supplies\s*₱/.test(pr.chips), `PR card: ${pr.chips.replace(/\s+/g, ' ')}`);
 
   out('4 delivered → stock by expense');

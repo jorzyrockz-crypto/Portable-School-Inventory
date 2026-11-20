@@ -278,7 +278,7 @@ try {
   check(/Appendix 60/.test(xl.sheet) && /PURCHASE REQUEST/.test(xl.sheet) && xl.sheet.includes(`>${xl.prNo}<`) && /paperSize="9"/.test(xl.sheet), 'laid out as Appendix 60 on A4, with the PR No.');
   // one expense group: its heading takes row 9, the lines start on row 10
   check(xl.g <= 1 && xl.sheet.includes(`<f>D${9 + xl.g}*E${9 + xl.g}</f>`) && xl.sheet.includes(`<f>SUM(F9:F${8 + Math.max(15, xl.n + xl.g)})</f>`), `Total Cost = Quantity × Unit Cost and the total are live formulas (${xl.g} expense group)`);
-  check(xl.padIdx < 0 || (xl.html.includes(`<td class="pr-sn c">${xl.padIdx + 1}</td>`) && xl.sheet.includes(`<t xml:space="preserve">${xl.padIdx + 1}</t>`)), 'a line with no stock no. shows its line number (print and Excel)');
+  check(xl.padIdx < 0 || (xl.html.includes(`<td class="c">${xl.padIdx + 1}</td>`) && xl.sheet.includes(`<t xml:space="preserve">${xl.padIdx + 1}</t>`)), 'a line with no stock no. shows its line number (print and Excel)');
   await ev(a, id => exportPrXlsxById(id), await ev(a, () => prList[0].id));
   await sleep(300);
   check(/saved as an Excel file/.test(await ev(a, () => document.getElementById('appToastText').innerText)), 'Excel button saves the file');
