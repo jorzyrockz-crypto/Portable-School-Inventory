@@ -12,7 +12,7 @@ rules_version = '2';
 //   schools/{schoolId}/settings/info          school & custodian info, custodian only
 //   schools/{schoolId}/members/{uid}          teachers who joined (each writes their own)
 //   schools/{schoolId}/releases/{id}          RIS / ICS releases to teachers (teacher reads own)
-//   schools/{schoolId}/teacherReports/{id}    received / problem / return / count, from teachers (own only)
+//   schools/{schoolId}/teacherReports/{id}    received / problem / return / count / life, from teachers (own only)
 //   schools/{schoolId}/stock/{code}           supplies left (name, unit, qty), for teachers who were approved
 //   schools/{schoolId}/stockHolds/{requestId} "I took this" from a teacher, until the custodian confirms
 //   schools/{schoolId}/invites/{code}         the current invite link (after "New invite link")
@@ -687,7 +687,7 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['uid', 'name', 'kind', 'releaseId', 'releaseNo', 'code', 'desc',
                                                    'units', 'reason', 'note', 'status', 'createdMs', 'createdAt'])
           && request.resource.data.uid == request.auth.uid
-          && request.resource.data.kind in ['received', 'problem', 'return', 'count']   // count: their year-end count
+          && request.resource.data.kind in ['received', 'problem', 'return', 'count', 'life']   // count: their year-end count; life: "still working" past its useful life
           && request.resource.data.status == 'open'
           && request.resource.data.name is string && request.resource.data.name.size() <= 80
           && shortText(request.resource.data.desc, 160)

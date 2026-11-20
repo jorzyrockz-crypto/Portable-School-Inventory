@@ -633,6 +633,33 @@ Each tagged unit's card (Property Numbers) has **Date acquired** and **Estimated
 - They fill the Date Acquired and Estimated Useful Life columns on the Property Card, RegSPI, PAR, ICS/ITR/PTR and IIRUP. A card's first line is the real receipt date instead of *Balance forward* when every unit has one.
 - **Depreciation** (PPE only, ₱50,000 and up): straight-line, 5 % residual value, charged monthly from the month after acquisition. The unit card shows the carrying amount, and the IIRUP fills *Accumulated Depreciation* and *Carrying Amount* with a total row. Semi-expendable property is expensed when issued, so it shows none.
 
+### Useful life tracking (since November 2026)
+
+Every tagged ICS / PAR unit gets an **end of useful life**: its date acquired plus its useful life. When there is no date acquired, the ICS / PAR date is used, or else the day the unit was added. When no useful life is written, the usual life for its category is used. Either fallback marks the unit *est.* Lost and unserviceable units are left out. Each unit is one of:
+- *Past* its useful life (still to check);
+- *Ending soon*, within 12 months;
+- *Checked*: past, but marked still serviceable in the last year;
+- *In use*;
+- *No dates*.
+
+- **Home → Useful life** card: past · ending within 12 months · the cost to replace them at the original cost, with a coloured bar. Home's *Needs your attention* also has a row. The card opens the **Useful life** sheet (also in More), which has:
+  - tiles that act as filters;
+  - *To replace in the next 12 months* (₱, for next year's PPMP / APP);
+  - search, and the filters *Due*, *Past*, *Ending soon*, *Checked*, *No dates* and *All*.
+- **Each unit** in the sheet has:
+  - **Still serviceable**: it stays in use and on its ICS / PAR, and the app asks again in a year;
+  - **Unserviceable**: marks it U so it goes on the IIRUP; the toast has an IIRUP button;
+  - **Dates**: opens the item's units to set the date acquired and useful life.
+
+  **Use the ICS / PAR date as the date acquired** fills the date for units that have none. **Print this list** gives *Property past or near the end of estimated useful life*, signed Prepared by / Noted.
+- **Once a month** the custodian gets a notification (*3 units past their useful life · 2 end this month · ₱… to replace*). Year-end & reminders has a Useful life section.
+- **Teachers.** On a teacher's phone, a unit past its useful life (going by the dates on the slip) shows **Past its useful life (ended Jan 2024). Is it still working?**
+  - **Working** sends a short report. The custodian's device marks the unit still serviceable, asks again in a year, and notifies the custodian (*Ana Reyes: still working*).
+  - **Not working** opens Report a problem with *Not working · beyond repair* picked.
+
+  My Items' *Needs your attention* lists them too, and so does the person's card on the custodian's Teachers page. The new report kind (`life`) needs the updated `firestore.rules` to be published.
+- **School Head**: the School tab has a *Useful life of tagged units* bar (past, ending within 12 months, still serviceable) with the replacement estimate. *Needs your attention* lists units past their useful life. These numbers come from `dashboard/summary` (`life`), so there are no extra reads.
+
 The inventory committee, COA representative, fund cluster and similar names are remembered for next year; *As at* is always today unless changed. The cards and the Stock Card start with *Balance forward* on the chosen date and are worked out backwards from today's quantity, so the last line always matches Inventory. Since November 2026 the change history also keeps how much each item changed in bulk saves (deliveries, imports, ICS scans), so those show up as receipts.
 
 ## A teacher's My Items
@@ -852,6 +879,7 @@ node teacher-remove.mjs             # Remove from the school / Add back with the
 node release-serials.mjs            # Release form: Useful life per equipment line (saved on units, the release and the ICS), serial numbers required for items that have them (missing, typed twice, already on another unit), Has serial numbers untick remembered per item
 node head-dashboard.mjs             # School Head screen: Needs your attention, Waiting N days + reminder, Approve all, search decisions, spending, condition, trends, supply usage, who holds what (tap, print), monthly summary print, tabs (Approve · School · People · History), two columns inside each tab on a laptop
 node teachers-attention.mjs         # Teachers page: Needs your attention for everyone on a computer (lost + relief days, unconfirmed, asked back, old ICS, unserviceable), each person's card, the list row, All clear, phone width
+node useful-life.mjs                # useful life: end dates (date acquired / ICS date, est.), Home card + attention row, the sheet (Still serviceable, Unserviceable, Dates, Use the ICS date, Print), monthly notification, teacher Working / Not working, Teachers page, School Head
 node teacher-dashboard.mjs          # teacher's My Items: tiles, Needs your attention (slips, asked back, reports, repair, old slips, overdue books), Clearance: Return everything, then nothing under their name
 node home-attention.mjs             # custodian Home: Needs your attention (lost + relief days, waiting requests/reports, unconfirmed slips, ICS renewal, bond, repairs, stock), Show all, taps, hidden for teachers
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
