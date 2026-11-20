@@ -441,7 +441,7 @@ export function createBackend({ autoApprove = true } = {}) {
       deny(`read ${sub}`, { path, uid: ctx.uid });
     }
     if (sub === 'books') { if (canView(ctx, sid) || isLibrarian(ctx, sid)) return; deny('read books', { path }); }
-    if (sub === 'bookMeta' || sub === 'bookIndex') { if (canView(ctx, sid) || isMember(ctx, sid)) return; deny(`read ${sub}`, { path, uid: ctx.uid }); }
+    if (sub === 'bookMeta' || sub === 'bookIndex') { if (canView(ctx, sid) || isMember(ctx, sid) || isHeadOf(ctx, sid)) return; deny(`read ${sub}`, { path, uid: ctx.uid }); }
     if (sub === 'bookMoves') {
       if (canView(ctx, sid) || isLibrarian(ctx, sid)) return;
       if (single) { const d = store.get(path); if (d && d.toUid === ctx.uid) return; deny('get bookMove', { path }); }
