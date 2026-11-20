@@ -3,7 +3,9 @@
 // autoApprove (default): a teacher who joins is approved at once, as if the custodian tapped
 // Approve, so suites about other things need no approval step. Pass { autoApprove: false } to
 // test approvals.
-export function createBackend({ autoApprove = true } = {}) {
+// leavePilot: the schools where Leave (CS Form 6) is on, as in firestore.rules leavePilot();
+// pass 'any' to allow it for every school (the test school's id is made up at sign-up).
+export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWcejYDWhO'] } = {}) {
   const store = new Map();
   const users = new Map();
   const googleUsers = new Map();
@@ -57,6 +59,7 @@ export function createBackend({ autoApprove = true } = {}) {
     const inv = typeof data.invite === 'string' && data.invite && store.get(`schools/${sid}/invites/${data.invite}`);
     return !!(inv && inv.active === true);
   };
+  const leaveOn = sid => leavePilot === 'any' || (Array.isArray(leavePilot) && leavePilot.includes(sid));
   const changedKeys = (before, after) => [...new Set([...Object.keys(before), ...Object.keys(after)])]
     .filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k]));
   // The Librarian: an active teacher listed in school.librarians (firestore.rules isLibrarian).
@@ -202,7 +205,7 @@ export function createBackend({ autoApprove = true } = {}) {
       return;
     }
     if (p.length === 4 && sub === 'approvals') {
-      const bodyOk = d => ['ris', 'writeoff', 'count', 'books'].includes(d.kind) && typeof d.refId === 'string' && d.refId.length > 0 && d.refId.length <= 120 &&
+      const bodyOk = d => ['ris', 'writeoff', 'count', 'books', 'leave'].includes(d.kind) && typeof d.refId === 'string' && d.refId.length > 0 && d.refId.length <= 120 &&
         str(d.title ?? '', 160) && str(d.summary ?? '', 600) && Array.isArray(d.lines ?? []) && (d.lines ?? []).length <= 200;
       if (kind === 'create') {
         if (!(isStaff(ctx, sid) && school(sid).headUid && data.status === 'pending' && !('decision' in data) && data.byUid === ctx.uid && bodyOk(data))) deny('approval create', { path, status: data.status });
@@ -352,6 +355,22 @@ export function createBackend({ autoApprove = true } = {}) {
           (before.status === 'out' && data.status === 'out' && ch.every(k => ['retSaidMs', 'updatedAt'].includes(k))))) return;
       deny('loan update', { path, ch, status: data.status });
     }
+    if (p.length === 4 && sub === 'leaves') {
+      if (!leaveOn(sid)) deny('leave: not a pilot school', { path });
+      const okBody = ['applied', 'sh', 'approved', 'hold', 'returned', 'review', 'handed', 'signed', 'done', 'declined', 'cancelled'].includes(data.status) &&
+        typeof (data.uid ?? '') === 'string' && str(data.name ?? '', 120) && (data.name ?? '').length > 0 && str(data.reason ?? '', 600) && str(data.type ?? '', 12) &&
+        Array.isArray(data.log ?? []) && (data.log ?? []).length <= 80;
+      if (!okBody) deny('leave body', { path, status: data.status });
+      if (kind === 'create') {
+        if (isStaff(ctx, sid) || (isMember(ctx, sid) && data.uid === ctx.uid && data.status === 'applied' && data.by === 'teacher')) return;
+        deny('leave create', { path });
+      }
+      const ch = changedKeys(before, data);
+      if (isStaff(ctx, sid) && (data.uid ?? '') === (before.uid ?? '')) return;
+      if (isMember(ctx, sid) && before.uid === ctx.uid && before.status === 'applied' && data.status === 'cancelled' &&
+          ch.every(k => ['status', 'cancelledMs', 'log', 'updatedAt'].includes(k))) return;
+      deny('leave update', { path, ch, status: data.status });
+    }
     if (p.length === 4 && sub === 'classBooks') {
       if (isStaff(ctx, sid)) return;
       if (isMember(ctx, sid) && data.uid === ctx.uid && p[3] === `${data.sy ?? ''}_${ctx.uid}` && (!before.uid || before.uid === ctx.uid) &&
@@ -454,6 +473,13 @@ export function createBackend({ autoApprove = true } = {}) {
       if (!filters.some(f => ['borrowerUid', 'keeperUid'].includes(f.field) && f.op === '==' && f.value === ctx.uid)) deny('list loans', { path, filters });
       return;
     }
+    if (sub === 'leaves') {
+      if (!leaveOn(sid)) deny('read leaves: not a pilot school', { path });
+      if (canView(ctx, sid) || isHeadOf(ctx, sid)) return;
+      if (single) { const d = store.get(path); if (d && d.uid === ctx.uid) return; deny('get leave', { path }); }
+      if (!filters.some(f => f.field === 'uid' && f.op === '==' && f.value === ctx.uid)) deny('list leaves', { path, filters });
+      return;
+    }
     if (sub === 'classBooks') {
       if (canView(ctx, sid)) return;
       if (single) { const d = store.get(path); if (!d || d.uid === ctx.uid) return; deny('get classBooks', { path }); }
@@ -506,7 +532,7 @@ export function createBackend({ autoApprove = true } = {}) {
     let after = kind === 'set' || !before ? resolveTS(data) : { ...before, ...resolveTS(data) };
     const p = parts(path);
     // members/requests/reports/holds rules look at the whole document; others at what was sent
-    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog', 'staff', 'approvals', 'suggestions', 'loans', 'bookMoves', 'classBooks'].includes(p[2]);
+    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog', 'staff', 'approvals', 'suggestions', 'loans', 'bookMoves', 'classBooks', 'leaves'].includes(p[2]);
     checkWrite(before ? 'update' : 'create', path, whole ? after : data, before || {}, ctx);
     if (autoApprove && !before && p.length === 4 && p[2] === 'members' && after.status === 'pending') after = { ...after, status: 'active', approvedMs: Date.now() };
     store.set(path, after);

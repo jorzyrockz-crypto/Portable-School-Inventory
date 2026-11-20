@@ -387,6 +387,26 @@ Books are scattered across rooms, so the app keeps one list of every title and *
 
 Books added while exploring (before signing in) are offered to the school's account at the first sign-in. **Publish `firestore.rules` again** after this update (new: `books`, `bookMeta`, `bookIndex`, `bookMoves`, `loans`, `classBooks`, and the librarian). Until you do, the Books page and the teachers' Library show a permissions error.
 
+### Leave applications (CS Form 6) · pilot
+
+A pilot of the first **admin tool for the School Administrative Officer (AO)**. It is on only at the pilot school (Testing ES, school code `97JbEODfGJhWcejYDWhO`, listed in `LEAVE_PILOT` in `index.html` and in `leavePilot()` in `firestore.rules`). Other schools see no Leave tab, page or What's new note, and the rules refuse leave documents for them. The AO uses the property custodian's account.
+
+It follows the school's own process:
+
+| # | Who | In the app | Status |
+|---|---|---|---|
+| 1 | Teacher (or the AO, for a paper form) | **Leave** tab → **Apply for leave**: type of leave (6.A) and details (6.B), dates and working days (6.C), commutation (6.D), and what to use: Vacation Service Credits, Local Service Credits, VL/SL, ₱250 for a whole-day absence, or without pay | Applied |
+| 2 | AO | **Leave** page → **Receive**: the date it came in, then the recommended type of leave, days with and without pay, credits and memo number. **Send to the School Head** (or *Approved on paper* when there is no School Head in the app). **Decline** needs a reason | With the School Head |
+| 3 | School Head | **Approve** tab: *Leave application* card, **Approve**, or **Return** with a note (the AO fixes it and sends it again) | Approved / Returned |
+| 4 | AO | **Prepare Form 6**: name, office, position, salary (optional), 7.A leave credits, the service credits used and their memo, 7.C days, the AO and School Head names. **Send to the teacher**. A ₱250 day: **Keep Form 6 on hold** (it can be sent later) | Form 6 ready / On hold |
+| 5 | Teacher or AO | **Print Form 6** (CS Form No. 6, Revised 2020, one A4 page). The teacher signs and hands it in; the AO taps **Handed in** | Handed in |
+| 6 | AO | **Signed by the School Head** | Signed |
+| 7 | AO | **Received by the Division** with the date on the received stamp (and a tracking number) | Done |
+
+The teacher is told at each step and sees a progress bar; the AO is told about new applications and the School Head's decisions, and Home lists the applications to act on. Each application keeps its history. ₱250 is allowed twice a month per person (a third is refused). A teacher reads only their own applications and may cancel one while it is still *Applied*.
+
+Data: `schools/{schoolId}/leaves/{id}`; the School Head's decision goes through `approvals` (kind `leave`). **Publish `firestore.rules` again** to turn it on. Next: leave cards with opening balances and credits (VSC, Local Service Credits, VL/SL), then the ₱250 log and turnover to the Faculty President.
+
 ### School stock and “I took this” (teachers)
 
 Teachers kept asking *“Sir, meron pa ba nito?”*. The teacher's phone now has a third tab, **Stock**:
