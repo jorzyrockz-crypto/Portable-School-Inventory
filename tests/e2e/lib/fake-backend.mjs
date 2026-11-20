@@ -220,6 +220,20 @@ export function createBackend({ autoApprove = true } = {}) {
           ['approved', 'returned'].includes(data.status) && dec.byUid === ctx.uid && str(dec.byName ?? '', 80) && str(dec.note ?? '', 300)) return;
       deny('approval update', { path, ch });
     }
+    if (p.length === 4 && sub === 'suggestions') {
+      const bodyOk = d => Array.isArray(d.ops) && d.ops.length > 0 && d.ops.length <= 150 && Array.isArray(d.lines ?? []) && (d.lines ?? []).length <= 150 &&
+        str(d.title ?? '', 160) && str(d.byName ?? '', 80);
+      if (kind === 'create') {
+        if (!(isHeadOf(ctx, sid) && data.byUid === ctx.uid && data.status === 'pending' && !('decision' in data) && bodyOk(data))) deny('suggestion create', { path });
+        return;
+      }
+      const ch = changedKeys(before, data);
+      if (isHeadOf(ctx, sid) && before.byUid === ctx.uid && before.status === 'pending' && ch.every(k => ['status', 'updatedAt'].includes(k)) && data.status === 'cancelled') return;
+      const dec = data.decision || {};
+      if (isStaff(ctx, sid) && before.status === 'pending' && ch.every(k => ['status', 'decision', 'updatedAt'].includes(k)) &&
+          ['accepted', 'declined'].includes(data.status) && dec.byUid === ctx.uid && str(dec.note ?? '', 300)) return;
+      deny('suggestion update', { path, ch });
+    }
     if (p.length === 4 && sub === 'dashboard') {
       if (!(isStaff(ctx, sid) && p[3] === 'summary')) deny('dashboard write', { path });
       return;
@@ -379,7 +393,8 @@ export function createBackend({ autoApprove = true } = {}) {
       if (!filters.some(f => f.field === 'uid' && f.op === '==' && f.value === ctx.uid)) deny('list requests', { path, filters });
       return;
     }
-    if (CUSTODIAN_ONLY.includes(sub)) { if (!canView(ctx, sid)) deny(`read ${sub}`, { path }); return; }
+    if (CUSTODIAN_ONLY.includes(sub)) { if (!canView(ctx, sid) && !isHeadOf(ctx, sid)) deny(`read ${sub}`, { path }); return; }
+    if (sub === 'suggestions') { if (!canView(ctx, sid) && !isHeadOf(ctx, sid)) deny('read suggestions', { path }); return; }
     if (sub === 'turnovers') {
       if (canView(ctx, sid) || isHeadOf(ctx, sid) || (single && p[3].split('-')[0] === ctx.uid)) return;
       deny('read turnovers', { path, uid: ctx.uid });
@@ -458,7 +473,7 @@ export function createBackend({ autoApprove = true } = {}) {
       return;
     }
     if (sub === 'releases') {
-      if (canView(ctx, sid)) return;
+      if (canView(ctx, sid) || isHeadOf(ctx, sid)) return;
       if (single) { const d = store.get(path); if (d && d.teacherUid === ctx.uid) return; deny('get release', { path }); }
       if (!filters.some(f => f.field === 'teacherUid' && f.op === '==' && f.value === ctx.uid)) deny('list releases', { path, filters });
       return;
@@ -491,7 +506,7 @@ export function createBackend({ autoApprove = true } = {}) {
     let after = kind === 'set' || !before ? resolveTS(data) : { ...before, ...resolveTS(data) };
     const p = parts(path);
     // members/requests/reports/holds rules look at the whole document; others at what was sent
-    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog', 'staff', 'approvals', 'loans', 'bookMoves', 'classBooks'].includes(p[2]);
+    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog', 'staff', 'approvals', 'suggestions', 'loans', 'bookMoves', 'classBooks'].includes(p[2]);
     checkWrite(before ? 'update' : 'create', path, whole ? after : data, before || {}, ctx);
     if (autoApprove && !before && p.length === 4 && p[2] === 'members' && after.status === 'pending') after = { ...after, status: 'active', approvedMs: Date.now() };
     store.set(path, after);

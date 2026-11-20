@@ -187,7 +187,7 @@ try {
   out(`denied ${JSON.stringify(backend.denied.map(d => d.split(' · ')[0]))}`);
   check(deniedBefore === 7, 'the stand-in refused only the 7 forbidden writes and reads tried above');
   // Removing the head ends their access: their phone's PR listener may be refused once before it stops.
-  check(backend.denied.slice(deniedBefore).every(d => /^read (purchaseRequests|turnovers|approvals|dashboard)/.test(d)), 'after removal: only the removed head’s reads are refused');
+  check(backend.denied.slice(deniedBefore).every(d => /^read (purchaseRequests|turnovers|approvals|dashboard|suggestions)/.test(d)), 'after removal: only the removed head’s reads are refused');
 } catch (e) {
   out('FAIL: exception', e && e.stack || e);
   process.exitCode = 1;
