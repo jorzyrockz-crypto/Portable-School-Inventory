@@ -59,16 +59,18 @@ window.FirebaseSDK = (() => {
   function overlay(path, docs) {
     const map = new Map(docs.map(d => [d.id, { ...d }]));
     let pending = false;
+    const pendingIds = new Set();   // per document, like Firestore
     queue.forEach(w => w.ops.forEach(([kind, p, data]) => {
       const parts = p.split('/');
       const id = parts.pop();
       if (parts.join('/') !== path) return;
       pending = true;
+      pendingIds.add(id);
       if (kind === 'delete') { map.delete(id); return; }
       const before = map.get(id);
       map.set(id, { id, data: kind === 'set' || !before ? resolveTS(data) : { ...before.data, ...resolveTS(data) } });
     }));
-    return { docs: [...map.values()], pending };
+    return { docs: [...map.values()], pending, pendingIds };
   }
 
   // ---- billed reads + the phone's document cache ----
@@ -232,10 +234,11 @@ window.FirebaseSDK = (() => {
             }
             cached = docs;
           }
-          let pending = false;
+          let pending = false, pendingIds = new Set();
           if (!isDoc) {
             const o = overlay(q.path, docs);
             pending = o.pending;
+            pendingIds = o.pendingIds;
             docs = o.docs.filter(d => filters.every(f => passes(d, f)));
           }
           const sig = JSON.stringify([docs, pending, offline]);
@@ -243,7 +246,7 @@ window.FirebaseSDK = (() => {
             last = sig;
             const meta = { hasPendingWrites: pending, fromCache: offline };
             if (isDoc) next(snapDoc(docs[0] || { id: q.id, data: null }, pending, offline));
-            else next({ docs: docs.map(d => snapDoc(d, pending, offline)), metadata: meta });
+            else next({ docs: docs.map(d => snapDoc(d, pendingIds.has(d.id), offline)), metadata: meta });
           }
         } catch (e) {
           if (onError) onError(e);

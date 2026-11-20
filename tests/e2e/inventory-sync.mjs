@@ -73,7 +73,8 @@ try {
   await setOffline(a, true);
   await ev(a, c => updateItemQty(items.find(i => i.code === c), 5), code2);
   await sleep(1500);
-  check(await chip(a) === 'Offline · syncs later', 'offline chip');
+  check(await chip(a) === 'Offline · 1 to sync', 'offline chip counts the change waiting');
+  check(await ev(a, c => itemUnsynced(c), code2), 'the item is marked Not synced yet');
   check(qtyOnline(code2) !== 5, 'not online yet');
   check(await ev(a, c => JSON.parse(localStorage.getItem('custodian_app_cse_2027_v1'))[c].qty === 5, code2), 'offline edit saved on the phone');
   await setOffline(a, false);

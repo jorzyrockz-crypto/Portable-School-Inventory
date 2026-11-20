@@ -127,6 +127,7 @@ One window for everything about an item. It opens from **Inventory** (tap a row)
 - No extra cloud reads: everything shown is already on the device.
 - Property numbers still open their own window; they move into the preview as a **Units** tab in a later update.
 - `tests/e2e/item-preview.mjs` checks the tabs, chips, People and History, editing in place, the openers, view-only mode, the phone sheet and the computer side panel.
+- `tests/e2e/unsynced-marks.mjs` checks the Not synced yet marks: rows, Catalog, Item preview, an offline release slip, a delivery, the top chip count, and that they clear once synced.
 
 ## Catalog
 
@@ -814,6 +815,11 @@ CustodianPro is an installable Progressive Web App:
   dashboard tools and a reminder banner when changes haven't been backed up for 7 days
   (1 day if you have never made a backup). **Restore** shows what a backup contains before
   replacing anything, and offers **Undo** right after.
+- **Not synced yet marks:** a change saved on the custodian's phone that the school account
+  doesn't have yet (offline, or still sending) shows a small blue cloud on the item's row in
+  Inventory and Catalog, a *Not synced yet* chip in the Item preview, and a mark on deliveries and
+  slips (RIS / ICS / PAR) still waiting. Offline, the top chip says how many changes wait
+  (*Offline · 3 to sync*). The marks go away by themselves when the change reaches the account.
 
 ## Development
 
@@ -898,6 +904,7 @@ node head-dashboard.mjs             # School Head screen: Needs your attention, 
 node teachers-attention.mjs         # Teachers page: Needs your attention for everyone on a computer (lost + relief days, unconfirmed, asked back, old ICS, unserviceable), each person's card, the list row, All clear, phone width
 node useful-life.mjs                # useful life: end dates (date acquired / ICS date, est.), Home card + attention row, the sheet (Still serviceable, Unserviceable, Dates, Use the ICS date, Print), monthly notification, teacher Working / Not working, Teachers page, School Head
 node item-preview.mjs               # the Item preview: computer side panel beside the list, chips, Overview / People / History tabs, Edit details in place (Save, Cancel, Esc), More menu, openers (Catalog, notification, teacher's page, Useful life, See everything), view only, phone bottom sheet
+node unsynced-marks.mjs             # Not synced yet marks: offline edit marks only that row (Inventory, Catalog, Item preview chip), top chip counts it, offline release slip + delivery marked, all clear when back online
 node teacher-dashboard.mjs          # teacher's My Items: tiles, Needs your attention (slips, asked back, reports, repair, old slips, overdue books), Clearance: Return everything, then nothing under their name
 node home-attention.mjs             # custodian Home: Needs your attention (lost + relief days, waiting requests/reports, unconfirmed slips, ICS renewal, bond, repairs, stock), Show all, taps, hidden for teachers
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
