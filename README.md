@@ -454,6 +454,16 @@ The first part of **School Planning** (plan: `docs/plans/school-calendar-and-ppa
 
 Data: `schools/{schoolId}/planYears/{sy}` (one per school year: `start`, `end`, `memo`, `terms[]` with `blocks[]`, `days[]`, `people[]`) and `schools/{schoolId}/ppas/{id}` (`kind`: `event`, `program`, `project` or `activity`; `parentId`, dates, `who[]`, `team[]`, `budget`, `source`, `status`, `decision`, `log[]`). Everyone at the school reads them; the School Head and the AO write them; a teacher may only create their own proposal and change or withdraw it while it waits or was returned. **Publish `firestore.rules` again** to turn it on.
 
+#### Reading the calendar from a PDF or photo
+
+**Read a calendar PDF or photo** (on the setup card of a school year that is not set up yet) or **Read dates from a PDF or photo** (under the add buttons) reads any calendar paper: the DepEd Order on the school calendar, a region or division memo, or the school's own calendar (plan: `docs/plans/calendar-from-pdf.md`). The School Head and the AO use it; teachers don't.
+
+- **Sources:** a typed PDF (read with [PDF.js](https://mozilla.github.io/pdf.js/), about 2 MB, downloaded the first time and then offline; up to 30 pages), a scanned PDF or a photo (read with the Scan ICS text reader), or pasted text. Everything is read on the phone; nothing is uploaded.
+- **What it finds:** every line with a date (`June 8, 2026`, `June 8–12`, `Dec. 21, 2026 to Jan. 3, 2027`, `8 June 2026`, `June 1, 8 and 15`, `06/08/2026`, a month heading followed by days). A missing year is June to December = the first year of the school year, January to May = the second. The kind comes from the words: holiday (regular or special), class suspension, no classes, break, exams, INSET, special working day, otherwise DepEd activity (a DepEd or division paper) or school event (a school's own calendar). It also finds the school year (`SY 2027–2028`), the order or memo, the first and last day (*opening of classes*, *end of school year*) and the terms.
+- **Check:** every date as a card to tick or untick and change (title, kind, dates, note). Dates already on the calendar are marked *Already there* and unticked; so are dates outside the school year and the term lines (used for the terms). For a school year not set up yet, the first and last day are filled in and the terms are saved with it.
+- **Save:** the dates go on the school year (`src: 'pdf'`, no notification for each one; the DepEd update never touches them); school events become events.
+- **For every school (admin):** the Testing ES custodian can **Publish for every school**: `depedCalendars/{sy}` (`v`, `memo`, `start`, `end`, `terms`, `days[{k, f, t, n, s, nat}]`). Every school then gets **Load the DepEd calendar** for that school year (or **Update the DepEd calendar** if it loaded an older list); the published list is used when it is newer than the one built into the app. Rules: anyone signed in can get one school year; only the admin writes.
+
 #### Printing the calendar (wall calendar)
 
 **Print** on the School calendar (the AO's Calendar page, the School Head's Plan tab and the teachers' Calendar tab) opens a print sheet with a live preview of each sheet (plan: `docs/plans/monthly-calendar-print.md`). Everyone can print.

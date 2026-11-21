@@ -190,6 +190,31 @@ for (const [src, dest] of [
 }
 
 // ---------------------------------------------------------------------------
+// 4c. PDF reading for "Read a calendar PDF" (PDF.js, Apache-2.0, legacy build for older
+//     phones). ~2 MB, NOT precached: kept in its own cache the first time a PDF is read.
+//     The folder name carries the version, like the text reader above.
+// ---------------------------------------------------------------------------
+const PDF_VERSION = JSON.parse(read(path.join(NM, 'pdfjs-dist', 'package.json'))).version;
+const PDF_DIR = path.join(ASSETS, 'pdf');
+fs.rmSync(PDF_DIR, { recursive: true, force: true });
+const PDFJS = path.join(PDF_DIR, `pdfjs-${PDF_VERSION}`);
+if (!read(path.join(ROOT, 'index.html')).includes(`assets/pdf/pdfjs-${PDF_VERSION}/`)) {
+  throw new Error(`index.html: update PDF_BASE to pdfjs ${PDF_VERSION}`);
+}
+fs.mkdirSync(path.join(PDFJS, 'wasm'), { recursive: true });
+for (const [src, dest] of [
+  ['pdfjs-dist/legacy/build/pdf.min.mjs', 'pdf.min.mjs'],
+  ['pdfjs-dist/legacy/build/pdf.worker.min.mjs', 'pdf.worker.min.mjs'],
+  ['pdfjs-dist/LICENSE', 'LICENSE.txt'],
+  // image decoders for scanned pages (JBIG2 black-and-white scans, JPEG 2000) and colour profiles
+  ['pdfjs-dist/wasm/jbig2.wasm', 'wasm/jbig2.wasm'],
+  ['pdfjs-dist/wasm/openjpeg.wasm', 'wasm/openjpeg.wasm'],
+  ['pdfjs-dist/wasm/qcms_bg.wasm', 'wasm/qcms_bg.wasm'],
+]) {
+  fs.copyFileSync(path.join(NM, src), path.join(PDFJS, dest));
+}
+
+// ---------------------------------------------------------------------------
 // 5. Service worker with a precache manifest
 // ---------------------------------------------------------------------------
 const listFiles = (dir) =>
@@ -208,7 +233,7 @@ const precache = [
   path.join(ROOT, 'firebase-config.js'), // also network-first in sw.js, so edits apply without a rebuild
   // Store screenshots (manifest "screenshots") are only shown by Chrome's install sheet, and the
   // large brand PNGs only by link previews / the README; the app itself uses banner.webp.
-  ...listFiles(ASSETS).filter((p) => ![OCR_DIR, CLOUD_DIR, SHOTS_DIR, ART_DIR].some((d) => p.startsWith(d + path.sep)))
+  ...listFiles(ASSETS).filter((p) => ![OCR_DIR, PDF_DIR, CLOUD_DIR, SHOTS_DIR, ART_DIR].some((d) => p.startsWith(d + path.sep)))
     .filter((p) => !(p.startsWith(BRAND_DIR + path.sep) && p.endsWith('.png'))),
 ].filter((p) => fs.existsSync(p));
 
@@ -232,6 +257,7 @@ const swTemplate = read(path.join(ROOT, 'src', 'sw.template.js'));
 const sw = swTemplate
   .replace('__CACHE_VERSION__', version)
   .replace('__OCR_VERSION__', OCR_VERSION)
+  .replace('__PDF_VERSION__', PDF_VERSION)
   .replace('__PRECACHE_URLS__', JSON.stringify(urls, null, 2).replace(/\n/g, '\n  '));
 fs.writeFileSync(path.join(ROOT, 'sw.js'), sw);
 

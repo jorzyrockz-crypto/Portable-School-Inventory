@@ -10,6 +10,7 @@
  *   kept in their own cache the first time a print uses them.
  * - Text recognition for "Scan ICS" (assets/ocr/, ~7 MB) is not precached; it is kept
  *   in its own cache the first time it is used, so app updates don't download it again.
+ * - The PDF reader for "Read a calendar PDF" (assets/pdf/, ~2 MB) is kept the same way.
  * - Tapping a phone notification (shown by the page while the app is open or was used
  *   recently; there is no push server) focuses CustodianPro and opens that notification.
  * - The page asks for this worker's version ("get-version") to tell whether an update
@@ -19,7 +20,7 @@
  *   downloaded right away and a phone notification says it is ready.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
-const CACHE = 'custodianpro-cfb772db95c7';
+const CACHE = 'custodianpro-f8573b8c18e1';
 const PRECACHE_URLS = [
     "./",
     "./index.html",
@@ -55,6 +56,7 @@ const PRECACHE_URLS = [
     "./assets/vendor/qrcode.js"
   ];
 const OCR_CACHE = 'custodianpro-ocr-7.0.0';
+const PDF_CACHE = 'custodianpro-pdf-6.5.438';
 const ART_CACHE = 'custodianpro-calart-1';   // bump when a picture in assets/cal-art/ changes
 const NETWORK_TIMEOUT_MS = 3000;
 
@@ -70,7 +72,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(
-        keys.filter((k) => k.startsWith('custodianpro-') && k !== CACHE && k !== OCR_CACHE && k !== ART_CACHE).map((k) => caches.delete(k))
+        keys.filter((k) => k.startsWith('custodianpro-') && k !== CACHE && k !== OCR_CACHE && k !== PDF_CACHE && k !== ART_CACHE).map((k) => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
@@ -116,7 +118,7 @@ async function handleConfig(request) {
 
 async function handleAsset(request) {
   const p = new URL(request.url).pathname;
-  const cache = await caches.open(p.includes('/assets/ocr/') ? OCR_CACHE : p.includes('/assets/cal-art/') ? ART_CACHE : CACHE);
+  const cache = await caches.open(p.includes('/assets/ocr/') ? OCR_CACHE : p.includes('/assets/pdf/') ? PDF_CACHE : p.includes('/assets/cal-art/') ? ART_CACHE : CACHE);
   const cached = await cache.match(request, { ignoreSearch: true });
   if (cached) return cached;
   const response = await fetch(request);
