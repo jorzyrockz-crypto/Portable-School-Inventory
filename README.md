@@ -421,6 +421,20 @@ Data: `schools/{schoolId}/leaves/{id}` and `schools/{schoolId}/leaveCards/{uid o
 
 **Applying for one's own leave:** the AO (custodian account) uses **Apply for my leave** (`by: 'self'`): it is received and sent to the School Head like any other. The School Head has a **Leave** tab (`by: 'head'`): the AO receives it and prepares Form 6 with the Division as the recommending and approving officials (7.B, 7.C); it does not go to the Approve tab.
 
+### School calendar · pilot
+
+The first part of **School Planning** (plan: `docs/plans/school-calendar-and-ppa.md`). Like Leave, it is on only at the pilot school (Testing ES, `97JbEODfGJhWcejYDWhO`, listed in `PLAN_PILOT` in `index.html` and in `planPilot()` in `firestore.rules`); other schools see nothing and the rules refuse its documents.
+
+- **Who:** the School Head (**Plan** tab) and the AO (custodian account or an assistant: **More → School calendar**, or **Calendar** in the computer sidebar) set it up and change it. Teachers read it in a **Calendar** tab.
+- **Set up a school year:** **Load the DepEd calendar** fills in SY 2026–2027 from DepEd Order No. 009, s. 2026 (June 8, 2026 to April 8, 2027, three terms with their opening, instructional and end-of-term blocks, exams, the Christmas break, Brigada Eskwela and the end-of-school-year rites) and the holidays of Proclamation No. 1006 (2026) and No. 1427 (2027). Every date can be changed. **School year dates** changes the first and last day and the terms; another school year can be typed in by hand.
+- **No classes / a date:** class suspensions, local holidays, days without classes, holidays, breaks, exams, INSET, DepEd activities and special working days. Kinds marked *no classes* are left out of the class-day count.
+- **School events:** title, dates, all day or a time, venue and a note. **Change**, **Cancel the event** (it stays on the calendar, struck out), **Not cancelled**, or **Remove**. Each event keeps its history.
+- **Views:** **Agenda** (what is coming up, by day, with *Going on now* and *Earlier this school year*) or **Month** (dots for each kind, red for days without classes; tap a day to see its entries and its class-day number). Filters: All, School events, No classes, DepEd. A strip shows where today falls (*Term 2 · Instructional*, *Class day 112 of 201*, *No classes today*, *Weekend*) and how many class days are left.
+- **Class days:** Monday to Friday from the first to the last day, minus the days without classes, by month and by term, checked against the 200 to 220 days of R.A. No. 7797 (as amended by R.A. No. 11480). The DepEd calendar gives 201.
+- **Notifications:** everyone but the person who made the change is told when an event is added, moved, cancelled or put back, and when a day without classes is added.
+
+Data: `schools/{schoolId}/planYears/{sy}` (one per school year: `start`, `end`, `memo`, `terms[]` with `blocks[]`, `days[]`) and `schools/{schoolId}/ppas/{id}` (for now `kind: 'event'`; programs, projects and activities come next). Everyone at the school reads them; the School Head and the AO write them. **Publish `firestore.rules` again** to turn it on.
+
 ### School stock and “I took this” (teachers)
 
 Teachers kept asking *“Sir, meron pa ba nito?”*. The teacher's phone now has a third tab, **Stock**:
