@@ -406,15 +406,29 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
     if (p.length === 4 && sub === 'planYears') {
       if (!planOn(sid)) deny('plan year: not a pilot school', { path });
       if ((isStaff(ctx, sid) || isHeadOf(ctx, sid)) && data.sy === p[3] && SY_RE.test(p[3]) && Array.isArray(data.terms ?? []) && (data.terms ?? []).length <= 4 &&
-          Array.isArray(data.days ?? []) && (data.days ?? []).length <= 400 && str(data.memo ?? '', 300)) return;
+          Array.isArray(data.days ?? []) && (data.days ?? []).length <= 400 && Array.isArray(data.people ?? []) && (data.people ?? []).length <= 200 && str(data.memo ?? '', 300)) return;
       deny('plan year write', { path });
     }
     if (p.length === 4 && sub === 'ppas') {
       if (!planOn(sid)) deny('ppa: not a pilot school', { path });
-      const ok = data.kind === 'event' && str(data.title ?? '', 160) && (data.title ?? '').length > 0 && SY_RE.test(data.sy ?? '') &&
-        typeof data.from === 'string' && data.from.length === 10 && typeof (data.to ?? '') === 'string' && ['planned', 'cancelled'].includes(data.status) &&
-        str(data.venue ?? '', 120) && str(data.note ?? '', 400) && Array.isArray(data.log ?? []) && (data.log ?? []).length <= 80;
-      if ((isStaff(ctx, sid) || isHeadOf(ctx, sid)) && ok) return;
+      const ok = ['event', 'program', 'project', 'activity'].includes(data.kind) && str(data.title ?? '', 160) && (data.title ?? '').length > 0 && SY_RE.test(data.sy ?? '') &&
+        typeof (data.from ?? '') === 'string' && typeof (data.to ?? '') === 'string' &&
+        ((data.from ?? '').length === 10 || (['program', 'project'].includes(data.kind) && (data.from ?? '') === '')) &&
+        ['proposed', 'returned', 'withdrawn', 'merged', 'planned', 'ongoing', 'done', 'moved', 'cancelled'].includes(data.status) &&
+        str(data.venue ?? '', 120) && str(data.note ?? '', 400) && ['objective', 'problem', 'rootCause', 'output'].every(k => str(data[k] ?? '', 600)) &&
+        str(data.parentId ?? '', 60) && str(data.changeOf ?? '', 60) && str(data.sourceNote ?? '', 120) &&
+        ['', 'mooe', 'sef', 'pta', 'canteen', 'igp', 'donation', 'other'].includes(data.source ?? '') &&
+        typeof (data.budget ?? 0) === 'number' && (data.budget ?? 0) >= 0 && (data.budget ?? 0) <= 100000000 &&
+        Array.isArray(data.who ?? []) && (data.who ?? []).length <= 30 && Array.isArray(data.team ?? []) && (data.team ?? []).length <= 30 &&
+        Array.isArray(data.log ?? []) && (data.log ?? []).length <= 80;
+      if (!ok) deny('ppa body', { path, data });
+      if (isStaff(ctx, sid) || isHeadOf(ctx, sid)) return;
+      const own = ['program', 'project', 'activity'].includes(data.kind) && ((data.by || {}).uid ?? '') === ctx.uid && !data.removed;
+      if (kind === 'create') {
+        if (isMember(ctx, sid) && own && data.status === 'proposed' && !('decision' in data)) return;
+        deny('ppa write: create', { path, data });
+      }
+      if (isMember(ctx, sid) && own && ((before.by || {}).uid ?? '') === ctx.uid && ['proposed', 'returned'].includes(before.status) && ['proposed', 'withdrawn'].includes(data.status) && JSON.stringify(data.decision ?? null) === JSON.stringify(before.decision ?? null)) return;
       deny('ppa write', { path, data });
     }
     if (p.length === 4 && sub === 'leaveCards') {
