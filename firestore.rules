@@ -206,6 +206,20 @@ service cloud.firestore {
         && shortText(request.resource.data.get('contact', ''), 200);
     }
 
+    // The DepEd calendar of a school year, read from the DepEd Order by the admin and published for
+    // every school ("Load the DepEd calendar"). Everyone signed in gets one by its school year;
+    // only the admin writes or removes it.
+    match /depedCalendars/{sy} {
+      allow get: if signedIn();
+      allow create, update: if isAdmin() && sy.matches('^[0-9]{4}-[0-9]{4}$')
+        && request.resource.data.keys().hasOnly(['sy', 'v', 'memo', 'start', 'end', 'terms', 'days', 'by', 'updatedAt'])
+        && request.resource.data.sy == sy && request.resource.data.v is int
+        && request.resource.data.days is list && request.resource.data.days.size() <= 400
+        && request.resource.data.get('terms', []) is list && request.resource.data.get('terms', []).size() <= 4
+        && shortText(request.resource.data.memo, 300) && request.resource.data.memo.size() > 0;
+      allow delete: if isAdmin();
+    }
+
     match /schoolIds/{schoolNo} {
       allow get: if signedIn();
       allow list: if false;

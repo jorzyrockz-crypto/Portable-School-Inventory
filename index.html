@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="cfb772db95c7">
+  <meta name="app-version" content="f8573b8c18e1">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -7743,7 +7743,7 @@
             // The language file is kept in this app's own offline cache (sw.js). Tesseract's
             // default IndexedDB cache ("keyval-store") is shared by every app on this address.
             cacheMethod: 'none',
-            logger: m => { if (!dlvOcrLogger(m)) icsOcrLogger(m); }
+            logger: m => { if (!dlvOcrLogger(m) && !cpdfOcrLogger(m)) icsOcrLogger(m); }
           });
           await worker.setParameters({ tessedit_pageseg_mode: '6', preserve_interword_spaces: '1' });
           ocrWorker = worker;
@@ -18221,6 +18221,7 @@
     function calSync() {
       if (!cloud.db || !cloud.user || !cloud.sdk || !calCanRead()) return;
       const F = cloud.sdk;
+      calPubFetch(calCurSy());   // the DepEd calendar the admin published for this school year, if any
       if (!calUnsubY) {
         calUnsubY = F.onSnapshot(calYearCol(), { includeMetadataChanges: true }, snap => {
           const next = {};
@@ -18399,7 +18400,7 @@
     function calViewHTML(page) {
       if (calPage === 'plan') return calPlanPageHTML(page);
       const sy = calCurSy(), y = calYears[sy] || null, edit = calCanEdit();
-      const starter = CAL_STARTER[sy];
+      const starter = calStarter(sy);
       const list = calEntries(sy).filter(calMatch);
       const seg = (k, label, icon) => `<button type="button" onclick="setCalMode('${k}')" data-cal-mode="${k}" aria-pressed="${calMode === k}" class="h-10 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 ${calMode === k ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5' : 'text-slate-500'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
       const chip = (k, label) => `<button type="button" onclick="setCalFilter('${k}')" data-cal-filter="${k}" aria-pressed="${calFilter === k}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${calFilter === k ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700'}">${label}</button>`;
@@ -18423,8 +18424,9 @@
         ${setup ? (edit ? `
           <div class="rounded-2xl bg-white border border-teal-200 shadow-sm p-4 space-y-3" data-cal-setup>
             <div class="flex items-start gap-3"><span class="w-10 h-10 shrink-0 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center"><i class="ph-bold ph-calendar-plus text-xl"></i></span>
-              <div class="min-w-0"><p class="text-sm font-extrabold text-slate-900">Set up ${calSyText(sy)}</p><p class="text-xs text-slate-600">${starter ? `Start from the DepEd calendar (${calE(starter.memo)}): the terms, holidays, breaks and exams. Then check the dates and add your school’s.` : 'Type the first and last day of the school year and the terms.'}</p></div></div>
+              <div class="min-w-0"><p class="text-sm font-extrabold text-slate-900">Set up ${calSyText(sy)}</p><p class="text-xs text-slate-600">${starter ? `Start from the DepEd calendar (${calE(starter.memo)}): the terms, holidays, breaks and exams. Then check the dates and add your school’s.` : 'Read the dates from the calendar PDF (the DepEd Order or a memo), or type the first and last day and the terms.'}</p></div></div>
             ${starter ? `<button onclick="calLoadStarter('${sy}')" id="calLoadBtn" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-download-simple"></i> Load the DepEd calendar</button>` : ''}
+            <button onclick="openCalPdf()" id="calPdfSetup" class="w-full h-11 rounded-xl ${starter ? 'bg-white border border-teal-300 text-teal-800' : 'bg-teal-700 hover:bg-teal-800 text-white'} text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-file-pdf"></i> Read a calendar PDF or photo</button>
             <button onclick="openCalSheet('year')" id="calBlankBtn" class="w-full h-11 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800">${starter ? 'Type the dates myself' : 'Set the school year dates'}</button>
           </div>` : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500" data-cal-none><i class="ph-duotone ph-calendar-dots text-3xl text-slate-400"></i><p class="mt-1 font-bold text-slate-700 text-sm">The calendar for ${calSyText(sy)} is not set up yet</p><p>The School Head or the AO sets it up.</p></div>`) : ''}
         ${y ? calStripHTML(y) : ''}
@@ -18433,6 +18435,7 @@
         ${edit && (y || !setup) ? `<div class="grid grid-cols-2 gap-2">
           <button onclick="openCalSheet('event')" id="calAddEvent" class="h-12 rounded-2xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-calendar-plus text-lg"></i> Add an event</button>
           <button onclick="openCalSheet('date')" id="calAddDate" class="h-12 rounded-2xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-2"><i class="ph-bold ph-prohibit text-rose-600"></i> No classes / a date</button>
+          <button onclick="openCalPdf()" id="calPdfBtn" class="col-span-2 h-10 rounded-xl bg-white border border-slate-200 hover:border-teal-300 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-file-pdf text-teal-700"></i> Read dates from a PDF or photo</button>
         </div>` : ''}
         ${y || calEvents.length ? `
         <div class="flex gap-2"><div class="flex-1 grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-200/70" role="tablist">${seg('agenda', 'Agenda', 'ph-list-bullets')}${seg('month', 'Month', 'ph-calendar')}</div>
@@ -19007,6 +19010,7 @@
     }
     function closeCalModal() {
       calSheet = null;
+      cpdf = null;   // a calendar file being read stops
       const box = document.getElementById('calModalBox');
       if (box) box.classList.remove('cal-wide');
       document.getElementById('calModal').classList.add('hidden');
@@ -19019,7 +19023,7 @@
       if (v !== 'view' && v !== 'classdays' && v !== 'ppa' && calSheet.drawn) return;   // forms keep what is being typed
       const box = document.getElementById('calModalBox');
       if (box) box.classList.toggle('cal-wide', v === 'print');   // the print sheet: preview and options side by side on computers
-      const html = v === 'print' ? cprPrintSheetHTML() : v === 'ppa' ? ppaViewHTML() : v === 'ppaForm' ? ppaFormHTML() : v === 'event' ? calEventHTML() : v === 'date' ? calDateHTML() : v === 'year' ? calYearHTML() : v === 'classdays' ? calClassDaysHTML() : v === 'deped' ? calDepedHTML() : calViewSheetHTML();
+      const html = v === 'print' ? cprPrintSheetHTML() : v === 'ppa' ? ppaViewHTML() : v === 'ppaForm' ? ppaFormHTML() : v === 'event' ? calEventHTML() : v === 'date' ? calDateHTML() : v === 'year' ? calYearHTML() : v === 'classdays' ? calClassDaysHTML() : v === 'deped' ? calDepedHTML() : v === 'pdf' ? cpdfHTML() : calViewSheetHTML();
       if (!html) { closeCalModal(); return; }
       body.innerHTML = html;
       calSheet.drawn = true;
@@ -19221,7 +19225,7 @@
       calRender();
     }
     function calLoadStarter(sy) {
-      const st = CAL_STARTER[sy];
+      const st = calStarter(sy);
       if (!st || !calCanEdit() || calYears[sy]) return;
       const who = calWho();
       calSaveYear(sy, {
@@ -19236,7 +19240,7 @@
     // A school year loaded from an older DepEd list: what updating it does. DepEd dates the school
     // never changed are replaced by the new list; dates the school changed or added stay as they are.
     function calDepedDiff(sy) {
-      const st = CAL_STARTER[sy], y = calYears[sy];
+      const st = calStarter(sy), y = calYears[sy];
       if (!st || !y || (y.depedV || 1) >= st.v) return null;
       const wantSigs = new Set(st.days.map(calRowSig));
       const days = y.days || [];
@@ -19273,6 +19277,577 @@
       closeCalModal();
       showToast(`DepEd calendar updated · ${diff.add.length} added`, 'ph-calendar-check');
     }
+    // ---- Reading a calendar from a PDF, a photo or pasted text -----------------------------------
+    // Any calendar paper (the DepEd Order's Annex A / B, a region or division memo, a school-made
+    // calendar): every line with a date becomes an entry to check before anything is saved. Typed
+    // PDFs are read with PDF.js; scanned pages and photos with the text reader of Scan ICS. Nothing
+    // is uploaded. The admin can publish what was read as the DepEd calendar of a school year for
+    // every school (depedCalendars/{sy}). Plan: docs/plans/calendar-from-pdf.md
+    const PDF_BASE = 'assets/pdf/pdfjs-6.5.438/';
+    const CPDF_MAX_PAGES = 30;
+    const CPDF_MON = 'Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sept?(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?';
+    const CPDF_MI = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+    const CPDF_DASH = '\\s*(?:[-\u2013\u2014\u2011]+|\\bto\\b|\\buntil\\b|\\bthrough\\b|\\bthru\\b)\\s*';
+    const CPDF_D = '(\\d{1,2})(?:st|nd|rd|th)?(?!\\d)';
+    const CPDF_Y = '(?:\\s*,?\\s*(20\\d{2}))?';
+    // Month first: June 8 · June 8, 2026 · June 8–12 · June 29 – July 3, 2026 · Dec. 21, 2026 to Jan. 3, 2027
+    const CPDF_RE_A = new RegExp(`\\b(${CPDF_MON})\\.?\\s*${CPDF_D}${CPDF_Y}(?:${CPDF_DASH}(?:(${CPDF_MON})\\.?\\s*)?${CPDF_D}${CPDF_Y})?`, 'gi');
+    // (No look-behind: Safari before 16.4 cannot read it, and the whole app would stop.)
+    // Day first: 8 June 2026 · 8–12 June · 8 June – 3 July 2026
+    const CPDF_RE_B = new RegExp(`\\b${CPDF_D}(?:${CPDF_DASH}${CPDF_D})?\\s+(?:of\\s+)?(${CPDF_MON})\\.?(?![A-Za-z])${CPDF_Y}(?:${CPDF_DASH}${CPDF_D}\\s+(${CPDF_MON})\\.?(?![A-Za-z])${CPDF_Y})?`, 'gi');
+    // Numbers (month/day/year): 06/08/2026 · 6/8/26 – 6/12/26
+    const CPDF_RE_C = new RegExp(`\\b(\\d{1,2})/(\\d{1,2})/(\\d{4}|\\d{2})(?![\\d/])(?:${CPDF_DASH}(\\d{1,2})/(\\d{1,2})/(\\d{4}|\\d{2})(?![\\d/]))?`, 'g');
+    const CPDF_WEEKDAY = /\b(?:Mon|Tue|Tues|Wed|Wednes|Thu|Thur|Thurs|Fri|Sat|Satur|Sun)(?:day)?\b\.?,?/gi;
+    const CPDF_HOLIDAYS_REGULAR = /new year'?s? day|maundy thursday|good friday|araw ng kagitingan|day of valou?r|labou?r day|independence day|national heroes'? day|bonifacio day|christmas day|rizal day|eid'?(?:u?l)?[- ]?(?:fitr|adha)/i;
+    const CPDF_HOLIDAYS_SPECIAL = /chinese new year|edsa|black saturday|ninoy aquino|all saints'?|all souls'?|immaculate conception|christmas eve|last day of the year|special (?:\(?non-?working\)?\s*)?(?:day|holiday)/i;
+    const CPDF_NAT = /\b(?:NAT|National Achievement Test|National Career Assessment|NCAE|PEPT|NSPC|A&E|ALS A ?& ?E|Palarong Pambansa|NFOT|National (?:Schools Press|Festival|Science Fair))\b/;
+    var cpdf = null, cpdfLibP = null;
+    var calPub = (() => { try { return JSON.parse(localStorage.getItem('cp_deped_cal_v1') || '{}') || {}; } catch (e) { return {}; } })(), calPubAsked = {};
+    // The DepEd calendar of a school year: the one published by the admin when it is newer than the list built into the app
+    function calStarter(sy) {
+      const b = CAL_STARTER[sy], p = calPub[sy];
+      return p && p.days && (!b || p.v > b.v) ? p : b || null;
+    }
+    const cpdfPubStarter = d => ({
+      v: Number(d.v) || 1, memo: String(d.memo || ''), start: d.start || '', end: d.end || '', terms: Array.isArray(d.terms) ? d.terms : [], by: d.by || '',
+      days: (Array.isArray(d.days) ? d.days : []).filter(x => x && CAL_KINDS[x.k] && x.f && x.n).map(x => [x.k, x.f, x.t || '', x.n, x.s || '', x.nat ? 'nat' : ''])
+    });
+    function calPubFetch(sy) {
+      if (!sy || calPubAsked[sy] || !cloud.db || !cloud.user || !cloud.sdk) return;
+      calPubAsked[sy] = true;
+      const F = cloud.sdk;
+      F.getDoc(F.doc(cloud.db, 'depedCalendars', sy)).then(snap => {
+        const had = JSON.stringify(calPub[sy] || null);
+        if (snap.exists()) calPub[sy] = cpdfPubStarter(snap.data()); else delete calPub[sy];
+        if (JSON.stringify(calPub[sy] || null) === had) return;
+        try { localStorage.setItem('cp_deped_cal_v1', JSON.stringify(calPub)); } catch (e) {}
+        calRender();
+      }).catch(e => { calPubAsked[sy] = false; console.warn('deped calendar', e); });
+    }
+
+    // ---- The reader: lines of text in, dates out (no screen, no cloud: tests call it directly) ----
+    const cpdfPad = n => String(n).padStart(2, '0');
+    function cpdfIso(y, m, d) {
+      if (!y || !m || !d || m > 12 || d > 31) return '';
+      const iso = `${y}-${cpdfPad(m)}-${cpdfPad(d)}`, dt = new Date(iso + 'T00:00:00Z');
+      return dt.getUTCMonth() + 1 === m && dt.getUTCDate() === d ? iso : '';
+    }
+    const cpdfMon = s => CPDF_MI[String(s || '').slice(0, 3).toLowerCase()] || 0;
+    const cpdfYear = y => (!y ? 0 : String(y).length === 2 ? 2000 + Number(y) : Number(y));
+    // June to December: the first year of the school year; January to May: the second
+    const cpdfGuessYear = (m, y0) => (m >= 6 ? y0 : y0 + 1);
+    function cpdfRange(m1, d1, y1, m2, d2, y2, y0) {
+      m2 = m2 || m1;
+      if (!d2) { m2 = m1; d2 = d1; y2 = y1; }
+      if (y1 && !y2) y2 = m2 < m1 ? y1 + 1 : y1;
+      if (y2 && !y1) y1 = m1 > m2 ? y2 - 1 : y2;
+      if (!y1) { y1 = cpdfGuessYear(m1, y0); y2 = cpdfGuessYear(m2, y0); if (y2 < y1) y2 = y1 + (m2 < m1 ? 1 : 0); }
+      const from = cpdfIso(y1, m1, d1), to = cpdfIso(y2, m2, d2);
+      if (!from || !to || to < from) return null;
+      return { from, to };
+    }
+    // Every date in a line: [{ from, to, a, b }] (a, b: where it is in the line)
+    function cpdfDatesIn(line, y0) {
+      const out = [], taken = [];
+      const free = (a, b) => !taken.some(([x, y]) => a < y && b > x);
+      const add = (a, b, r) => { if (r && free(a, b)) { out.push({ ...r, a, b }); taken.push([a, b]); } };
+      let m;
+      CPDF_RE_A.lastIndex = 0;
+      while ((m = CPDF_RE_A.exec(line))) {
+        const m1 = cpdfMon(m[1]), d1 = +m[2], y1 = cpdfYear(m[3]), m2 = m[4] ? cpdfMon(m[4]) : 0, d2 = m[5] ? +m[5] : 0, y2 = cpdfYear(m[6]);
+        let end = m.index + m[0].length;
+        if (!d2) {
+          // June 1, 8 and 15, 2026: one date each
+          const rest = line.slice(end).match(/^((?:\s*(?:,|&|\band\b)\s*\d{1,2}(?:st|nd|rd|th)?(?![\d/]))+)(?:\s*,?\s*(20\d{2}))?/i);
+          if (rest && !/^\s*,\s*20\d{2}$/.test(rest[0])) {
+            const more = rest[1].match(/\d{1,2}/g).map(Number), yy = cpdfYear(rest[2]) || y1;
+            add(m.index, end + rest[0].length, cpdfRange(m1, d1, yy, 0, 0, 0, y0));
+            more.forEach(d => { const r = cpdfRange(m1, d, yy, 0, 0, 0, y0); if (r) out.push({ ...r, a: -1, b: -1 }); });
+            continue;
+          }
+        }
+        add(m.index, end, cpdfRange(m1, d1, y1, m2, d2, y2, y0));
+      }
+      CPDF_RE_B.lastIndex = 0;
+      while ((m = CPDF_RE_B.exec(line))) {
+        const d1 = +m[1], d1b = m[2] ? +m[2] : 0, m1 = cpdfMon(m[3]), y1 = cpdfYear(m[4]), d2 = m[5] ? +m[5] : 0, m2 = m[6] ? cpdfMon(m[6]) : 0, y2 = cpdfYear(m[7]);
+        add(m.index, m.index + m[0].length, d2 ? cpdfRange(m1, d1, y1, m2, d2, y2, y0) : cpdfRange(m1, d1, y1, m1, d1b || d1, y1, y0));
+      }
+      CPDF_RE_C.lastIndex = 0;
+      while ((m = CPDF_RE_C.exec(line))) {
+        const r = cpdfRange(+m[1], +m[2], cpdfYear(m[3]), m[4] ? +m[4] : 0, m[5] ? +m[5] : 0, cpdfYear(m[6]), y0);
+        add(m.index, m.index + m[0].length, r);
+      }
+      return out.sort((x, y) => (x.a < 0 ? 1e9 : x.a) - (y.a < 0 ? 1e9 : y.a));
+    }
+    const cpdfTidy = s => String(s || '').replace(/\(\s*\)/g, ' ').replace(/\s+/g, ' ')
+      .replace(/^[\s\-\u2013\u2014:;,.|\u2022\u00b7*/]+/, '').replace(/[\s\-\u2013\u2014:;,|\u2022\u00b7*(/]+$/, '').trim();
+    function cpdfKind(title, def) {
+      const t = String(title || '');
+      if (/special working day/i.test(t) && !/non-?working/i.test(t)) return { kind: 'working' };
+      if (/suspen/i.test(t)) return { kind: 'suspension' };
+      if (/\bno (?:classes|class)\b|walang pasok/i.test(t)) return { kind: 'noclass' };
+      if (/exam|summative test|periodical test|quarterly test|quarter(?:ly)? assessment/i.test(t) && !/testing window|national|NAT\b|NCAE|PEPT/i.test(t)) return { kind: 'exam' };
+      if (/\bINSET\b|in-?service training/i.test(t)) return { kind: 'inset' };
+      if (/\bbreak\b|\bvacation\b/i.test(t) && !/wellness/i.test(t)) return { kind: 'break' };
+      if (CPDF_HOLIDAYS_REGULAR.test(t) || /regular holiday/i.test(t)) return { kind: 'holiday', sub: 'regular' };
+      if (CPDF_HOLIDAYS_SPECIAL.test(t) || /\bholiday\b/i.test(t)) return { kind: 'holiday', sub: 'special' };
+      return { kind: def || 'deped', auto: true };
+    }
+    // A DepEd or division paper: DepEd activity unless it says otherwise; a school's own calendar: school event
+    const cpdfDefKind = text => (/DepEd Order|\bOrder No\b|\bAnnex\b|Memorandum|\bMemo No\b|\bD\.?O\.? No\b/i.test(text) ? 'deped' : 'event');
+    function cpdfFindSy(text) {
+      const n = {};
+      String(text || '').replace(/(?:\bS\.?\s?Y\.?|School\s+Year)\s*:?\s*(20\d{2})\s*[-\u2013\u2014\u2011/]\s*(20\d{2}|\d{2})\b/gi, (_, a, b) => {
+        const y = +a, z = b.length === 2 ? 2000 + +b : +b;
+        if (z === y + 1) n[y] = (n[y] || 0) + 1;
+        return _;
+      });
+      const best = Object.keys(n).sort((a, b) => n[b] - n[a])[0];
+      return best ? `${best}-${+best + 1}` : '';
+    }
+    function cpdfFindMemo(text) {
+      const m = String(text || '').match(/\b(DepEd\s+Order|D\.?O\.?|Division\s+Memorandum|Division\s+Memo|Regional\s+Memorandum|Regional\s+Memo|DepEd\s+Memorandum|Memorandum|D\.?M\.?|R\.?M\.?)\s*(?:No\.?|Number)\s*([0-9]{1,4})\s*,?\s*(?:s\.?|series\s+of)\s*(20\d{2})/i);
+      if (!m) return '';
+      const k = m[1].replace(/\./g, '').replace(/\s+/g, ' ').toLowerCase();
+      const name = k === 'do' || k === 'deped order' ? 'DepEd Order' : k === 'dm' || k.startsWith('division') ? 'Division Memorandum' : k === 'rm' || k.startsWith('regional') ? 'Regional Memorandum' : k === 'deped memorandum' ? 'DepEd Memorandum' : 'Memorandum';
+      return `${name} No. ${m[2].padStart(3, '0')}, s. ${m[3]}`;
+    }
+    const cpdfWords = s => new Set(String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(' ').filter(w => w.length > 2));
+    function cpdfSame(a, b) {
+      const x = String(a || '').toLowerCase().replace(/[^a-z0-9]+/g, ''), y = String(b || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+      if (!x || !y) return false;
+      if (x === y || x.includes(y) || y.includes(x)) return true;
+      const wa = cpdfWords(a), wb = cpdfWords(b);
+      if (!wa.size || !wb.size) return false;
+      let both = 0;
+      wa.forEach(w => { if (wb.has(w)) both++; });
+      return both / (wa.size + wb.size - both) >= 0.5;
+    }
+    function cpdfParse(lines, sy, def) {
+      const y0 = Number(String(sy).slice(0, 4)) || new Date().getFullYear();
+      const items = [], seen = new Set();
+      let ctx = 0, ctxY = 0, last = null, lastLine = -1, hold = null;
+      const CONT = /(?:,|&|\band|\bof|\bthe|\bfor|\bto|\bin|\bwith|-)$/i;
+      const src = (lines || []).map(s => String(s || '').replace(/\u00a0/g, ' ').replace(/[\u2010\u2012]/g, '-').trim());
+      const used = new Set();
+      src.forEach((raw, li) => {
+        if (used.has(li) || !raw) return;
+        const line = raw.replace(CPDF_WEEKDAY, ' ').replace(/\s+/g, ' ');
+        // A month heading (JUNE 2026): the lines under it may start with just the day
+        const head = line.match(new RegExp(`^\\s*(${CPDF_MON})\\.?\\s*,?\\s*(20\\d{2})?\\s*$`, 'i'));
+        if (head) { ctx = cpdfMon(head[1]); ctxY = cpdfYear(head[2]); last = null; return; }
+        let dates = cpdfDatesIn(line, y0);
+        let text = line;
+        if (!dates.length && ctx) {
+          const m = line.match(/^\s*(\d{1,2})(?:\s*[-\u2013\u2014]\s*(\d{1,2}))?(?![\d./:)%])\s*[-\u2013:|]?\s+(\D.*)$/);
+          const r = m && cpdfRange(ctx, +m[1], ctxY, ctx, m[2] ? +m[2] : +m[1], ctxY, y0);
+          if (r) { dates = [{ ...r, a: 0, b: line.length - m[3].length }]; }
+        }
+        if (!dates.length) {
+          // A line that goes on from the one before
+          if (last && lastLine === li - 1 && (/^[a-z(]/.test(line) || CONT.test(last[0].title))) {
+            const more = cpdfTidy(line.split('|')[0]);
+            if (more) last.forEach(it => { it.title = `${it.title} ${more}`.slice(0, 160); });
+            lastLine = li;
+          } else hold = { li, text: cpdfTidy(line.split('|')[0]) };   // may be the start of the next line's title
+          return;
+        }
+        // Two dates in two columns (start | end): one range
+        if (dates.length === 2 && dates[0].a >= 0 && dates[1].a >= 0 && dates[0].from === dates[0].to && dates[1].from === dates[1].to && dates[1].from > dates[0].from
+          && /^\s*\|\s*$/.test(line.slice(dates[0].b, dates[1].a)) && calNext(dates[0].from, 250) >= dates[1].from) {
+          dates = [{ from: dates[0].from, to: dates[1].from, a: dates[0].a, b: dates[1].b }];
+        }
+        dates.filter(d => d.a >= 0).sort((x, y) => y.a - x.a).forEach(d => { text = text.slice(0, d.a) + ' | ' + text.slice(d.b); });
+        let parts = text.split('|').map(cpdfTidy).filter(p => p && /[A-Za-z]{2}/.test(p));
+        if (!parts.length) {
+          // The date has a row to itself: the title is on the next line
+          const nx = src[li + 1];
+          if (nx && !cpdfDatesIn(nx, y0).length) { parts = nx.replace(CPDF_WEEKDAY, ' ').split('|').map(cpdfTidy).filter(p => p && /[A-Za-z]{2}/.test(p)); used.add(li + 1); }
+        }
+        // A title that starts on the line above (Mid-year review and / evaluation of teachers | Feb 1–5)
+        if (parts[0] && hold && hold.li === li - 1 && hold.text && /[A-Za-z]{2}/.test(hold.text) && (CONT.test(hold.text) || /^[a-z]/.test(parts[0]))) parts[0] = `${hold.text} ${parts[0]}`;
+        hold = null;
+        const title = (parts[0] || '').slice(0, 160), note = parts.slice(1).join(' \u00b7 ').slice(0, 300);
+        const k = cpdfKind(`${title} ${note}`, def);
+        const termM = title.match(/\b(?:term\s*([1-4])|(first|second|third|fourth|1st|2nd|3rd|4th)\s+term)\b/i);
+        const now = [];
+        dates.forEach(d => {
+          const sig = `${d.from}|${d.to}|${title.toLowerCase()}`;
+          if (seen.has(sig)) return;
+          seen.add(sig);
+          const it = { i: items.length, on: !!title, kind: k.kind, sub: k.sub || '', auto: !!k.auto, title, note, from: d.from, to: d.to, nat: CPDF_NAT.test(`${title} ${note}`) || undefined };
+          if (termM && k.kind !== 'exam' && d.to > d.from) it.term = termM[1] ? +termM[1] : { first: 1, '1st': 1, second: 2, '2nd': 2, third: 3, '3rd': 3, fourth: 4, '4th': 4 }[termM[2].toLowerCase()];
+          items.push(it);
+          now.push(it);
+        });
+        last = now.length ? now : null;
+        lastLine = li;
+      });
+      // The school year: its first and last day, and the terms
+      const first = re => items.find(it => re.test(it.title));
+      const st = first(/opening of (?:classes|school)|first day of (?:school|classes)|start of (?:classes|the school year)|beginning of classes|school opening/i);
+      const en = items.slice().reverse().find(it => /end of (?:the )?school year|last day of (?:school|classes)|closing of (?:classes|the school year)|end of classes|end of (?:the )?S\.?Y\.?\b/i.test(it.title));
+      const terms = [];
+      items.filter(it => it.term && it.term <= 3).forEach(it => {
+        const t = terms.find(x => x.n === it.term);
+        if (!t) terms.push({ n: it.term, from: it.from, to: it.to });
+        else { if (it.from < t.from) t.from = it.from; if (it.to > t.to) t.to = it.to; }
+      });
+      terms.sort((a, b) => a.n - b.n);
+      const start = st ? st.from : terms.length ? terms[0].from : '';
+      const end = en ? en.to : terms.length ? terms[terms.length - 1].to : '';
+      return { items, start, end, terms };
+    }
+
+    // ---- The sheet: pick a file, read it, check the dates, save ----------------------------------
+    function openCalPdf() {
+      if (!calCanEdit()) return;
+      cpdf = { stage: 'pick', paste: false, open: -1 };
+      openCalSheet('pdf');
+    }
+    function cpdfDraw() {
+      if (!calSheet || calSheet.view !== 'pdf' || !cpdf) return;
+      const body = document.getElementById('calModalBody');
+      if (body) body.innerHTML = cpdfHTML();
+    }
+    function cpdfStatus(run, text, p) {
+      if (!cpdf || cpdf.run !== run) return;
+      cpdf.status = text;
+      if (p != null) cpdf.progress = p;
+      const s = document.getElementById('cpdfStatus'), b = document.getElementById('cpdfBar');
+      if (s) s.textContent = text;
+      if (b) b.style.width = `${Math.round(Math.max(0.03, Math.min(1, cpdf.progress || 0)) * 100)}%`;
+    }
+    function cpdfOcrLogger(m) {
+      if (!cpdf || cpdf.stage !== 'reading' || !cpdf.ocr) return false;
+      const labels = { 'loading tesseract core': 'Loading the text reader\u2026', 'initializing tesseract': 'Starting the text reader\u2026', 'loading language traineddata': 'Loading the English text model\u2026', 'initializing api': 'Starting the text reader\u2026' };
+      if (labels[m.status]) cpdfStatus(cpdf.run, labels[m.status]);
+      return true;
+    }
+    function cpdfLib() {
+      if (!cpdfLibP) {
+        cpdfLibP = import(ocrAbsolute(PDF_BASE + 'pdf.min.mjs')).then(lib => {
+          lib.GlobalWorkerOptions.workerSrc = ocrAbsolute(PDF_BASE + 'pdf.worker.min.mjs');
+          return lib;
+        }).catch(e => { cpdfLibP = null; throw Object.assign(new Error('reader'), { cpdf: 'reader' }); });
+      }
+      return cpdfLibP;
+    }
+    // Words on the same line joined left to right; a wide gap between columns becomes " | "
+    function cpdfPageLines(items) {
+      const rows = [];
+      (items || []).forEach(it => {
+        const s = it && typeof it.str === 'string' ? it.str : '';
+        if (!s.trim() || !it.transform) return;
+        const x = it.transform[4], y = it.transform[5], h = Math.abs(it.transform[3]) || it.height || 10;
+        let r = rows.find(r => Math.abs(r.y - y) <= Math.max(2, Math.min(r.h, h) * 0.5));
+        if (!r) rows.push(r = { y, h, items: [] });
+        r.items.push({ x, w: it.width || 0, s });
+      });
+      rows.sort((a, b) => b.y - a.y);
+      return rows.map(r => {
+        r.items.sort((a, b) => a.x - b.x);
+        let out = '', end = null;
+        r.items.forEach(it => {
+          if (end !== null) { const gap = it.x - end; out += gap > r.h * 1.8 ? ' | ' : gap > r.h * 0.12 && !/\s$/.test(out) && !/^\s/.test(it.s) ? ' ' : ''; }
+          out += it.s;
+          end = it.x + it.w;
+        });
+        return out.replace(/\s+/g, ' ').trim();
+      }).filter(Boolean);
+    }
+    async function cpdfOcr(img, run, label, p) {
+      cpdf.ocr = true;
+      cpdfStatus(run, (await isOcrDownloaded()) ? 'Starting the text reader\u2026' : 'Downloading the text reader (about 7 MB, once)\u2026', p);
+      const worker = await getOcrWorker();
+      if (!cpdf || cpdf.run !== run) return [];
+      cpdfStatus(run, label, p);
+      const res = await worker.recognize(img);
+      return String((res && res.data && res.data.text) || '').split(/\r?\n/)
+        .map(s => s.replace(/[ \t]{3,}/g, ' | ').replace(/\s+/g, ' ').trim()).filter(Boolean);
+    }
+    async function cpdfReadPdf(file, run) {
+      const lib = await cpdfLib();
+      cpdfStatus(run, 'Opening the PDF\u2026', 0.08);
+      const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()), wasmUrl: ocrAbsolute(PDF_BASE + 'wasm/'), isEvalSupported: false, disableFontFace: true, stopAtErrors: false }).promise;
+      const n = Math.min(doc.numPages, CPDF_MAX_PAGES), lines = [];
+      let scanned = 0;
+      for (let p = 1; p <= n; p++) {
+        if (!cpdf || cpdf.run !== run) break;
+        cpdfStatus(run, `Reading page ${p} of ${n}\u2026`, 0.1 + 0.85 * (p - 1) / n);
+        const page = await doc.getPage(p);
+        const got = cpdfPageLines((await page.getTextContent()).items);
+        if (got.join('').replace(/\s/g, '').length >= 20) { lines.push(...got); continue; }
+        // No text on this page: a scan. Draw it and read it with the text reader.
+        scanned++;
+        const vp1 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: Math.min(3, 2200 / Math.max(vp1.width, vp1.height)) });
+        const c = document.createElement('canvas');
+        c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+        const g = c.getContext('2d');
+        g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+        await page.render({ canvasContext: g, canvas: c, viewport: vp }).promise;
+        lines.push(...await cpdfOcr(c, run, `Reading scanned page ${p} of ${n}\u2026`, 0.1 + 0.85 * (p - 0.5) / n));
+      }
+      const pages = doc.numPages;
+      try { doc.destroy(); } catch (e) {}
+      return { lines, scanned, pages };
+    }
+    async function cpdfReadPhoto(file, run) {
+      let bmp;
+      try { bmp = await createImageBitmap(file); } catch (e) { throw Object.assign(new Error('photo'), { cpdf: 'photo' }); }
+      const k = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      const g = c.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(bmp, 0, 0, c.width, c.height);
+      return { lines: await cpdfOcr(c, run, 'Reading the photo\u2026', 0.3), scanned: 1, pages: 1, photo: true };
+    }
+    function cpdfErrText(e) {
+      const k = e && (e.cpdf || e.name);
+      if (k === 'reader') return navigator.onLine === false ? 'The PDF reader is not on this phone yet. Connect to the internet once, then try again.' : 'The PDF reader could not start. Try again.';
+      if (k === 'photo') return 'That picture could not be opened. Use a JPG or PNG photo, or the PDF.';
+      if (k === 'PasswordException') return 'This PDF is locked with a password. Open it, save or print it again without one, then try again.';
+      if (k === 'InvalidPDFException' || k === 'MissingPDFException') return 'That file is not a PDF the app can open.';
+      return 'The file could not be read. Try again, or paste the text instead.';
+    }
+    async function cpdfPick(input) {
+      const file = input && input.files && input.files[0];
+      if (input) input.value = '';
+      if (!file || !cpdf) return;
+      const run = cpdf.run = Date.now();
+      Object.assign(cpdf, { stage: 'reading', status: 'Opening the file\u2026', progress: 0.03, name: file.name || 'file', err: '', ocr: false });
+      cpdfDraw();
+      try {
+        const isPdf = /pdf$/i.test(file.type || '') || /\.pdf$/i.test(file.name || '');
+        const res = isPdf ? await cpdfReadPdf(file, run) : await cpdfReadPhoto(file, run);
+        if (!cpdf || cpdf.run !== run) return;
+        cpdfReview(res.lines, res);
+      } catch (e) {
+        console.warn('calendar file', e);
+        if (!cpdf || cpdf.run !== run) return;
+        Object.assign(cpdf, { stage: 'pick', err: cpdfErrText(e) });
+        cpdfDraw();
+      }
+    }
+    function cpdfReadText() {
+      if (!cpdf) return;
+      const t = (document.getElementById('cpdfText') || {}).value || '';
+      if (!t.trim()) { cpdf.err = 'Paste the calendar text first.'; cpdfDraw(); return; }
+      cpdf.name = 'Pasted text';
+      cpdfReview(t.split(/\r?\n/), { pasted: true });
+    }
+    function cpdfReview(lines, info) {
+      const text = lines.join('\n');
+      const sy = cpdfFindSy(text) || calCurSy();
+      Object.assign(cpdf, { stage: 'review', lines, info: info || {}, sy, def: cpdfDefKind(text), memo: cpdfFindMemo(text), open: -1, err: '' });
+      cpdfParseInto();
+      if (calCurSy() !== sy) { calSy = sy; calSync(); calRender(); }
+      cpdfDraw();
+      const box = document.getElementById('calModalBox');
+      if (box) box.scrollTop = 0;
+    }
+    function cpdfParseInto() {
+      const sy = cpdf.sy, y0 = Number(sy.slice(0, 4)), y = calYears[sy];
+      const r = cpdfParse(cpdf.lines, sy, cpdf.def);
+      const have = [...((y && y.days) || []), ...(calEvSy === sy ? calEvents.filter(e => e.kind === 'event' && !e.removed) : [])];
+      const lo = `${y0}-05-01`, hi = `${y0 + 1}-06-30`;
+      r.items.forEach(it => {
+        if (have.some(d => d.from === it.from && cpdfSame(d.title, it.title))) { it.tag = 'have'; it.on = false; }
+        else if (it.from < lo || it.from > hi) { it.tag = 'out'; it.on = false; }
+        else if (it.term) { it.tag = 'term'; it.on = false; }
+      });
+      Object.assign(cpdf, { items: r.items, start: r.start, end: r.end, terms: r.terms });
+    }
+    function cpdfSetSy(sy) {
+      if (!cpdf || !/^\d{4}-\d{4}$/.test(sy)) return;
+      cpdf.sy = sy;
+      cpdfParseInto();
+      if (calCurSy() !== sy) { calSy = sy; calSync(); calRender(); }
+      cpdfDraw();
+    }
+    function cpdfSetDef(k) {
+      if (!cpdf || !cpdf.items) return;
+      cpdf.def = k === 'event' ? 'event' : 'deped';
+      cpdf.items.forEach(it => { if (it.auto) it.kind = cpdf.def; });
+      cpdfDraw();
+    }
+    function cpdfTick(i, on) {
+      if (!cpdf || !cpdf.items) return;
+      (i === 'all' ? cpdf.items : i === 'none' ? cpdf.items : [cpdf.items[i]]).forEach(it => { if (it) it.on = i === 'none' ? false : i === 'all' ? it.tag !== 'have' && !!it.title : !!on; });
+      cpdfDraw();
+    }
+    function cpdfEdit(i, key, val) {
+      const it = cpdf && cpdf.items && cpdf.items[i];
+      if (!it) return;
+      it[key] = String(val || '').slice(0, key === 'note' ? 300 : 160);
+      if (key === 'kind') { it.auto = false; if (val === 'holiday' && !it.sub) it.sub = 'special'; cpdfDraw(); }
+      if (key === 'from' && (!it.to || it.to < it.from)) { it.to = it.from; cpdfDraw(); }
+    }
+    function cpdfOpen(i) { if (cpdf) { cpdf.open = cpdf.open === i ? -1 : i; cpdfDraw(); } }
+    function cpdfPaste(on) { if (cpdf) { cpdf.paste = !!on; cpdf.err = ''; cpdfDraw(); } }
+    function cpdfAgain() { if (cpdf) { Object.assign(cpdf, { stage: 'pick', items: null, err: '', run: 0 }); cpdfDraw(); } }
+    const CPDF_KIND_OPTS = [...CAL_DATE_KINDS, 'event'];
+    function cpdfHTML() {
+      if (!cpdf) return '';
+      const sy = cpdf.sy || calCurSy();
+      if (cpdf.stage === 'reading') {
+        return `${calHead('ph-file-magnifying-glass', 'Reading the calendar', calE(cpdf.name || ''))}
+          <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-2" data-cpdf-reading>
+            <p id="cpdfStatus" class="text-sm font-bold text-slate-700">${calE(cpdf.status || '')}</p>
+            <div class="h-2 rounded-full bg-slate-200 overflow-hidden"><div id="cpdfBar" class="h-full bg-teal-600 transition-all" style="width:${Math.round(Math.max(0.03, cpdf.progress || 0) * 100)}%"></div></div>
+            <p class="text-[11px] text-slate-500">Read on this phone: nothing is uploaded.</p>
+          </div>
+          <button type="button" onclick="cpdfAgain()" class="w-full h-11 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-700">Stop</button>`;
+      }
+      if (cpdf.stage === 'pick') {
+        return `${calHead('ph-file-pdf', 'Read a calendar', 'From a PDF, a photo or text')}
+          <p class="text-xs text-slate-600">The DepEd Order on the school calendar, a region or division memo, or your school\u2019s own calendar. Every date found is listed for you to check before anything is added.</p>
+          ${cpdf.err ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2" data-cpdf-err>${calE(cpdf.err)}</p>` : ''}
+          <label class="w-full h-14 rounded-2xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2 cursor-pointer">
+            <i class="ph-bold ph-file-arrow-up text-xl"></i> Choose a PDF or photo
+            <input id="cpdfFile" type="file" accept="application/pdf,.pdf,image/*" class="hidden" onchange="cpdfPick(this)"></label>
+          <ul class="text-[11px] text-slate-500 space-y-1 px-1">
+            <li class="flex gap-1.5"><i class="ph-bold ph-check text-teal-600 mt-0.5"></i><span>Best: the PDF from the DepEd website (typed text). Up to ${CPDF_MAX_PAGES} pages.</span></li>
+            <li class="flex gap-1.5"><i class="ph-bold ph-check text-teal-600 mt-0.5"></i><span>Scanned pages and photos are read with the text reader (downloaded once, about 7 MB). Check those dates more carefully.</span></li>
+            <li class="flex gap-1.5"><i class="ph-bold ph-check text-teal-600 mt-0.5"></i><span>Everything is read on this phone: nothing is uploaded.</span></li>
+          </ul>
+          ${cpdf.paste ? `<div class="space-y-2" data-cpdf-paste>
+              ${calLbl('Paste the calendar text', `<textarea id="cpdfText" rows="8" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-teal-500" placeholder="e.g. June 8, 2026 Opening of classes"></textarea>`)}
+              <button type="button" onclick="cpdfReadText()" id="cpdfReadText" class="w-full h-11 rounded-xl bg-white border border-teal-300 text-sm font-extrabold text-teal-800">Read the text</button></div>`
+            : `<button type="button" onclick="cpdfPaste(true)" id="cpdfPasteBtn" class="w-full h-11 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-700 flex items-center justify-center gap-2"><i class="ph-bold ph-clipboard-text"></i> Or paste the text</button>`}`;
+      }
+      // Check the dates
+      const items = cpdf.items || [], y = calYears[sy], on = items.filter(x => x.on).length, info = cpdf.info || {};
+      const admin = isAdminDevice();
+      const syOpts = [...new Set([calShiftSy(sy, -1), sy, calShiftSy(sy, 1), calCurSy()])].sort();
+      const tagHTML = it => it.tag === 'have' ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600" data-cpdf-tag="have">Already there</span>'
+        : it.tag === 'out' ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800" data-cpdf-tag="out">Outside ${calSyText(sy)}</span>`
+        : it.tag === 'term' ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-800" data-cpdf-tag="term">Used for Term ${it.term}</span>` : '';
+      const kindOpts = it => CPDF_KIND_OPTS.map(k => `<option value="${k}" ${it.kind === k ? 'selected' : ''}>${CAL_KINDS[k].label}${CAL_KINDS[k].off ? ' (no classes)' : ''}</option>`).join('');
+      const card = it => {
+        const k = CAL_KINDS[it.kind] || CAL_KINDS.deped, open = cpdf.open === it.i;
+        return `<div class="rounded-2xl border ${it.on ? 'border-teal-200 bg-white' : 'border-slate-200 bg-slate-50'} p-2.5" data-cpdf-item="${it.i}" data-cpdf-on="${it.on}" data-cpdf-kind="${it.kind}">
+          <div class="flex items-start gap-2.5">
+            <input type="checkbox" ${it.on ? 'checked' : ''} onchange="cpdfTick(${it.i}, this.checked)" class="mt-1 w-5 h-5 shrink-0 accent-teal-700" aria-label="Add this one" data-cpdf-tick>
+            <button type="button" onclick="cpdfOpen(${it.i})" class="min-w-0 flex-1 text-left">
+              <span class="block text-sm font-bold ${it.on ? 'text-slate-900' : 'text-slate-500'} leading-snug">${it.title ? calE(it.title) : '<i class="font-semibold text-rose-600">No title: tap to type it</i>'}</span>
+              <span class="flex flex-wrap items-center gap-1.5 mt-0.5 text-[11px] text-slate-500"><span class="inline-flex items-center gap-1 font-bold px-1.5 py-0.5 rounded-full ${k.tone}"><i class="ph-bold ${k.icon}"></i>${k.label}</span><span data-cpdf-when>${calE(calRangeText(it.from, it.to))}</span>${tagHTML(it)}</span>
+            </button>
+            <button type="button" onclick="cpdfOpen(${it.i})" class="w-8 h-8 shrink-0 rounded-lg ${open ? 'bg-teal-50 text-teal-700' : 'text-slate-400'} flex items-center justify-center" aria-label="Change"><i class="ph-bold ${open ? 'ph-caret-up' : 'ph-pencil-simple'}"></i></button>
+          </div>
+          ${open ? `<div class="grid grid-cols-2 gap-2 mt-2.5" data-cpdf-edit>
+              ${calLbl('What', `<input type="text" value="${calE(it.title)}" maxlength="160" oninput="cpdfEdit(${it.i}, 'title', this.value)" class="${CAL_IN}" data-cpdf-title>`, 'col-span-2')}
+              ${calLbl('What kind', `<select onchange="cpdfEdit(${it.i}, 'kind', this.value)" class="${CAL_IN}" data-cpdf-kindsel>${kindOpts(it)}</select>`, it.kind === 'holiday' ? '' : 'col-span-2')}
+              ${it.kind === 'holiday' ? calLbl('Holiday', `<select onchange="cpdfEdit(${it.i}, 'sub', this.value)" class="${CAL_IN}"><option value="regular" ${it.sub === 'regular' ? 'selected' : ''}>Regular</option><option value="special" ${it.sub !== 'regular' ? 'selected' : ''}>Special</option></select>`) : ''}
+              ${calLbl('From', `<input type="date" value="${calE(it.from)}" onchange="cpdfEdit(${it.i}, 'from', this.value)" class="${CAL_IN}" data-cpdf-from>`)}
+              ${calLbl('To', `<input type="date" value="${calE(it.to || it.from)}" onchange="cpdfEdit(${it.i}, 'to', this.value)" class="${CAL_IN}" data-cpdf-to>`)}
+              ${calLbl('Note (optional)', `<input type="text" value="${calE(it.note || '')}" maxlength="300" oninput="cpdfEdit(${it.i}, 'note', this.value)" class="${CAL_IN}">`, 'col-span-2')}
+              <button type="button" onclick="cpdfOpen(${it.i})" class="col-span-2 h-10 rounded-xl bg-slate-100 text-sm font-bold text-slate-700">Done</button>
+            </div>` : ''}
+        </div>`;
+      };
+      const terms = (cpdf.terms || []).map(t => `Term ${t.n}: ${calRangeText(t.from, t.to)}`).join(' \u00b7 ');
+      return `${calHead('ph-list-checks', 'Check the dates', `${calE(cpdf.name || '')} \u00b7 ${items.length} found`)}
+        ${info.scanned ? `<p class="rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold px-3 py-2" data-cpdf-scanned>${info.photo ? 'The photo was' : info.scanned === 1 ? 'A scanned page was' : `${info.scanned} scanned pages were`} read with the text reader: check the dates and titles carefully.</p>` : ''}
+        ${!items.length ? `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500" data-cpdf-none><i class="ph-duotone ph-calendar-x text-3xl text-slate-400"></i><p class="mt-1 font-bold text-slate-700 text-sm">No dates found</p><p>Try the typed PDF from the DepEd website, a clearer photo, or paste the text.</p></div>` : ''}
+        <div class="grid grid-cols-2 gap-3">
+          ${calLbl('School year', `<select id="cpdfSy" onchange="cpdfSetSy(this.value)" class="${CAL_IN}">${syOpts.map(s => `<option value="${s}" ${s === sy ? 'selected' : ''}>${calSyText(s)}</option>`).join('')}</select>`)}
+          ${calLbl('Most entries are', `<select id="cpdfDef" onchange="cpdfSetDef(this.value)" class="${CAL_IN}"><option value="deped" ${cpdf.def !== 'event' ? 'selected' : ''}>DepEd activities</option><option value="event" ${cpdf.def === 'event' ? 'selected' : ''}>School events</option></select>`)}
+          ${calLbl('From (memo or order)', `<input id="cpdfMemo" type="text" maxlength="300" value="${calE(cpdf.memo || '')}" oninput="cpdf && (cpdf.memo = this.value)" class="${CAL_IN}" placeholder="e.g. DepEd Order No. 009, s. 2026">`, 'col-span-2')}
+          ${!y ? `<p class="col-span-2 -mb-1 text-xs font-extrabold text-slate-700">${calSyText(sy)} is not set up yet</p>
+            ${calLbl('First day', `<input id="cpdfStart" type="date" value="${calE(cpdf.start || '')}" oninput="cpdf && (cpdf.start = this.value)" class="${CAL_IN}">`)}
+            ${calLbl('Last day', `<input id="cpdfEnd" type="date" value="${calE(cpdf.end || '')}" oninput="cpdf && (cpdf.end = this.value)" class="${CAL_IN}">`)}
+            <p class="col-span-2 text-[11px] text-slate-500" data-cpdf-terms>${terms ? `Terms found: ${calE(terms)}. Change them later in School year dates.` : 'No terms found: add them later in School year dates.'}</p>` : ''}
+        </div>
+        ${items.length ? `<div class="flex items-center justify-between gap-2 px-1">
+            <span class="text-xs font-extrabold text-slate-700" id="cpdfCount">${on} of ${items.length} ticked</span>
+            <span class="flex gap-1.5"><button type="button" onclick="cpdfTick('all')" class="h-8 px-3 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-700">Tick all</button><button type="button" onclick="cpdfTick('none')" class="h-8 px-3 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-700">None</button></span>
+          </div>
+          <div class="space-y-2" data-cpdf-list>${items.map(card).join('')}</div>` : ''}
+        ${CAL_ERR_P}
+        ${items.length ? `<button type="button" onclick="cpdfSave()" id="cpdfSave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2" ${on ? '' : 'disabled'}><i class="ph-bold ph-calendar-plus"></i> Add ${on} to the calendar</button>` : ''}
+        ${admin && items.length ? `<div class="rounded-2xl bg-indigo-50 border border-indigo-200 p-3 space-y-2" data-cpdf-admin>
+            <p class="text-xs text-indigo-900"><b>Admin:</b> publish the ticked dates (not the school events) as the DepEd calendar of ${calSyText(sy)}. Every school using the School calendar can then load it, and schools that loaded an older list are offered the update.</p>
+            <button type="button" onclick="cpdfPublish()" id="cpdfPublish" class="w-full h-11 rounded-xl bg-white border border-indigo-300 text-sm font-extrabold text-indigo-800 flex items-center justify-center gap-2"><i class="ph-bold ph-megaphone"></i> Publish for every school</button></div>` : ''}
+        <button type="button" onclick="cpdfAgain()" class="w-full h-10 text-xs font-bold text-slate-500">Read another file</button>`;
+    }
+    function cpdfYearBounds(sy) {
+      const y = calYears[sy];
+      if (y) return { start: y.start, end: y.end };
+      return { start: calVal('cpdfStart') || cpdf.start || '', end: calVal('cpdfEnd') || cpdf.end || '' };
+    }
+    function cpdfCheck(pick) {
+      const bad = pick.find(x => !x.title || !x.from || (x.to && x.to < x.from) || calNext(x.from, 366) < (x.to || x.from));
+      if (!bad) return true;
+      cpdf.open = bad.i;
+      cpdfDraw();
+      calErr(!bad.title ? 'One of the ticked dates has no title: type what it is.' : 'One of the ticked dates ends before it starts.');
+      const el = document.querySelector(`[data-cpdf-item="${bad.i}"]`);
+      if (el) el.scrollIntoView({ block: 'center' });
+      return false;
+    }
+    function cpdfSave() {
+      if (!cpdf || !cpdf.items || !calCanEdit() || !cloud.db || !cloud.user) return;
+      const sy = cpdf.sy, y = calYears[sy], pick = cpdf.items.filter(x => x.on);
+      if (!pick.length) return calErr('Tick the dates to add.');
+      if (!cpdfCheck(pick)) return;
+      const { start, end } = cpdfYearBounds(sy);
+      if (!y && (!start || !end)) return calErr(`Type the first and the last day of ${calSyText(sy)}.`);
+      if (!y && end <= start) return calErr('The last day is before the first day.');
+      const who = calWho(), base = Date.now().toString(36);
+      const days = pick.filter(x => x.kind !== 'event').map((x, n) => cleanJSON({
+        id: `p${base}${n.toString(36)}`, kind: x.kind, title: x.title.slice(0, 160), from: x.from, to: x.to || x.from,
+        sub: x.kind === 'holiday' ? (x.sub === 'regular' ? 'regular' : 'special') : '', note: (x.note || '').slice(0, 300), nat: x.nat ? true : undefined,
+        src: 'pdf', by: { uid: who.uid, name: who.name, role: who.role }
+      }));
+      const all = [...((y && y.days) || []), ...days].sort((a, b) => String(a.from).localeCompare(String(b.from)));
+      if (all.length > 400) return calErr(`That is more than one school year can hold (${all.length} of 400 dates). Untick some.`);
+      const patch = { days: all };
+      if (!y) Object.assign(patch, { start, end, memo: String(cpdf.memo || '').slice(0, 300), terms: (cpdf.terms || []).slice(0, 3).map(t => ({ n: t.n, from: t.from, to: t.to, blocks: [] })) });
+      if (days.length || !y) calSaveYear(sy, patch, 'Adding the dates');
+      const evs = pick.filter(x => x.kind === 'event');
+      if (evs.length) {
+        const F = cloud.sdk, now = Date.now();
+        evs.forEach(x => {
+          const ref = F.doc(calPpaCol());
+          const doc = cleanJSON({ title: x.title.slice(0, 160), from: x.from, to: x.to || x.from, startTime: '', endTime: '', venue: '', note: (x.note || '').slice(0, 400), sy: calSyOf(x.from), kind: 'event', status: 'planned', by: who, createdMs: now, log: [{ at: now, by: who.name, x: `Added from ${cpdf.name === 'Pasted text' ? 'pasted text' : 'a calendar file'}` }] });
+          cloudWrite(F.setDoc(ref, { ...doc, createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp() }), 'Adding the event');
+          if (doc.sy === calEvSy) calEvents = [...calEvents, { ...doc, id: ref.id, sending: true }];
+        });
+      }
+      const n = pick.length;
+      closeCalModal();
+      calRender();
+      showToast(`${n} added to the calendar`, 'ph-calendar-check');
+    }
+    async function cpdfPublish() {
+      if (!cpdf || !cpdf.items || !isAdminDevice() || !cloud.db || !cloud.user) return;
+      const sy = cpdf.sy, pick = cpdf.items.filter(x => x.on && x.kind !== 'event');
+      const memo = String(calVal('cpdfMemo') || cpdf.memo || '').slice(0, 300);
+      if (!pick.length) return calErr('Tick the DepEd dates to publish (school events are not published).');
+      if (!cpdfCheck(pick)) return;
+      if (!memo) return calErr('Type the order or memo it comes from, e.g. DepEd Order No. 009, s. 2026.');
+      const { start, end } = cpdfYearBounds(sy);
+      if (!start || !end || end <= start) return calErr(`Type the first and the last day of ${calSyText(sy)}.`);
+      if (!await appConfirm(`${pick.length} dates for ${calSyText(sy)} \u00b7 ${memo}`, { title: 'Publish for every school?', ok: 'Publish', icon: 'ph-megaphone' })) return;
+      const y = calYears[sy];
+      const terms = (y && y.terms && y.terms.length ? y.terms : (cpdf.terms || []).map(t => ({ n: t.n, from: t.from, to: t.to, blocks: [] }))).slice(0, 4);
+      const v = Math.max((CAL_STARTER[sy] || {}).v || 0, (calPub[sy] || {}).v || 0) + 1;
+      const F = cloud.sdk;
+      const doc = cleanJSON({
+        sy, v, memo, start, end, terms, by: calWho().name,
+        days: pick.map(x => cleanJSON({ k: x.kind, f: x.from, t: x.to && x.to !== x.from ? x.to : '', n: x.title.slice(0, 160), s: x.kind === 'holiday' ? (x.sub === 'regular' ? 'regular' : 'special') : '', nat: x.nat ? true : undefined }))
+      });
+      cloudWrite(F.setDoc(F.doc(cloud.db, 'depedCalendars', sy), { ...doc, updatedAt: F.serverTimestamp() }), 'Publishing the DepEd calendar');
+      calPub[sy] = cpdfPubStarter(doc);
+      try { localStorage.setItem('cp_deped_cal_v1', JSON.stringify(calPub)); } catch (e) {}
+      closeCalModal();
+      calRender();
+      showToast(`Published for every school \u00b7 ${calSyText(sy)}`, 'ph-megaphone');
+    }
+
     // The first and last day of the school year and the terms
     function calYearHTML() {
       if (!calCanEdit()) return '';
@@ -19357,7 +19932,7 @@
       if (!planOn() || !cloud.user) return;
       const me = cloud.user.uid, today = localISODate(), list = [];
       Object.values(calYears).forEach(y => (y.days || []).forEach(d => {
-        if (d.src === 'deped' || !CAL_KINDS[d.kind] || !CAL_KINDS[d.kind].off || (d.by && d.by.uid === me) || (d.to || d.from) < today) return;
+        if (d.src === 'deped' || d.src === 'pdf' || !CAL_KINDS[d.kind] || !CAL_KINDS[d.kind].off || (d.by && d.by.uid === me) || (d.to || d.from) < today) return;
         list.push(d);
       }));
       notifCheck('calDays', list.map(d => ({
@@ -31552,6 +32127,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-calendar-from-pdf', date: 'Nov 2026', title: 'Read the school calendar from a PDF', points: [
+        'New: Read a calendar PDF or photo on the School calendar. Choose the DepEd Order, a region or division memo, or your school\u2019s own calendar (a typed PDF, a scanned one, a photo, or pasted text), and every date found is listed with what kind it is: holiday, no classes, break, exams, INSET, DepEd activity or school event.',
+        'Check each one before adding: change the title, kind or dates, untick what you don\u2019t want. Dates already on the calendar are marked Already there and left out. For a school year not set up yet, the first and last day and the terms are filled in from the paper.',
+        'Everything is read on your phone; nothing is uploaded. When a new DepEd Order comes out, it can be published for every school, so you only tap Load the DepEd calendar.'
+      ], pilot: 'plan' },
       { id: '2026-11-plan-order', date: 'Nov 2026', title: 'Plan in order: program, project, activity', points: [
         'The add buttons on the Plan page now follow the plan: Program, then Project, then Activity. Program is the main button until the school year has its first program; after that, Activity is (the one added most often). Teachers see Propose a project, then Propose an activity.',
         'Printing the calendar: November (Reading Month) and December (Christmas) have their own pictures now, and there are 6 general scenes to choose from: school grounds, classroom, library, sports day, nature and garden, and a celebration.'

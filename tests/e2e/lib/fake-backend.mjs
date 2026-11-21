@@ -111,6 +111,12 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
       if (!ok) deny('features write', { path, data });
       return;
     }
+    if (p[0] === 'depedCalendars' && p.length === 2) {
+      const ok = isAdmin(ctx) && /^[0-9]{4}-[0-9]{4}$/.test(p[1]) && (kind === 'delete' || (Object.keys(data).every(k => ['sy', 'v', 'memo', 'start', 'end', 'terms', 'days', 'by', 'updatedAt'].includes(k)) &&
+        data.sy === p[1] && Number.isInteger(data.v) && Array.isArray(data.days) && data.days.length <= 400 && Array.isArray(data.terms ?? []) && (data.terms ?? []).length <= 4 && str(data.memo, 300) && data.memo.length > 0));
+      if (!ok) deny('deped calendar write', { path, data });
+      return;
+    }
     if (p[0] !== 'schools') deny('unknown collection', { path });
     if (p.length === 2) {
       if (kind === 'create') {
