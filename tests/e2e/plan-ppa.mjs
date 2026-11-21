@@ -98,7 +98,7 @@ try {
   await ev(a, () => setCalFilter('acts'));
   check(await ev(a, () => document.querySelectorAll('[data-cal-entry][data-cal-kind="activity"]').length >= 5 && [...document.querySelectorAll('[data-cal-entry]')].every(e => e.dataset.calKind === 'activity')), 'calendar · Activities: the activities only');
   check(await ev(a, () => !!document.querySelector('[data-cal-week]') && /This week/.test(document.querySelector('[data-cal-week]').textContent)), 'calendar: “This week: …”');
-  check(await ev(a, () => homeAttention().some(x => x.key === 'cal-week')), 'AO’s Home: “This week: …”');
+  check(await ev(a, () => { renderHomeWeek(); const c = document.getElementById('homeWeek'); return !c.classList.contains('hidden') && homeWeekList().length > 0 && /This week/.test(c.textContent) && !homeAttention().some(x => x.key === 'cal-week'); }), 'AO’s Home: a “This week” card (not repeated in Needs your attention)');
   await shot(a, 'ao-cal');
   await ev(a, () => setCalFilter('all'));
 
