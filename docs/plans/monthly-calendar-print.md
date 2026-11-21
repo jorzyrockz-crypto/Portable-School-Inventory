@@ -11,7 +11,9 @@ Decisions (answered 2026-11-21):
 |---|---|---|
 | A | Background art | Clay-style themes: one per month, plus general scenes to switch to, **and** the school's own photo or banner |
 | B | What can be customized | Everything: art theme and strength, colour accent, paper and orientation, which entries show, header with logo and school name, a motto or note line, week start |
-| C | Paper and layout | The person printing chooses: A4 or Legal, landscape or portrait; one month or a range of months (e.g. the whole SY, June to April) as one print / PDF |
+| C | Paper and layout | The person printing chooses: A4, **Folio / Portfolio** (8.5 × 13 in, long bond) or **A3**, landscape or portrait; **1 or 2 months per sheet**; one month or a range of months (e.g. the whole SY, June to April) as one print / PDF |
+| C2 | “Portfolio” size (2026-11-21) | 8.5 × 13 in (Folio, long bond). It replaces the earlier “Legal” option, which meant the same size |
+| C3 | 2 calendars in 1 sheet (2026-11-21) | The person printing chooses: **stacked** (one month above the other) or **side by side** |
 | D | Who prints | Everyone: School Head, AO and teachers (e.g. for their classroom) |
 
 ![Sample art: June (back to school, rainy season, Independence Day)](assets/cal-art-june-sample.webp)
@@ -63,7 +65,37 @@ so the month name prints over it.*
 - **Under the title:** the term and block (*Term 1 · Instructional*) and the class days in the
   month (*14 class days*), from D1's class-day count. Each can be switched off.
 - **Range of months:** one month per page, page breaks between months, each with its own
-  month's art. A whole SY (June to April) is 11 pages.
+  month's art. A whole SY (June to April) is 11 pages, or 6 sheets with 2 months per sheet.
+
+### 2 months in 1 sheet
+
+```
+ Stacked (portrait)            Side by side (landscape)
+┌──────────────────────┐      ┌─────────────────┬─────────────────┐
+│ header               │      │ header (once, across the top)     │
+│ ░░ art ░ JUNE 2026 ░ │      │ ░ art ░ JUNE    │ ░ art ░ JULY    │
+│ ┌──┬──┬──┬──┬──┬──┬─┐│      │ ┌─┬─┬─┬─┬─┬─┬─┐ │ ┌─┬─┬─┬─┬─┬─┬─┐ │
+│ │  grid              ││      │ │ grid          │ │ │ grid          │ │
+│ └──────────────────── │      │ └─────────────┘ │ └─────────────┘ │
+│ ░░ art ░ JULY 2026 ░ │      │ legend · motto · printed date      │
+│ ┌──┬──┬──┬──┬──┬──┬─┐│      └─────────────────┴─────────────────┘
+│ │  grid              ││
+│ └────────────────────┘│
+│ legend · motto       │
+└──────────────────────┘
+```
+
+- **Months per sheet: 1 or 2.** With 2, a **Layout** choice appears: **Stacked** (default
+  orientation portrait) or **Side by side** (default landscape); the orientation can still be
+  changed.
+- Each month keeps its own art banner (smaller), title, and term / class-day line. The school
+  header and the footer (legend, motto, printed date) print once per sheet.
+- The day boxes are smaller, so each box shows fewer titles (about 2 on A4, 3 on Folio, 4 on A3)
+  before "+N more"; the **More this month** lists go under each month, or at the bottom of the
+  sheet if there is no room.
+- A range with an odd number of months leaves the last half of the last sheet with only the
+  legend (no empty grid).
+- A3 with 2 months side by side is the bulletin-board choice; A4 stacked is the paper saver.
 
 ## 3. Customization
 
@@ -73,7 +105,8 @@ so the month name prints over it.*
 | | Strength: Full · Soft (faded behind the title) · Light (watermark behind the whole grid) | Full |
 | | Position: Top banner · Whole page behind the grid (watermark) | Top banner |
 | **Colour** | Accent for the title, day headers and lines: Teal (app), Blue, Green, Red, Violet, Orange, Black and white (saves ink) | Teal |
-| **Page** | A4 or Legal (8.5 × 13 in), landscape or portrait | A4 landscape |
+| **Page** | **A4** (210 × 297 mm), **Folio / Portfolio** (8.5 × 13 in, long bond) or **A3** (297 × 420 mm); landscape or portrait | A4 landscape (1 month), A4 portrait (2 months stacked) |
+| | Months per sheet: 1 or 2; with 2, **Stacked** or **Side by side** | 1 |
 | | Months: this month · a range (from / to) · the whole SY | this month |
 | | Week starts on Monday or Sunday | Sunday (wall-calendar style) |
 | **What to show** | Holidays · No classes · Exams · School events · Activities · DepEd national dates · **Mine only** (a teacher's own activities) · times · venues · people responsible | all on except DepEd national, Mine only, venues and people |
@@ -109,7 +142,7 @@ so the month name prints over it.*
 books · Sports and Palaro · Nature and garden · Celebration / program stage.
 
 - Made once in the same soft clay style as the sign-in screen, with the upper middle left plain
-  for the month title. Saved as small WebP files (about 30–50 KB each, ~0.8 MB for all 18) in
+  for the month title. Saved as small WebP files (about 40–70 KB each at 1600 px wide so they stay sharp on A3, ~1 MB for all 18) in
   `assets/cal-art/`. **Not precached:** each one is fetched when it is first used in a print, then
   kept by the service worker (like the OCR and Firebase files), so the app's first load does not
   grow.
@@ -122,8 +155,11 @@ books · Sports and Palaro · Nature and garden · Celebration / program stage.
 
 ## 5. Print quality
 
-- Built as HTML in the existing print area (`@page` size and orientation set per print), like
-  the other forms; checked with Chrome's Save as PDF on A4 and Legal, both orientations.
+- Built as HTML in the existing print area (`@page` size and orientation set per print:
+  `A4`, `215.9mm 330.2mm` for Folio, `A3`), like the other forms; checked with Chrome's Save as
+  PDF on all three sizes, both orientations, 1 and 2 months per sheet.
+- The printer must have the paper: the sheet says *Pick the same paper size in the print box*
+  (A3 needs an A3 printer or a print shop; a PDF saved at A3 can be printed there).
 - Background art and fills print because the page uses `print-color-adjust: exact` (the sheet
   reminds people to tick **Background graphics** in the print box if a browser ignores it).
 - Text sizes shrink a little in portrait and when a month has many entries, so a month stays on
@@ -144,13 +180,15 @@ books · Sports and Palaro · Nature and garden · Celebration / program stage.
 - Options: theme auto picks that month's art; general scene; None; Black and white; paper and
   orientation set the `@page` rule; What-to-show switches remove entries; Mine only shows only a
   teacher's activities; the header shows the school name and SY; the motto line prints.
-- Range: June to April gives 11 pages, each with its own art.
+- Range: June to April gives 11 pages, each with its own art; with 2 per sheet, 6 sheets
+  (stacked and side by side), the last with one month.
+- Paper: A4, Folio (8.5 × 13 in) and A3 set the matching `@page` size and orientation.
 - School photo: a picked picture is shrunk, kept on the device, and used in the banner.
 - Options are remembered after a reload. `window.__printed` after Print. No page errors.
 
 ## 8. Build steps (one PR)
 
-1. Make the 12 monthly + 6 general clay images (WebP) in `assets/cal-art/`; service worker: cache
+1. Make the 12 monthly + 6 general clay images (wide enough for A3, ~1600 px) (WebP) in `assets/cal-art/`; service worker: cache
    on first use.
 2. Print sheet (preview + options) and the page builder (`calPrintHTML(opts, months)`).
 3. School photo picker (shrink, IndexedDB, crop).
