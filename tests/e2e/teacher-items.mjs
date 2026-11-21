@@ -50,7 +50,7 @@ try {
   const ana = await joinAsTeacher(t, sid, 'Ana Reyes', 'Teacher III', 'Grade 7 – Science');
   const j = await openPhone('teacher-juan', backend);
   const juan = await joinAsTeacher(j, sid, 'Juan Dela Cruz', 'Teacher I', 'Grade 9');
-  check(await ev(j, () => teacherTab) === 'requests' && await ev(j, () => !document.getElementById('rqRequestsPane').classList.contains('hidden')), 'teacher with nothing released opens on Requests');
+  check(await ev(j, () => teacherTab) === 'today' && await ev(j, () => !document.getElementById('rqTodayPane').classList.contains('hidden') && !!document.querySelector('#rqTodayPane [data-t-today="requests"]')), 'a teacher opens on Today (Supply requests on it)');
   await until(a, (x, y) => teacherRoster().filter(t => t.joined).length === 2, 'roster', 8000);
 
   out('2 custodian releases to Ana (RIS + ICS) and to Juan');

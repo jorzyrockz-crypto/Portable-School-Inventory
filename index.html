@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="29728fc20aaa">
+  <meta name="app-version" content="c306ea27994e">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -206,6 +206,9 @@
     .lap-only, .lap-col { display: none; }
     #tabBar > div.hidden { display: none !important; }
     .hd-count { position: absolute; top: 0.375rem; left: 50%; margin-left: 0.375rem; }
+    .t-dot { position: absolute; top: 0.625rem; left: 50%; margin-left: 0.75rem; }
+    .t-num { display: none !important; }
+    #tabBar .tab-btn.hidden { display: none !important; }
     :root { --side-w: 14.5rem; }
     /* Teachers page on a phone: the list, or the person picked (side by side on computers, below) */
     #tvPanes.tv-sel > #tvListPane, #tvPanes:not(.tv-sel) > #tvDetailPane { display: none; }
@@ -233,6 +236,12 @@
       #hdBody .hd-wait > * { margin-top: 0 !important; }
       #tabBar #hdTab-more { display: none !important; }
       #tabBar .hd-count { position: static; margin-left: auto; }
+      #tabBar #rqTab-more { display: none !important; }
+      #tabBar .t-dot { position: static; margin-left: auto; }
+      #tabBar .t-num:not(.hidden) { display: inline-flex !important; margin-left: auto; }
+      #tabBar .t-num:not(.hidden) + .t-dot { margin-left: 0.25rem; }
+      #rqTodayPane .t-today { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+      #rqTodayPane .t-today > * { margin-top: 0 !important; }
       #hdBody .hd-holders { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; align-items: start; }
       #hdBody .hd-holders > * { margin-top: 0 !important; }
       html:not(.no-tabs) body > header { margin-left: calc(-1 * var(--side-w)); }
@@ -1393,6 +1402,7 @@
 
   <!-- REQUEST SUPPLIES (teacher phones): only their own requests -->
   <section id="viewRequester" class="hidden max-w-xl mx-auto px-4 pt-5 space-y-5 no-print">
+    <button id="rqBack" type="button" onclick="setTeacherTab('more')" class="hidden lap-hide -mb-3 h-9 -ml-1 px-1 text-xs font-bold text-brand-700 items-center gap-1"><i class="ph-bold ph-caret-left"></i> More</button>
     <div class="flex items-start gap-3">
       <div class="min-w-0 flex-1">
         <p id="rqHello" class="text-sm text-slate-500"></p>
@@ -1401,17 +1411,11 @@
       </div>
       <button id="rqAvatar" onclick="editMyDetails()" title="My details" aria-label="My details" class="hidden shrink-0 mt-1 rounded-full ring-2 ring-white shadow-sm active:scale-95 transition"></button>
     </div>
-    <div id="rqTabs" role="tablist" aria-label="My items, requests, school stock or library" class="grid grid-cols-4 gap-1 p-1 rounded-2xl bg-slate-200/70">
-      <button id="rqTab-items" role="tab" onclick="setTeacherTab('items')"><i class="ph-bold ph-backpack text-base hidden min-[400px]:inline"></i> My Items <span id="rqItemsCount" class="hidden"></span><span id="rqItemsDot" class="hidden w-2 h-2 rounded-full bg-emerald-500"></span></button>
-      <button id="rqTab-requests" role="tab" onclick="setTeacherTab('requests')"><i class="ph-bold ph-paper-plane-tilt text-base hidden min-[400px]:inline"></i> Requests</button>
-      <button id="rqTab-stock" role="tab" onclick="setTeacherTab('stock')"><i class="ph-bold ph-package text-base hidden min-[400px]:inline"></i> Stock</button>
-      <button id="rqTab-library" role="tab" onclick="setTeacherTab('library')"><i class="ph-bold ph-books text-base hidden min-[400px]:inline"></i> Library <span id="rqLibDot" class="hidden w-2 h-2 rounded-full bg-violet-500"></span></button>
-      <button id="rqTab-calendar" role="tab" onclick="setTeacherTab('calendar')" class="hidden"><i class="ph-bold ph-calendar-dots text-base hidden min-[400px]:inline"></i> Calendar</button>
-      <button id="rqTab-leave" role="tab" onclick="setTeacherTab('leave')" class="hidden"><i class="ph-bold ph-calendar-check text-base hidden min-[400px]:inline"></i> Leave <span id="rqLeaveDot" class="hidden w-2 h-2 rounded-full bg-teal-500"></span></button>
-    </div>
     <p id="rqSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
     <div id="rqStatus" class="empty:hidden"></div>
     <div id="rqInspect" class="empty:hidden space-y-2"></div>
+    <div id="rqTodayPane" class="hidden space-y-5"></div>
+    <div id="rqMorePane" class="hidden space-y-3"></div>
     <div id="rqItemsPane" class="hidden space-y-5"></div>
     <div id="rqStockPane" class="hidden space-y-3"></div>
     <div id="rqLibraryPane" class="hidden space-y-5"></div>
@@ -1701,6 +1705,55 @@
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
         <i class="ph-bold ph-calendar-check text-[22px]"></i>
         <span class="flex items-center gap-1">My leave</span>
+      </button>
+    </div>
+    <!-- A teacher: Today · My Items · Requests · Calendar · More (a sidebar on a computer, the More pages listed) -->
+    <div id="tNav" role="tablist" aria-label="My page" class="hidden max-w-xl mx-auto grid grid-cols-4">
+      <button id="rqTab-today" role="tab" data-t-tab="today" onclick="setTeacherTab('today')" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-house text-[22px]"></i>
+        <span class="flex items-center gap-1">Today</span>
+      </button>
+      <button id="rqTab-items" role="tab" data-t-tab="items" onclick="setTeacherTab('items')" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-backpack text-[22px]"></i>
+        <span class="flex items-center gap-1">My Items</span><span id="rqItemsCount" class="hidden"></span><span id="rqItemsDot" class="hidden t-dot w-2 h-2 rounded-full bg-emerald-500"></span>
+      </button>
+      <button id="rqTab-requests" role="tab" data-t-tab="requests" onclick="setTeacherTab('requests')" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-paper-plane-tilt text-[22px]"></i>
+        <span class="flex items-center gap-1">Requests</span>
+      </button>
+      <button id="rqTab-calendar" role="tab" data-t-tab="calendar" onclick="setTeacherTab('calendar')" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500 hidden">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-calendar-dots text-[22px]"></i>
+        <span class="flex items-center gap-1">Calendar</span>
+      </button>
+      <button id="rqTab-more" role="tab" data-t-tab="more" onclick="setTeacherTab('more')" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-dots-three-circle text-[22px]"></i>
+        <span class="flex items-center gap-1">More</span><span id="rqMoreDot" class="hidden t-dot w-2 h-2 rounded-full bg-violet-500"></span>
+      </button>
+      <span class="side-label lap-only">School</span>
+      <button id="rqTab-stock" role="tab" data-t-tab="stock" onclick="setTeacherTab('stock')" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-package text-[22px]"></i>
+        <span class="flex items-center gap-1">School stock</span>
+      </button>
+      <button id="rqTab-library" role="tab" data-t-tab="library" onclick="setTeacherTab('library')" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-books text-[22px]"></i>
+        <span class="flex items-center gap-1">Library</span><span id="rqLibDot" class="hidden t-dot w-2 h-2 rounded-full bg-violet-500"></span>
+      </button>
+      <button id="rqTab-leave" role="tab" data-t-tab="leave" onclick="setTeacherTab('leave')" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500 hidden">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-calendar-check text-[22px]"></i>
+        <span class="flex items-center gap-1">Leave</span><span id="rqLeaveDot" class="hidden t-dot w-2 h-2 rounded-full bg-teal-500"></span>
+      </button>
+      <button id="rqTab-desk" role="tab" data-t-tab="desk" onclick="openBooksView()" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500 hidden">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-book-open-text text-[22px]"></i>
+        <span class="flex items-center gap-1">Library desk</span>
       </button>
     </div>
   </nav>
@@ -3652,9 +3705,11 @@
       const ipEl = document.getElementById('itemSheet');   // the item preview belongs to the page it was opened on
       if (ipEl && !ipEl.classList.contains('hidden') && viewName !== activeMainView) closeItemSheet();
       const solo = viewName === 'REQUESTER' || viewName === 'HEAD' || (viewName === 'BOOKS' && isTeacherDevice());
-      document.getElementById('tabBar').classList.toggle('hidden', solo);
-      document.documentElement.classList.toggle('no-tabs', solo);
-      document.getElementById('cuNav').classList.toggle('hidden', viewName === 'HEAD');
+      const tNav = isTeacherDevice() && (viewName === 'REQUESTER' || viewName === 'BOOKS');   // a teacher: their own tabs (the sidebar on a computer)
+      document.getElementById('tabBar').classList.toggle('hidden', solo && !tNav);
+      document.documentElement.classList.toggle('no-tabs', solo && !tNav);
+      document.getElementById('tNav').classList.toggle('hidden', !tNav);
+      document.getElementById('cuNav').classList.toggle('hidden', viewName === 'HEAD' || tNav);
       document.getElementById('hdNav').classList.toggle('hidden', viewName !== 'HEAD');   // shown once the head is confirmed (renderHeadTabs)
       document.getElementById('moreMenuBtn').classList.toggle('hidden', solo);
       const ab = document.getElementById('appearBtn'); // a teacher or head has no More menu: Appearance gets its own button
@@ -3684,6 +3739,17 @@
     function paintTabs() {
       const forms = coaIsPage();
       document.querySelectorAll('#tabBar .tab-btn').forEach(btn => {
+        const tt = btn.dataset.tTab;
+        if (tt) {
+          const rq = activeMainView === 'REQUESTER', desk = activeMainView === 'BOOKS';
+          const on = (rq && (tt === teacherTab || (tt === 'more' && T_MORE.includes(teacherTab)))) || (desk && (tt === 'desk' || tt === 'more'));
+          btn.classList.toggle('text-brand-600', on);
+          btn.classList.toggle('text-slate-500', !on);
+          btn.setAttribute('aria-current', on ? 'page' : 'false');
+          btn.setAttribute('aria-selected', on ? 'true' : 'false');
+          btn.querySelector('.tab-ind').classList.toggle('opacity-0', !on);
+          return;
+        }
         const hd = btn.dataset.hdTab;
         if (hd) {
           const on = activeMainView === 'HEAD' && (hd === headTab || (hd === 'more' && HEAD_MORE.includes(headTab)));
@@ -17107,6 +17173,7 @@
     function lvTeacherDot() {
       const dot = document.getElementById('rqLeaveDot');
       if (dot) dot.classList.toggle('hidden', !lvList.some(l => ['review', 'returned'].includes(l.status)));
+      tMoreDot();
     }
     function renderTeacherLeave() {
       const pane = document.getElementById('rqLeavePane');
@@ -23630,7 +23697,7 @@
       window.scrollTo({ top: 0 });
     }
     // ---- School Head, Nov 2026: Today and More (the same look as the custodian's Home) ----------
-    const HEAD_MORE = ['items', 'people', 'history', 'leave'];
+    var HEAD_MORE = ['items', 'people', 'history', 'leave'];
     function headCardHTML(o) {
       return `<div class="rounded-2xl bg-white border border-slate-200/90 shadow-sm p-3 flex items-center gap-3" ${o.attr || ''}>
         <button type="button" onclick="${o.go}" class="flex-1 min-w-0 flex items-center gap-3 text-left">
@@ -25670,7 +25737,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     let myReleases = [];        // teacher phone: releases made out to me
     let tReports = sampleList('reports'); // teacher: my reports · custodian: every teacher's reports (+ sample ones)
     let myRelLoaded = false, tRepLoaded = false;   // first answer from the server (reminders wait for it)
-    let teacherTab = null;      // 'items' | 'requests'
+    var teacherTab = null;      // 'today' | 'items' | 'requests' | 'stock' | 'library' | 'leave' | 'calendar' | 'more' (var: the tab bar reads it early)
     let tReportDraft = null;
 
     const T_REASONS = {
@@ -25724,9 +25791,95 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       }, soft('my reports')));
     }
 
+    // ---- A teacher's page, Nov 2026: Today and More (the same look as the custodian's) ----------
+    var T_MORE = ['stock', 'library', 'leave'];
+    const T_TITLES = { today: 'Today', items: 'My items', requests: 'Request supplies', stock: 'School stock', library: 'Library', leave: 'Leave', calendar: 'School calendar', more: 'More' };
+    function teacherAttHTML(att) {
+      const tones = { rose: 'bg-rose-50 text-rose-600', amber: 'bg-amber-50 text-amber-600', brand: 'bg-brand-50 text-brand-600', green: 'bg-emerald-50 text-emerald-600', slate: 'bg-slate-100 text-slate-500' };
+      return `
+          <div data-t-attention="${att.length}">
+            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1 mb-1.5">Needs your attention${att.length ? ` · ${att.length}` : ''}</h2>
+            ${att.length ? `<ul class="rounded-2xl bg-white border border-slate-200 divide-y divide-slate-100 overflow-hidden">${att.map(x => `
+              <li data-t-att="${x.key}">
+                <${x.act ? 'button type="button"' : 'div'} ${x.act ? `onclick="${x.act}"` : ''} class="w-full text-left flex items-start gap-2.5 px-3 py-2.5 ${x.act ? 'hover:bg-slate-50' : ''}">
+                  <span class="w-8 h-8 shrink-0 rounded-lg ${tones[x.tone] || tones.slate} flex items-center justify-center"><i class="ph-bold ${x.icon} text-base"></i></span>
+                  <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900">${escapeHTML(x.text)}</span>${x.sub ? `<span class="block text-[11px] text-slate-500">${escapeHTML(x.sub)}</span>` : ''}</span>
+                  ${x.act ? '<i class="ph-bold ph-caret-right text-slate-400 mt-2"></i>' : ''}
+                </${x.act ? 'button' : 'div'}>
+              </li>`).join('')}</ul>`
+            : '<div class="rounded-2xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-xs font-bold text-emerald-800 flex items-center gap-2" data-t-att="clear"><i class="ph-bold ph-check-circle text-lg"></i> All clear · nothing to do</div>'}
+          </div>`;
+    }
+    // Today: Needs your attention and Supply requests (left), This week, My Items, Library, Leave (right)
+    function teacherTodayHTML(h, toAck) {
+      // Rows that point into My Items open it first
+      const att = teacherAttention(h, toAck).map(x => ({ ...x, act: x.act && !/setTeacherTab/.test(x.act) ? `setTeacherTab('items'); setTimeout(function () { ${x.act} }, 80)` : x.act }));
+      const me = cloud.user ? cloud.user.uid : '';
+      const active = myMemberStatus() === 'active';
+      const open = reqList.filter(r => ['pending', 'approved', 'pr'].includes(r.status)).length;
+      const recent = reqList.slice(0, 3);
+      const date = r => { const t = reqTime(r); return t ? formatShortDate(new Date(t).toISOString()) : ''; };
+      const reqs = `
+        <div class="rounded-2xl bg-white border border-slate-200/90 shadow-sm overflow-hidden" data-t-today="requests">
+          <div class="p-3 flex items-center gap-3">
+            <button type="button" onclick="setTeacherTab('requests')" class="flex-1 min-w-0 flex items-center gap-3 text-left">
+              <span class="w-11 h-11 shrink-0 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center"><i class="ph-bold ph-paper-plane-tilt text-2xl"></i></span>
+              <span class="min-w-0"><span class="block text-sm font-extrabold text-slate-800">Supply requests</span><span class="block text-[11px] text-slate-500 truncate">${open ? `${open} in progress` : reqList.length ? 'Nothing in progress' : 'Ask the property custodian for supplies'}</span></span>
+            </button>
+            ${active ? `<button type="button" onclick="openRequestForm()" id="tTodayRequest" class="shrink-0 h-10 px-3 rounded-xl bg-amber-700 hover:bg-amber-800 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 transition"><i class="ph-bold ph-plus"></i> Request</button>` : ''}
+          </div>
+          ${recent.length ? `<div class="border-t border-slate-100 divide-y divide-slate-100">${recent.map(r => {
+            const st = REQ_STATUS[r.status] || REQ_STATUS.pending;
+            const lines = reqLinesOf(r);
+            const what = lines.slice(0, 2).map(l => l.desc).join(', ') + (lines.length > 2 ? ` + ${lines.length - 2} more` : '');
+            return `<button type="button" onclick="setTeacherTab('requests')" data-t-today-req class="w-full text-left flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50">
+              <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900 truncate">${escapeHTML(what || 'Request')}</span><span class="block text-[11px] text-slate-500 truncate">${escapeHTML(date(r))}</span></span>
+              <span class="shrink-0 px-1.5 py-0.5 rounded-md border text-[11px] font-bold ${st.cls}">${escapeHTML(st.short)}</span>
+              <i class="ph-bold ph-caret-right text-slate-300"></i></button>`;
+          }).join('')}</div>` : ''}
+        </div>`;
+      const cards = [];
+      if (planOn()) cards.push(weekCardHTML());
+      const value = h.equipment.reduce((n, x) => n + (x.line.unitCost || 0), 0);
+      cards.push(headCardHTML({ attr: 'data-t-today="items"', go: "setTeacherTab('items')", tone: 'bg-brand-50 text-brand-600', icon: 'ph-backpack', title: 'My Items', badge: toAck.length,
+        sub: [h.equipment.length ? `${plural(h.equipment.length, 'item')} · ${pesoShort(value)}` : 'No equipment under your name', toAck.length && `${plural(toAck.length, 'slip')} to mark Received`].filter(Boolean).join(' · ') }));
+      const loans = bk.loansLoaded ? bk.loans.filter(l => l.borrowerUid === me && bkLoanOut(l)) : null;
+      cards.push(headCardHTML({ attr: 'data-t-today="library"', go: "setTeacherTab('library')", tone: 'bg-violet-50 text-violet-700', icon: 'ph-books', title: 'Library',
+        sub: loans && loans.length ? `${plural(loans.length, 'book')} borrowed` : 'Find a book · see what is free and where' }));
+      if (leaveOn()) {
+        const lvOpen = lvList.filter(l => LV_OPEN.includes(l.status)).length;
+        const back = lvList.filter(l => ['review', 'returned'].includes(l.status)).length;
+        cards.push(headCardHTML({ attr: 'data-t-today="leave"', go: "setTeacherTab('leave')", tone: 'bg-cyan-50 text-cyan-700', icon: 'ph-calendar-check', title: 'Leave', badge: back,
+          sub: !lvLoaded ? 'Loading…' : [lvOpen ? `${lvOpen} in progress` : 'Apply for leave · CS Form 6', back && `${back} for you to look at`].filter(Boolean).join(' · '),
+          btn: active && !featEnded('leave') ? `<button type="button" onclick="openLvSheet('apply')" id="tTodayLeave" class="shrink-0 h-10 px-3 rounded-xl bg-cyan-700 hover:bg-cyan-800 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 transition"><i class="ph-bold ph-plus"></i> Apply</button>` : '' }));
+      }
+      return `
+        <div class="t-today space-y-5">
+          <div class="space-y-5">${teacherAttHTML(att)}${reqs}</div>
+          <div class="space-y-3">${cards.join('')}</div>
+        </div>`;
+    }
+    // More (phones): the pages that are in the sidebar on a computer
+    function teacherMoreHTML() {
+      const row = (go, icon, tone, title, sub, k) => headCardHTML({ go, icon, tone, title, sub, attr: `data-t-more-row="${k}"` });
+      return `
+        <div class="space-y-3" data-t-more>
+          ${row("setTeacherTab('stock')", 'ph-package', 'bg-emerald-50 text-emerald-700', 'School stock', 'Supplies left at the school · take or ask for some', 'stock')}
+          ${row("setTeacherTab('library')", 'ph-books', 'bg-violet-50 text-violet-700', 'Library', 'Find a book · see what is free and where', 'library')}
+          ${leaveOn() ? row("setTeacherTab('leave')", 'ph-calendar-check', 'bg-cyan-50 text-cyan-700', 'Leave', 'Apply for leave · CS Form 6 · leave credits', 'leave') : ''}
+          ${isLibrarianDevice() ? row('openBooksView()', 'ph-book-open-text', 'bg-indigo-50 text-indigo-600', 'Library desk', 'Titles, places, lending and classes (librarian)', 'desk') : ''}
+        </div>`;
+    }
+    // The dot on More: something new under Library or Leave (phones)
+    function tMoreDot() {
+      const dot = document.getElementById('rqMoreDot');
+      if (!dot) return;
+      dot.classList.toggle('hidden', !['rqLibDot', 'rqLeaveDot'].some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden') && !el.closest('.hidden'); }));
+    }
     function teacherStockTab() { return teacherTab === 'stock'; }   // the Stock tab shows the banner itself
     function setTeacherTab(tab) {
       teacherTab = tab;
+      if (isTeacherDevice() && activeMainView !== 'REQUESTER') { switchMainView('REQUESTER'); return; }
       renderRequesterView();
       window.scrollTo({ top: 0 });
     }
@@ -25736,34 +25889,33 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       // An ICS / PAR whose units have all gone back (taken back, relieved) no longer asks for Received.
       const stillHeld = new Set(h.equipment.map(x => x.rel.id));
       const toAck = myReleases.filter(r => (r.kind === 'RIS' || (isIssueKind(r.kind) && (stillHeld.has(r.id) || !(r.lines || []).some(l => (l.units || []).length)))) && !r.sameHolder && !tAcked(r.id));
-      if (!teacherTab) teacherTab = myReleases.length ? 'items' : 'requests';
+      if (!teacherTab) teacherTab = 'today';
       const lvOn = leaveOn();
-      if (teacherTab === 'leave' && !lvOn) teacherTab = 'requests';
+      if (teacherTab === 'leave' && !lvOn) teacherTab = 'today';
       const calOn = planOn();
-      if (teacherTab === 'calendar' && !calOn) teacherTab = 'requests';
+      if (teacherTab === 'calendar' && !calOn) teacherTab = 'today';
       const tab = teacherTab;
-      document.getElementById('rqTitle').textContent = tab === 'items' ? 'My items' : tab === 'stock' ? 'School stock' : tab === 'library' ? 'Library' : tab === 'leave' ? 'Leave' : tab === 'calendar' ? 'School calendar' : 'Request supplies';
+      document.getElementById('rqTitle').textContent = T_TITLES[tab] || T_TITLES.requests;
       setTimeout(renderTeacherAvatars, 0);
-      document.getElementById('rqSchool').textContent = tab === 'stock' ? `Supplies left at ${reqRole.schoolName}` : tab === 'calendar' ? `Holidays, days without classes and events at ${reqRole.schoolName}` : tab === 'leave' ? `Applications for leave at ${reqRole.schoolName} · CS Form 6` : tab === 'library' ? `Books at ${reqRole.schoolName} · what is free and where` : `To the property custodian of ${reqRole.schoolName}`;
-      const tabsEl = document.getElementById('rqTabs');
-      const nTabs = 4 + (lvOn ? 1 : 0) + (calOn ? 1 : 0);
-      tabsEl.classList.toggle('grid-cols-4', nTabs === 4);
-      tabsEl.classList.toggle('grid-cols-5', nTabs === 5);
-      tabsEl.classList.toggle('grid-cols-6', nTabs === 6);
-      tabsEl.classList.toggle('rq-five', nTabs === 5);
-      tabsEl.classList.toggle('rq-six', nTabs === 6);
-      ['items', 'requests', 'stock', 'library', 'calendar', 'leave'].forEach(t => {
-        const b = document.getElementById(`rqTab-${t}`);
-        const on = t === tab;
-        if ((t === 'leave' && !lvOn) || (t === 'calendar' && !calOn)) { b.className = 'hidden'; return; }
-        b.className = `h-11 rounded-xl text-[13px] sm:text-sm font-extrabold flex items-center justify-center gap-1 sm:gap-1.5 transition ${on ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5 seg-on' : 'text-slate-500 hover:text-slate-800'}`;
-        b.setAttribute('aria-selected', on ? 'true' : 'false');
-      });
+      document.getElementById('rqSchool').textContent = tab === 'stock' ? `Supplies left at ${reqRole.schoolName}` : tab === 'calendar' ? `Holidays, days without classes and events at ${reqRole.schoolName}` : tab === 'leave' ? `Applications for leave at ${reqRole.schoolName} · CS Form 6` : tab === 'library' ? `Books at ${reqRole.schoolName} · what is free and where` : tab === 'today' || tab === 'more' ? reqRole.schoolName : `To the property custodian of ${reqRole.schoolName}`;
+      const nav = document.getElementById('tNav');
+      nav.classList.toggle('grid-cols-4', !calOn);
+      nav.classList.toggle('grid-cols-5', calOn);
+      document.getElementById('rqTab-calendar').classList.toggle('hidden', !calOn);
+      document.getElementById('rqTab-leave').classList.toggle('hidden', !lvOn);
+      document.getElementById('rqTab-desk').classList.toggle('hidden', !isLibrarianDevice());
+      const sub = T_MORE.includes(tab);
+      const back = document.getElementById('rqBack');
+      back.classList.toggle('hidden', !sub);
+      back.classList.toggle('flex', sub);
+      paintTabs();
       const n = document.getElementById('rqItemsCount');
       n.textContent = h.equipment.length || '';
-      n.className = h.equipment.length ? 'min-w-5 h-5 px-1.5 rounded-full bg-slate-200 text-slate-700 text-[11px] font-bold inline-flex items-center justify-center' : 'hidden';
+      n.className = h.equipment.length ? 't-num min-w-5 h-5 px-1.5 rounded-full bg-slate-200 text-slate-700 text-[11px] font-bold inline-flex items-center justify-center' : 'hidden';
       document.getElementById('rqItemsDot').classList.toggle('hidden', !toAck.length);
       document.getElementById('rqItemsPane').classList.toggle('hidden', tab !== 'items');
+      document.getElementById('rqTodayPane').classList.toggle('hidden', tab !== 'today');
+      document.getElementById('rqMorePane').classList.toggle('hidden', tab !== 'more');
       document.getElementById('rqRequestsPane').classList.toggle('hidden', tab !== 'requests');
       document.getElementById('rqStockPane').classList.toggle('hidden', tab !== 'stock');
       document.getElementById('rqLibraryPane').classList.toggle('hidden', tab !== 'library');
@@ -25773,6 +25925,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (calOn) { calSync(); if (tab === 'calendar') renderTeacherCalendar(); }
       const me = cloud.user ? cloud.user.uid : '';
       document.getElementById('rqLibDot').classList.toggle('hidden', !(bk.moves.some(m => m.toUid === me && m.status === 'sent') || bk.loans.some(l => l.keeperUid === me && l.status === 'requested')));
+      const todayHTML = teacherTodayHTML(h, toAck), todayPane = document.getElementById('rqTodayPane');   // always there (Needs your attention lives here)
+      if (todayPane.innerHTML !== todayHTML) todayPane.innerHTML = todayHTML;
+      const morePane = document.getElementById('rqMorePane');
+      if (tab === 'more') { const m = teacherMoreHTML(); if (morePane.innerHTML !== m) morePane.innerHTML = m; }
+      tMoreDot();
       if (tab === 'items') renderTeacherItems(h, toAck);
       if (tab === 'stock') renderTeacherStock();
       if (tab === 'library') renderTeacherLibrary();
@@ -25796,7 +25953,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         const oldest = Math.min(...toAck.map(r => r.createdMs || Date.now()));
         const days = Math.floor((Date.now() - oldest) / 864e5);
         add(days >= 2 ? 'amber' : 'green', 'ph-hand-arrow-down', `${plural(toAck.length, 'slip')} to mark Received`,
-          `Check the items, then tap Received below${days >= 1 ? ` · the oldest is ${plural(days, 'day')} old` : ''}`, 'ack', "document.getElementById('tAckBox')?.scrollIntoView({ block: 'center', behavior: 'smooth' })");
+          `Check the items, then tap Received in My Items${days >= 1 ? ` · the oldest is ${plural(days, 'day')} old` : ''}`, 'ack', "document.getElementById('tAckBox')?.scrollIntoView({ block: 'center', behavior: 'smooth' })");
       }
       const asked = h.equipment.filter(x => tUnitStatus(x.unit, x.rel).flag === 'askback');
       if (asked.length) add('amber', 'ph-bell-ringing', `The property custodian asks you to return ${plural(asked.length, 'item')}`,
@@ -25840,8 +25997,6 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const me = cloud.user ? cloud.user.uid : '';
       const books = bk.loansLoaded ? bk.loans.filter(l => l.borrowerUid === me && bkLoanOut(l)).length : null;
       const tile = (v, label, sub, attr) => `<div class="rounded-xl bg-white border border-slate-200 px-2 py-2 text-center min-w-0" ${attr}><p class="text-base font-extrabold font-mono text-slate-900 truncate">${v}</p><p class="text-[11px] font-bold uppercase text-slate-500 leading-tight">${label}</p>${sub ? `<p class="text-[11px] text-slate-500 truncate">${sub}</p>` : ''}</div>`;
-      const att = teacherAttention(h, toAck);
-      const tones = { rose: 'bg-rose-50 text-rose-600', amber: 'bg-amber-50 text-amber-600', brand: 'bg-brand-50 text-brand-600', green: 'bg-emerald-50 text-emerald-600', slate: 'bg-slate-100 text-slate-500' };
       return `
         <div class="space-y-2.5" id="tOverview">
           <div class="grid ${books != null && books > 0 ? 'grid-cols-2 min-[400px]:grid-cols-4' : 'grid-cols-3'} gap-2">
@@ -25849,18 +26004,6 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
             ${tile(pesoShort(value), 'Value', 'accountable', 'data-t-tile="value"')}
             ${tile(pesoShort(syAmount), 'Supplies', `SY ${sy}–${String(sy + 1).slice(-2)} · ${plural(syRis.length, 'RIS')}`, 'data-t-tile="supplies"')}
             ${books != null && books > 0 ? tile(books, books === 1 ? 'Book' : 'Books', 'borrowed', 'data-t-tile="books"') : ''}
-          </div>
-          <div data-t-attention="${att.length}">
-            <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1 mb-1.5">Needs your attention${att.length ? ` · ${att.length}` : ''}</h2>
-            ${att.length ? `<ul class="rounded-2xl bg-white border border-slate-200 divide-y divide-slate-100 overflow-hidden">${att.map(x => `
-              <li data-t-att="${x.key}">
-                <${x.act ? 'button type="button"' : 'div'} ${x.act ? `onclick="${x.act}"` : ''} class="w-full text-left flex items-start gap-2.5 px-3 py-2.5 ${x.act ? 'hover:bg-slate-50' : ''}">
-                  <span class="w-8 h-8 shrink-0 rounded-lg ${tones[x.tone] || tones.slate} flex items-center justify-center"><i class="ph-bold ${x.icon} text-base"></i></span>
-                  <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900">${escapeHTML(x.text)}</span>${x.sub ? `<span class="block text-[11px] text-slate-500">${escapeHTML(x.sub)}</span>` : ''}</span>
-                  ${x.act ? '<i class="ph-bold ph-caret-right text-slate-400 mt-2"></i>' : ''}
-                </${x.act ? 'button' : 'div'}>
-              </li>`).join('')}</ul>`
-            : '<div class="rounded-2xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-xs font-bold text-emerald-800 flex items-center gap-2" data-t-att="clear"><i class="ph-bold ph-check-circle text-lg"></i> All clear · nothing to do for now</div>'}
           </div>
         </div>`;
     }
@@ -33110,6 +33253,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-teacher-today', date: 'Nov 2026', title: 'Teachers get the same look as the custodian', points: [
+        'A new Today page opens first: Needs your attention, Supply requests (with + Request and your latest 3), This week on the school calendar, My Items, Library and Leave.',
+        'Tabs at the bottom of the phone: Today, My Items, Requests, Calendar and More. School stock, Library, Leave (and the Library desk for the librarian) are under More.',
+        'On a computer, a sidebar like the custodian’s with every page listed. My Items keeps its two columns.'
+      ] },
       { id: '2026-11-head-today', date: 'Nov 2026', title: 'The School Head’s screen looks like the custodian’s', points: [
         'A new Today page opens first: Needs your attention, Waiting for you (with Approve all), This week on the school calendar, My leave, Purchase Requests and School property.',
         'Five tabs at the bottom of the phone: Today, Approve, School, Calendar and More. Inventory, Who holds what, Your decisions, My leave and School history are under More.',

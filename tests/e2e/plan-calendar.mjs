@@ -71,13 +71,13 @@ try {
   out('3 the teacher: a read-only Calendar tab');
   await ev(t, () => setTeacherTab('calendar'));
   await until(t, () => !!calYears['2026-2027'] && document.querySelectorAll('#rqCalPane [data-cal-entry]').length > 3, 'teacher sees the calendar', 10000);
-  check(await ev(t, () => !document.getElementById('rqTab-calendar').classList.contains('hidden') && document.getElementById('rqTabs').classList.contains('rq-five')), 'five tabs: Calendar');
+  check(await ev(t, () => !document.getElementById('rqTab-calendar').classList.contains('hidden') && document.getElementById('tNav').classList.contains('grid-cols-5')), 'five tabs: Calendar');
   check(await ev(t, () => !document.getElementById('calAddEvent') && !document.getElementById('calAddDate') && !document.getElementById('calYearBtn') && /Term 2/.test(document.querySelector('#rqCalPane [data-cal-strip]').textContent)), 'read only: no Add buttons; the term strip');
   await ev(t, () => openCalSheet('view', document.querySelector('#rqCalPane [data-cal-kind="holiday"]').dataset.calEntry));
   check(await ev(t, () => !document.querySelector('[data-cal-actions]') && /DepEd calendar/.test(document.getElementById('calModalBody').textContent)), 'a holiday: details, nothing to change');
   await ev(t, () => closeCalModal());
   await ev(t, () => { localStorage.setItem(LEAVE_PILOT_KEY, reqRole.schoolId); renderRequesterView(); });
-  check(await ev(t, () => document.getElementById('rqTabs').classList.contains('rq-six') && document.getElementById('rqTabs').classList.contains('grid-cols-6')), 'with Leave too: six tabs');
+  check(await ev(t, () => document.getElementById('tNav').classList.contains('grid-cols-5') && !document.getElementById('rqTab-leave').classList.contains('hidden')), 'with Leave too: still five tabs, Leave under More');
   await ev(t, () => { localStorage.removeItem(LEAVE_PILOT_KEY); renderRequesterView(); });
 
   out('4 the School Head: a Plan tab, adds an event');
@@ -192,7 +192,7 @@ try {
   check(await refused(a, F => F.setDoc(F.doc(F.collection(cloud.db, 'schools', reqRole.schoolId, 'planYears'), '2026-2027'), { sy: '2027-2028', terms: [], days: [] })), 'rules: the document is the school year it says');
   check(await ev(a, () => RESET_SUBS.includes('planYears') && RESET_SUBS.includes('ppas')), 'Reset app erases the calendar too');
   await ev(t, () => { localStorage.removeItem(PLAN_PILOT_KEY); renderRequesterView(); });
-  check(await ev(t, () => document.getElementById('rqTab-calendar').classList.contains('hidden') && teacherTab !== 'calendar' && document.getElementById('rqTabs').classList.contains('grid-cols-4')), 'another school: no Calendar tab');
+  check(await ev(t, () => document.getElementById('rqTab-calendar').classList.contains('hidden') && teacherTab !== 'calendar' && document.getElementById('tNav').classList.contains('grid-cols-4')), 'another school: no Calendar tab');
   await ev(a, () => { localStorage.removeItem(PLAN_PILOT_KEY); calNav(); switchMainView('CALENDAR'); });
   check(await ev(a, () => activeMainView !== 'CALENDAR' && document.getElementById('moreCalItem').style.display === 'none' && !wnList().some(r => r.pilot === 'plan')), 'another school: no Calendar page, no note');
   const bad = backend.denied.filter(d => !/ppa write|plan year write/.test(d));
