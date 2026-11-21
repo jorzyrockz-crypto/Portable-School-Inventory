@@ -5,8 +5,12 @@
 // test approvals.
 // leavePilot: the schools where Leave (CS Form 6) is on, as in firestore.rules leavePilot();
 // pass 'any' to allow it for every school (the test school's id is made up at sign-up).
-// planPilot: the same for School Planning (the school calendar), firestore.rules planPilot().
-export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWcejYDWhO'], planPilot = ['97JbEODfGJhWcejYDWhO'] } = {}) {
+// planPilot: the same for School Planning (the school calendar).
+// Both are test shortcuts on top of the real switches (firestore.rules featureOn): the admin
+// school (adminSchool, changeable with setAdminSchool) always has every feature at the Testing
+// stage; appConfig/features moves a feature to 'pro' (Pro schools and trials) or 'all'.
+export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWcejYDWhO'], planPilot = ['97JbEODfGJhWcejYDWhO'], adminSchool = '97JbEODfGJhWcejYDWhO' } = {}) {
+  let adminSid = adminSchool;
   const store = new Map();
   const users = new Map();
   const googleUsers = new Map();
@@ -60,8 +64,18 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
     const inv = typeof data.invite === 'string' && data.invite && store.get(`schools/${sid}/invites/${data.invite}`);
     return !!(inv && inv.active === true);
   };
-  const leaveOn = sid => leavePilot === 'any' || (Array.isArray(leavePilot) && leavePilot.includes(sid));
-  const planOn = sid => planPilot === 'any' || (Array.isArray(planPilot) && planPilot.includes(sid));
+  const leavePilotOn = sid => leavePilot === 'any' || (Array.isArray(leavePilot) && leavePilot.includes(sid));
+  const planPilotOn = sid => planPilot === 'any' || (Array.isArray(planPilot) && planPilot.includes(sid));
+  // firestore.rules featureOn / featureRead / isPro
+  const STAGES = ['off', 'testing', 'pro', 'all'];
+  const cfgStage = name => { const st = ((store.get('appConfig/features') || {})[name] || {}).stage; return STAGES.includes(st) ? st : 'testing'; };
+  const proNow = sid => { const d = schoolPre(sid) || {}; const p = d.pro, t = d.trial; return !!((p && (!(p.untilMs > 0) || p.untilMs > Date.now())) || (t && t.untilMs > Date.now())); };
+  const featOn = (name, sid, pilot) => pilot(sid) || (cfgStage(name) !== 'off' && (sid === adminSid || cfgStage(name) === 'all' || (cfgStage(name) === 'pro' && proNow(sid))));
+  const featRead = (name, sid, pilot) => featOn(name, sid, pilot) || (cfgStage(name) === 'pro' && !!(schoolPre(sid) && (schoolPre(sid).pro || schoolPre(sid).trial)));
+  const leaveOn = sid => featOn('leave', sid, leavePilotOn), leaveRead = sid => featRead('leave', sid, leavePilotOn);
+  const planOn = sid => featOn('plan', sid, planPilotOn), planRead = sid => featRead('plan', sid, planPilotOn);
+  const isAdmin = ctx => isCust(ctx, adminSid);
+  const TRIAL_MS = 7 * 86400000;
   const SY_RE = /^[0-9]{4}-[0-9]{4}$/;
   const changedKeys = (before, after) => [...new Set([...Object.keys(before), ...Object.keys(after)])]
     .filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k]));
@@ -90,14 +104,28 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
       if (!ok) deny('teacher schools write', { path, data, provider: ctx.provider });
       return;
     }
+    if (p[0] === 'appConfig' && p.length === 2 && p[1] === 'features') {
+      const after = kind === 'create' || !before ? data : { ...before, ...data };
+      const ok = isAdmin(ctx) && Object.keys(after).every(k => ['leave', 'plan', 'log', 'contact', 'updatedAt'].includes(k)) &&
+        ['leave', 'plan'].every(k => STAGES.includes((after[k] || {}).stage || 'testing')) && Array.isArray(after.log ?? []) && (after.log ?? []).length <= 100 && str(after.contact ?? '', 200);
+      if (!ok) deny('features write', { path, data });
+      return;
+    }
     if (p[0] !== 'schools') deny('unknown collection', { path });
     if (p.length === 2) {
       if (kind === 'create') {
         if (!['password', 'google.com'].includes(ctx.provider) || data.ownerUid !== ctx.uid ||
-            JSON.stringify(data.custodians) !== JSON.stringify([ctx.uid]) || !str(data.name, 120)) deny('school create', { path, data });
+            JSON.stringify(data.custodians) !== JSON.stringify([ctx.uid]) || !str(data.name, 120) || 'pro' in data || 'trial' in data) deny('school create', { path, data });
       } else {
         const after = { ...before, ...data };
         const ownerSame = !data.ownerUid || data.ownerUid === before.ownerUid;
+        const same = k => JSON.stringify(after[k] ?? null) === JSON.stringify(before[k] ?? null);
+        // The admin (custodian of the admin school) changes only Pro and the trial of any school
+        if (isAdmin(ctx) && changedKeys(before, after).every(k => ['pro', 'trial'].includes(k))) return;
+        // A school's own custodian: never Pro; the 7-day trial once (none before), starting now
+        const t = after.trial;
+        const trialOk = same('trial') || (isCust(ctx, p[1]) && !before.trial && t && typeof t.startMs === 'number' && Math.abs(t.startMs - Date.now()) < 600000 && t.untilMs === t.startMs + TRIAL_MS && str(t.by ?? '', 80));
+        if (!same('pro') || !trialOk) deny('school update: Pro and the trial', { path, data });
         if (isCust(ctx, p[1])) {
           if (!ownerSame && !turnoverOk(p[1], before, after)) deny('school update: owner changes only with a confirmed turnover', { path, data });
           if ((after.assistants || []).includes(after.headUid || '-') || (after.assistants || []).includes(after.ownerUid)) deny('school update: head or owner is an assistant', { path, data });
@@ -425,6 +453,8 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
     if (p[0] === 'teacherSchools') { if (single && p.length === 2 && ctx.uid === p[1]) return; deny('read teacher schools', { path }); }
     if (p.length <= 2) {
       if (single) return;
+      if (p[0] === 'appConfig') deny('list appConfig', { path });
+      if (p[0] === 'schools' && p.length === 1 && isAdmin(ctx)) return;   // the Admin panel's schools list
       if (!filters.some(f => (['custodians', 'viewerUids', 'assistants'].includes(f.field) && f.op === 'array-contains' && f.value === ctx.uid) ||
           (f.field === 'headUid' && f.op === '==' && f.value === ctx.uid && ctx.provider === 'google.com'))) deny('list schools', { path, filters });
       return;
@@ -498,19 +528,19 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
       return;
     }
     if (sub === 'leaves') {
-      if (!leaveOn(sid)) deny('read leaves: not a pilot school', { path });
+      if (!leaveRead(sid)) deny('read leaves: not a pilot school', { path });
       if (canView(ctx, sid) || isHeadOf(ctx, sid)) return;
       if (single) { const d = store.get(path); if (d && d.uid === ctx.uid) return; deny('get leave', { path }); }
       if (!filters.some(f => f.field === 'uid' && f.op === '==' && f.value === ctx.uid)) deny('list leaves', { path, filters });
       return;
     }
     if (sub === 'planYears' || sub === 'ppas') {
-      if (!planOn(sid)) deny(`read ${sub}: not a pilot school`, { path });
+      if (!planRead(sid)) deny(`read ${sub}: not a pilot school`, { path });
       if (canView(ctx, sid) || isHeadOf(ctx, sid) || isMember(ctx, sid)) return;
       deny(`read ${sub}`, { path, uid: ctx.uid });
     }
     if (sub === 'leaveCards') {
-      if (!leaveOn(sid)) deny('read leave cards: not a pilot school', { path });
+      if (!leaveRead(sid)) deny('read leave cards: not a pilot school', { path });
       if (canView(ctx, sid) || isHeadOf(ctx, sid)) return;
       if (single) { const d = store.get(path); if (d && d.uid === ctx.uid) return; deny('get leave card', { path }); }
       if (!filters.some(f => f.field === 'uid' && f.op === '==' && f.value === ctx.uid)) deny('list leave cards', { path, filters });
@@ -644,5 +674,5 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
     catch (e) { return JSON.stringify({ error: e.message }); }
   };
   const docs = prefix => [...store.entries()].filter(([p]) => p.startsWith(prefix)).map(([p, d]) => ({ path: p, ...d }));
-  return { store, denied, writes, handler, docs, clock };
+  return { store, denied, writes, handler, docs, clock, setAdminSchool: id => { adminSid = id; } };
 }

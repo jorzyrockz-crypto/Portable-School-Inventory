@@ -1,7 +1,7 @@
 # Plan: Admin panel and feature switches (Testing ES as the admin school)
 
-Status: **planning**. No code has been written yet. Decisions so far are in section 10 (answered
-2026-11-21); a few follow-ups are still open.
+Status: **A1 built** (Nov 2026): the switches, Pro, the 7-day trial, the Admin panel and More → Pro.
+Decisions are in section 10 (answered 2026-11-21); F1 and F2 use the recommended defaults.
 Rollout: built and tested at Testing ES (`97JbEODfGJhWcejYDWhO`), like Leave and the School Calendar.
 
 The problem: every new feature is a **pilot written into the code**.

@@ -100,10 +100,40 @@ service cloud.firestore {
         && after.get('viewOnly', {}).keys().hasOnly(resource.data.custodians.concat(resource.data.get('viewerUids', [])));
     }
     function shortText(v, max) { return v is string && v.size() <= max; }
-    // Leave (CS Form 6) and leave cards: a pilot, only at these schools
-    function leavePilot(schoolId) { return schoolId in ['97JbEODfGJhWcejYDWhO']; }
-    // School Planning (the school calendar; programs, projects and activities next): a pilot too
-    function planPilot(schoolId) { return schoolId in ['97JbEODfGJhWcejYDWhO']; }
+    // Feature switches (Admin panel). Testing ES is the admin school: its custodian account sets,
+    // in appConfig/features, each feature's stage: 'off' (nowhere), 'testing' (the admin school
+    // only; also when the document doesn't exist), 'pro' (the admin school, Pro schools and schools
+    // in their 7-day trial) or 'all'. A school whose Pro or trial ended reads its records (view only).
+    function adminSchool() { return '97JbEODfGJhWcejYDWhO'; }
+    function isAdmin() { return isCustodian(adminSchool()); }
+    function featureStage(name) {
+      return !exists(/databases/$(database)/documents/appConfig/features) ? 'testing'
+        : get(/databases/$(database)/documents/appConfig/features).data.get(name, {}).get('stage', 'testing');
+    }
+    function isPro(schoolId) {
+      let d = schoolDoc(schoolId);
+      return (d.get('pro', null) != null && (d.pro.get('untilMs', 0) == 0 || d.pro.untilMs > request.time.toMillis()))
+        || (d.get('trial', null) != null && d.trial.get('untilMs', 0) > request.time.toMillis());
+    }
+    function trialStartOk() {
+      let t = request.resource.data.trial;
+      return resource.data.get('trial', null) == null && t is map
+        && t.startMs is number && t.startMs > request.time.toMillis() - 600000 && t.startMs < request.time.toMillis() + 600000
+        && t.untilMs == t.startMs + 604800000 && shortText(t.get('by', ''), 80);
+    }
+    function featureOn(name, schoolId) {
+      let st = featureStage(name);
+      return st != 'off' && (schoolId == adminSchool() || st == 'all' || (st == 'pro' && isPro(schoolId)));
+    }
+    function featureRead(name, schoolId) {
+      return featureOn(name, schoolId) || (featureStage(name) == 'pro'
+        && (schoolDoc(schoolId).get('pro', null) != null || schoolDoc(schoolId).get('trial', null) != null));
+    }
+    function leavePilot(schoolId) { return featureOn('leave', schoolId); }
+    function leaveRead(schoolId) { return featureRead('leave', schoolId); }
+    // Leave (CS Form 6) and leave cards; School Planning (the school calendar, PPAs next)
+    function planPilot(schoolId) { return featureOn('plan', schoolId); }
+    function planRead(schoolId) { return featureRead('plan', schoolId); }
     // A card's photo: the person's Google profile photo (lhN.googleusercontent.com), or empty.
     function googlePhotoOk() {
       return request.resource.data.get('photo', '') == ''
@@ -165,6 +195,17 @@ service cloud.firestore {
     // an exact ID can be looked up (no listing). One school per ID: the first custodian who
     // lists it keeps it, and only a custodian of that school can change or remove it. Joining
     // still waits for the custodian's Approve, and an invite-only school still needs its link.
+    // The feature switches (Admin panel): everyone signed in reads them; only the admin writes.
+    match /appConfig/features {
+      allow get: if signedIn();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['leave', 'plan', 'log', 'contact', 'updatedAt'])
+        && request.resource.data.get('leave', {}).get('stage', 'testing') in ['off', 'testing', 'pro', 'all']
+        && request.resource.data.get('plan', {}).get('stage', 'testing') in ['off', 'testing', 'pro', 'all']
+        && request.resource.data.get('log', []) is list && request.resource.data.get('log', []).size() <= 100
+        && shortText(request.resource.data.get('contact', ''), 200);
+    }
+
     match /schoolIds/{schoolNo} {
       allow get: if signedIn();
       allow list: if false;
@@ -194,15 +235,22 @@ service cloud.firestore {
         || request.auth.uid in resource.data.get('viewerUids', [])
         || request.auth.uid in resource.data.get('assistants', [])
         // and the confirmed School Head finds their school with Continue with Google (headUid == uid)
-        || (request.auth.token.firebase.sign_in_provider == 'google.com' && resource.data.get('headUid', '') == request.auth.uid));
+        || (request.auth.token.firebase.sign_in_provider == 'google.com' && resource.data.get('headUid', '') == request.auth.uid)
+        // and the admin's schools list (Admin panel)
+        || isAdmin());
       allow create: if withAccount()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.custodians == [request.auth.uid]
-        && shortText(request.resource.data.name, 120);
+        && shortText(request.resource.data.name, 120)
+        && !('pro' in request.resource.data) && !('trial' in request.resource.data);
       // headUid: the confirmed School Head, never one of the custodians (no self-approval).
       // ownerUid changes only with a confirmed turnover, by the outgoing custodian or the School Head
       // (who may change nothing else on the school).
+      // pro (Pro school) and trial (the 7-day Pro trial): set by the admin. The school's custodian may
+      // start the trial once (none before), from now, for exactly 7 days.
       allow update: if (isCustodian(schoolId)
+          && request.resource.data.get('pro', null) == resource.data.get('pro', null)
+          && (request.resource.data.get('trial', null) == resource.data.get('trial', null) || trialStartOk())
           && (request.resource.data.ownerUid == resource.data.ownerUid || turnoverOk(schoolId))
           && !(request.resource.data.get('headUid', '') in request.resource.data.custodians)
           && !(request.resource.data.get('headUid', '') in request.resource.data.get('assistants', []))
@@ -212,7 +260,8 @@ service cloud.firestore {
                                                                                'custodianName', 'custodianDesig', 'viewOnly', 'viewerUids', 'assistants'])
           // an assistant who takes over leaves the assistants (the head can only remove)
           && request.resource.data.get('assistants', []).hasOnly(resource.data.get('assistants', []))
-          && !(request.resource.data.ownerUid in request.resource.data.get('assistants', [])));
+          && !(request.resource.data.ownerUid in request.resource.data.get('assistants', [])))
+        || (isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pro', 'trial']));
       // More → Reset app → "and the school in the cloud": the custodian erases every document
       // of the school (its sub-collections first, this document last). Nobody else can delete.
       allow delete: if isCustodian(schoolId);
@@ -663,7 +712,7 @@ service cloud.firestore {
       // An adviser's class sheet ({schoolYear}_{uid}): the textbooks with their learners, returned,
       // damaged, lost and paid, and (optional) learner NAMES only. Only the adviser and the
       // custodian / assistants read it (Data Privacy Act); not the librarian, not other teachers.
-      // Leave (CS Form No. 6), a pilot: only the schools listed in leavePilot(). The teacher applies
+      // Leave (CS Form No. 6), behind the 'leave' switch (featureOn). The teacher applies
       // (their own, status 'applied') and may cancel it while it is still 'applied'; the AO (the
       // custodian's account, or an assistant) receives, recommends, prepares Form 6 and records each
       // step. The School Head approves through approvals (kind 'leave'). A teacher reads only their own.
@@ -678,7 +727,7 @@ service cloud.firestore {
             && shortText(d.get('reason', ''), 600) && shortText(d.get('type', ''), 12)
             && d.get('log', []) is list && d.get('log', []).size() <= 80;
         }
-        allow read: if leavePilot(schoolId) && (canView(schoolId) || isHead(schoolId)
+        allow read: if leaveRead(schoolId) && (canView(schoolId) || isHead(schoolId)
           || (signedIn() && resource.data.uid == request.auth.uid));
         allow create: if leavePilot(schoolId) && leaveBodyOk() && (isStaff(schoolId)
           || (isMember(schoolId) && request.resource.data.uid == request.auth.uid
@@ -697,7 +746,7 @@ service cloud.firestore {
       // assistant) only. The card of someone in the app has their uid as its id. A teacher reads
       // their own card.
       match /leaveCards/{cardId} {
-        allow read: if leavePilot(schoolId) && (canView(schoolId) || isHead(schoolId)
+        allow read: if leaveRead(schoolId) && (canView(schoolId) || isHead(schoolId)
           || (signedIn() && resource.data.uid == request.auth.uid));
         allow create, update: if leavePilot(schoolId) && isStaff(schoolId)
           && request.resource.data.get('uid', '') is string
@@ -712,7 +761,7 @@ service cloud.firestore {
       // holidays, breaks and days without classes. Everyone at the school reads it; the School Head
       // and the AO (custodian, assistants) write it.
       match /planYears/{sy} {
-        allow read: if planPilot(schoolId) && (canView(schoolId) || isHead(schoolId) || isMember(schoolId));
+        allow read: if planRead(schoolId) && (canView(schoolId) || isHead(schoolId) || isMember(schoolId));
         allow create, update: if planPilot(schoolId) && (isStaff(schoolId) || isHead(schoolId))
           && request.resource.data.get('sy', '') == sy && sy.matches('^[0-9]{4}-[0-9]{4}$')
           && request.resource.data.get('terms', []) is list && request.resource.data.get('terms', []).size() <= 4
@@ -733,7 +782,7 @@ service cloud.firestore {
             && shortText(d.get('venue', ''), 120) && shortText(d.get('note', ''), 400)
             && d.get('log', []) is list && d.get('log', []).size() <= 80;
         }
-        allow read: if planPilot(schoolId) && (canView(schoolId) || isHead(schoolId) || isMember(schoolId));
+        allow read: if planRead(schoolId) && (canView(schoolId) || isHead(schoolId) || isMember(schoolId));
         allow create, update: if planPilot(schoolId) && (isStaff(schoolId) || isHead(schoolId)) && ppaBodyOk();
         allow delete: if isCustodian(schoolId);   // Reset app only
       }

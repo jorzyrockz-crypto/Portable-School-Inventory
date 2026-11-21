@@ -387,9 +387,20 @@ Books are scattered across rooms, so the app keeps one list of every title and *
 
 Books added while exploring (before signing in) are offered to the school's account at the first sign-in. **Publish `firestore.rules` again** after this update (new: `books`, `bookMeta`, `bookIndex`, `bookMoves`, `loans`, `classBooks`, and the librarian). Until you do, the Books page and the teachers' Library show a permissions error.
 
-### Leave applications (CS Form 6) · pilot
+### Feature switches, Pro and the Admin panel
 
-A pilot of the first **admin tool for the School Administrative Officer (AO)**. It is on only at the pilot school (Testing ES, school code `97JbEODfGJhWcejYDWhO`, listed in `LEAVE_PILOT` in `index.html` and in `leavePilot()` in `firestore.rules`). Other schools see no Leave tab, page or What's new note, and the rules refuse leave documents for them. The AO uses the property custodian's account.
+Plan: `docs/plans/admin-panel-feature-switches.md`. **Testing ES** (school code `97JbEODfGJhWcejYDWhO`, `ADMIN_SCHOOL` in `index.html`, `adminSchool()` in `firestore.rules`) is the admin school. Its property custodian account (not assistants) has **More → Admin panel**:
+
+- **Features:** each new feature (now **Leave & CS Form 6** and **School calendar**) has a switch: **Off** (nowhere), **Testing** (Testing ES only; the default), **Pro** (Testing ES, Pro schools and schools in their trial) or **Everyone**. Every phone follows within seconds. A history keeps the last 100 changes. **Whom schools contact about Pro** is shown on More → Pro.
+- **Schools:** every school using the app with its DepEd School ID, its users (custodians and assistants, the School Head and active teachers, counted by the custodian's devices) and **Pro**, **Trial · ends …**, **Pro ended**, **Trial ended** or **Free**. Search by name or School ID, filter, and tap a school to **Make Pro** (optional end date), **Remove Pro**, **Extend trial 7 days** or **Allow a new trial**. Payment happens outside the app.
+
+Other schools' custodians see **More → Pro**: what Pro adds, whom to contact, and **Try Pro free for 7 days** (once per school; the rules allow exactly 7 days from now, and only when the school never had a trial). During the trial a strip on Home shows the days left, with reminders 2 days before it ends, on the last day and when it ended. When Pro or the trial ends, the feature's records stay, **view only** (no new applications, no changes); before a trial nothing is shown or locked.
+
+Data: `appConfig/features` (`{ leave: { stage, changedBy, changedMs }, plan: {…}, contact, log[] }`; everyone signed in reads it, only the admin writes it), `schools/{id}.pro` (`{ untilISO, untilMs, by, ms }`, `untilMs` 0 = no end; the admin only), `schools/{id}.trial` (`{ startMs, untilMs, by }`) and `schools/{id}.counts`. **Publish `firestore.rules` again** after this update.
+
+### Leave applications (CS Form 6)
+
+The first **admin tool for the School Administrative Officer (AO)**, behind the **Leave** switch (Admin panel; at first Testing ES only). Schools without it see no Leave tab, page or What's new note, and the rules refuse leave documents for them. The AO uses the property custodian's account.
 
 It follows the school's own process:
 
@@ -421,9 +432,9 @@ Data: `schools/{schoolId}/leaves/{id}` and `schools/{schoolId}/leaveCards/{uid o
 
 **Applying for one's own leave:** the AO (custodian account) uses **Apply for my leave** (`by: 'self'`): it is received and sent to the School Head like any other. The School Head has a **Leave** tab (`by: 'head'`): the AO receives it and prepares Form 6 with the Division as the recommending and approving officials (7.B, 7.C); it does not go to the Approve tab.
 
-### School calendar · pilot
+### School calendar
 
-The first part of **School Planning** (plan: `docs/plans/school-calendar-and-ppa.md`). Like Leave, it is on only at the pilot school (Testing ES, `97JbEODfGJhWcejYDWhO`, listed in `PLAN_PILOT` in `index.html` and in `planPilot()` in `firestore.rules`); other schools see nothing and the rules refuse its documents.
+The first part of **School Planning** (plan: `docs/plans/school-calendar-and-ppa.md`). Like Leave, it is behind a switch (**School calendar** in the Admin panel; at first Testing ES only); other schools see nothing and the rules refuse its documents.
 
 - **Who:** the School Head (**Plan** tab) and the AO (custodian account or an assistant: **More → School calendar**, or **Calendar** in the computer sidebar) set it up and change it. Teachers read it in a **Calendar** tab.
 - **Set up a school year:** **Load the DepEd calendar** fills in SY 2026–2027 from Annex B of DepEd Order No. 009, s. 2026 (June 8, 2026 to April 8, 2027, three terms with their opening, instructional and end-of-term blocks, exams, summative tests, PTA meetings, INSET, wellness breaks, the Year-End Break, enrollment and early registration, assessment windows, observances, Brigada Eskwela and the end-of-school-year rites) and the holidays of Proclamation No. 1006 (2026) and No. 1427 (2027). National activities and tests for some grades (NAT, ELLNA, NSPC, Palarong Pambansa) are marked national: they show under the **DepEd** filter, not under All. Every date can be changed. The list has a version (`CAL_STARTER[sy].v`, saved as `depedV`): when it is newer than the one a school loaded, the School Head and the AO see **The DepEd calendar was updated**, which adds the new DepEd dates and replaces the old ones the school never changed, and keeps the school's own dates and the DepEd dates it changed. **School year dates** changes the first and last day and the terms; another school year can be typed in by hand.
