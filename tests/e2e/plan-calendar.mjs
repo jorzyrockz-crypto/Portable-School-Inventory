@@ -185,9 +185,9 @@ try {
   check(await refused(t, F => F.setDoc(F.doc(F.collection(cloud.db, 'schools', reqRole.schoolId, 'planYears'), '2026-2027'), { sy: '2026-2027', terms: [], days: [] })), 'rules: a teacher can’t change the school year');
   check(await refused(a, F => F.setDoc(F.doc(F.collection(cloud.db, 'schools', reqRole.schoolId, 'planYears'), '2026-2027'), { sy: '2027-2028', terms: [], days: [] })), 'rules: the document is the school year it says');
   check(await ev(a, () => RESET_SUBS.includes('planYears') && RESET_SUBS.includes('ppas')), 'Reset app erases the calendar too');
-  await ev(t, () => { localStorage.removeItem(PLAN_PILOT_KEY); PLAN_PILOT.length = 0; renderRequesterView(); });
+  await ev(t, () => { localStorage.removeItem(PLAN_PILOT_KEY); renderRequesterView(); });
   check(await ev(t, () => document.getElementById('rqTab-calendar').classList.contains('hidden') && teacherTab !== 'calendar' && document.getElementById('rqTabs').classList.contains('grid-cols-4')), 'another school: no Calendar tab');
-  await ev(a, () => { localStorage.removeItem(PLAN_PILOT_KEY); PLAN_PILOT.length = 0; calNav(); switchMainView('CALENDAR'); });
+  await ev(a, () => { localStorage.removeItem(PLAN_PILOT_KEY); calNav(); switchMainView('CALENDAR'); });
   check(await ev(a, () => activeMainView !== 'CALENDAR' && document.getElementById('moreCalItem').style.display === 'none' && !wnList().some(r => r.pilot === 'plan')), 'another school: no Calendar page, no note');
   const bad = backend.denied.filter(d => !/ppa write|plan year write/.test(d));
   check(!bad.length, `no refused writes besides the test’s own (${bad.join(' | ').slice(0, 300)})`);
