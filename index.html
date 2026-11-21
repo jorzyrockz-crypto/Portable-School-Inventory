@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="3f6d5734e183">
+  <meta name="app-version" content="4eff8c41ea76">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -1881,6 +1881,10 @@
             <datalist id="prItemList"></datalist>
           </div>
           <p class="mt-2 text-right text-sm font-extrabold text-slate-900">Total <span id="prTotal" class="font-mono">₱0.00</span></p>
+        </div>
+        <div id="prPpaWrap" class="hidden">
+          <label class="block text-[11px] font-bold uppercase text-slate-500">For activity <span class="normal-case font-semibold text-slate-400">(optional)</span><select id="prPpa" onchange="prPpaPick(this.value)" class="pr-in bg-white normal-case"></select></label>
+          <p id="prPpaHint" class="hidden mt-1 text-[11px] font-semibold text-slate-600"></p>
         </div>
         <label class="block text-[11px] font-bold uppercase text-slate-500">Purpose<textarea id="prPurpose" rows="3" class="pr-in h-auto py-2 normal-case"></textarea></label>
         <div class="grid grid-cols-2 gap-2">
@@ -12267,6 +12271,7 @@
       if (activeMainView === 'REQUESTS') renderRequestsView();
       if (activeMainView === 'REQUESTER') renderRequesterView();
       if (activeMainView === 'HEAD') renderHeadView();
+      try { if (calSheet && calSheet.view === 'ppa' && ppaPrSeeOk()) renderCalModal(); } catch (e) {}   // D5: Budget · PRs · Left
       if (activeMainView === 'TEACHERS') renderTeachersView();
     }
 
@@ -12572,6 +12577,7 @@
             <p class="shrink-0 text-sm font-extrabold font-mono text-slate-900">₱${peso2(pr.total)}</p>
           </div>
           <p class="mt-1 text-[11px] text-slate-500 line-clamp-2">${escapeHTML(pr.purpose || '')}</p>
+          ${prPpaHTML(pr)}
           ${prExpChipsHTML(pr)}
           ${pr.editedMs ? `<p class="mt-0.5 text-[11px] text-slate-500 flex items-center gap-1"><i class="ph-bold ph-pencil-simple"></i> Changed ${escapeHTML(formatShortDate(new Date(pr.editedMs).toISOString()))}</p>` : ''}
           ${prApprovalHTML(pr)}
@@ -14079,11 +14085,11 @@
     }
     // A Purchase Request draft: from approved requests, or from the supplies reorder list.
     // edit = a saved PR (not delivered or cancelled yet): its header, lines and signatories are loaded.
-    function openPrDraft({ requestIds = [], requesters = [], lines, purpose, sub, edit = null }) {
+    function openPrDraft({ requestIds = [], requesters = [], lines, purpose, sub, edit = null, ppaId = '' }) {
       const d = prDefaults();
       const date = localISODate();
       (lines || []).forEach(l => { if (!EXP_CLASSES[l.exp]) l.exp = lineExp(l); });   // Office Supplies unless said otherwise
-      prDraft = { requestIds, requesters, lines, editId: edit ? edit.id : null };
+      prDraft = { requestIds, requesters, lines, editId: edit ? edit.id : null, autoPurpose: ppaId ? String(purpose || '').slice(0, 600) : '' };
       const set = (id, v) => { document.getElementById(id).value = v || ''; };
       const pick = (key, fallback) => (edit ? edit[key] : fallback);
       set('prEntity', pick('entity', d.entity || schoolInfo.school));
@@ -14100,6 +14106,7 @@
       document.getElementById('prSub').textContent = sub || 'Appendix 60 · check every line before saving';
       document.getElementById('prSaveLabel').textContent = edit ? 'Save changes & print' : 'Save & print';
       document.getElementById('prAdd').value = '';
+      try { prPpaFill(edit ? edit.ppaId || '' : ppaId, edit); } catch (e) { console.warn('PR activity', e); }
       renderPrLines();
       document.getElementById('prModal').classList.remove('hidden');
     }
@@ -14218,6 +14225,8 @@
         approval: { status: 'pending', submittedMs: Date.now() },   // every PR waits for the School Head
         createdMs: Date.now(), createdAt: F.serverTimestamp(), createdBy: cloud.user.uid
       };
+      const forPpa = prPpaData();   // D5: the activity it is for (only when the Plan is on)
+      if (forPpa && (forPpa.ppaId || (editing && editing.ppaId))) Object.assign(data, forPpa);
       if (editing) {
         const a = prApproval(editing);
         if (prApprStatus(editing) === 'approved' && !await appConfirm(`PR No. ${editing.prNo} was ${a.via === 'paper' ? 'signed on paper' : 'approved'} by ${a.byName || 'the School Head'}. After this change it needs the School Head’s approval again.`,
@@ -16785,6 +16794,7 @@
         lvRender();
         notifFromLeaves(snap.metadata);
         if (!fromCacheOf(snap.metadata)) { leaveApplyDecisions(); lcSweep(); }
+        if (planOn()) { try { scheduleDash(); calRender(); } catch (e) { console.warn('leave on the calendar', e); } }
       };
       const fail = err => { console.warn('leaves', err); lvError = cloudErrorText(err); lvLoaded = true; lvRender(); };
       const own = isTeacherDevice() || isHeadDevice();
@@ -18086,7 +18096,9 @@
       working: { label: 'Special working day', icon: 'ph-briefcase', dot: 'bg-slate-500', tone: 'bg-slate-100 text-slate-600' },
       term: { label: 'School year', icon: 'ph-flag-banner', dot: 'bg-teal-500', tone: 'bg-teal-50 text-teal-700' },
       event: { label: 'School event', icon: 'ph-calendar-star', dot: 'bg-emerald-500', tone: 'bg-emerald-50 text-emerald-700' },
-      activity: { label: 'Activity', icon: 'ph-flag-pennant', dot: 'bg-indigo-500', tone: 'bg-indigo-50 text-indigo-700' }
+      activity: { label: 'Activity', icon: 'ph-flag-pennant', dot: 'bg-indigo-500', tone: 'bg-indigo-50 text-indigo-700' },
+      leave: { label: 'On leave', icon: 'ph-user-minus', dot: 'bg-cyan-500', tone: 'bg-cyan-50 text-cyan-700' },   // D5: head and AO only
+      inv: { label: 'Inventory', icon: 'ph-package', dot: 'bg-orange-500', tone: 'bg-orange-50 text-orange-700' }   // D5: custodian and head only
     };
     const CAL_DATE_KINDS = ['holiday', 'suspension', 'noclass', 'break', 'exam', 'inset', 'deped', 'working'];
     const CAL_BLOCKS = { opening: 'Opening block', instructional: 'Instructional', endterm: 'End-of-term activities' };
@@ -18295,7 +18307,7 @@
       }));
       return out.sort((a, b) => a.from.localeCompare(b.from) || String(a.startTime || '').localeCompare(String(b.startTime || '')) || String(a.title).localeCompare(String(b.title)));
     }
-    const calByKey = (key, sy) => calEntries(sy || calCurSy()).find(e => e.key === key) || null;
+    const calByKey = (key, sy) => calViewEntries(sy || calCurSy()).find(e => e.key === key) || null;
     // Days without classes (holidays, breaks, suspensions, local holidays) in a set of dates
     function calOffMap(y) {
       const m = {};
@@ -18397,12 +18409,13 @@
       return y.start.slice(0, 7);
     }
     // All leaves out national activities and those for some grades only (NAT, NSPC…): DepEd shows them
-    const calMatch = e => (calFilter === 'all' ? !e.nat : calFilter === 'mine' ? !!e.mine : calFilter === 'acts' ? e.kind === 'activity' : calFilter === 'events' ? e.kind === 'event' : calFilter === 'off' ? !!(CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off) : calFilter === 'exam' ? e.kind === 'exam' : !!e.deped || ['term', 'exam', 'deped', 'working'].includes(e.kind));
+    const calMatch = e => (calFilter === 'all' ? !e.nat : calFilter === 'mine' ? !!e.mine : calFilter === 'acts' ? e.kind === 'activity' : calFilter === 'events' ? e.kind === 'event' : calFilter === 'off' ? !!(CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off) : calFilter === 'exam' ? e.kind === 'exam' : calFilter === 'leave' ? e.kind === 'leave' : calFilter === 'inv' ? e.kind === 'inv' : !!e.deped || ['term', 'exam', 'deped', 'working'].includes(e.kind));
     function calViewHTML(page) {
       if (calPage === 'plan') return calPlanPageHTML(page);
       const sy = calCurSy(), y = calYears[sy] || null, edit = calCanEdit();
       const starter = calStarter(sy);
-      const list = calEntries(sy).filter(calMatch);
+      const all = calViewEntries(sy), list = all.filter(calMatch);
+      const hasLv = all.some(e => e.kind === 'leave'), hasInv = all.some(e => e.kind === 'inv');
       const seg = (k, label, icon) => `<button type="button" onclick="setCalMode('${k}')" data-cal-mode="${k}" aria-pressed="${calMode === k}" class="h-10 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 ${calMode === k ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5' : 'text-slate-500'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
       const chip = (k, label) => `<button type="button" onclick="setCalFilter('${k}')" data-cal-filter="${k}" aria-pressed="${calFilter === k}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${calFilter === k ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700'}">${label}</button>`;
       const loading = !calYearsLoaded && !y;
@@ -18442,7 +18455,7 @@
         ${y || calEvents.length ? `
         <div class="flex gap-2"><div class="flex-1 grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-200/70" role="tablist">${seg('agenda', 'Agenda', 'ph-list-bullets')}${seg('month', 'Month', 'ph-calendar')}</div>
           ${y ? `<button type="button" onclick="openCalPrint()" id="calPrintBtn" class="shrink-0 h-12 px-3.5 rounded-2xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-800 flex items-center gap-1.5" aria-label="Print the calendar"><i class="ph-bold ph-printer text-lg text-teal-700"></i><span class="hidden sm:inline">Print</span></button>` : ''}</div>
-        <div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('mine', 'Mine')}${chip('acts', 'Activities')}${chip('events', 'School events')}${chip('off', 'No classes')}${chip('exam', 'Exams')}${chip('deped', 'DepEd')}</div>
+        <div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('mine', 'Mine')}${chip('acts', 'Activities')}${chip('events', 'School events')}${chip('off', 'No classes')}${chip('exam', 'Exams')}${hasLv || calFilter === 'leave' ? chip('leave', 'On leave') : ''}${hasInv || calFilter === 'inv' ? chip('inv', 'Inventory') : ''}${chip('deped', 'DepEd')}</div>
         <div id="calBody" class="space-y-4">${calMode === 'month' ? calMonthHTML(list, y) : calAgendaHTML(list)}</div>
         ${y ? `<div class="flex flex-wrap items-center justify-between gap-2 px-1">
           <button type="button" onclick="openCalSheet('classdays')" id="calDaysBtn" class="text-xs font-bold text-teal-700 flex items-center gap-1"><i class="ph-bold ph-chart-bar"></i> Class days</button>
@@ -19052,6 +19065,7 @@
     function calViewSheetHTML() {
       const e = calByKey(calSheet.key);
       if (!e) return '';
+      if (e.priv) return calPrivViewHTML(e);
       const k = CAL_KINDS[e.kind] || CAL_KINDS.event, edit = calCanEdit();
       const row = (a, b) => (b ? `<div class="flex justify-between gap-3 px-3 py-2 text-xs"><span class="text-slate-500 shrink-0">${a}</span><span class="font-semibold text-slate-800 text-right min-w-0">${b}</span></div>` : '');
       const btn = (label, icon, onclick, tone, attr = '') => `<button onclick="${onclick}" ${attr} class="h-11 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 ${tone === 'teal' ? 'bg-teal-700 text-white' : tone === 'rose' ? 'bg-white border border-rose-200 text-rose-700' : 'bg-white border border-slate-200 text-slate-800'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
@@ -20285,10 +20299,207 @@
           ${row('Added by', byName)}
           ${p.decision && p.decision.ok ? row('Approved by', `${calE(p.decision.byName || '')} · ${calE(featWhen(p.decision.atMs))}`) : ''}
         </div>
+        ${ppaUseHTML(p)}
         ${kids}
         ${acts.length ? `<div class="grid ${acts.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2" data-ppa-actions>${acts.join('')}</div>` : ''}
         ${log.length ? `<details class="rounded-2xl bg-slate-50 border border-slate-200 px-3 py-2" data-ppa-log="${log.length}"><summary class="text-xs font-bold text-slate-700 cursor-pointer">History · ${log.length}</summary>
           <ul class="mt-2 space-y-1 text-[11px] text-slate-600">${log.slice(0, 40).map(x => `<li><span class="text-slate-400">${calE(featWhen(x.at))}</span> · ${calE(x.by || '')} · ${calE(x.x || '')}</li>`).join('')}</ul></details>` : ''}`;
+    }
+
+    // ---- D5 (Nov 2026): the plan linked to PRs, leave and inventory ------------------------------
+    // A PR may say which activity it is for (ppaId, ppaTitle). The activity then shows its budget,
+    // the PRs made for it and what is left: only to the custodian / AO and the School Head (the
+    // ones who read PRs). Every PR that is not cancelled counts; the ones still waiting for the
+    // School Head are shown apart. Approved leaves show as "On leave: Name" (never the kind of
+    // leave) to the AO and the School Head; inventory dates (physical counts, ICS / PAR renewals,
+    // useful life, relief deadlines) to the custodian and the School Head. The head reads both
+    // from dashboard/summary (lv, ic), which the custodian's devices keep current. None of these
+    // go on the printed calendar.
+    const LV_CAL_ON = ['approved', 'hold', 'review', 'handed', 'signed', 'done'];
+    const ppaPrSeeOk = () => isCustodianDevice() || isHeadDevice();
+    function ppaPrUse(id) {
+      const prs = (prList || []).filter(pr => pr.ppaId === id && pr.status !== 'cancelled' && !pr.sample);
+      const total = round2(prs.reduce((n, pr) => n + (Number(pr.total) || 0), 0));
+      const wait = round2(prs.filter(pr => !prApproved(pr)).reduce((n, pr) => n + (Number(pr.total) || 0), 0));
+      return { prs, total, wait };
+    }
+    // { budget, used, wait, left } of an activity; null when nobody here may see PRs
+    function ppaBudgetUse(p) {
+      if (!p || !ppaPrSeeOk()) return null;
+      const u = ppaPrUse(p.id), b = Number(p.budget) || 0;
+      return { budget: b, used: u.total, wait: u.wait, left: round2(b - u.total), prs: u.prs };
+    }
+    function ppaUseLine(x) {
+      return `Budget ${ppaPeso(x.budget)} · PRs ${ppaPeso(x.used)}${x.wait ? ` (${ppaPeso(x.wait)} waiting)` : ''} · ${x.left < 0 ? `Over by ${ppaPeso(-x.left)}` : `Left ${ppaPeso(x.left)}`}`;
+    }
+    function ppaUseHTML(p) {
+      if (!p || p.kind !== 'activity' || ppaPending(p)) return '';
+      const x = ppaBudgetUse(p);
+      if (!x || (!x.budget && !x.prs.length)) return '';
+      const canPr = isCustodianDevice() && !!cloud.user && !isViewOnly() && p.status !== 'cancelled';
+      const st = pr => (prApproved(pr) ? '' : prApprStatus(pr) === 'returned' ? ' · returned' : ' · waiting');
+      return `
+        <div class="rounded-2xl border ${x.left < 0 ? 'border-rose-200 bg-rose-50/60' : 'border-slate-200 bg-white'} px-3 py-2.5 space-y-1.5" data-ppa-use="${x.used}/${x.left}">
+          <div class="grid grid-cols-3 gap-1.5 text-center" data-ppa-use-line="${calE(ppaUseLine(x))}">
+            <div class="rounded-xl bg-slate-50 px-1.5 py-1.5"><p class="text-[10px] font-bold uppercase text-slate-500">Budget</p><p class="text-xs font-extrabold font-mono text-slate-900">${ppaPeso(x.budget)}</p></div>
+            <div class="rounded-xl bg-slate-50 px-1.5 py-1.5"><p class="text-[10px] font-bold uppercase text-slate-500">PRs</p><p class="text-xs font-extrabold font-mono text-slate-900">${ppaPeso(x.used)}</p>${x.wait ? `<p class="text-[10px] font-semibold text-amber-700">${ppaPeso(x.wait)} waiting</p>` : ''}</div>
+            <div class="rounded-xl ${x.left < 0 ? 'bg-rose-100' : 'bg-emerald-50'} px-1.5 py-1.5"><p class="text-[10px] font-bold uppercase ${x.left < 0 ? 'text-rose-700' : 'text-emerald-700'}">${x.left < 0 ? 'Over by' : 'Left'}</p><p class="text-xs font-extrabold font-mono ${x.left < 0 ? 'text-rose-800' : 'text-emerald-800'}">${ppaPeso(Math.abs(x.left))}</p></div>
+          </div>
+          ${x.prs.length ? `<ul class="text-[11px] text-slate-600 space-y-0.5">${x.prs.map(pr => `<li class="flex justify-between gap-2" data-ppa-pr="${calE(pr.id)}"><span class="min-w-0 truncate">PR No. ${calE(pr.prNo)}${calE(st(pr))}</span><span class="shrink-0 font-mono">${ppaPeso(pr.total)}</span></li>`).join('')}</ul>`
+            : '<p class="text-[11px] text-slate-500">No Purchase Request for this activity yet.</p>'}
+          ${canPr ? `<button type="button" onclick="ppaMakePr('${p.id}')" data-ppa-act="pr" class="w-full h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-file-text"></i> Make a Purchase Request for it</button>` : ''}
+        </div>`;
+    }
+    // The activities a PR can be for: this school year's approved activities with a budget
+    function prPpaChoices() {
+      if (!planOn() || !calCanRead()) return [];
+      return calEvents.filter(p => p.kind === 'activity' && !p.removed && !p.changeOf && !ppaPending(p) && p.status !== 'cancelled' && Number(p.budget) > 0)
+        .sort((a, b) => String(a.from || '').localeCompare(String(b.from || '')) || String(a.title).localeCompare(String(b.title)));
+    }
+    const prPpaPurpose = p => `For use in the ${String(p.title || '').trim()}${p.from ? ` (${calRangeText(p.from, p.to || p.from)})` : ''}`.slice(0, 600);
+    function prPpaFill(ppaId, edit) {
+      const wrap = document.getElementById('prPpaWrap'), sel = document.getElementById('prPpa');
+      if (!wrap || !sel) return;
+      const list = prPpaChoices();
+      const cur = ppaId || '';
+      const extra = cur && !list.some(p => p.id === cur) ? `<option value="${calE(cur)}">${calE((edit && edit.ppaTitle) || (ppaById(cur) || {}).title || 'An activity')}</option>` : '';
+      wrap.classList.toggle('hidden', !list.length && !cur);
+      sel.innerHTML = `<option value="">None</option>${extra}${list.map(p => `<option value="${calE(p.id)}">${calE(p.title)}${p.from ? ` · ${calE(calRangeText(p.from, p.to || p.from))}` : ''}</option>`).join('')}`;
+      sel.value = cur;
+      prPpaHint();
+    }
+    function prPpaHint() {
+      const sel = document.getElementById('prPpa'), hint = document.getElementById('prPpaHint');
+      if (!sel || !hint) return;
+      const p = sel.value ? ppaById(sel.value) : null;
+      const x = p ? ppaBudgetUse(p) : null;
+      if (x && prDraft && prDraft.editId) {   // this PR is already counted: show the rest without it
+        const self = x.prs.find(pr => pr.id === prDraft.editId);
+        if (self) { x.used = round2(x.used - (Number(self.total) || 0)); x.left = round2(x.budget - x.used); if (!prApproved(self)) x.wait = round2(x.wait - (Number(self.total) || 0)); }
+      }
+      hint.textContent = x ? `${ppaUseLine(x)}${prDraft && prDraft.editId ? ' (without this PR)' : ''}` : '';
+      hint.classList.toggle('hidden', !x);
+    }
+    // Picking the activity fills the Purpose, unless the custodian typed their own
+    function prPpaPick(id) {
+      const p = id ? ppaById(id) : null, box = document.getElementById('prPurpose');
+      if (box && prDraft) {
+        const now = String(box.value || '').trim();
+        if (p && (!now || now === prDraft.autoPurpose)) { box.value = prPpaPurpose(p); prDraft.autoPurpose = box.value; }
+        else if (!p && now && now === prDraft.autoPurpose) { box.value = ''; prDraft.autoPurpose = ''; }
+      }
+      prPpaHint();
+    }
+    function prPpaData() {
+      const sel = document.getElementById('prPpa'), wrap = document.getElementById('prPpaWrap');
+      if (!sel || !wrap || wrap.classList.contains('hidden')) return null;
+      const id = sel.value || '', p = id ? ppaById(id) : null;
+      return { ppaId: id, ppaTitle: id ? String((p && p.title) || (sel.selectedOptions[0] || {}).textContent || '').slice(0, 200) : '' };
+    }
+    function prPpaHTML(pr) {
+      if (!pr || !pr.ppaId) return '';
+      const p = ppaById(pr.ppaId);
+      return `<p class="mt-1 text-[11px] font-semibold text-indigo-700 flex items-center gap-1" data-pr-ppa="${calE(pr.ppaId)}"><i class="ph-bold ph-flag-pennant"></i><span class="min-w-0 truncate">For activity: ${calE((p && p.title) || pr.ppaTitle || '')}</span></p>`;
+    }
+    function ppaMakePr(id) {
+      const p = ppaById(id);
+      if (!p || !isCustodianDevice() || !cloud.user || isViewOnly()) return;
+      closeCalModal();
+      openPrDraft({ lines: [], purpose: prPpaPurpose(p), ppaId: p.id, sub: `Appendix 60 · for the activity “${String(p.title).slice(0, 60)}” · add the items` });
+    }
+
+    // Approved leaves on the AO's device: [{ n, f, t }] (no kind of leave). From a year back.
+    function lvCalList() {
+      const since = isoAddMonths(localISODate(), -12);
+      return lvList.filter(l => LV_CAL_ON.includes(l.status) && l.from && /^\d{4}-\d{2}-\d{2}$/.test(l.from) && (l.to || l.from) >= since)
+        .map(l => ({ n: String(l.name || '').slice(0, 80), f: l.from, t: l.to && l.to >= l.from ? l.to : l.from }))
+        .sort((a, b) => a.f.localeCompare(b.f) || a.n.localeCompare(b.n)).slice(-300);
+    }
+    const lvCalAO = () => isCustodianDevice() && !isAssistant() && leaveOn();
+    // Inventory dates on the custodian's device: [{ k, f, c, x, o }] · k: renew | life | relief,
+    // f: the date (none when overdue: shown on today), c: how many units, x: who or which.
+    function invCalList(now = Date.now()) {
+      const today = localISODate(new Date(now)), until = isoAddMonths(today, 18), out = [];
+      const names = arr => [...new Set(arr.filter(Boolean))].join(', ').slice(0, 140);
+      const group = (k, rows) => {   // rows: [{ d, x }]
+        const over = rows.filter(r => r.d < today), by = new Map();
+        rows.filter(r => r.d >= today && r.d <= until).forEach(r => { const g = by.get(r.d) || []; g.push(r.x); by.set(r.d, g); });
+        if (over.length) out.push({ k, c: over.length, x: names(over.map(r => r.x)), o: 1 });
+        [...by.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(0, 60).forEach(([d, xs]) => out.push({ k, f: d, c: xs.length, x: names(xs) }));
+      };
+      try {
+        group('renew', allTaggedUnits().filter(x => (x.unit.to || x.unit.toUid) && !x.unit.lostMs && /^\d{4}-\d{2}-\d{2}$/.test(x.unit.icsDate || ''))
+          .map(x => ({ d: isoAddMonths(x.unit.icsDate, ICS_RENEW_YEARS * 12), x: unitHolder(x.unit) || '' })));
+        group('life', lifeUnits(now).filter(x => x.li.status === 'past' || x.li.status === 'soon').map(x => ({ d: x.li.end, x: x.unit.no || x.item.name })));
+        group('relief', allTaggedUnits().filter(x => x.unit.lostMs).map(x => ({ d: localISODate(new Date(reliefDueMs(x.unit))), x: x.unit.no || x.item.name })));
+      } catch (e) { console.warn('inventory dates', e); }
+      return out.slice(0, 150);
+    }
+    // The physical counts (COA): semestral as at 30 June, year-end as at 31 December
+    function invCountDates(sy) {
+      const y = Number(String(sy).slice(0, 4));
+      if (!y) return [];
+      return [
+        { k: 'count', f: `${y}-06-30`, x: 'Semestral · count in June and July, the report by 31 July' },
+        { k: 'count', f: `${y}-12-31`, x: 'Year-end · count in December, the report (RPCPPE / RPCSP) by 31 January', ye: 1 }
+      ];
+    }
+    const INV_CAL_TITLE = {
+      count: r => (r.ye ? 'Year-end physical count · as at 31 December' : 'Semestral physical count · as at 30 June'),
+      renew: r => (r.o ? `ICS / PAR renewal overdue: ${plural(r.c, 'unit')}` : `ICS / PAR renewal due: ${plural(r.c, 'unit')}`),
+      life: r => (r.o ? `Past useful life: ${plural(r.c, 'unit')}` : `Useful life ends: ${r.c === 1 ? r.x : plural(r.c, 'unit')}`),
+      relief: r => (r.o ? `Relief application overdue: ${r.c === 1 ? r.x : plural(r.c, 'lost unit')}` : `Relief application due: ${r.c === 1 ? r.x : plural(r.c, 'lost unit')}`)
+    };
+    // Leave and inventory entries for this device (none for teachers). Not printed.
+    function calPrivEntries(sy) {
+      const out = [], today = localISODate();
+      const inSy = (f, t) => calSyOf(f) === sy || calSyOf(t || f) === sy;
+      const head = isHeadDevice() && calHeadOk(), cust = isCustodianDevice();
+      if (!head && !cust) return out;
+      const lv = cust ? (lvCalAO() ? lvCalList() : []) : head && dashDoc && Array.isArray(dashDoc.lv) ? dashDoc.lv : [];
+      lv.forEach(l => {
+        if (!l || !l.f || !inSy(l.f, l.t)) return;
+        out.push({ key: `l:${l.f}:${String(l.n || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 30)}:${l.t || l.f}`, src: 'leave', kind: 'leave', title: `On leave: ${l.n || 'Someone'}`, from: l.f, to: l.t || l.f, priv: true, name: l.n || '' });
+      });
+      const ic = cust ? invCalList() : head && dashDoc && Array.isArray(dashDoc.ic) ? dashDoc.ic : null;
+      if (ic) {
+        invCountDates(sy).concat(ic).forEach(r => {
+          if (!r || !INV_CAL_TITLE[r.k]) return;
+          const f = r.o ? today : r.f;
+          if (!f || !inSy(f)) return;
+          out.push({ key: `i:${r.k}:${r.o ? 'over' : f}`, src: 'inv', kind: 'inv', inv: r.k, title: INV_CAL_TITLE[r.k](r), from: f, to: f, priv: true, note: r.x || '', over: !!r.o, c: r.c || 0 });
+        });
+      }
+      return out;
+    }
+    function calViewEntries(sy) {
+      const priv = calPrivEntries(sy);
+      const all = calEntries(sy);
+      if (!priv.length) return all;
+      return all.concat(priv).sort((a, b) => a.from.localeCompare(b.from) || String(a.startTime || '').localeCompare(String(b.startTime || '')) || String(a.title).localeCompare(String(b.title)));
+    }
+    // The view sheet of a leave or inventory entry
+    function calPrivViewHTML(e) {
+      const row = (a, b) => (b ? `<div class="flex justify-between gap-3 px-3 py-2 text-xs"><span class="text-slate-500 shrink-0">${a}</span><span class="font-semibold text-slate-800 text-right min-w-0">${b}</span></div>` : '');
+      const cust = isCustodianDevice();
+      if (e.kind === 'leave') return `
+        ${calHead('ph-user-minus', calE(e.title), 'Approved leave')}
+        <div class="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden" data-cal-priv="leave">
+          ${row('Who', calE(e.name))}${row('When', calE(calRangeText(e.from, e.to)))}
+        </div>
+        <p class="text-[11px] text-slate-500 px-1">Only the School Head and the AO see leaves on the calendar. The kind of leave is never shown.</p>
+        ${cust && lvCanManage() && typeof openLeaveView === 'function' ? `<button type="button" onclick="closeCalModal(); openLeaveView()" class="w-full h-11 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5"><i class="ph-bold ph-calendar-check"></i> Open Leave</button>` : ''}`;
+      const what = { count: 'Physical count of property', renew: 'ICS / PAR older than 3 years', life: 'End of the estimated useful life', relief: 'Lost units: apply for relief within 30 days (COA)' }[e.inv] || '';
+      const go = e.inv === 'life' ? "closeCalModal(); openLifeSheet()" : "closeCalModal(); openYearEnd()";
+      return `
+        ${calHead('ph-package', calE(e.title), 'Inventory')}
+        <div class="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden" data-cal-priv="${calE(e.inv)}">
+          ${row('When', e.over ? '<b class="text-rose-700">Overdue</b>' : calE(calRangeText(e.from, e.to)))}
+          ${row('What', calE(what))}
+          ${row(e.inv === 'renew' ? 'Held by' : e.inv === 'count' ? 'Note' : 'Units', calE(e.note))}
+        </div>
+        <p class="text-[11px] text-slate-500 px-1">Only the property custodian and the School Head see inventory dates on the calendar.</p>
+        ${cust ? `<button type="button" onclick="${go}" data-cal-act="inv-open" class="w-full h-11 rounded-xl bg-teal-700 text-white text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ph-arrow-square-out"></i> ${e.inv === 'life' ? 'Open Useful life' : 'Open Year-end'}</button>` : ''}`;
     }
 
     // ---- Adding and changing ---------------------------------------------------------------------
@@ -21450,8 +21661,17 @@
         unconf: { s: unconf.reduce((n, p) => n + p.toConfirm.length, 0), p: unconf.length, since: since === Infinity ? 0 : since },
         trend: dashTrend(), use: dashUse(),
         life: (ls => ({ p: ls.past.length, s: ls.soon.length, k: ls.checked.length, t: ls.total, c: ls.cost }))(lifeStats()),
-        ...(bkDashSummary() ? { books: bkDashSummary() } : {})
+        ...(bkDashSummary() ? { books: bkDashSummary() } : {}),
+        ...dashPlanBits()
       };
+    }
+    // D5: approved leaves (name and dates only) and inventory dates for the head's calendar
+    function dashPlanBits() {
+      if (!planOn()) return {};
+      const out = {};
+      try { out.ic = invCalList(); } catch (e) { console.warn('inventory dates', e); }
+      if (lvCalAO() && lvLoaded) out.lv = lvCalList();
+      return out;
     }
     const DASH_UNIT_BUDGET = 2500;
     // The last 12 months, oldest first: ['2025-12', …, '2026-11'].
@@ -23293,6 +23513,7 @@
             <p class="shrink-0 text-base font-extrabold font-mono text-slate-900">₱${peso2(pr.total)}</p>
           </div>
           ${pr.purpose ? `<p class="text-xs text-slate-600"><b>Purpose:</b> ${escapeHTML(pr.purpose)}</p>` : ''}
+          ${prPpaHTML(pr)}
           ${prExpChipsHTML(pr)}
           ${wait && a.resubmitted ? '<p class="text-[11px] font-semibold text-amber-700 flex items-center gap-1"><i class="ph-bold ph-arrows-clockwise"></i> Sent again by the property custodian</p>' : ''}
           <details ${wait && lines.length <= 6 ? 'open' : ''} class="rounded-xl bg-slate-50 px-3 py-2">
@@ -32657,6 +32878,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-plan-links', date: 'Nov 2026', title: 'PRs for activities, leaves and inventory dates on the calendar', points: [
+        'New: For activity on the Purchase Request. Pick one of this school year\u2019s approved activities with a budget, and the Purpose is filled in for you (change it if you like). The approval by the School Head works as before.',
+        'Each activity now shows Budget, PRs and Left: every PR for it that is not cancelled counts, and the ones still waiting for approval are shown apart. Only the property custodian / AO and the School Head see it. Make a Purchase Request for it from the activity too.',
+        'Approved leaves show on the School calendar as On leave: and the name, never the kind of leave. Only the School Head and the AO see them.',
+        'Inventory dates on the calendar for the property custodian and the School Head: the semestral and year-end physical counts, ICS / PAR renewals due, units reaching the end of their useful life, and the 30-day deadline to apply for relief of lost units. None of these are printed on the calendar.'
+      ], pilot: 'plan' },
       { id: '2026-11-plan-done', date: 'Nov 2026', title: 'Mark activities Done, move them, and the monitoring report', points: [
         'New: Mark Done on an activity with its accomplishment report: the actual date, what was done, the actual cost, the number of participants, remarks and up to 3 photos (made small on your phone). Teachers mark the activities with their name; the School Head or the AO can undo it.',
         'Move asks for the new date and why; the old date stays in its history and the people responsible are told. Cancel now asks for the reason too.',

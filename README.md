@@ -465,6 +465,18 @@ Part D4 of School Planning (the same pilot switch).
 
 Rules: a teacher may change only `status` (to `done`), `done` and `log` of an activity whose `who[]` has `{ uid: their uid, name: done.byName }`, and only their own report once it is Done; photos the same way (checked against the activity). **Publish `firestore.rules` again.**
 
+#### PRs for activities, leaves and inventory dates
+
+Part D5 of School Planning (the same pilot switch).
+
+- **For activity** on the Purchase Request (optional): one of this school year's approved activities with a budget (not proposals, not cancelled). Picking one fills the Purpose ("For use in the Reading camp (Fri, Dec 11, 2026)") unless a Purpose was typed by hand; under it, the activity's Budget · PRs · Left. Saved on the PR as `ppaId` and `ppaTitle`; the PR cards say *For activity: …*. The approval by the School Head is unchanged (`ppaId` is not PR content, so linking it does not reopen an approved PR on its own).
+- **Budget · PRs · Left** on the activity, for the custodian / AO and the School Head only (the ones who read PRs): every PR for it that is not cancelled counts, the ones still waiting for approval are shown apart, and *Over by* turns red. Each PR is listed; **Make a Purchase Request for it** (custodian) opens a PR with the activity and Purpose filled in. Teachers see only the budget, as before.
+- **On leave: Name** on the School calendar for approved leaves (approved, on hold, under review, handed, signed, done), never the kind of leave, for the AO and the School Head only. The AO's device reads the leaves; the head's reads `lv` (`{ n, f, t }`) from `dashboard/summary`, which the custodian's devices keep current. The ₱250 rule and CS Form 6 are unchanged.
+- **Inventory** entries for the property custodian and the School Head: the semestral (as at June 30) and year-end (as at December 31) physical counts, ICS / PAR renewals due (3 years after the slip, grouped by date, with who holds them), units reaching the end of their useful life (within 12 months), and the 30-day deadline to apply for relief of lost units. Overdue ones show on today as one entry each. The head reads `ic` from `dashboard/summary`. Tapping one shows the details; the custodian gets *Open Year-end* or *Open Useful life*.
+- Filters **On leave** and **Inventory** show when there are such entries. None of these are printed on the Monthly Calendar, and teachers never get them.
+
+No new rules: `dashboard/summary` is read only by staff, viewers and the head, who already read all leaves.
+
 #### Reading the calendar from a PDF or photo
 
 **Read a calendar PDF or photo** (on the setup card of a school year that is not set up yet) or **Read dates from a PDF or photo** (under the add buttons) reads any calendar paper: the DepEd Order on the school calendar, a region or division memo, or the school's own calendar (plan: `docs/plans/calendar-from-pdf.md`). The School Head and the AO use it; teachers don't.

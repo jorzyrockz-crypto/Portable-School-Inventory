@@ -166,7 +166,7 @@ schools/{sid}/ppas/{id}              one per program, project or activity
 | **D3** | The printed **Monthly Calendar** only, with customization (clay-style art per month, general scenes or the school's photo; colours, A4 / Folio / A3, 1 or 2 months per sheet, months, what to show, header and footer). Plan: `docs/plans/monthly-calendar-print.md`. | M |
 | **D3b** (later) | Prints: AIP (Annex 10), Work Plan and Budget Matrix (Annex 9). | M |
 | **D4** (built) | Done / Moved / Cancelled with accomplishments (actual date, what was done, actual cost, participants, remarks, up to 3 photos in `ppaPhotos`); teachers mark their own activities Done; Move needs a new date and a reason; monitoring report by term, mid-year and year-end (printed with the photos); overdue reminders the day after and weekly (the people responsible; one for all to the head and AO). | M |
-| **D5** | Links: PR "For activity" with budget utilization; leave and inventory entries on the calendar. | M |
+| **D5** (built) | Links: PR "For activity" (approved activities with a budget; fills the Purpose) with Budget · PRs · Left on the activity (every PR not cancelled, waiting ones apart; custodian / AO and head only; `ppaBudgetUse()` is ready for the AIP's "utilized" in D3b); "On leave: Name" (head and AO, via `dashboard/summary.lv`); Inventory entries: physical counts, ICS / PAR renewals, useful life, relief deadlines (custodian and head, via `dashboard/summary.ic`). Not printed. | M |
 
 Each PR follows the usual pattern:
 - `index.html` plus `firestore.rules` and the `fake-backend.mjs` mirror.
