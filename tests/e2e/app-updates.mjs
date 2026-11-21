@@ -140,7 +140,7 @@ try {
   await ev(p, () => localStorage.setItem(SEEN_RELEASE_KEY, '2026-10-requests'));
   await p.reload({ waitUntil: 'networkidle0' });
   await until(p, () => /Updated · /.test(document.getElementById('appToast').innerText), 'whats new toast', 5000);
-  const latestTitle = await ev(p, () => WHATS_NEW[0].title);
+  const latestTitle = await ev(p, () => wnList()[0].title);
   check((await toastText(p)).includes(`Updated · ${latestTitle}`), `toast: ${(await toastText(p)).replace(/\s+/g, ' ')}`);
   await p.click('#appToastAction');
   await sleep(300);
@@ -166,7 +166,7 @@ try {
     f.on('pageerror', e => errors.push(String(e)));
     await f.goto(BASE, { waitUntil: 'networkidle0' });
     await sleep(1200);
-    check(!/Updated · /.test(await toastText(f)) && await ev(f, () => localStorage.getItem(SEEN_RELEASE_KEY) === WHATS_NEW[0].id), 'new user: remembered silently');
+    check(!/Updated · /.test(await toastText(f)) && await ev(f, () => localStorage.getItem(SEEN_RELEASE_KEY) === wnList()[0].id), 'new user: remembered silently');
   } finally { await fresh.close().catch(() => {}); }
 
   out('9 offline, link previews, manifest');

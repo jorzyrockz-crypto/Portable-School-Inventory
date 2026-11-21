@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="433dd74db13f">
+  <meta name="app-version" content="560a46b7beaf">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -499,6 +499,13 @@
     .pr-esign { display: block; text-align: center; font-size: 8pt; font-style: italic; padding-top: 9pt; }
     .pr-table .pr-purpose { height: 40pt; }
     @media (max-width: 639px) { #rqTabs.rq-five > button { font-size: 12px; gap: 0.2rem; } }
+    /* Six tabs on a phone (Leave and School Calendar pilots): the icon above the name */
+    @media (max-width: 639px) {
+      #rqTabs.rq-six > button { position: relative; flex-direction: column; gap: 0; height: 3rem; font-size: 11px; line-height: 1.1; }
+      #rqTabs.rq-six > button > i { display: inline-block; font-size: 1rem; }
+      #rqTabs.rq-six #rqItemsCount { position: absolute; top: 2px; right: 2px; }
+      #rqTabs.rq-six > button > span[id$="Dot"] { position: absolute; top: 5px; right: 6px; }
+    }
     .lv-form { font-size: 8.5pt; }
     .pr-table .lc-sub th { font-size: 7.5pt; padding: 2pt 1pt; }
     .lv-form h1 { font-size: 13pt; margin: 2pt 0 6pt; }
@@ -1356,6 +1363,7 @@
       <button id="rqTab-requests" role="tab" onclick="setTeacherTab('requests')"><i class="ph-bold ph-paper-plane-tilt text-base hidden min-[400px]:inline"></i> Requests</button>
       <button id="rqTab-stock" role="tab" onclick="setTeacherTab('stock')"><i class="ph-bold ph-package text-base hidden min-[400px]:inline"></i> Stock</button>
       <button id="rqTab-library" role="tab" onclick="setTeacherTab('library')"><i class="ph-bold ph-books text-base hidden min-[400px]:inline"></i> Library <span id="rqLibDot" class="hidden w-2 h-2 rounded-full bg-violet-500"></span></button>
+      <button id="rqTab-calendar" role="tab" onclick="setTeacherTab('calendar')" class="hidden"><i class="ph-bold ph-calendar-dots text-base hidden min-[400px]:inline"></i> Calendar</button>
       <button id="rqTab-leave" role="tab" onclick="setTeacherTab('leave')" class="hidden"><i class="ph-bold ph-calendar-check text-base hidden min-[400px]:inline"></i> Leave <span id="rqLeaveDot" class="hidden w-2 h-2 rounded-full bg-teal-500"></span></button>
     </div>
     <p id="rqSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
@@ -1365,6 +1373,7 @@
     <div id="rqStockPane" class="hidden space-y-3"></div>
     <div id="rqLibraryPane" class="hidden space-y-5"></div>
     <div id="rqLeavePane" class="hidden space-y-4"></div>
+    <div id="rqCalPane" class="hidden space-y-4"></div>
     <div id="rqRequestsPane" class="space-y-5">
     <button id="rqNewBtn" onclick="openRequestForm()" class="w-full h-16 rounded-2xl bg-amber-700 hover:bg-amber-800 active:scale-[0.98] text-white font-extrabold text-base shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition">
       <i class="ph-bold ph-plus-circle text-2xl"></i> New supply request
@@ -1390,6 +1399,9 @@
   </section>
 
   <!-- LEAVE (AO on the custodian account, pilot school only): CS Form No. 6 applications -->
+  <section id="viewCalendar" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
+    <div id="calView" class="space-y-4"></div>
+  </section>
   <section id="viewLeave" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
     <div id="lvView" class="space-y-4"></div>
   </section>
@@ -1411,6 +1423,7 @@
       <button id="hdTab-people" role="tab" onclick="setHeadTab('people')"><i class="ph-bold ph-users-three text-base"></i> People</button>
       <button id="hdTab-history" role="tab" onclick="setHeadTab('history')"><i class="ph-bold ph-clock-counter-clockwise text-base"></i> History</button>
       <button id="hdTab-leave" role="tab" onclick="setHeadTab('leave')" class="hidden"><i class="ph-bold ph-calendar-check text-base"></i> Leave</button>
+      <button id="hdTab-plan" role="tab" onclick="setHeadTab('plan')" class="hidden"><i class="ph-bold ph-calendar-dots text-base"></i> Plan</button>
     </div>
     <p id="hdSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
     <div id="hdBody" class="space-y-5"></div>
@@ -1569,6 +1582,11 @@
         <i class="ph-bold ph-book-open-text text-[22px]"></i>
         <span class="flex items-center gap-1">Books &amp; Library</span>
       </button>
+      <button id="sideCalendar" onclick="openCalendar()" data-view="CALENDAR" style="display:none" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-calendar-dots text-[22px]"></i>
+        <span class="flex items-center gap-1">Calendar</span>
+      </button>
       <button id="sideLeave" onclick="openLeaveView()" data-view="LEAVE" style="display:none" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
         <i class="ph-bold ph-calendar-check text-[22px]"></i>
@@ -1609,6 +1627,7 @@
           <button id="moreSugItem" onclick="openSugSheet()" class="more-item hidden"><i class="ph-bold ph-lightbulb text-violet-600"></i> Suggestions from the School Head <span id="moreSugCount" class="hidden ml-auto px-1.5 rounded-full bg-violet-100 text-violet-800 text-[11px] font-extrabold"></span></button>
           <button onclick="closeMoreMenu(); openTeachersView()" class="more-item"><i class="ph-bold ph-users-three text-teal-600"></i> Released to teachers <span id="moreTeachCount" class="hidden ml-auto px-1.5 rounded-full bg-rose-100 text-rose-800 font-mono text-[11px] font-bold"></span></button>
           <button id="moreBooksItem" onclick="closeMoreMenu(); openBooksView()" class="more-item"><i class="ph-bold ph-book-open-text text-violet-600"></i> Books &amp; Library <span class="ml-auto text-[11px] font-bold text-slate-500">Textbooks · lending</span></button>
+          <button id="moreCalItem" onclick="closeMoreMenu(); openCalendar()" style="display:none" class="more-item"><i class="ph-bold ph-calendar-dots text-teal-600"></i> School calendar <span class="ml-auto text-[11px] font-bold text-slate-500">Holidays · events</span></button>
           <button id="moreLeaveItem" onclick="closeMoreMenu(); openLeaveView()" style="display:none" class="more-item"><i class="ph-bold ph-calendar-check text-teal-600"></i> Leave <span class="text-[11px] font-bold text-slate-500">CS Form 6</span><span id="moreLeaveCount" class="hidden ml-auto px-1.5 rounded-full bg-teal-100 text-teal-800 font-mono text-[11px] font-bold"></span></button>
           <button id="moreCoaItem" onclick="openCoa()" class="more-item"><i class="ph-bold ph-stamp text-brand-600"></i> Government forms <span class="ml-auto text-[11px] font-bold text-slate-500">RPCPPE · PTR · IIRUP</span></button>
           <button onclick="closeMoreMenu(); printReport()" class="more-item"><i class="ph-bold ph-printer text-slate-600"></i> Print report</button>
@@ -2096,6 +2115,11 @@
   <div id="bkModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeBkModal()" onkeydown="if (event.key === 'Escape') closeBkModal()">
     <div id="bkModalBox" role="dialog" aria-modal="true" class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 safe-pad max-h-[94vh] overflow-y-auto">
       <div id="bkModalBody" class="space-y-4"></div>
+    </div>
+  </div>
+  <div id="calModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeCalModal()" onkeydown="if (event.key === 'Escape') closeCalModal()">
+    <div id="calModalBox" role="dialog" aria-modal="true" class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 safe-pad max-h-[94vh] overflow-y-auto">
+      <div id="calModalBody" class="space-y-4"></div>
     </div>
   </div>
   <div id="lvModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeLvModal()" onkeydown="if (event.key === 'Escape') closeLvModal()">
@@ -3485,12 +3509,13 @@
     // =========================================================================
     // 4. VIEW NAVIGATION (DASHBOARD <-> CATALOG)
     // =========================================================================
-    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester', TEACHERS: 'viewTeachers', HEAD: 'viewHead', BOOKS: 'viewBooks', LEAVE: 'viewLeave' };
+    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester', TEACHERS: 'viewTeachers', HEAD: 'viewHead', BOOKS: 'viewBooks', LEAVE: 'viewLeave', CALENDAR: 'viewCalendar' };
 
     function switchMainView(viewName) {
       if (viewName === 'DASHBOARD') viewName = 'REPORTS'; // old name
       if (!MAIN_VIEWS[viewName]) viewName = 'HOME';
       if (viewName === 'LEAVE' && !(leaveOn() && isCustodianDevice())) viewName = 'HOME';   // the Leave pilot
+      if (viewName === 'CALENDAR' && !(planOn() && isCustodianDevice())) viewName = 'HOME';   // the School Calendar pilot
       if (isTeacherDevice()) viewName = viewName === 'BOOKS' && isLibrarianDevice() ? 'BOOKS' : 'REQUESTER'; // a teacher's phone: supply requests (the librarian: also the Library desk)
       else if (isHeadDevice()) viewName = 'HEAD';    // the School Head's phone: PR approvals only
       else if (viewName === 'REQUESTER' || viewName === 'HEAD') viewName = 'HOME';
@@ -3517,6 +3542,7 @@
       if (viewName === 'TEACHERS') renderTeachersView();
       if (viewName === 'BOOKS') renderBooksView();
       if (viewName === 'LEAVE') renderLeaveView();
+      if (viewName === 'CALENDAR') renderCalendarView();
       syncPageArt();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -11569,6 +11595,7 @@
       reqUnsubs.forEach(off => { try { off(); } catch (e) {} });
       reqUnsubs = [];
       leaveStop();
+      calStop();
       memberList = []; releaseList = []; releaseAll = []; releasesLoaded = false; teamError = '';
       myReleases = []; tReports = [];
       myRelLoaded = false; tRepLoaded = false;
@@ -11623,6 +11650,7 @@
         subscribeStaff(F);
         subscribeApprovals(F, onErr);
         leaveSync();
+        calSync(); calNav();
         subscribeSuggestions();
         subscribeTeam(F);
         subscribeInspections(F);
@@ -17265,6 +17293,726 @@
         </div>`;
     }
 
+    // =========================================================================
+    // SCHOOL CALENDAR (School Planning, part D1) · pilot school only
+    // The school year as DepEd sets it (terms and their blocks, holidays, breaks, exams), the days
+    // without classes (class suspensions, local holidays) and the school's own events, on
+    // everyone's phone. The School Head and the AO (custodian account, assistants) edit; teachers
+    // read. Programs, projects and activities (the AIP) come next, in the same ppas collection.
+    //   schools/{schoolId}/planYears/{sy}   { sy, start, end, memo, terms: [{ n, from, to, blocks }], days: [...] }
+    //   schools/{schoolId}/ppas/{id}        { sy, kind: 'event', title, from, to, startTime, endTime, venue, note, status }
+    // =========================================================================
+    const PLAN_PILOT = ['97JbEODfGJhWcejYDWhO'];            // Testing ES (firestore.rules planPilot)
+    const PLAN_PILOT_KEY = 'custodian_plan_pilot_v1';        // trying it on another school (the rules still decide)
+    function planOn() {
+      try {
+        if (!reqRole || !reqRole.schoolId) return false;
+        return PLAN_PILOT.includes(reqRole.schoolId) || (localStorage.getItem(PLAN_PILOT_KEY) || '').split(',').includes(reqRole.schoolId);
+      } catch (e) { return false; }   // early, before this part of the script ran
+    }
+    // What a date on the calendar is. off: no classes that day.
+    const CAL_KINDS = {
+      holiday: { label: 'Holiday', icon: 'ph-flag', dot: 'bg-rose-500', tone: 'bg-rose-50 text-rose-700', off: true },
+      noclass: { label: 'No classes', icon: 'ph-prohibit', dot: 'bg-rose-400', tone: 'bg-rose-50 text-rose-700', off: true },
+      suspension: { label: 'Class suspension', icon: 'ph-cloud-lightning', dot: 'bg-amber-500', tone: 'bg-amber-50 text-amber-700', off: true },
+      break: { label: 'Break', icon: 'ph-umbrella', dot: 'bg-slate-400', tone: 'bg-slate-100 text-slate-600', off: true },
+      exam: { label: 'Exams', icon: 'ph-exam', dot: 'bg-violet-500', tone: 'bg-violet-50 text-violet-700' },
+      inset: { label: 'INSET', icon: 'ph-chalkboard-teacher', dot: 'bg-sky-500', tone: 'bg-sky-50 text-sky-700' },
+      deped: { label: 'DepEd activity', icon: 'ph-bank', dot: 'bg-brand-500', tone: 'bg-brand-50 text-brand-700' },
+      working: { label: 'Special working day', icon: 'ph-briefcase', dot: 'bg-slate-500', tone: 'bg-slate-100 text-slate-600' },
+      term: { label: 'School year', icon: 'ph-flag-banner', dot: 'bg-teal-500', tone: 'bg-teal-50 text-teal-700' },
+      event: { label: 'School event', icon: 'ph-calendar-star', dot: 'bg-emerald-500', tone: 'bg-emerald-50 text-emerald-700' }
+    };
+    const CAL_DATE_KINDS = ['holiday', 'suspension', 'noclass', 'break', 'exam', 'inset', 'deped', 'working'];
+    const CAL_BLOCKS = { opening: 'Opening block', instructional: 'Instructional', endterm: 'End-of-term activities' };
+    // The DepEd calendar to start from: DO 009 s. 2026 (three terms, 201 class days) and the
+    // holidays of Proclamation No. 1006 (2026) and No. 1427 (2027). The planner checks and edits.
+    const CAL_STARTER = {
+      '2026-2027': {
+        memo: 'DepEd Order No. 009, s. 2026 · Proclamations No. 1006 (2026) and No. 1427 (2027)',
+        start: '2026-06-08', end: '2027-04-08',
+        terms: [
+          { n: 1, from: '2026-06-08', to: '2026-09-15', blocks: [{ kind: 'opening', from: '2026-06-08', to: '2026-06-11' }, { kind: 'instructional', from: '2026-06-15', to: '2026-09-01' }, { kind: 'endterm', from: '2026-09-02', to: '2026-09-15' }] },
+          { n: 2, from: '2026-09-16', to: '2026-12-18', blocks: [{ kind: 'instructional', from: '2026-09-16', to: '2026-12-04' }, { kind: 'endterm', from: '2026-12-07', to: '2026-12-18' }] },
+          { n: 3, from: '2027-01-04', to: '2027-04-08', blocks: [{ kind: 'instructional', from: '2027-01-04', to: '2027-03-23' }, { kind: 'endterm', from: '2027-03-24', to: '2027-04-08' }] }
+        ],
+        days: [
+          ['deped', '2026-06-01', '2026-06-05', 'Brigada Eskwela'],
+          ['holiday', '2026-06-12', '', 'Independence Day', 'regular'],
+          ['holiday', '2026-08-21', '', 'Ninoy Aquino Day', 'special'],
+          ['exam', '2026-08-28', '2026-09-01', 'Term 1 examinations'],
+          ['holiday', '2026-08-31', '', 'National Heroes Day', 'regular'],
+          ['holiday', '2026-11-01', '', 'All Saints’ Day', 'special'],
+          ['holiday', '2026-11-02', '', 'All Souls’ Day', 'special'],
+          ['holiday', '2026-11-30', '', 'Bonifacio Day', 'regular'],
+          ['exam', '2026-12-03', '2026-12-04', 'Term 2 examinations'],
+          ['holiday', '2026-12-08', '', 'Feast of the Immaculate Conception of Mary', 'special'],
+          ['break', '2026-12-19', '2027-01-03', 'Christmas break'],
+          ['holiday', '2026-12-24', '', 'Christmas Eve', 'special'],
+          ['holiday', '2026-12-25', '', 'Christmas Day', 'regular'],
+          ['holiday', '2026-12-30', '', 'Rizal Day', 'regular'],
+          ['holiday', '2026-12-31', '', 'Last Day of the Year', 'special'],
+          ['holiday', '2027-01-01', '', 'New Year’s Day', 'regular'],
+          ['holiday', '2027-02-06', '', 'Chinese New Year', 'special'],
+          ['working', '2027-02-25', '', 'EDSA People Power Revolution Anniversary'],
+          ['exam', '2027-03-22', '2027-03-23', 'Term 3 examinations'],
+          ['holiday', '2027-03-25', '', 'Maundy Thursday', 'regular'],
+          ['holiday', '2027-03-26', '', 'Good Friday', 'regular'],
+          ['holiday', '2027-03-27', '', 'Black Saturday', 'special'],
+          ['deped', '2027-04-06', '2027-04-07', 'End-of-School-Year rites']
+        ]
+      }
+    };
+    const CAL_LAW = [200, 220];   // class days a year (R.A. No. 7797, as amended by R.A. No. 11480)
+    var calYears = {}, calYearsLoaded = false, calEvents = [], calEvLoaded = false, calUnsubY = null, calUnsubE = null, calEvSy = '', calError = '';
+    var calSy = '', calMode = 'agenda', calMonth = '', calDay = '', calFilter = 'all', calMore = 30, calSheet = null;
+    const calYearCol = () => cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'planYears');
+    const calPpaCol = () => cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'ppas');
+    const calE = v => escapeHTML(v == null ? '' : String(v));
+    const calSyOf = iso => { const y = Number(String(iso).slice(0, 4)), m = Number(String(iso).slice(5, 7)); return m >= 6 ? `${y}-${y + 1}` : `${y - 1}-${y}`; };
+    const calCurSy = () => calSy || calSyOf(localISODate());
+    const calSyText = sy => `SY ${String(sy).replace('-', '–')}`;
+    const calShiftSy = (sy, n) => { const y = Number(sy.slice(0, 4)) + n; return `${y}-${y + 1}`; };
+    const calNext = (iso, n = 1) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+    const calDow = iso => new Date(iso + 'T00:00:00Z').getUTCDay();
+    const calShort = (iso, year) => new Date(iso + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', ...(year ? { year: 'numeric' } : {}) });
+    function calRangeText(from, to) {
+      if (!from) return '';
+      if (!to || to === from) return new Date(from + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      const a = new Date(from + 'T00:00:00'), b = new Date(to + 'T00:00:00');
+      if (a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()) return `${a.toLocaleDateString('en-PH', { month: 'short' })} ${a.getDate()}–${b.getDate()}, ${b.getFullYear()}`;
+      return `${calShort(from, a.getFullYear() !== b.getFullYear())} to ${calShort(to, true)}`;
+    }
+    function calTime12(t) {
+      if (!/^\d{2}:\d{2}$/.test(t || '')) return '';
+      const [h, m] = t.split(':').map(Number);
+      return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+    }
+    const calTimeText = e => (e && e.startTime ? `${calTime12(e.startTime)}${e.endTime ? `–${calTime12(e.endTime)}` : ''}` : '');
+    const calHeadOk = () => isHeadDevice() && !!headMe && headMe.status === 'active';
+    const calCanEdit = () => planOn() && ((isCustodianDevice() && !isViewOnly()) || calHeadOk());
+    function calCanRead() {
+      if (!planOn()) return false;
+      if (isHeadDevice()) return calHeadOk();
+      if (isTeacherDevice()) return myMemberStatus() === 'active';
+      if (isCustodianDevice()) return !(viewOnlyEnded() || assistantRemoved());
+      return false;
+    }
+    function calWho() {
+      const me = reqRole.me || {};
+      return { uid: cloud.user ? cloud.user.uid : '', name: String((isCustodianDevice() ? actorName() : me.name) || '').slice(0, 80), role: isHeadDevice() ? 'head' : isCustodianDevice() ? 'ao' : 'teacher' };
+    }
+
+    // ---- Reading --------------------------------------------------------------------------
+    function calSync() {
+      if (!cloud.db || !cloud.user || !cloud.sdk || !calCanRead()) return;
+      const F = cloud.sdk;
+      if (!calUnsubY) {
+        calUnsubY = F.onSnapshot(calYearCol(), { includeMetadataChanges: true }, snap => {
+          const next = {};
+          snap.docs.forEach(d => { next[d.id] = { ...d.data({ serverTimestamps: 'estimate' }), id: d.id }; });
+          calYears = next;
+          if (!fromCacheOf(snap.metadata)) calYearsLoaded = true;
+          calError = '';
+          calRender();
+          notifFromCalDays(snap.metadata);
+        }, err => { console.warn('calendar', err); calError = cloudErrorText(err); calYearsLoaded = true; calRender(); });
+      }
+      const sy = calCurSy();
+      if (calUnsubE && calEvSy === sy) return;
+      if (calUnsubE) { try { calUnsubE(); } catch (e) {} }
+      calEvSy = sy; calEvents = []; calEvLoaded = false;
+      calUnsubE = F.onSnapshot(F.query(calPpaCol(), F.where('sy', '==', sy)), { includeMetadataChanges: true }, snap => {
+        calEvents = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id, sending: !!(d.metadata && d.metadata.hasPendingWrites) }));
+        if (!fromCacheOf(snap.metadata)) calEvLoaded = true;
+        calError = '';
+        calRender();
+        notifFromCalEvents(snap.metadata, sy);
+      }, err => { console.warn('calendar events', err); calError = cloudErrorText(err); calEvLoaded = true; calRender(); });
+    }
+    function calStop() {
+      [calUnsubY, calUnsubE].forEach(off => { if (off) { try { off(); } catch (e) {} } });
+      calUnsubY = calUnsubE = null; calYears = {}; calYearsLoaded = false; calEvents = []; calEvLoaded = false; calEvSy = ''; calError = '';
+    }
+    function calRender() {
+      try {
+        calNav();
+        if (activeMainView === 'CALENDAR') renderCalendarView();
+        if (activeMainView === 'REQUESTER' && isTeacherDevice() && teacherTab === 'calendar') renderTeacherCalendar();
+        if (activeMainView === 'HEAD' && isHeadDevice()) renderHeadCalendar();
+        if (calSheet) renderCalModal();
+      } catch (e) { console.warn('calendar render', e); }
+    }
+    // The menu entries (custodian) show only at the pilot school
+    function calNav() {
+      const on = planOn() && isCustodianDevice();
+      ['sideCalendar', 'moreCalItem'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; });
+    }
+
+    // ---- What is on the calendar ----------------------------------------------------------------
+    function calEntries(sy) {
+      const y = calYears[sy], out = [];
+      if (y) {
+        (y.days || []).forEach(d => {
+          if (!CAL_KINDS[d.kind] || !d.from) return;
+          out.push({ key: 'd:' + d.id, src: 'day', id: d.id, kind: d.kind, title: d.title, from: d.from, to: d.to || d.from, sub: d.sub, note: d.note, by: d.by, deped: d.src === 'deped' });
+        });
+        (y.terms || []).forEach(t => {
+          if (!t.from) return;
+          const bl = t.blocks || [];
+          const open = bl.find(b => b.kind === 'opening' && b.from === t.from);
+          out.push({ key: `t:${t.n}`, src: 'term', kind: 'term', title: `Term ${t.n} begins${open ? ' · Opening block' : ''}`, from: t.from, to: open ? open.to : t.from, deped: true });
+          bl.filter(b => b.kind === 'endterm' && b.from).forEach(b => out.push({ key: `t:${t.n}:end`, src: 'term', kind: 'term', title: `Term ${t.n} · End-of-term activities`, from: b.from, to: b.to || b.from, deped: true }));
+        });
+        if (y.end) out.push({ key: 't:last', src: 'term', kind: 'term', title: 'Last day of the school year', from: y.end, to: y.end, deped: true });
+      }
+      calEvents.filter(e => !e.removed && e.kind === 'event' && e.from).forEach(e => out.push({
+        key: 'e:' + e.id, src: 'event', id: e.id, kind: 'event', title: e.title, from: e.from, to: e.to || e.from, time: calTimeText(e),
+        venue: e.venue, note: e.note, cancelled: e.status === 'cancelled', by: e.by, sending: e.sending, startTime: e.startTime || ''
+      }));
+      return out.sort((a, b) => a.from.localeCompare(b.from) || String(a.startTime || '').localeCompare(String(b.startTime || '')) || String(a.title).localeCompare(String(b.title)));
+    }
+    const calByKey = (key, sy) => calEntries(sy || calCurSy()).find(e => e.key === key) || null;
+    // Days without classes (holidays, breaks, suspensions, local holidays) in a set of dates
+    function calOffMap(y) {
+      const m = {};
+      ((y && y.days) || []).forEach(d => {
+        if (!CAL_KINDS[d.kind] || !CAL_KINDS[d.kind].off || !d.from) return;
+        for (let iso = d.from, i = 0; iso <= (d.to || d.from) && i < 400; iso = calNext(iso), i++) if (!m[iso]) m[iso] = d;
+      });
+      return m;
+    }
+    // Class days: Monday to Friday from the first to the last day of the school year, without the days off
+    function calClassDays(y) {
+      const res = { total: 0, months: {}, terms: {}, list: [] };
+      if (!y || !y.start || !y.end || y.end < y.start) return res;
+      const off = calOffMap(y);
+      for (let iso = y.start, i = 0; iso <= y.end && i < 500; iso = calNext(iso), i++) {
+        const w = calDow(iso);
+        if (!w || w === 6 || off[iso]) continue;
+        res.total++; res.list.push(iso);
+        const mo = iso.slice(0, 7);
+        res.months[mo] = (res.months[mo] || 0) + 1;
+        const t = (y.terms || []).find(x => x.from && x.from <= iso && (x.to || x.from) >= iso);
+        if (t) res.terms[t.n] = (res.terms[t.n] || 0) + 1;
+      }
+      return res;
+    }
+    // Where today (or a date) falls: the term, its block, the class day number, or why there are no classes
+    function calDayInfo(y, iso) {
+      if (!y || !y.start || !y.end) return null;
+      const t = (y.terms || []).find(x => x.from && x.from <= iso && (x.to || x.from) >= iso) || null;
+      const b = t ? (t.blocks || []).find(x => x.from && x.from <= iso && (x.to || x.from) >= iso) || null : null;
+      const off = calOffMap(y)[iso] || null;
+      const cd = calClassDays(y);
+      const w = calDow(iso);
+      return { t, b, off, weekend: !w || w === 6, before: iso < y.start, after: iso > y.end, no: cd.list.indexOf(iso) + 1, past: cd.list.filter(d => d <= iso).length, total: cd.total };
+    }
+    function calStripHTML(y) {
+      const today = localISODate(), info = calDayInfo(y, today);
+      if (!info) return '';
+      let main, sub = '';
+      if (info.before) { main = `Classes start ${longDate(y.start)}`; sub = `${info.total} class days this school year`; }
+      else if (info.after) { main = `The school year ended ${longDate(y.end)}`; sub = `${info.total} class days`; }
+      else {
+        const where = info.t ? `Term ${info.t.n}${info.b ? ` · ${CAL_BLOCKS[info.b.kind] || ''}` : ''}` : 'Between terms';
+        if (info.off) { main = `No classes today · ${info.off.title}`; sub = where; }
+        else if (info.weekend) { main = 'Weekend'; sub = where; }
+        else { main = where; sub = `Class day ${info.no} of ${info.total}`; }
+      }
+      const left = info.before ? info.total : Math.max(0, info.total - info.past);
+      return `
+        <div class="rounded-2xl bg-teal-700 text-white px-4 py-3 flex items-center gap-3" data-cal-strip>
+          <i class="ph-bold ph-calendar-dots text-2xl shrink-0"></i>
+          <div class="min-w-0 flex-1"><p class="text-sm font-extrabold leading-tight" data-cal-today>${calE(main)}</p><p class="text-[11px] text-teal-50">${calE(sub)}</p></div>
+          ${info.after ? '' : `<button type="button" onclick="openCalSheet('classdays')" class="shrink-0 text-right" data-cal-left><span class="block text-lg font-extrabold font-mono leading-none">${left}</span><span class="block text-[10px] text-teal-50">class days left</span></button>`}
+        </div>`;
+    }
+
+    // ---- The calendar (custodian page, teacher's tab, School Head's tab) ------------------------
+    function openCalendar() {
+      if (!planOn()) return;
+      if (isTeacherDevice()) { switchMainView('REQUESTER'); setTeacherTab('calendar'); }
+      else if (isHeadDevice()) { headTab = 'plan'; switchMainView('HEAD'); renderHeadView(); }
+      else if (isCustodianDevice()) switchMainView('CALENDAR');
+    }
+    function renderCalendarView() {
+      const box = document.getElementById('calView');
+      if (!box) return;
+      if (!planOn() || !isCustodianDevice()) { box.innerHTML = ''; return; }
+      calSync();
+      box.innerHTML = calViewHTML(true);
+    }
+    function renderTeacherCalendar() {
+      const pane = document.getElementById('rqCalPane');
+      if (!pane) return;
+      if (myMemberStatus() !== 'active') { pane.innerHTML = teacherStatusBanner(); return; }
+      calSync();
+      pane.innerHTML = calViewHTML(false);
+    }
+    function renderHeadCalendar() {
+      const pane = document.querySelector('#hdBody [data-hd-pane="plan"]');
+      if (pane && calHeadOk()) pane.innerHTML = calViewHTML(false);
+    }
+    function calPaint() { calRender(); }
+    function setCalSy(n) { calSy = calShiftSy(calCurSy(), n); calMonth = ''; calDay = ''; calMore = 30; calSync(); calPaint(); }
+    function setCalMode(m) { calMode = m; calPaint(); }
+    function setCalFilter(f) { calFilter = f; calMore = 30; calPaint(); }
+    function setCalMonth(n) {
+      const mo = calMonth || calDefaultMonth();
+      const d = new Date(mo + '-01T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n);
+      calMonth = d.toISOString().slice(0, 7); calDay = '';
+      calPaint();
+    }
+    function setCalDay(iso) { calDay = iso; calPaint(); }
+    function calMoreShown() { calMore += 30; calPaint(); }
+    function calDefaultMonth() {
+      const today = localISODate(), y = calYears[calCurSy()];
+      if (calSyOf(today) === calCurSy() || !y || !y.start) return today.slice(0, 7);
+      return y.start.slice(0, 7);
+    }
+    const calMatch = e => calFilter === 'all' || (calFilter === 'events' ? e.kind === 'event' : calFilter === 'off' ? !!(CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off) : e.deped || ['term', 'exam', 'deped', 'working'].includes(e.kind));
+    function calViewHTML(page) {
+      const sy = calCurSy(), y = calYears[sy] || null, edit = calCanEdit();
+      const starter = CAL_STARTER[sy];
+      const list = calEntries(sy).filter(calMatch);
+      const seg = (k, label, icon) => `<button type="button" onclick="setCalMode('${k}')" data-cal-mode="${k}" aria-pressed="${calMode === k}" class="h-10 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 ${calMode === k ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5' : 'text-slate-500'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
+      const chip = (k, label) => `<button type="button" onclick="setCalFilter('${k}')" data-cal-filter="${k}" aria-pressed="${calFilter === k}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${calFilter === k ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700'}">${label}</button>`;
+      const loading = !calYearsLoaded && !y;
+      const setup = !y && !loading;
+      return `
+        ${page ? `<div class="flex items-start justify-between gap-3">
+          <div class="min-w-0"><h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">School calendar</h1>
+            <p class="text-xs text-slate-500">The school year, holidays, days without classes and school events</p></div>
+          <span class="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">Pilot</span>
+        </div>` : ''}
+        <div class="flex items-center justify-between gap-2">
+          <button type="button" onclick="setCalSy(-1)" class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center" aria-label="Previous school year"><i class="ph-bold ph-caret-left"></i></button>
+          <span class="text-sm font-extrabold text-slate-800" data-cal-sy="${sy}">${calSyText(sy)}</span>
+          <button type="button" onclick="setCalSy(1)" class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center" aria-label="Next school year"><i class="ph-bold ph-caret-right"></i></button>
+        </div>
+        ${calError ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2" data-cal-error>${calE(calError)} · Ask the app owner to publish the latest database rules.</p>` : ''}
+        ${loading ? '<p class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">Loading…</p>' : ''}
+        ${setup ? (edit ? `
+          <div class="rounded-2xl bg-white border border-teal-200 shadow-sm p-4 space-y-3" data-cal-setup>
+            <div class="flex items-start gap-3"><span class="w-10 h-10 shrink-0 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center"><i class="ph-bold ph-calendar-plus text-xl"></i></span>
+              <div class="min-w-0"><p class="text-sm font-extrabold text-slate-900">Set up ${calSyText(sy)}</p><p class="text-xs text-slate-600">${starter ? `Start from the DepEd calendar (${calE(starter.memo)}): the terms, holidays, breaks and exams. Then check the dates and add your school’s.` : 'Type the first and last day of the school year and the terms.'}</p></div></div>
+            ${starter ? `<button onclick="calLoadStarter('${sy}')" id="calLoadBtn" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-download-simple"></i> Load the DepEd calendar</button>` : ''}
+            <button onclick="openCalSheet('year')" id="calBlankBtn" class="w-full h-11 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800">${starter ? 'Type the dates myself' : 'Set the school year dates'}</button>
+          </div>` : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500" data-cal-none><i class="ph-duotone ph-calendar-dots text-3xl text-slate-400"></i><p class="mt-1 font-bold text-slate-700 text-sm">The calendar for ${calSyText(sy)} is not set up yet</p><p>The School Head or the AO sets it up.</p></div>`) : ''}
+        ${y ? calStripHTML(y) : ''}
+        ${edit && (y || !setup) ? `<div class="grid grid-cols-2 gap-2">
+          <button onclick="openCalSheet('event')" id="calAddEvent" class="h-12 rounded-2xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-calendar-plus text-lg"></i> Add an event</button>
+          <button onclick="openCalSheet('date')" id="calAddDate" class="h-12 rounded-2xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-2"><i class="ph-bold ph-prohibit text-rose-600"></i> No classes / a date</button>
+        </div>` : ''}
+        ${y || calEvents.length ? `
+        <div class="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-200/70" role="tablist">${seg('agenda', 'Agenda', 'ph-list-bullets')}${seg('month', 'Month', 'ph-calendar')}</div>
+        <div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('events', 'School events')}${chip('off', 'No classes')}${chip('deped', 'DepEd')}</div>
+        <div id="calBody" class="space-y-4">${calMode === 'month' ? calMonthHTML(list, y) : calAgendaHTML(list)}</div>
+        ${y ? `<div class="flex flex-wrap items-center justify-between gap-2 px-1">
+          <button type="button" onclick="openCalSheet('classdays')" id="calDaysBtn" class="text-xs font-bold text-teal-700 flex items-center gap-1"><i class="ph-bold ph-chart-bar"></i> Class days</button>
+          ${edit ? `<button type="button" onclick="openCalSheet('year')" id="calYearBtn" class="text-xs font-bold text-slate-600 flex items-center gap-1"><i class="ph-bold ph-gear-six"></i> School year dates</button>` : ''}
+        </div>
+        ${y.memo ? `<p class="text-[11px] text-slate-500 px-1">From ${calE(y.memo)}. Check against the memo; the School Head or the AO can change any date.</p>` : ''}` : ''}` : ''}`;
+    }
+    function calRowHTML(e, dayView) {
+      const k = CAL_KINDS[e.kind] || CAL_KINDS.event;
+      const multi = e.to && e.to !== e.from;
+      const bits = [multi && !dayView ? calRangeText(e.from, e.to) : '', e.kind === 'holiday' && e.sub ? `${e.sub === 'regular' ? 'Regular' : 'Special'} holiday` : k.label, e.time, e.venue].filter(Boolean);
+      return `
+        <button type="button" onclick="openCalSheet('view', '${calE(e.key)}')" data-cal-entry="${calE(e.key)}" data-cal-kind="${e.kind}" class="w-full text-left rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-start gap-3 ${e.cancelled ? 'opacity-60' : ''}">
+          <span class="w-9 h-9 shrink-0 rounded-xl ${k.tone} flex items-center justify-center"><i class="ph-bold ${k.icon} text-lg"></i></span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-extrabold text-slate-900 leading-snug ${e.cancelled ? 'line-through' : ''}">${calE(e.title)}</span>
+            <span class="block text-[11px] text-slate-500">${calE(bits.join(' · '))}${e.cancelled ? ' · <b class="text-rose-700">Cancelled</b>' : ''}${e.sending ? ' · <i class="ph-bold ph-cloud-arrow-up"></i> sending' : ''}</span>
+          </span>
+          ${CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off ? '<span class="shrink-0 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700">No classes</span>' : ''}
+        </button>`;
+    }
+    function calDayHead(iso) {
+      const today = localISODate();
+      if (iso === today) return 'Today';
+      if (iso === calNext(today)) return 'Tomorrow';
+      const d = new Date(iso + 'T00:00:00');
+      return d.toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', ...(d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) });
+    }
+    function calAgendaHTML(list) {
+      const today = localISODate();
+      const now = list.filter(e => e.from < today && e.to >= today);
+      const next = list.filter(e => e.from >= today);
+      const past = list.filter(e => e.to < today).reverse();
+      const shown = next.slice(0, calMore);
+      const groups = [];
+      shown.forEach(e => { const g = groups[groups.length - 1]; if (g && g[0] === e.from) g[1].push(e); else groups.push([e.from, [e]]); });
+      const h = (t, attr = '') => `<h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1" ${attr}>${calE(t)}</h2>`;
+      return `
+        ${now.length ? `<div data-cal-now>${h('Going on now')}<div class="space-y-2">${now.map(e => calRowHTML(e)).join('')}</div></div>` : ''}
+        ${groups.map(([iso, es]) => `<div data-cal-group="${iso}">${h(calDayHead(iso))}<div class="space-y-2">${es.map(e => calRowHTML(e)).join('')}</div></div>`).join('')}
+        ${!now.length && !shown.length ? `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500" data-cal-empty><i class="ph-duotone ph-calendar-check text-3xl text-slate-400"></i><p class="mt-1 font-bold text-slate-700 text-sm">Nothing coming up</p><p>${calFilter === 'all' ? 'New dates and events show up here.' : 'Try All.'}</p></div>` : ''}
+        ${next.length > shown.length ? `<button type="button" onclick="calMoreShown()" id="calMoreBtn" class="w-full h-11 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-700">Show more · ${next.length - shown.length}</button>` : ''}
+        ${past.length ? `<details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-cal-past><summary class="text-xs font-bold text-slate-700 cursor-pointer">Earlier this school year · ${past.length}</summary><div class="mt-2 space-y-2">${past.slice(0, 60).map(e => calRowHTML(e)).join('')}</div></details>` : ''}`;
+    }
+    function calMonthHTML(list, y) {
+      const mo = calMonth || calDefaultMonth();
+      const first = mo + '-01';
+      const lead = calDow(first);
+      const days = new Date(Date.UTC(Number(mo.slice(0, 4)), Number(mo.slice(5, 7)), 0)).getUTCDate();
+      const today = localISODate();
+      const sel = calDay && calDay.startsWith(mo) ? calDay : (today.startsWith(mo) ? today : first);
+      const off = calOffMap(y);
+      const live = list.filter(e => !e.cancelled);
+      const cells = [];
+      for (let i = 0; i < lead; i++) cells.push('<span></span>');
+      for (let d = 1; d <= days; d++) {
+        const iso = `${mo}-${String(d).padStart(2, '0')}`;
+        const on = live.filter(e => e.from <= iso && e.to >= iso);
+        const kinds = [...new Set(on.map(e => e.kind))].slice(0, 3);
+        const o = off[iso], w = calDow(iso), wk = !w || w === 6;
+        const tone = o ? (o.kind === 'holiday' || o.kind === 'noclass' ? 'bg-rose-50 text-rose-700' : o.kind === 'suspension' ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-500') : wk ? 'text-slate-400' : 'bg-white text-slate-800';
+        cells.push(`<button type="button" onclick="setCalDay('${iso}')" data-cal-day="${iso}" ${o ? 'data-cal-off' : ''} aria-pressed="${iso === sel}" class="relative h-12 rounded-xl ${tone} flex flex-col items-center justify-center text-sm font-bold ${iso === sel ? 'ring-2 ring-teal-600' : iso === today ? 'ring-1 ring-teal-400' : ''}">
+          <span class="${iso === today ? 'text-teal-700 font-extrabold' : ''}">${d}</span>
+          <span class="flex gap-0.5 h-1.5">${kinds.map(k => `<span class="w-1.5 h-1.5 rounded-full ${CAL_KINDS[k].dot}"></span>`).join('')}</span></button>`);
+      }
+      const dayList = live.concat(list.filter(e => e.cancelled)).filter(e => e.from <= sel && e.to >= sel);
+      const info = y ? calDayInfo(y, sel) : null;
+      const note = info && !info.before && !info.after ? (info.off ? 'No classes' : info.weekend ? 'Weekend' : info.no ? `Class day ${info.no} of ${info.total}` : '') : '';
+      return `
+        <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2" data-cal-month="${mo}">
+          <div class="flex items-center justify-between">
+            <button type="button" onclick="setCalMonth(-1)" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center" aria-label="Previous month"><i class="ph-bold ph-caret-left"></i></button>
+            <span class="text-sm font-extrabold text-slate-900">${new Date(first + 'T00:00:00').toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}</span>
+            <button type="button" onclick="setCalMonth(1)" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center" aria-label="Next month"><i class="ph-bold ph-caret-right"></i></button>
+          </div>
+          <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold uppercase text-slate-400">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<span>${d}</span>`).join('')}</div>
+          <div class="grid grid-cols-7 gap-1">${cells.join('')}</div>
+        </div>
+        <div data-cal-selected="${sel}">
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-1 flex justify-between gap-2"><span>${calE(calDayHead(sel))}</span><span class="normal-case tracking-normal" data-cal-dayno>${calE(note)}</span></h2>
+          <div class="space-y-2">${dayList.length ? dayList.map(e => calRowHTML(e)).join('') : '<p class="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-center text-xs text-slate-500">Nothing on this day</p>'}</div>
+        </div>`;
+    }
+
+    // ---- Sheets -----------------------------------------------------------------------------
+    function openCalSheet(view, key) {
+      if (!planOn()) return;
+      calSheet = { view, key: key || null, drawn: false };
+      document.getElementById('calModal').classList.remove('hidden');
+      renderCalModal();
+      const box = document.getElementById('calModalBox');
+      if (box) box.scrollTop = 0;
+    }
+    function closeCalModal() {
+      calSheet = null;
+      document.getElementById('calModal').classList.add('hidden');
+      document.getElementById('calModalBody').innerHTML = '';
+    }
+    function renderCalModal() {
+      const body = document.getElementById('calModalBody');
+      if (!body || !calSheet) return;
+      const v = calSheet.view;
+      if (v !== 'view' && v !== 'classdays' && calSheet.drawn) return;   // forms keep what is being typed
+      const html = v === 'event' ? calEventHTML() : v === 'date' ? calDateHTML() : v === 'year' ? calYearHTML() : v === 'classdays' ? calClassDaysHTML() : calViewSheetHTML();
+      if (!html) { closeCalModal(); return; }
+      body.innerHTML = html;
+      calSheet.drawn = true;
+      if (v === 'date') calDateKind();
+      if (v === 'event') calEventAllDay();
+    }
+    const calHead = (icon, title, sub) => `
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center"><i class="ph-bold ${icon} text-xl"></i></span>
+          <div class="min-w-0"><h3 class="font-extrabold text-base text-slate-900 leading-tight" data-cal-sheet-title>${title}</h3>${sub ? `<p class="text-xs font-semibold text-slate-500 mt-0.5">${sub}</p>` : ''}</div>
+        </div>
+        <button onclick="closeCalModal()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>`;
+    const calLbl = (label, inner, cls = '') => `<label class="block ${cls}"><span class="block text-[11px] font-bold uppercase text-slate-500 mb-0.5">${label}</span>${inner}</label>`;
+    const CAL_IN = 'w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-sm font-medium outline-none focus:border-teal-500';
+    const calVal = id => { const el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; };
+    const calErr = msg => { const el = document.getElementById('calErr'); if (el) { el.textContent = msg; el.classList.toggle('hidden', !msg); if (msg) el.scrollIntoView({ block: 'nearest' }); } };
+    const CAL_ERR_P = '<p id="calErr" class="hidden rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2"></p>';
+    // One entry: what it is, and (the head or the AO) change, cancel or remove it
+    function calViewSheetHTML() {
+      const e = calByKey(calSheet.key);
+      if (!e) return '';
+      const k = CAL_KINDS[e.kind] || CAL_KINDS.event, edit = calCanEdit();
+      const row = (a, b) => (b ? `<div class="flex justify-between gap-3 px-3 py-2 text-xs"><span class="text-slate-500 shrink-0">${a}</span><span class="font-semibold text-slate-800 text-right min-w-0">${b}</span></div>` : '');
+      const btn = (label, icon, onclick, tone, attr = '') => `<button onclick="${onclick}" ${attr} class="h-11 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 ${tone === 'teal' ? 'bg-teal-700 text-white' : tone === 'rose' ? 'bg-white border border-rose-200 text-rose-700' : 'bg-white border border-slate-200 text-slate-800'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
+      const acts = [];
+      if (edit && e.src === 'event') {
+        acts.push(btn('Change', 'ph-pencil-simple', `openCalSheet('event', '${e.key}')`, 'teal', 'data-cal-act="edit"'));
+        acts.push(e.cancelled ? btn('Not cancelled', 'ph-arrow-counter-clockwise', `calEventStatus('${e.id}', 'planned')`, '', 'data-cal-act="restore"') : btn('Cancel the event', 'ph-calendar-x', `calEventStatus('${e.id}', 'cancelled')`, 'rose', 'data-cal-act="cancel"'));
+        acts.push(btn('Remove', 'ph-trash', `calRemoveEvent('${e.id}')`, '', 'data-cal-act="remove"'));
+      }
+      if (edit && e.src === 'day') {
+        acts.push(btn('Change', 'ph-pencil-simple', `openCalSheet('date', '${e.key}')`, 'teal', 'data-cal-act="edit"'));
+        acts.push(btn('Remove', 'ph-trash', `calRemoveDate('${e.id}')`, 'rose', 'data-cal-act="remove"'));
+      }
+      if (edit && e.src === 'term') acts.push(btn('School year dates', 'ph-gear-six', "openCalSheet('year')", '', 'data-cal-act="year"'));
+      const byName = e.by && e.by.name ? `${e.by.name}${e.by.role === 'head' ? ' (School Head)' : e.by.role === 'ao' ? ' (AO)' : ''}` : '';
+      const by = e.deped ? `DepEd calendar${byName && e.src === 'day' ? ` · loaded by ${byName}` : ''}` : byName;
+      return `
+        ${calHead(k.icon, calE(e.title), calE(e.kind === 'holiday' && e.sub ? `${e.sub === 'regular' ? 'Regular' : 'Special'} holiday` : k.label))}
+        ${e.cancelled ? '<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold px-3 py-2" data-cal-cancelled>This event was cancelled.</p>' : ''}
+        <div class="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+          ${row('When', calE(calRangeText(e.from, e.to)))}
+          ${row('Time', calE(e.time))}
+          ${row('Venue', calE(e.venue))}
+          ${row('Classes', CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off ? '<b class="text-rose-700">No classes</b>' : '')}
+          ${row('Note', calE(e.note))}
+          ${row('Added by', calE(by))}
+        </div>
+        ${acts.length ? `<div class="grid ${acts.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2" data-cal-actions>${acts.join('')}</div>` : ''}`;
+    }
+    // Add or change a school event
+    function calEventHTML() {
+      if (!calCanEdit()) return '';
+      const e = calSheet.key ? calEvents.find(x => 'e:' + x.id === calSheet.key) : null;
+      if (calSheet.key && !e) return '';
+      const today = localISODate();
+      const d = e || { from: calDay || today, to: calDay || today };
+      return `
+        ${calHead('ph-calendar-star', e ? 'Change the event' : 'Add an event', 'On everyone’s calendar · teachers are notified')}
+        <div class="grid grid-cols-2 gap-3">
+          ${calLbl('What', `<input id="calTitle" type="text" maxlength="160" value="${calE(d.title || '')}" class="${CAL_IN}" placeholder="e.g. Parent–Teacher Conference">`, 'col-span-2')}
+          ${calLbl('From', `<input id="calFrom" type="date" value="${calE(d.from)}" onchange="calFromChanged()" class="${CAL_IN}">`)}
+          ${calLbl('To', `<input id="calTo" type="date" value="${calE(d.to || d.from)}" class="${CAL_IN}">`)}
+          <label class="col-span-2 flex items-center gap-2 text-sm font-semibold text-slate-700"><input id="calAllDay" type="checkbox" ${d.startTime ? '' : 'checked'} onchange="calEventAllDay()" class="w-4 h-4 accent-teal-700"> All day</label>
+          <div id="calTimes" class="col-span-2 grid grid-cols-2 gap-3">
+            ${calLbl('Starts', `<input id="calStart" type="time" value="${calE(d.startTime || '08:00')}" class="${CAL_IN}">`)}
+            ${calLbl('Ends (optional)', `<input id="calEnd" type="time" value="${calE(d.endTime || '')}" class="${CAL_IN}">`)}
+          </div>
+          ${calLbl('Venue (optional)', `<input id="calVenue" type="text" maxlength="120" value="${calE(d.venue || '')}" class="${CAL_IN}" placeholder="e.g. School gym">`, 'col-span-2')}
+          ${calLbl('Note (optional)', `<textarea id="calNote" maxlength="400" rows="2" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-teal-500" placeholder="e.g. Wear the school uniform">${calE(d.note || '')}</textarea>`, 'col-span-2')}
+        </div>
+        ${CAL_ERR_P}
+        <button onclick="calSaveEvent()" id="calEventSave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-check"></i> ${e ? 'Save the changes' : 'Add to the calendar'}</button>`;
+    }
+    function calFromChanged() { const f = calVal('calFrom'), to = document.getElementById('calTo'); if (to && f && (!to.value || to.value < f)) to.value = f; }
+    function calEventAllDay() { const on = document.getElementById('calAllDay'); const t = document.getElementById('calTimes'); if (on && t) t.classList.toggle('hidden', on.checked); }
+    function calSaveEvent() {
+      if (!calCanEdit() || !cloud.db || !cloud.user) return;
+      const e = calSheet && calSheet.key ? calEvents.find(x => 'e:' + x.id === calSheet.key) : null;
+      const title = calVal('calTitle').slice(0, 160), from = calVal('calFrom'), to = calVal('calTo') || from;
+      const allDay = !!(document.getElementById('calAllDay') || {}).checked;
+      const startTime = allDay ? '' : calVal('calStart'), endTime = allDay ? '' : calVal('calEnd');
+      if (!title) return calErr('Type what the event is.');
+      if (!from) return calErr('Pick the date.');
+      if (to < from) return calErr('The last day is before the first day.');
+      if (calNext(from, 366) < to) return calErr('An event can be up to a year long.');
+      if (!allDay && !startTime) return calErr('Type the time it starts, or tick All day.');
+      if (endTime && startTime && endTime < startTime && to === from) return calErr('It ends before it starts.');
+      const data = { title, from, to, startTime, endTime, venue: calVal('calVenue').slice(0, 120), note: calVal('calNote').slice(0, 400) };
+      const F = cloud.sdk, now = Date.now(), who = calWho();
+      if (e) {
+        const moved = e.from !== from || e.to !== to;
+        const log = [...(e.log || []), { at: now, by: who.name, x: moved ? `Moved to ${calRangeText(from, to)}` : 'Changed' }].slice(-80);
+        const body = cleanJSON({ ...data, sy: calSyOf(from), log });
+        cloudWrite(F.updateDoc(F.doc(calPpaCol(), e.id), { ...body, updatedAt: F.serverTimestamp() }), 'Saving the event');
+        Object.assign(e, body);
+      } else {
+        const ref = F.doc(calPpaCol());
+        const doc = cleanJSON({ ...data, sy: calSyOf(from), kind: 'event', status: 'planned', by: who, createdMs: now, log: [{ at: now, by: who.name, x: 'Added to the calendar' }] });
+        cloudWrite(F.setDoc(ref, { ...doc, createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp() }), 'Adding the event');
+        if (doc.sy === calEvSy) calEvents = [...calEvents, { ...doc, id: ref.id, sending: true }];
+      }
+      closeCalModal();
+      if (calSyOf(from) !== calCurSy()) { calSy = calSyOf(from); calSync(); }
+      calRender();
+      showToast(e ? 'Saved' : 'Added to the calendar', 'ph-calendar-check');
+    }
+    function calEventStatus(id, status) {
+      const e = calEvents.find(x => x.id === id);
+      if (!e || !calCanEdit()) return;
+      const F = cloud.sdk, who = calWho();
+      const log = [...(e.log || []), { at: Date.now(), by: who.name, x: status === 'cancelled' ? 'Cancelled' : 'Not cancelled after all' }].slice(-80);
+      cloudWrite(F.updateDoc(F.doc(calPpaCol(), id), { status, log, updatedAt: F.serverTimestamp() }), 'Saving the event');
+      Object.assign(e, { status, log });
+      calRender();
+    }
+    async function calRemoveEvent(id) {
+      const e = calEvents.find(x => x.id === id);
+      if (!e || !calCanEdit()) return;
+      if (!await appConfirm(`${e.title} · ${calRangeText(e.from, e.to)}`, { title: 'Remove this event?', ok: 'Remove', tone: 'warn', icon: 'ph-trash' })) return;
+      const F = cloud.sdk, who = calWho();
+      const log = [...(e.log || []), { at: Date.now(), by: who.name, x: 'Removed' }].slice(-80);
+      cloudWrite(F.updateDoc(F.doc(calPpaCol(), id), { removed: true, log, updatedAt: F.serverTimestamp() }), 'Removing the event');
+      Object.assign(e, { removed: true, log });
+      closeCalModal();
+      calRender();
+    }
+    // A date on the school year: no classes (suspension, local holiday), a holiday, a break, exams…
+    function calDateHTML() {
+      if (!calCanEdit()) return '';
+      const sy = calCurSy(), y = calYears[sy];
+      if (!y) return '';
+      const d0 = calSheet.key ? (y.days || []).find(x => 'd:' + x.id === calSheet.key) : null;
+      if (calSheet.key && !d0) return '';
+      const today = localISODate();
+      const d = d0 || { kind: 'suspension', from: calDay || today, to: calDay || today };
+      return `
+        ${calHead('ph-calendar-x', d0 ? 'Change the date' : 'No classes, or another date', calSyText(sy))}
+        <div class="grid grid-cols-2 gap-3">
+          ${calLbl('What kind', `<select id="calKind" onchange="calDateKind()" class="${CAL_IN}">${CAL_DATE_KINDS.map(k => `<option value="${k}" ${d.kind === k ? 'selected' : ''}>${CAL_KINDS[k].label}${CAL_KINDS[k].off ? ' (no classes)' : ''}</option>`).join('')}</select>`, 'col-span-2')}
+          <div id="calSubBox" class="col-span-2">${calLbl('Holiday', `<select id="calSub" class="${CAL_IN}"><option value="regular" ${d.sub === 'regular' ? 'selected' : ''}>Regular holiday</option><option value="special" ${d.sub !== 'regular' ? 'selected' : ''}>Special (non-working) day</option></select>`)}</div>
+          ${calLbl('What', `<input id="calTitle" type="text" maxlength="160" value="${calE(d.title || '')}" class="${CAL_IN}" placeholder="e.g. Typhoon Ada · classes suspended">`, 'col-span-2')}
+          ${calLbl('From', `<input id="calFrom" type="date" value="${calE(d.from)}" onchange="calFromChanged()" class="${CAL_IN}">`)}
+          ${calLbl('To', `<input id="calTo" type="date" value="${calE(d.to || d.from)}" class="${CAL_IN}">`)}
+          ${calLbl('Note (optional)', `<input id="calNote" type="text" maxlength="300" value="${calE(d.note || '')}" class="${CAL_IN}" placeholder="e.g. Division Memo No. 88, s. 2026">`, 'col-span-2')}
+        </div>
+        <p id="calKindNote" class="text-[11px] font-semibold text-slate-600"></p>
+        ${CAL_ERR_P}
+        <button onclick="calSaveDate()" id="calDateSave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-check"></i> ${d0 ? 'Save the changes' : 'Add to the calendar'}</button>`;
+    }
+    function calDateKind() {
+      const k = calVal('calKind');
+      const box = document.getElementById('calSubBox');
+      if (box) box.classList.toggle('hidden', k !== 'holiday');
+      const n = document.getElementById('calKindNote');
+      if (n) n.textContent = CAL_KINDS[k] && CAL_KINDS[k].off ? 'No classes on these days: the class days are counted again. Teachers are notified of a suspension or a day without classes.' : 'Classes as usual: it shows on the calendar.';
+    }
+    function calSaveDate() {
+      if (!calCanEdit()) return;
+      const sy = calCurSy(), y = calYears[sy];
+      if (!y) return;
+      const kind = calVal('calKind'), title = calVal('calTitle').slice(0, 160), from = calVal('calFrom'), to = calVal('calTo') || from;
+      if (!CAL_KINDS[kind]) return calErr('Pick what kind of date it is.');
+      if (!title) return calErr('Type what it is.');
+      if (!from) return calErr('Pick the date.');
+      if (to < from) return calErr('The last day is before the first day.');
+      if (calNext(from, 120) < to) return calErr('Up to 120 days at a time.');
+      const days = [...(y.days || [])];
+      if (days.length >= 380 && !calSheet.key) return calErr('The calendar is full for this school year.');
+      const who = calWho();
+      const old = calSheet.key ? days.find(x => 'd:' + x.id === calSheet.key) : null;
+      const d = cleanJSON({ ...(old || {}), id: old ? old.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 6), kind, title, from, to, note: calVal('calNote').slice(0, 300), sub: kind === 'holiday' ? calVal('calSub') || 'special' : '', src: old ? old.src : 'school', by: old && old.by ? old.by : who, ms: old ? old.ms : Date.now(), changedBy: old ? who.name : '' });
+      const next = old ? days.map(x => (x.id === old.id ? d : x)) : [...days, d];
+      next.sort((a, b) => String(a.from).localeCompare(String(b.from)));
+      calSaveYear(sy, { days: next }, old ? 'Saving the date' : 'Adding the date');
+      closeCalModal();
+      showToast(CAL_KINDS[kind].off ? 'Added · no classes those days' : 'Added to the calendar', 'ph-calendar-check');
+    }
+    async function calRemoveDate(id) {
+      if (!calCanEdit()) return;
+      const sy = calCurSy(), y = calYears[sy];
+      const d = y && (y.days || []).find(x => x.id === id);
+      if (!d) return;
+      if (!await appConfirm(`${d.title} · ${calRangeText(d.from, d.to)}`, { title: 'Remove this date?', ok: 'Remove', tone: 'warn', icon: 'ph-trash' })) return;
+      calSaveYear(sy, { days: (y.days || []).filter(x => x.id !== id) }, 'Removing the date');
+      closeCalModal();
+    }
+    function calSaveYear(sy, patch, what) {
+      if (!calCanEdit() || !cloud.db || !cloud.user) return;
+      const F = cloud.sdk, y = calYears[sy] || {};
+      const body = cleanJSON({ sy, start: y.start || '', end: y.end || '', memo: y.memo || '', terms: y.terms || [], days: y.days || [], ...patch, updatedBy: calWho().name, updatedMs: Date.now() });
+      body.sy = sy;
+      cloudWrite(F.setDoc(F.doc(calYearCol(), sy), { ...body, updatedAt: F.serverTimestamp() }), what || 'Saving the calendar');
+      calYears = { ...calYears, [sy]: { ...body, id: sy } };
+      calRender();
+    }
+    function calLoadStarter(sy) {
+      const st = CAL_STARTER[sy];
+      if (!st || !calCanEdit() || calYears[sy]) return;
+      const who = calWho();
+      calSaveYear(sy, {
+        start: st.start, end: st.end, memo: st.memo, terms: st.terms,
+        days: st.days.map(([kind, from, to, title, sub], i) => cleanJSON({ id: `deped${i}`, kind, from, to: to || from, title, sub: sub || '', src: 'deped', by: { uid: who.uid, name: who.name, role: who.role }, ms: Date.now() }))
+      }, 'Loading the DepEd calendar');
+      showToast(`${calSyText(sy)} loaded · check the dates`, 'ph-calendar-check');
+    }
+    // The first and last day of the school year and the terms
+    function calYearHTML() {
+      if (!calCanEdit()) return '';
+      const sy = calCurSy(), y = calYears[sy] || {};
+      const terms = [1, 2, 3].map(n => (y.terms || []).find(t => t.n === n) || { n });
+      return `
+        ${calHead('ph-gear-six', 'School year dates', calSyText(sy))}
+        <div class="grid grid-cols-2 gap-3">
+          ${calLbl('First day', `<input id="calYStart" type="date" value="${calE(y.start || '')}" class="${CAL_IN}">`)}
+          ${calLbl('Last day', `<input id="calYEnd" type="date" value="${calE(y.end || '')}" class="${CAL_IN}">`)}
+          ${terms.map(t => `
+            <p class="col-span-2 -mb-2 text-xs font-extrabold text-slate-700">Term ${t.n}${t.n === 3 ? ' <span class="font-semibold text-slate-500">(leave blank if there are only two)</span>' : ''}</p>
+            ${calLbl('From', `<input id="calT${t.n}From" type="date" value="${calE(t.from || '')}" class="${CAL_IN}">`)}
+            ${calLbl('To', `<input id="calT${t.n}To" type="date" value="${calE(t.to || '')}" class="${CAL_IN}">`)}`).join('')}
+        </div>
+        <p class="text-[11px] text-slate-500">Class days are counted Monday to Friday from the first to the last day, without holidays, breaks and days without classes.</p>
+        ${CAL_ERR_P}
+        <button onclick="calSaveYearDates()" id="calYearSave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-check"></i> Save</button>`;
+    }
+    function calSaveYearDates() {
+      if (!calCanEdit()) return;
+      const sy = calCurSy(), y = calYears[sy] || {};
+      const start = calVal('calYStart'), end = calVal('calYEnd');
+      if (!start || !end) return calErr('Pick the first and the last day.');
+      if (end <= start) return calErr('The last day is before the first day.');
+      if (calNext(start, 400) < end) return calErr('A school year is up to about a year long.');
+      if (calSyOf(start) !== sy) return calErr(`The first day should be in ${calSyText(sy)} (June or later).`);
+      const terms = [];
+      for (const n of [1, 2, 3]) {
+        const from = calVal(`calT${n}From`), to = calVal(`calT${n}To`);
+        if (!from && !to) continue;
+        if (!from || !to || to < from) return calErr(`Term ${n}: pick both dates, the last after the first.`);
+        if (from < start || to > end) return calErr(`Term ${n} is outside the school year.`);
+        const old = (y.terms || []).find(t => t.n === n);
+        const blocks = old && old.from === from && old.to === to ? old.blocks || [] : [];   // the DepEd blocks stay while the term keeps its dates
+        terms.push({ n, from, to, blocks });
+      }
+      calSaveYear(sy, { start, end, terms }, 'Saving the school year');
+      closeCalModal();
+      showToast('Saved', 'ph-calendar-check');
+    }
+    // How many class days, by month and by term
+    function calClassDaysHTML() {
+      const sy = calCurSy(), y = calYears[sy];
+      if (!y) return '';
+      const cd = calClassDays(y);
+      const ok = cd.total >= CAL_LAW[0] && cd.total <= CAL_LAW[1];
+      const months = Object.keys(cd.months).sort();
+      return `
+        ${calHead('ph-chart-bar', 'Class days', `${calSyText(sy)} · ${longDate(y.start)} to ${longDate(y.end)}`)}
+        <div class="rounded-2xl ${ok ? 'bg-teal-50 border-teal-200 text-teal-900' : 'bg-amber-50 border-amber-200 text-amber-900'} border px-4 py-3 flex items-center justify-between gap-3">
+          <span class="text-xs font-semibold">${ok ? 'Within the law' : `The law asks for ${CAL_LAW[0]} to ${CAL_LAW[1]}`} <span class="block text-[11px] font-normal">R.A. No. 7797, as amended by R.A. No. 11480: ${CAL_LAW[0]} to ${CAL_LAW[1]} class days</span></span>
+          <span class="text-2xl font-extrabold font-mono" data-cal-total>${cd.total}</span>
+        </div>
+        ${(y.terms || []).length ? `<div class="grid grid-cols-${Math.min(3, y.terms.length)} gap-2">${y.terms.map(t => `<div class="rounded-xl bg-white border border-slate-200 px-3 py-2 text-center"><span class="block text-[10px] font-bold uppercase text-slate-500">Term ${t.n}</span><span class="block text-lg font-extrabold font-mono" data-cal-term="${t.n}">${cd.terms[t.n] || 0}</span></div>`).join('')}</div>` : ''}
+        <div class="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden" data-cal-months>
+          ${months.map(m => `<div class="flex justify-between px-3 py-2 text-xs"><span class="text-slate-600">${new Date(m + '-01T00:00:00').toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}</span><b class="font-mono" data-cal-mo="${m}">${cd.months[m]}</b></div>`).join('')}
+        </div>
+        <p class="text-[11px] text-slate-500">Monday to Friday, without holidays, breaks, class suspensions and days without classes on the calendar.</p>`;
+    }
+
+    // ---- Notifications --------------------------------------------------------------------
+    // School events added, moved or cancelled by someone else; a class suspension or a day without classes
+    function notifFromCalEvents(meta, sy) {
+      if (!planOn() || !cloud.user) return;
+      const me = cloud.user.uid;
+      notifCheck('calEvents:' + sy, calEvents.filter(e => !e.sending && e.kind === 'event' && !(e.by && e.by.uid === me)).map(e => ({
+        key: 'cal:e:' + e.id, sig: `${e.from}|${e.to}|${e.startTime || ''}|${e.status || ''}|${e.removed ? 1 : 0}`,
+        make: prev => {
+          if (e.removed) return null;
+          const when = [calRangeText(e.from, e.to), calTimeText(e), e.venue].filter(Boolean).join(' · ');
+          if (e.status === 'cancelled') return prev === undefined ? null : { title: `Cancelled: ${e.title}`, body: when, icon: 'ph-calendar-x', tone: 'rose', go: 'calendar' };
+          if (prev === undefined) return e.to < localISODate() ? null : { title: `On the school calendar: ${e.title}`, body: when, icon: 'ph-calendar-plus', tone: 'brand', go: 'calendar' };
+          const p = String(prev).split('|');
+          if (p[3] === 'cancelled') return { title: `Back on: ${e.title}`, body: when, icon: 'ph-calendar-check', tone: 'emerald', go: 'calendar' };
+          if (p[0] !== e.from || p[1] !== e.to || p[2] !== (e.startTime || '')) return { title: `Moved: ${e.title}`, body: when, icon: 'ph-calendar-dots', tone: 'amber', go: 'calendar' };
+          return null;
+        }
+      })), fromCacheOf(meta));
+    }
+    function notifFromCalDays(meta) {
+      if (!planOn() || !cloud.user) return;
+      const me = cloud.user.uid, today = localISODate(), list = [];
+      Object.values(calYears).forEach(y => (y.days || []).forEach(d => {
+        if (d.src === 'deped' || !CAL_KINDS[d.kind] || !CAL_KINDS[d.kind].off || (d.by && d.by.uid === me) || (d.to || d.from) < today) return;
+        list.push(d);
+      }));
+      notifCheck('calDays', list.map(d => ({
+        key: 'cal:d:' + d.id, sig: `${d.from}|${d.to}|${d.kind}`,
+        make: () => ({ title: `No classes: ${d.title}`, body: `${calRangeText(d.from, d.to)} · ${CAL_KINDS[d.kind].label}`, icon: CAL_KINDS[d.kind].icon, tone: 'amber', go: 'calendar' })
+      })), fromCacheOf(meta));
+    }
+
     // Sends something to the School Head (an earlier one for the same thing is cancelled).
     function submitApproval(kind, refId, body) {
       if (!isCustodianDevice() || isViewOnly() || !cloud.user || !currentHead()) return null;
@@ -18572,6 +19320,7 @@
         cloud.error = '';
         const active = !!(headMe && headMe.status === 'active');
         if (active && !headPrUnsub) startHeadPrs(F);
+        if (active) calSync();
         else if (!active && headPrUnsub) stopHeadPrs();
         if (active) {
           subscribeSuggestions();
@@ -19318,7 +20067,7 @@
             <i class="ph-bold ph-caret-right text-slate-400"></i>
           </button>`;
         const pane = (k, inner) => `<div data-hd-pane="${k}" class="space-y-5 ${headTab === k ? '' : 'hidden'}">${inner}</div>`;
-        html = pane('approve', left) + pane('school', headDashHTML()) + pane('items', headTab === 'items' ? headItemsHTML() : '') + pane('people', headPeopleHTML()) + pane('history', history) + (leaveOn() ? pane('leave', lvMineHTML()) : '');
+        html = pane('approve', left) + pane('school', headDashHTML()) + pane('items', headTab === 'items' ? headItemsHTML() : '') + pane('people', headPeopleHTML()) + pane('history', history) + (leaveOn() ? pane('leave', lvMineHTML()) : '') + (planOn() ? pane('plan', (calSync(), calViewHTML(false))) : '');
       }
       renderHeadTabs(two, nTab);
       const body = document.getElementById('hdBody');
@@ -19333,13 +20082,14 @@
     // Tabs like a teacher's: Approve (with the count waiting) · School · People · History.
     var headTab = 'approve';
     var headPeopleQ = '';
-    var HEAD_TITLES = { approve: 'For your approval', school: 'School property', items: 'School inventory', people: 'Who holds what', history: 'Your decisions', leave: 'My leave' };
+    var HEAD_TITLES = { approve: 'For your approval', school: 'School property', items: 'School inventory', people: 'Who holds what', history: 'Your decisions', leave: 'My leave', plan: 'School calendar' };
     function setHeadTab(t) {
-      if (!HEAD_TITLES[t] || (t === 'leave' && !leaveOn())) return;
+      if (!HEAD_TITLES[t] || (t === 'leave' && !leaveOn()) || (t === 'plan' && !planOn())) return;
       const was = headTab;
       headTab = t;
       if (t === 'items') { startHeadInventory(); if (was !== 'items') renderHeadView(); }
       if (t === 'leave') renderHeadLeave();
+      if (t === 'plan') { calSync(); renderHeadCalendar(); }
       document.querySelectorAll('#hdBody [data-hd-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.hdPane !== t));
       renderHeadTabs(!!document.querySelector('#hdBody [data-hd-pane]'));
       window.scrollTo({ top: 0 });
@@ -19349,15 +20099,17 @@
       if (!bar) return;
       bar.classList.toggle('hidden', !on);
       bar.classList.toggle('grid', !!on);
-      const lvTab = leaveOn();
-      if (headTab === 'leave' && !lvTab) headTab = 'approve';
-      bar.classList.toggle('grid-cols-5', !lvTab);
-      bar.classList.toggle('grid-cols-6', lvTab);
+      const lvTab = leaveOn(), calTab = planOn();
+      if ((headTab === 'leave' && !lvTab) || (headTab === 'plan' && !calTab)) headTab = 'approve';
+      const nTabs = 5 + (lvTab ? 1 : 0) + (calTab ? 1 : 0);
+      bar.classList.toggle('grid-cols-5', nTabs === 5);
+      bar.classList.toggle('grid-cols-6', nTabs === 6);
+      bar.classList.toggle('grid-cols-7', nTabs === 7);
       document.getElementById('hdTitle').textContent = on ? HEAD_TITLES[headTab] : HEAD_TITLES.approve;
       Object.keys(HEAD_TITLES).forEach(t => {
         const b = document.getElementById(`hdTab-${t}`);
         const sel = t === headTab;
-        if (t === 'leave' && !lvTab) { b.className = 'hidden'; return; }
+        if ((t === 'leave' && !lvTab) || (t === 'plan' && !calTab)) { b.className = 'hidden'; return; }
         b.className = `relative h-12 sm:h-11 rounded-xl text-[11px] min-[400px]:text-xs sm:text-sm font-extrabold flex flex-col sm:flex-row items-center justify-center gap-0 sm:gap-1.5 transition ${sel ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5 seg-on' : 'text-slate-500 hover:text-slate-800'}`;
         b.setAttribute('aria-selected', sel ? 'true' : 'false');
       });
@@ -21378,18 +22130,23 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (!teacherTab) teacherTab = myReleases.length ? 'items' : 'requests';
       const lvOn = leaveOn();
       if (teacherTab === 'leave' && !lvOn) teacherTab = 'requests';
+      const calOn = planOn();
+      if (teacherTab === 'calendar' && !calOn) teacherTab = 'requests';
       const tab = teacherTab;
-      document.getElementById('rqTitle').textContent = tab === 'items' ? 'My items' : tab === 'stock' ? 'School stock' : tab === 'library' ? 'Library' : tab === 'leave' ? 'Leave' : 'Request supplies';
+      document.getElementById('rqTitle').textContent = tab === 'items' ? 'My items' : tab === 'stock' ? 'School stock' : tab === 'library' ? 'Library' : tab === 'leave' ? 'Leave' : tab === 'calendar' ? 'School calendar' : 'Request supplies';
       setTimeout(renderTeacherAvatars, 0);
-      document.getElementById('rqSchool').textContent = tab === 'stock' ? `Supplies left at ${reqRole.schoolName}` : tab === 'leave' ? `Applications for leave at ${reqRole.schoolName} · CS Form 6` : tab === 'library' ? `Books at ${reqRole.schoolName} · what is free and where` : `To the property custodian of ${reqRole.schoolName}`;
+      document.getElementById('rqSchool').textContent = tab === 'stock' ? `Supplies left at ${reqRole.schoolName}` : tab === 'calendar' ? `Holidays, days without classes and events at ${reqRole.schoolName}` : tab === 'leave' ? `Applications for leave at ${reqRole.schoolName} · CS Form 6` : tab === 'library' ? `Books at ${reqRole.schoolName} · what is free and where` : `To the property custodian of ${reqRole.schoolName}`;
       const tabsEl = document.getElementById('rqTabs');
-      tabsEl.classList.toggle('grid-cols-4', !lvOn);
-      tabsEl.classList.toggle('grid-cols-5', lvOn);
-      tabsEl.classList.toggle('rq-five', lvOn);
-      ['items', 'requests', 'stock', 'library', 'leave'].forEach(t => {
+      const nTabs = 4 + (lvOn ? 1 : 0) + (calOn ? 1 : 0);
+      tabsEl.classList.toggle('grid-cols-4', nTabs === 4);
+      tabsEl.classList.toggle('grid-cols-5', nTabs === 5);
+      tabsEl.classList.toggle('grid-cols-6', nTabs === 6);
+      tabsEl.classList.toggle('rq-five', nTabs === 5);
+      tabsEl.classList.toggle('rq-six', nTabs === 6);
+      ['items', 'requests', 'stock', 'library', 'calendar', 'leave'].forEach(t => {
         const b = document.getElementById(`rqTab-${t}`);
         const on = t === tab;
-        if (t === 'leave' && !lvOn) { b.className = 'hidden'; return; }
+        if ((t === 'leave' && !lvOn) || (t === 'calendar' && !calOn)) { b.className = 'hidden'; return; }
         b.className = `h-11 rounded-xl text-[13px] sm:text-sm font-extrabold flex items-center justify-center gap-1 sm:gap-1.5 transition ${on ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5 seg-on' : 'text-slate-500 hover:text-slate-800'}`;
         b.setAttribute('aria-selected', on ? 'true' : 'false');
       });
@@ -21402,7 +22159,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       document.getElementById('rqStockPane').classList.toggle('hidden', tab !== 'stock');
       document.getElementById('rqLibraryPane').classList.toggle('hidden', tab !== 'library');
       document.getElementById('rqLeavePane').classList.toggle('hidden', tab !== 'leave');
+      document.getElementById('rqCalPane').classList.toggle('hidden', tab !== 'calendar');
       if (lvOn) { leaveSync(); lvTeacherDot(); }
+      if (calOn) { calSync(); if (tab === 'calendar') renderTeacherCalendar(); }
       const me = cloud.user ? cloud.user.uid : '';
       document.getElementById('rqLibDot').classList.toggle('hidden', !(bk.moves.some(m => m.toUid === me && m.status === 'sent') || bk.loans.some(l => l.keeperUid === me && l.status === 'requested')));
       if (tab === 'items') renderTeacherItems(h, toAck);
@@ -28550,6 +29309,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         else openHeadPanel();
       } else if (n.go === 'leave') {                 // the AO (custodian account): the Leave page
         openLeaveView();
+      } else if (n.go === 'calendar') {             // the School Calendar (pilot)
+        openCalendar();
       } else if (n.go === 'head-leave') {
         if (isHeadDevice()) { headTab = 'leave'; switchMainView('HEAD'); renderHeadView(); }
       } else if (n.go === 'teacher-leave') {
@@ -28725,6 +29486,13 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-school-calendar', date: 'Nov 2026', title: 'School calendar · pilot at this school', points: [
+        'This is a pilot: it shows only at this school for now. It is the first part of School Planning; programs, projects and activities (the AIP) come next.',
+        'One school calendar for everyone: the terms of the school year, holidays, breaks, exams, days without classes and school events. Agenda (what is coming up) or Month. A strip shows the term and the class day, and how many class days are left.',
+        'School Head (new Plan tab) and AO (Calendar in More and in the computer sidebar): load the DepEd calendar for SY 2026\u20132027 (DepEd Order No. 009, s. 2026, with the 2026 and 2027 holidays) and check the dates. Add school events, class suspensions and local holidays. Class days are counted by month and term (200 to 220 by law).',
+        'Teachers: a new Calendar tab, and a notification when an event is added, moved or cancelled, or when there are no classes.',
+        'Property custodian: publish the updated database rules (firestore.rules) again.'
+      ], pilot: 'plan' },
       { id: '2026-11-leave-p250-self', date: 'Nov 2026', title: '\u20b1250 log and turnover · the AO and the School Head can apply for leave · pilot at this school', points: [
         'AO: the Leave page has a new \u20b1250 tab. Pick the month to see every whole-day absence paid with \u20b1250, by person, with how many of the 2 a month each one used.',
         'Tap Paid when the money is handed in at the office (the amount and the date). Then Turn over to the Faculty President: type the name and the date, and Print the turnover list for signing.',
@@ -29289,7 +30057,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
 
     // What's new on this phone: a pilot's note only where the pilot is on
-    function wnList() { return WHATS_NEW.filter(r => !r.pilot || (r.pilot === 'leave' && leaveOn())); }
+    function wnList() { return WHATS_NEW.filter(r => !r.pilot || (r.pilot === 'leave' && leaveOn()) || (r.pilot === 'plan' && planOn())); }
     function initAppUpdates() {
       syncTitleBarMode();
       if (navigator.windowControlsOverlay && navigator.windowControlsOverlay.addEventListener) {
@@ -29715,7 +30483,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     // so nothing syncs back. Typed RESET confirms; the page reloads clean.
     var resetScope = 'device';
     var resetBusy = false;
-    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites', 'turnovers', 'turnoverInvites', 'staff', 'staffInvites', 'approvals', 'suggestions', 'dashboard', 'books', 'bookMeta', 'bookIndex', 'bookMoves', 'loans', 'classBooks', 'leaves', 'leaveCards'];
+    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites', 'turnovers', 'turnoverInvites', 'staff', 'staffInvites', 'approvals', 'suggestions', 'dashboard', 'books', 'bookMeta', 'bookIndex', 'bookMoves', 'loans', 'classBooks', 'leaves', 'leaveCards', 'planYears', 'ppas'];
     const canEraseCloud = () => isCustodianDevice() && !isViewOnly() && !isAssistant() && !!cloud.user && !!cloud.db && !!(reqRole && reqRole.schoolId);
     function openResetApp() {
       if (typeof closeMoreMenu === 'function') { try { closeMoreMenu(); } catch (e) {} }
@@ -29832,6 +30600,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const refs = [];
       for (const sub of RESET_SUBS) {
         if ((sub === 'leaves' || sub === 'leaveCards') && !leaveOn()) continue;   // the Leave pilot: other schools can't read it (and have none)
+        if ((sub === 'planYears' || sub === 'ppas') && !planOn()) continue;       // the School Calendar pilot, the same
         const snap = await F.getDocs(F.collection(db, 'schools', sid, sub));
         snap.docs.forEach(d => refs.push(F.doc(db, 'schools', sid, sub, d.id)));
       }

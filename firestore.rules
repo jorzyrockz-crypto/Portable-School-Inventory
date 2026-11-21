@@ -102,6 +102,8 @@ service cloud.firestore {
     function shortText(v, max) { return v is string && v.size() <= max; }
     // Leave (CS Form 6) and leave cards: a pilot, only at these schools
     function leavePilot(schoolId) { return schoolId in ['97JbEODfGJhWcejYDWhO']; }
+    // School Planning (the school calendar; programs, projects and activities next): a pilot too
+    function planPilot(schoolId) { return schoolId in ['97JbEODfGJhWcejYDWhO']; }
     // A card's photo: the person's Google profile photo (lhN.googleusercontent.com), or empty.
     function googlePhotoOk() {
       return request.resource.data.get('photo', '') == ''
@@ -703,6 +705,36 @@ service cloud.firestore {
           && (resource == null || request.resource.data.get('uid', '') == resource.data.get('uid', ''))
           && shortText(request.resource.data.get('name', ''), 120) && request.resource.data.get('name', '').size() > 0
           && request.resource.data.get('entries', []) is list && request.resource.data.get('entries', []).size() <= 800;
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+
+      // School calendar (School Planning pilot): one document per school year with its terms,
+      // holidays, breaks and days without classes. Everyone at the school reads it; the School Head
+      // and the AO (custodian, assistants) write it.
+      match /planYears/{sy} {
+        allow read: if planPilot(schoolId) && (canView(schoolId) || isHead(schoolId) || isMember(schoolId));
+        allow create, update: if planPilot(schoolId) && (isStaff(schoolId) || isHead(schoolId))
+          && request.resource.data.get('sy', '') == sy && sy.matches('^[0-9]{4}-[0-9]{4}$')
+          && request.resource.data.get('terms', []) is list && request.resource.data.get('terms', []).size() <= 4
+          && request.resource.data.get('days', []) is list && request.resource.data.get('days', []).size() <= 400
+          && shortText(request.resource.data.get('memo', ''), 300);
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+
+      // Programs, projects, activities and school events (School Planning pilot). For now only
+      // school events, written by the School Head and the AO; removing one keeps it (removed: true).
+      match /ppas/{ppaId} {
+        function ppaBodyOk() {
+          let d = request.resource.data;
+          return d.get('kind', '') == 'event' && shortText(d.get('title', ''), 160) && d.get('title', '').size() > 0
+            && d.get('sy', '') is string && d.get('sy', '').matches('^[0-9]{4}-[0-9]{4}$')
+            && d.get('from', '') is string && d.get('from', '').size() == 10 && d.get('to', '') is string
+            && d.get('status', '') in ['planned', 'cancelled']
+            && shortText(d.get('venue', ''), 120) && shortText(d.get('note', ''), 400)
+            && d.get('log', []) is list && d.get('log', []).size() <= 80;
+        }
+        allow read: if planPilot(schoolId) && (canView(schoolId) || isHead(schoolId) || isMember(schoolId));
+        allow create, update: if planPilot(schoolId) && (isStaff(schoolId) || isHead(schoolId)) && ppaBodyOk();
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
 

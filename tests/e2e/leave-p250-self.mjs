@@ -41,7 +41,7 @@ try {
   await turnOn(h);
   await ev(h, () => renderHeadView());
   const aUid = await ev(a, () => cloud.user.uid);
-  check(await ev(a, () => WHATS_NEW[0].id === '2026-11-leave-p250-self' && WHATS_NEW[0].pilot === 'leave' && wnList().some(r => r.id === '2026-11-leave-p250-self')), 'What’s new: the ₱250 log and applying for one’s own leave (pilot)');
+  check(await ev(a, () => WHATS_NEW.some(r => r.id === '2026-11-leave-p250-self' && r.pilot === 'leave') && wnList().some(r => r.id === '2026-11-leave-p250-self')), 'What’s new: the ₱250 log and applying for one’s own leave (pilot)');
 
   out('2 ₱250 days: the AO’s log by month and person');
   await teacherApply(t, { type: 'SPL', from: '2026-12-01', use: 'p250', days: '1' });
