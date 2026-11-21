@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="6c20ad1d6690">
+  <meta name="app-version" content="7a27a7c5292e">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -244,6 +244,12 @@
         text-transform: uppercase; color: #64748b; }
       #tabBar .lap-only.tab-btn { display: flex; }
       #viewItems, #viewCatalog { max-width: 76rem; }
+      /* Admin panel: the schools on the left, the school picked on the right; feature switches side by side */
+      html:not(.no-tabs) #viewAdmin { max-width: 76rem; }
+      html:not(.no-tabs) #viewAdmin .adm-panes { display: grid; grid-template-columns: minmax(0, 1fr) 24rem; gap: 1.25rem; align-items: start; }
+      html:not(.no-tabs) #viewAdmin .adm-side { position: sticky; top: calc(var(--hdr-h, 3.75rem) + 1rem); }
+      html:not(.no-tabs) #viewAdmin .adm-feats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; align-items: start; }
+      html:not(.no-tabs) #viewAdmin .adm-feats > * { margin-top: 0 !important; }
       .lap-col { display: block; }
       .lap-w { width: 7.5rem; }
       .lap-hide { display: none !important; }
@@ -1407,6 +1413,11 @@
     <div id="lvView" class="space-y-4"></div>
   </section>
 
+  <!-- ADMIN PANEL (Testing ES custodian): schools, feature switches, Pro and trials -->
+  <section id="viewAdmin" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
+    <div id="adminView" class="space-y-4"></div>
+  </section>
+
   <!-- SCHOOL HEAD (head's phone): approve or return Purchase Requests -->
   <section id="viewHead" class="hidden max-w-xl mx-auto px-4 pt-5 space-y-5 no-print">
     <div class="flex items-start gap-3">
@@ -1598,6 +1609,22 @@
         <i class="ph-bold ph-files text-[22px]"></i>
         <span class="flex items-center gap-1">Forms</span>
       </button>
+      <span id="sideAdminLabel" class="side-label lap-only" style="display:none">Admin</span>
+      <button id="sideAdminSchools" onclick="openAdminPanel('schools')" data-view="ADMIN" data-admin-tab="schools" style="display:none" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-buildings text-[22px]"></i>
+        <span class="flex items-center gap-1">Schools <span id="sideAdminCount" class="hidden px-1.5 rounded-full bg-amber-100 text-amber-800 font-mono text-[11px]"></span></span>
+      </button>
+      <button id="sideAdminFeatures" onclick="openAdminPanel('features')" data-view="ADMIN" data-admin-tab="features" style="display:none" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-toggle-right text-[22px]"></i>
+        <span class="flex items-center gap-1">Features</span>
+      </button>
+      <button id="sideAdminActivity" onclick="openAdminPanel('activity')" data-view="ADMIN" data-admin-tab="activity" style="display:none" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-clock-counter-clockwise text-[22px]"></i>
+        <span class="flex items-center gap-1">Activity</span>
+      </button>
     </div>
   </nav>
 
@@ -1646,7 +1673,7 @@
           <p class="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Data &amp; settings</p>
           <button id="moreInstallItem" onclick="closeMoreMenu(); installApp()" class="more-item" style="display:none"><i class="ph-bold ph-device-mobile text-brand-600"></i> Install app on this phone</button>
           <button onclick="closeMoreMenu(); openSchoolModal()" class="more-item"><i class="ph-bold ph-buildings text-brand-600"></i> School &amp; custodian info</button>
-          <button id="moreAdminItem" onclick="openAdminPanel()" style="display:none" class="more-item"><i class="ph-bold ph-sliders-horizontal text-slate-700"></i> Admin panel <span class="ml-auto text-[11px] font-bold text-slate-500">Features · schools · Pro</span></button>
+          <button id="moreAdminItem" onclick="openAdminPanel()" style="display:none" class="more-item"><i class="ph-bold ph-sliders-horizontal text-slate-700"></i> Admin panel <span class="text-[11px] font-bold text-slate-500">Schools · features</span><span id="moreAdminCount" class="hidden ml-auto px-1.5 rounded-full bg-amber-100 text-amber-800 font-mono text-[11px] font-bold"></span></button>
           <button id="moreProItem" onclick="openProSheet()" style="display:none" class="more-item"><i class="ph-bold ph-crown text-amber-500"></i> Pro <span id="moreProTag" class="ml-auto text-[11px] font-bold text-slate-500">Free</span></button>
           <button id="moreTurnoverItem" onclick="closeMoreMenu(); openTurnover()" class="more-item"><i class="ph-bold ph-handshake text-brand-600"></i> Custodian turnover</button>
           <button id="moreYearEndItem" onclick="closeMoreMenu(); openYearEnd()" class="more-item"><i class="ph-bold ph-calendar-check text-brand-600"></i> Year-end &amp; reminders</button>
@@ -2111,23 +2138,6 @@
         <button onclick="closeProSheet()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
       </div>
       <div id="proBody" class="space-y-3"></div>
-    </div>
-  </div>
-
-  <!-- More → Admin panel (Testing ES custodian): feature switches, schools, Pro and trials -->
-  <div id="adminModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeAdminPanel()" onkeydown="if (event.key === 'Escape') closeAdminPanel()">
-    <div role="dialog" aria-modal="true" class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-3 safe-pad max-h-[94vh] overflow-y-auto">
-      <div class="flex items-start justify-between gap-3">
-        <div class="flex items-start gap-3 min-w-0">
-          <span class="w-10 h-10 shrink-0 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center"><i class="ph-bold ph-sliders-horizontal text-xl"></i></span>
-          <div class="min-w-0">
-            <h3 class="font-extrabold text-base text-slate-900 leading-tight">Admin panel</h3>
-            <p class="text-xs font-semibold text-slate-500">Feature switches · schools · Pro</p>
-          </div>
-        </div>
-        <button onclick="closeAdminPanel()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
-      </div>
-      <div id="adminBody" class="space-y-3"></div>
     </div>
   </div>
 
@@ -3546,13 +3556,14 @@
     // =========================================================================
     // 4. VIEW NAVIGATION (DASHBOARD <-> CATALOG)
     // =========================================================================
-    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester', TEACHERS: 'viewTeachers', HEAD: 'viewHead', BOOKS: 'viewBooks', LEAVE: 'viewLeave', CALENDAR: 'viewCalendar' };
+    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester', TEACHERS: 'viewTeachers', HEAD: 'viewHead', BOOKS: 'viewBooks', LEAVE: 'viewLeave', CALENDAR: 'viewCalendar', ADMIN: 'viewAdmin' };
 
     function switchMainView(viewName) {
       if (viewName === 'DASHBOARD') viewName = 'REPORTS'; // old name
       if (!MAIN_VIEWS[viewName]) viewName = 'HOME';
       if (viewName === 'LEAVE' && !(leaveOn() && isCustodianDevice())) viewName = 'HOME';   // the Leave pilot
       if (viewName === 'CALENDAR' && !(planOn() && isCustodianDevice())) viewName = 'HOME';   // the School Calendar pilot
+      if (viewName === 'ADMIN' && !isAdminDevice()) viewName = 'HOME';   // the Admin panel: Testing ES custodian only
       if (isTeacherDevice()) viewName = viewName === 'BOOKS' && isLibrarianDevice() ? 'BOOKS' : 'REQUESTER'; // a teacher's phone: supply requests (the librarian: also the Library desk)
       else if (isHeadDevice()) viewName = 'HEAD';    // the School Head's phone: PR approvals only
       else if (viewName === 'REQUESTER' || viewName === 'HEAD') viewName = 'HOME';
@@ -3580,6 +3591,7 @@
       if (viewName === 'BOOKS') renderBooksView();
       if (viewName === 'LEAVE') renderLeaveView();
       if (viewName === 'CALENDAR') renderCalendarView();
+      if (viewName === 'ADMIN') renderAdmin();
       syncPageArt();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -3588,7 +3600,8 @@
     function paintTabs() {
       const forms = coaIsPage();
       document.querySelectorAll('#tabBar .tab-btn').forEach(btn => {
-        const on = forms ? btn.id === 'sideForms' : !!btn.dataset.view && btn.dataset.view === activeMainView;
+        const on = forms ? btn.id === 'sideForms' : btn.dataset.adminTab ? activeMainView === 'ADMIN' && !!adminView && adminView.tab === btn.dataset.adminTab
+          : !!btn.dataset.view && btn.dataset.view === activeMainView;
         btn.classList.toggle('text-brand-600', on);
         btn.classList.toggle('text-slate-500', !on);
         btn.setAttribute('aria-current', on ? 'page' : 'false');
@@ -9737,6 +9750,7 @@
           `${left < 0 ? `The relief application is ${plural(-left, 'day')} overdue` : `${plural(left, 'day')} left to apply for relief`}${lost.length > 1 ? ' for the oldest' : ''} (COA: within 30 days)`,
           'lost', "teachersFilter = 'lost'; openTeachersView(null)");
       }
+      try { adminHomeAttention(add); } catch (e) {}   // the admin: Pro or trials ending soon
       if (cloudOn) {
         const days = ms => Math.floor((now - ms) / DAY_MS);
         const reqs = reqList.filter(r => !r.sending && (r.status || 'pending') === 'pending' && reqTime(r) && now - reqTime(r) >= REQ_WAIT_DAYS * DAY_MS)
@@ -15951,7 +15965,7 @@
     var featCfg = featJSON(FEAT_KEY);   // appConfig/features (kept on the phone for the next start)
     var proDocs = featJSON(PRO_KEY);    // { sid, pro, trial } of this school
     var featSig = '', memberSrv = false;
-    var adminView = { tab: 'features', q: '', f: 'all', open: '', list: null, loading: false, error: '' };
+    var adminView = { tab: 'schools', q: '', f: 'all', sort: 'name', open: '', list: null, loading: false, error: '', loadedMs: 0, logF: 'all' };
     const featE = s => escapeHTML(String(s == null ? '' : s));
     const featDate = ms => (ms ? new Date(ms).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '');
     const featWhen = ms => (ms ? new Date(ms).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');
@@ -16048,8 +16062,10 @@
     // ---- Menu, badges and the trial strip ----------------------------------------------------
     function proNav() {
       const cust = isCustodianDevice() && !isIncomingDevice();
-      const admin = document.getElementById('moreAdminItem');
-      if (admin) admin.style.display = isAdminDevice() ? '' : 'none';
+      const adm = isAdminDevice();
+      ['moreAdminItem', 'sideAdminLabel', 'sideAdminSchools', 'sideAdminFeatures', 'sideAdminActivity'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = adm ? '' : 'none'; });
+      const soon = adm && typeof adminSoonList === 'function' ? adminSoonList().length : 0;   // trials and Pro ending soon
+      ['sideAdminCount', 'moreAdminCount'].forEach(id => { const el = document.getElementById(id); if (el) { el.textContent = soon || ''; el.classList.toggle('hidden', !soon); } });
       const item = document.getElementById('moreProItem');
       if (item) item.style.display = cust && reqRole && reqRole.schoolId && !isAdminSchool() ? '' : 'none';
       const tag = document.getElementById('moreProTag');
@@ -16176,66 +16192,100 @@
       } catch (err) { showToast(`Couldn't start the trial: ${cloudErrorText(err)}`, 'ph-warning'); }
     }
 
-    // ---- The Admin panel (Testing ES custodian) ----------------------------------------------
+    // ---- The Admin panel (Testing ES custodian): a page ------------------------------------------
+    // Computers and tablets held sideways: Admin in the sidebar (Schools · Features · Activity).
+    // Phones: More → Admin panel. Schools on a computer: the list on the left and the school picked
+    // in a panel on the right; on a phone the school opens in its card.
     const adminBy = () => String(schoolInfo.custodian || (cloud.user && cloud.user.displayName) || 'Admin').slice(0, 80);
-    function openAdminPanel() {
+    const ADMIN_TABS = [['schools', 'Schools', 'ph-buildings'], ['features', 'Features', 'ph-toggle-right'], ['activity', 'Activity', 'ph-clock-counter-clockwise']];
+    const ADMIN_TRIAL_SOON = 2 * 86400000, ADMIN_PRO_SOON = 7 * 86400000;   // "Ending soon": a trial within 2 days, Pro within 7
+    const ADMIN_CHECK_KEY = 'custodian_admin_check_v1';
+    const admMs = v => (!v ? 0 : typeof v === 'number' ? v : typeof v.toMillis === 'function' ? v.toMillis() : v.seconds ? v.seconds * 1000 : 0);
+    const adminSchoolById = id => (adminView.list || []).find(x => x.id === id) || null;
+    const adminLap = () => { try { return sidebarLayout(); } catch (e) { return false; } };
+    function openAdminPanel(tab) {
       try { closeMoreMenu(); } catch (e) {}
       if (!isAdminDevice()) return;
-      document.getElementById('adminModal').classList.remove('hidden');
-      if (adminView.tab === 'schools' && !adminView.list && !adminView.loading) adminLoadSchools();
-      renderAdmin();
+      if (tab) adminView.tab = tab;
+      if ((!adminView.list || Date.now() - adminView.loadedMs > 5 * 60000) && !adminView.loading) adminLoadSchools(!!adminView.list);   // fresh every 5 minutes
+      if (adminIsOpen()) { renderAdmin(); paintTabs(); } else switchMainView('ADMIN');
     }
-    function closeAdminPanel() { document.getElementById('adminModal').classList.add('hidden'); }
-    function adminIsOpen() { const m = document.getElementById('adminModal'); return !!(m && !m.classList.contains('hidden')); }
+    function closeAdminPanel() { switchMainView('HOME'); }
+    function adminIsOpen() { return typeof activeMainView !== 'undefined' && activeMainView === 'ADMIN'; }
     function setAdminTab(t) {
       adminView.tab = t;
-      if (t === 'schools' && !adminView.list && !adminView.loading) adminLoadSchools();
+      if (t !== 'features' && !adminView.list && !adminView.loading) adminLoadSchools();
       renderAdmin();
+      paintTabs();
     }
     function renderAdmin() {
-      const body = document.getElementById('adminBody');
-      if (!body || !adminIsOpen()) return;
-      if (adminView.tab === 'schools' && document.activeElement && document.activeElement.id === 'adminSearch') { const l = document.getElementById('adminList'); if (l) { l.innerHTML = adminListHTML(); return; } }
-      const seg = (k, label, icon) => `<button type="button" onclick="setAdminTab('${k}')" data-admin-tab="${k}" aria-pressed="${adminView.tab === k}" class="h-10 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 ${adminView.tab === k ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5' : 'text-slate-500'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
-      body.innerHTML = `<div class="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-200/70" role="tablist">${seg('features', 'Features', 'ph-toggle-right')}${seg('schools', 'Schools', 'ph-buildings')}</div>
-        ${adminView.tab === 'schools' ? adminSchoolsHTML() : adminFeaturesHTML()}`;
+      const box = document.getElementById('adminView');
+      if (!box || !adminIsOpen()) return;
+      if (!isAdminDevice()) { box.innerHTML = ''; return; }
+      if (adminView.tab === 'schools' && document.activeElement && document.activeElement.id === 'adminSearch') { adminPaintList(); return; }
+      const t = adminView.tab;
+      const seg = ([k, label, icon]) => `<button type="button" onclick="setAdminTab('${k}')" data-admin-tab="${k}" role="tab" aria-pressed="${t === k}" class="h-10 rounded-xl text-sm font-extrabold flex items-center justify-center gap-1.5 ${t === k ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5' : 'text-slate-500'}"><i class="ph-bold ${icon}"></i> ${label}</button>`;
+      box.innerHTML = `
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <button type="button" onclick="closeAdminPanel()" class="lap-hide text-xs font-bold text-slate-500 flex items-center gap-1 mb-1"><i class="ph-bold ph-caret-left"></i> Home</button>
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Admin panel</h1>
+            <p class="text-xs text-slate-500">Testing ES · feature switches, schools, Pro and trials</p>
+          </div>
+          <span class="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-900 text-white flex items-center gap-1"><i class="ph-bold ph-shield-check"></i> Admin</span>
+        </div>
+        <div class="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-slate-200/70 lap-hide" role="tablist">${ADMIN_TABS.map(seg).join('')}</div>
+        ${t === 'schools' ? adminSchoolsHTML() : t === 'activity' ? adminActivityHTML() : adminFeaturesHTML()}`;
+      if (t !== 'features' && !adminView.list && !adminView.loading && !adminView.error) setTimeout(adminLoadSchools, 0);
+    }
+
+    // ---- Features -----------------------------------------------------------------------------
+    // How many schools have a feature now (from the schools list, when loaded)
+    function adminReach(key) {
+      const st = featStage(key), list = adminView.list;
+      if (st === 'off') return 0;
+      if (st === 'testing') return 1;
+      if (!list) return null;
+      if (st === 'all') return list.length;
+      return list.filter(s => s.id === ADMIN_SCHOOL || proState(s).live).length;
     }
     function adminFeaturesHTML() {
       const cards = FEATURES.map(f => {
         const st = featStage(f.key), c = (featCfg && featCfg[f.key]) || {};
         const desc = (FEAT_STAGES.find(s => s[0] === st) || [])[2] || '';
+        const reach = adminReach(f.key);
         return `<div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2.5" data-feat="${f.key}" data-feat-now="${st}">
             <div class="flex items-start gap-3"><span class="w-10 h-10 shrink-0 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center"><i class="ph-bold ${f.icon} text-xl"></i></span>
-              <span class="min-w-0"><span class="block text-sm font-extrabold text-slate-900">${featE(f.label)}</span><span class="block text-[11px] text-slate-500">${featE(f.sub)}</span></span></div>
+              <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900">${featE(f.label)}</span><span class="block text-[11px] text-slate-500">${featE(f.sub)}</span></span>
+              ${reach == null ? '' : `<span class="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700" data-feat-reach="${reach}">${plural(reach, 'school')}</span>`}</div>
             <div class="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-100" role="group" aria-label="${featE(f.label)}">${FEAT_STAGES.map(([k, label]) => `<button type="button" onclick="featSetStage('${f.key}', '${k}')" data-feat-stage="${f.key}:${k}" aria-pressed="${st === k}" class="h-9 rounded-lg text-xs font-extrabold ${st === k ? (k === 'off' ? 'bg-slate-700 text-white' : k === 'pro' ? 'bg-amber-500 text-white' : k === 'all' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5') : 'text-slate-500'}">${label}</button>`).join('')}</div>
             <p class="text-[11px] text-slate-500">${featE(desc)}${c.changedMs ? ` · changed ${featWhen(c.changedMs)}${c.changedBy ? ` by ${featE(c.changedBy)}` : ''}` : ''}</p>
           </div>`;
       }).join('');
-      const log = ((featCfg && featCfg.log) || []).slice().reverse().slice(0, 20);
-      const stageName = k => (FEAT_STAGES.find(s => s[0] === k) || [k, k])[1];
-      const featName = k => (FEATURES.find(f => f.key === k) || { label: k }).label;
-      return `<p class="text-xs text-slate-600 px-1">New features start at Testing (this school only). Move them to Pro, then to Everyone. Every phone follows within seconds.</p>
-        <div class="space-y-2">${cards}</div>
-        <div class="rounded-2xl bg-white border border-slate-200 p-3 space-y-2">
+      return `<p class="text-xs text-slate-600 px-1">New features start at <b>Testing</b> (this school only). Move them to <b>Pro</b>, then to <b>Everyone</b>. Every phone follows within seconds. What a school saved always stays.</p>
+        <div class="space-y-2 adm-feats">${cards}</div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-3 space-y-2 max-w-2xl">
           <label for="adminContact" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500">Whom schools contact about Pro</label>
           <div class="flex gap-2"><input id="adminContact" value="${featE((featCfg && featCfg.contact) || '')}" maxlength="200" placeholder="e.g. Juan Dela Cruz · 0917 123 4567" class="min-w-0 flex-1 h-11 px-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-brand-500 outline-none">
             <button type="button" onclick="featSaveContact()" id="adminContactSave" class="shrink-0 h-11 px-4 rounded-xl bg-slate-900 text-white text-sm font-bold">Save</button></div>
           <p class="text-[11px] text-slate-500">Shown on More · Pro at other schools.</p>
         </div>
-        <details class="rounded-2xl bg-white border border-slate-200 px-3 py-2.5" data-feat-log="${log.length}" ${log.length ? '' : 'hidden'}><summary class="text-xs font-bold text-slate-700 cursor-pointer">History · ${log.length}</summary>
-          <ul class="mt-2 space-y-1.5">${log.map(x => `<li class="text-[11px] text-slate-600"><b class="text-slate-800">${featE(featName(x.f))}</b> · ${featE(stageName(x.from))} to ${featE(stageName(x.to))} · ${featWhen(x.ms)}${x.by ? ` · ${featE(x.by)}` : ''}</li>`).join('')}</ul></details>`;
+        <div class="rounded-2xl bg-slate-50 border border-slate-200 p-3 text-[11px] text-slate-600 space-y-1 max-w-2xl">
+          <p class="font-bold text-slate-700">The stages</p>
+          ${FEAT_STAGES.map(([, label, d]) => `<p><b>${label}:</b> ${featE(d)}</p>`).join('')}
+        </div>`;
     }
     async function featWrite(patch, logEntry) {
       if (!isAdminDevice() || !cloud.db) return false;
       const F = cloud.sdk, cur = featCfg || {};
       const body = {};
       ['leave', 'plan', 'contact', 'log'].forEach(k => { const v = k in patch ? patch[k] : cur[k]; if (v !== undefined && v !== null) body[k] = v; });
-      if (logEntry) body.log = [...(cur.log || []), logEntry].slice(-100);
+      if (logEntry) body.log = [...(cur.log || []), cleanJSON(logEntry)].slice(-100);
       const before = featCfg;
       featCfg = cleanJSON(body);
       featApply();
       try { await F.setDoc(F.doc(cloud.db, 'appConfig', 'features'), featCfg); return true; }
-      catch (err) { featCfg = before; featApply(); showToast(`Saving the switch failed: ${cloudErrorText(err)}`, 'ph-warning'); return false; }
+      catch (err) { featCfg = before; featApply(); showToast(`Saving failed: ${cloudErrorText(err)}`, 'ph-warning'); return false; }
     }
     async function featSetStage(name, stage) {
       if (!isAdminDevice()) return;
@@ -16244,7 +16294,7 @@
       const f = FEATURES.find(x => x.key === name);
       const label = k => (FEAT_STAGES.find(s => s[0] === k) || [k, k])[1];
       const msg = stage === 'all' ? `Every school gets ${f.label} now.`
-        : stage === 'pro' ? `Pro schools and schools in their ${TRIAL_DAYS}-day trial get ${f.label}. Free schools see it on More · Pro.${from === 'all' ? ' Free schools that used it lose it.' : ''}`
+        : stage === 'pro' ? `Pro schools and schools in their ${TRIAL_DAYS}-day trial get ${f.label}. Free schools see it on More · Pro.${from === 'all' ? ' Free schools that used it keep what they saved, view only.' : ''}`
         : stage === 'testing' ? `Only Testing ES keeps ${f.label}. Other schools stop seeing it.`
         : `${f.label} turns off at every school, Testing ES too. What was saved stays.`;
       if (!await appConfirm(msg, { title: `${f.label}: ${label(from)} to ${label(stage)}?`, ok: `Move to ${label(stage)}`, icon: 'ph-toggle-right', tone: stage === 'off' ? 'warn' : undefined })) return;
@@ -16256,19 +16306,45 @@
       if (!el) return;
       if (await featWrite({ contact: el.value.trim().slice(0, 200) })) showToast('Saved · schools see it on More · Pro');
     }
-    // Schools: everyone using the app (one read each time the list loads)
-    async function adminLoadSchools() {
-      if (!isAdminDevice() || !cloud.db) return;
+
+    // ---- Activity: switches moved, and Pro and trials given (the last 100) ----------------------------
+    function setAdminLogFilter(f) { adminView.logF = f; renderAdmin(); }
+    function adminActivityHTML() {
+      const all = ((featCfg && featCfg.log) || []).slice().reverse();
+      const f = adminView.logF || 'all';
+      const list = all.filter(x => f === 'all' || (f === 'school' ? x.f === 'school' : x.f !== 'school'));
+      const stageName = k => (FEAT_STAGES.find(s => s[0] === k) || [k, k])[1];
+      const featName = k => (FEATURES.find(x => x.key === k) || { label: k }).label;
+      const chip = (k, label, n) => `<button type="button" onclick="setAdminLogFilter('${k}')" data-admin-log-filter="${k}" aria-pressed="${f === k}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${f === k ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700'}">${label} <span class="font-mono opacity-70">${n}</span></button>`;
+      const row = x => x.f === 'school'
+        ? `<li class="flex items-start gap-3 px-3 py-2.5" data-admin-log="school"><span class="w-8 h-8 shrink-0 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center"><i class="ph-bold ph-crown"></i></span>
+            <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900">${featE(x.name || 'School')} · ${featE(x.act || '')}</span><span class="block text-[11px] text-slate-500">${featWhen(x.ms)}${x.by ? ` · ${featE(x.by)}` : ''}</span></span>
+            ${x.sid && adminSchoolById(x.sid) ? `<button type="button" onclick="adminGoSchool('${featE(x.sid)}')" class="shrink-0 text-[11px] font-bold text-brand-600">Open</button>` : ''}</li>`
+        : `<li class="flex items-start gap-3 px-3 py-2.5" data-admin-log="switch"><span class="w-8 h-8 shrink-0 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center"><i class="ph-bold ph-toggle-right"></i></span>
+            <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900">${featE(featName(x.f))} · ${featE(stageName(x.from))} to ${featE(stageName(x.to))}</span><span class="block text-[11px] text-slate-500">${featWhen(x.ms)}${x.by ? ` · ${featE(x.by)}` : ''}</span></span></li>`;
+      return `<div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All', all.length)}${chip('switch', 'Switches', all.filter(x => x.f !== 'school').length)}${chip('school', 'Pro & trials', all.filter(x => x.f === 'school').length)}</div>
+        ${list.length ? `<ul class="rounded-2xl bg-white border border-slate-200 divide-y divide-slate-100 overflow-hidden max-w-3xl" data-admin-activity="${list.length}">${list.map(row).join('')}</ul>`
+          : '<p class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500" data-admin-activity="0">Nothing yet. Switches you move and Pro or trials you give show up here.</p>'}
+        <p class="text-[11px] text-slate-500 px-1">Keeps the last 100. A school starting its own trial shows on the Schools tab.</p>`;
+    }
+    function adminGoSchool(id) { adminView.tab = 'schools'; adminView.open = id; adminView.q = ''; adminView.f = 'all'; renderAdmin(); paintTabs(); }
+
+    // ---- Schools ------------------------------------------------------------------------------
+    // Everyone using the app: one read per school each time the list loads
+    async function adminLoadSchools(quiet) {
+      if (!isAdminDevice() || !cloud.db || adminView.loading) return;
       adminView.loading = true; adminView.error = '';
-      renderAdmin();
+      if (quiet !== true) renderAdmin();
       try {
         const F = cloud.sdk;
         const snap = await F.getDocs(F.collection(cloud.db, 'schools'));
-        adminView.list = snap.docs.map(d => ({ ...d.data(), id: d.id })).filter(s => !s.erasing)
-          .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+        adminView.list = snap.docs.map(d => ({ ...d.data(), id: d.id })).filter(s => !s.erasing);
+        adminView.loadedMs = Date.now();
       } catch (err) { adminView.error = cloudErrorText(err); }
       adminView.loading = false;
       renderAdmin();
+      proNav();
+      try { if (activeMainView === 'HOME') renderHomeAttention(); } catch (e) {}
     }
     function adminSchoolTag(s) {
       if (s.id === ADMIN_SCHOOL) return ['Admin', 'bg-slate-900 text-white border-slate-900', 'admin'];
@@ -16278,102 +16354,260 @@
       if (ps.ended) return [ps.p ? 'Pro ended' : 'Trial ended', 'bg-rose-50 text-rose-800 border-rose-200', 'ended'];
       return ['Free', 'bg-slate-50 text-slate-600 border-slate-200', 'free'];
     }
+    // A trial ending within 2 days, or Pro within 7
+    function adminSoon(s, now = Date.now()) {
+      if (s.id === ADMIN_SCHOOL) return false;
+      const ps = proState(s, now);
+      return !!((ps.trial && ps.t.untilMs - now <= ADMIN_TRIAL_SOON) || (ps.pro && ps.p.untilMs > 0 && ps.p.untilMs - now <= ADMIN_PRO_SOON));
+    }
+    const adminSoonList = () => (adminView.list || []).filter(s => adminSoon(s));
+    function adminEndMs(s) { const ps = proState(s); return ps.pro ? (ps.p.untilMs || Infinity) : ps.trial ? ps.t.untilMs : Infinity; }
     function adminFiltered() {
       const words = adminView.q.toLowerCase().split(/\s+/).filter(Boolean);
-      return (adminView.list || []).filter(s => {
+      const f = adminView.f;
+      const list = (adminView.list || []).filter(s => {
         const tag = adminSchoolTag(s)[2];
-        if (adminView.f !== 'all' && tag !== adminView.f && !(adminView.f === 'pro' && tag === 'admin')) return false;
+        if (f === 'soon' ? !adminSoon(s) : f !== 'all' && tag !== f && !(f === 'pro' && tag === 'admin')) return false;
         const hay = `${s.name || ''} ${s.schoolNo || ''} ${s.id} ${s.custodianName || ''}`.toLowerCase();
         return words.every(w => hay.includes(w));
       });
+      const by = adminView.sort || 'name';
+      const nm = (a, b) => String(a.name || '').localeCompare(String(b.name || ''));
+      return list.sort(by === 'users' ? (a, b) => ((b.counts && b.counts.total) || 0) - ((a.counts && a.counts.total) || 0) || nm(a, b)
+        : by === 'newest' ? (a, b) => admMs(b.createdAt) - admMs(a.createdAt) || nm(a, b)
+        : by === 'ends' ? (a, b) => adminEndMs(a) - adminEndMs(b) || nm(a, b)
+        : by === 'status' ? (a, b) => ['admin', 'pro', 'trial', 'ended', 'free'].indexOf(adminSchoolTag(a)[2]) - ['admin', 'pro', 'trial', 'ended', 'free'].indexOf(adminSchoolTag(b)[2]) || nm(a, b)
+        : nm);
     }
-    function setAdminQuery(v) { adminView.q = v; const l = document.getElementById('adminList'); if (l) l.innerHTML = adminListHTML(); }
-    function setAdminFilter(f) { adminView.f = f; renderAdmin(); }
-    function adminOpenRow(id) { adminView.open = adminView.open === id ? '' : id; const l = document.getElementById('adminList'); if (l) l.innerHTML = adminListHTML(); }
+    function setAdminQuery(v) { adminView.q = v; adminPaintList(); }
+    function setAdminFilter(f) { adminView.f = f; if (adminIsOpen()) renderAdmin(); }
+    function setAdminSort(v) { adminView.sort = v; renderAdmin(); }
+    function adminOpenRow(id) {
+      adminView.open = adminView.open === id && !adminLap() ? '' : id;
+      adminPaintList();
+    }
+    function adminPaintList() {
+      const l = document.getElementById('adminList');
+      if (l) l.innerHTML = adminListHTML();
+      const side = document.getElementById('adminSide');
+      if (side) side.innerHTML = adminSideHTML();
+    }
     function adminSchoolsHTML() {
       const list = adminView.list || [];
+      const lap = adminLap();
       const users = list.reduce((n, s) => n + ((s.counts && s.counts.total) || 0), 0);
+      const teachers = list.reduce((n, s) => n + ((s.counts && s.counts.teachers) || 0), 0);
       const nTag = t => list.filter(s => adminSchoolTag(s)[2] === t).length;
-      const chip = (k, label) => `<button type="button" onclick="setAdminFilter('${k}')" data-admin-filter="${k}" aria-pressed="${adminView.f === k}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${adminView.f === k ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700'}">${label}</button>`;
-      const tile = (n, label) => `<div class="rounded-xl bg-white border border-slate-200 px-2 py-2 text-center"><span class="block text-lg font-extrabold font-mono leading-tight">${n}</span><span class="block text-[11px] font-bold uppercase text-slate-500 leading-tight">${label}</span></div>`;
+      const soon = adminSoonList().length;
+      const chip = (k, label, n) => `<button type="button" onclick="setAdminFilter('${k}')" data-admin-filter="${k}" aria-pressed="${adminView.f === k}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${adminView.f === k ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700'}">${label}${n ? ` <span class="font-mono opacity-70">${n}</span>` : ''}</button>`;
+      const tile = (n, label, k, tone = '') => `<button type="button" onclick="setAdminFilter('${k}')" class="rounded-xl bg-white border border-slate-200 px-2 py-2 text-center ${tone}" data-admin-tile="${label.toLowerCase().replace(/\s+/g, '-')}"><span class="block text-lg font-extrabold font-mono leading-tight">${n}</span><span class="block text-[11px] font-bold uppercase text-slate-500 leading-tight">${label}</span></button>`;
+      const sortOpt = (v, label) => `<option value="${v}" ${(adminView.sort || 'name') === v ? 'selected' : ''}>${label}</option>`;
       return `${adminView.error ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-3 py-2" data-admin-error>${featE(adminView.error)} · Publish the latest database rules.</p>` : ''}
-        <div class="grid grid-cols-4 gap-1.5" data-admin-stats="${list.length}">${tile(list.length, 'Schools')}${tile(nTag('pro'), 'Pro')}${tile(nTag('trial'), 'Trial')}${tile(users, 'Users')}</div>
-        <div class="flex gap-2"><div class="relative min-w-0 flex-1"><i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
-          <input id="adminSearch" type="search" value="${featE(adminView.q)}" oninput="setAdminQuery(this.value)" placeholder="School name or School ID" class="w-full h-11 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-brand-500 outline-none"></div>
-          <button type="button" onclick="adminLoadSchools()" id="adminRefresh" class="shrink-0 w-11 h-11 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center" aria-label="Refresh"><i class="ph-bold ph-arrows-clockwise ${adminView.loading ? 'animate-spin' : ''}"></i></button></div>
-        <div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('pro', 'Pro')}${chip('trial', 'Trial')}${chip('ended', 'Ended')}${chip('free', 'Free')}</div>
-        <div id="adminList" class="space-y-2">${adminListHTML()}</div>`;
+        <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5" data-admin-stats="${list.length}">${tile(list.length, 'Schools', 'all')}${tile(nTag('pro'), 'Pro', 'pro')}${tile(nTag('trial'), 'Trial', 'trial')}${tile(soon, 'Ending soon', 'soon', soon ? 'ring-2 ring-amber-300' : '')}${tile(users, 'Users', 'all')}${tile(teachers, 'Teachers', 'all')}</div>
+        <div class="flex flex-wrap gap-2">
+          <div class="relative min-w-0 flex-1 basis-56"><i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+            <input id="adminSearch" type="search" value="${featE(adminView.q)}" oninput="setAdminQuery(this.value)" placeholder="School name, School ID or custodian" class="w-full h-11 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:border-brand-500 outline-none"></div>
+          <select id="adminSort" onchange="setAdminSort(this.value)" aria-label="Sort" class="h-11 px-3 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700">
+            ${sortOpt('name', 'Name A–Z')}${sortOpt('users', 'Most users')}${sortOpt('newest', 'Newest')}${sortOpt('ends', 'Ends soonest')}${sortOpt('status', 'Status')}</select>
+          <button type="button" onclick="adminLoadSchools()" id="adminRefresh" class="shrink-0 w-11 h-11 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center" aria-label="Refresh" title="Refresh"><i class="ph-bold ph-arrows-clockwise ${adminView.loading ? 'animate-spin' : ''}"></i></button>
+          <button type="button" onclick="adminExportCSV()" id="adminCsvBtn" ${list.length ? '' : 'disabled'} class="shrink-0 h-11 px-3 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-700 flex items-center gap-1.5 disabled:opacity-50"><i class="ph-bold ph-file-csv text-emerald-600"></i> CSV</button>
+        </div>
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('pro', 'Pro')}${chip('trial', 'Trial')}${chip('soon', 'Ending soon', soon)}${chip('ended', 'Ended')}${chip('free', 'Free')}
+          ${adminView.loadedMs ? `<span class="shrink-0 ml-auto text-[11px] text-slate-500 pl-2">Loaded ${new Date(adminView.loadedMs).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}</span>` : ''}</div>
+        <div class="adm-panes">
+          <div id="adminList" class="space-y-2 min-w-0">${adminListHTML()}</div>
+          ${lap ? `<aside id="adminSide" class="adm-side">${adminSideHTML()}</aside>` : ''}
+        </div>`;
     }
     function adminListHTML() {
       if (!adminView.list) return `<p class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">${adminView.loading ? 'Loading the schools…' : 'Tap refresh to load the schools.'}</p>`;
       const list = adminFiltered();
-      if (!list.length) return `<p class="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-center text-xs text-slate-500" data-admin-empty>${adminView.q ? 'No school matches. Its custodian may not have set the DepEd School ID yet (School & custodian info).' : 'No schools here.'}</p>`;
-      return list.slice(0, 200).map(s => {
+      if (!list.length) return `<p class="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-center text-xs text-slate-500" data-admin-empty>${adminView.q ? 'No school matches. Its custodian may not have set the DepEd School ID yet (School & custodian info).' : adminView.f === 'soon' ? 'No trial or Pro ends soon.' : 'No schools here.'}</p>`;
+      const lap = adminLap();
+      return list.slice(0, 300).map(s => {
         const [tag, tone, kind] = adminSchoolTag(s), c = s.counts || null, open = adminView.open === s.id;
-        const ps = proState(s);
         const usersTxt = c ? `${plural(c.total || 0, 'user')} · ${plural(c.teachers || 0, 'teacher')}` : 'Users not counted yet';
-        return `<div class="rounded-2xl bg-white border ${open ? 'border-brand-300 ring-2 ring-brand-500/20' : 'border-slate-200'} shadow-sm overflow-hidden" data-admin-school="${featE(s.id)}" data-admin-kind="${kind}">
-            <button type="button" onclick="adminOpenRow('${featE(s.id)}')" class="w-full text-left px-3 py-2.5 flex items-start gap-3">
+        const soon = adminSoon(s);
+        return `<div class="rounded-2xl bg-white border ${open ? 'border-brand-300 ring-2 ring-brand-500/20' : 'border-slate-200'} shadow-sm overflow-hidden" data-admin-school="${featE(s.id)}" data-admin-kind="${kind}" ${soon ? 'data-admin-soon' : ''}>
+            <button type="button" onclick="adminOpenRow('${featE(s.id)}')" aria-expanded="${open}" class="w-full text-left px-3 py-2.5 flex items-start gap-3 hover:bg-slate-50">
               <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900 leading-snug">${featE(s.name || 'School')}</span>
                 <span class="block text-[11px] text-slate-500">School ID <span class="font-mono font-bold text-slate-700">${featE(s.schoolNo || '—')}</span> · <span data-admin-users="${c ? c.total || 0 : ''}">${usersTxt}</span></span>
                 ${s.custodianName ? `<span class="block text-[11px] text-slate-500 truncate">${featE(s.custodianName)}</span>` : ''}</span>
-              <span class="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full border ${tone}" data-admin-tag>${featE(tag)}</span>
+              <span class="shrink-0 flex flex-col items-end gap-1"><span class="text-[11px] font-bold px-2 py-0.5 rounded-full border ${tone}" data-admin-tag>${featE(tag)}</span>
+                ${soon ? '<span class="text-[10px] font-extrabold text-amber-700 flex items-center gap-0.5"><i class="ph-bold ph-alarm"></i> Ending soon</span>' : ''}</span>
             </button>
-            ${open && s.id !== ADMIN_SCHOOL ? `<div class="border-t border-slate-100 px-3 py-3 space-y-2.5 bg-slate-50/60" data-admin-actions>
-              <div class="flex items-end gap-2">
-                <label class="min-w-0 flex-1"><span class="block text-[11px] font-bold text-slate-600 mb-1">Pro until (optional)</span>
-                  <input id="adminProUntil" type="date" value="${featE((ps.p && ps.p.untilISO) || '')}" class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-sm"></label>
-                <button type="button" onclick="adminSetPro('${featE(s.id)}')" id="adminProBtn" class="shrink-0 h-11 px-4 rounded-xl bg-emerald-600 text-white text-sm font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-seal-check"></i> ${ps.pro ? 'Save' : 'Make Pro'}</button>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                ${ps.p ? `<button type="button" onclick="adminRemovePro('${featE(s.id)}')" id="adminUnproBtn" class="h-9 px-3 rounded-lg bg-white border border-rose-200 text-rose-700 text-xs font-bold">Remove Pro</button>` : ''}
-                ${ps.t ? `<button type="button" onclick="adminExtendTrial('${featE(s.id)}')" id="adminExtendBtn" class="h-9 px-3 rounded-lg bg-white border border-amber-200 text-amber-800 text-xs font-bold">Extend trial ${TRIAL_DAYS} days</button>
-                  <button type="button" onclick="adminClearTrial('${featE(s.id)}')" id="adminNewTrialBtn" class="h-9 px-3 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-bold">Allow a new trial</button>` : ''}
-              </div>
-              <p class="text-[11px] text-slate-500">${ps.t ? `Trial ${featDate(ps.t.startMs)} to ${featDate(ps.t.untilMs)}${ps.t.by ? ` · started by ${featE(ps.t.by)}` : ''}. ` : 'No trial yet. '}${ps.p ? `Pro set ${featDate(ps.p.ms)}${ps.p.by ? ` by ${featE(ps.p.by)}` : ''}. ` : ''}App ID <span class="font-mono">${featE(s.id)}</span></p>
-            </div>` : ''}
+            ${open && !lap ? `<div class="border-t border-slate-100 px-3 py-3 bg-slate-50/60">${adminDetailHTML(s)}</div>` : ''}
           </div>`;
       }).join('');
     }
-    async function adminWriteSchool(id, patch, done) {
-      if (!isAdminDevice() || !cloud.db) return;
+    function adminSideHTML() {
+      const s = adminView.open && adminSchoolById(adminView.open);
+      if (!s) return `<div class="rounded-2xl bg-slate-50 border border-dashed border-slate-300 p-6 text-center text-xs text-slate-500" data-admin-side-empty><i class="ph-duotone ph-buildings text-3xl text-slate-400"></i><p class="mt-1 font-bold text-slate-700 text-sm">Pick a school</p><p>Its users, features, Pro and trial show here.</p></div>`;
+      return `<div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-4" data-admin-side="${featE(s.id)}">
+          <div class="flex items-start justify-between gap-2 mb-3"><div class="min-w-0"><p class="text-base font-extrabold text-slate-900 leading-snug">${featE(s.name || 'School')}</p>
+            ${s.custodianName ? `<p class="text-xs text-slate-500">${featE(s.custodianName)}${s.custodianDesig ? ` · ${featE(s.custodianDesig)}` : ''}</p>` : ''}</div>
+            <button type="button" onclick="adminView.open=''; adminPaintList()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button></div>
+          ${adminDetailHTML(s)}</div>`;
+    }
+    // The school picked: facts, features, Pro and the trial
+    function adminDetailHTML(s) {
+      const ps = proState(s), id = featE(s.id), c = s.counts || null;
+      const [tag, tone] = adminSchoolTag(s);
+      const copy = (v, label) => v ? `<button type="button" onclick="adminCopy('${featE(v)}', '${label}')" class="inline-flex items-center gap-1 font-mono font-bold text-slate-700 hover:text-brand-600" title="Copy">${featE(v)} <i class="ph-bold ph-copy text-slate-400"></i></button>` : '<span class="text-slate-400">—</span>';
+      const fact = (k, v) => `<div class="flex items-start justify-between gap-3 py-1"><span class="text-slate-500">${k}</span><span class="text-right min-w-0">${v}</span></div>`;
+      const feats = FEATURES.map(f => {
+        const st = featStage(f.key);
+        const on = st !== 'off' && (s.id === ADMIN_SCHOOL || st === 'all' || (st === 'pro' && ps.live));
+        const ro = !on && st === 'pro' && ps.ended;
+        return `<span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border ${on ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : ro ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-white text-slate-400 border-slate-200'}" data-admin-feat="${f.key}:${on ? 'on' : ro ? 'view' : 'off'}"><i class="ph-bold ${on ? 'ph-check' : ro ? 'ph-lock-simple' : 'ph-minus'}"></i>${featE(f.label)}</span>`;
+      }).join('');
+      const facts = `<div class="text-xs divide-y divide-slate-100" data-admin-facts>
+          ${fact('Status', `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border ${tone}">${featE(tag)}</span>`)}
+          ${fact('School ID', copy(s.schoolNo, 'School ID'))}
+          ${fact('Users', c ? `<b class="text-slate-800">${c.total || 0}</b> · ${plural(c.teachers || 0, 'teacher')} · ${plural(c.staff || 0, 'custodian')}${c.head ? ' · School Head' : ''}` : 'Not counted yet')}
+          ${fact('School Head', s.headUid ? 'Linked in the app' : 'Not linked yet')}
+          ${admMs(s.createdAt) ? fact('Joined', featDate(admMs(s.createdAt))) : ''}
+          ${fact('App ID', copy(s.id, 'App ID'))}
+        </div>
+        <div><p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Features here</p><div class="flex flex-wrap gap-1.5">${feats}</div></div>`;
+      if (s.id === ADMIN_SCHOOL) return `<div class="space-y-3" data-admin-actions>${facts}<p class="text-[11px] text-slate-500">The admin school: every feature at Testing or Pro is on here.</p></div>`;
+      const preset = (m, label) => `<button type="button" onclick="adminProPreset(${m})" data-admin-preset="${m}" class="h-8 px-2.5 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 hover:border-emerald-300">${label}</button>`;
+      const ext = d => `<button type="button" onclick="adminExtendTrial('${id}', ${d})" ${d === 7 ? 'id="adminExtendBtn"' : ''} data-admin-extend="${d}" class="h-8 px-2.5 rounded-lg bg-white border border-amber-200 text-amber-800 text-[11px] font-bold">+${d} days</button>`;
+      return `<div class="space-y-3" data-admin-actions>
+          ${facts}
+          <div class="rounded-xl bg-white border border-slate-200 p-3 space-y-2" data-admin-pro>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1"><i class="ph-bold ph-seal-check text-emerald-600"></i> Pro</p>
+            <div class="flex items-end gap-2">
+              <label class="min-w-0 flex-1"><span class="block text-[11px] font-bold text-slate-600 mb-1">Until (optional)</span>
+                <input id="adminProUntil" type="date" value="${featE((ps.p && ps.p.untilISO) || '')}" class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-sm"></label>
+              <button type="button" onclick="adminSetPro('${id}')" id="adminProBtn" class="shrink-0 h-11 px-4 rounded-xl bg-emerald-600 text-white text-sm font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-seal-check"></i> ${ps.pro ? 'Save' : 'Make Pro'}</button>
+            </div>
+            <div class="flex flex-wrap gap-1.5">${preset(1, '1 month')}${preset(3, '3 months')}${preset(6, '6 months')}${preset(12, '1 year')}${preset(0, 'No end date')}</div>
+            ${ps.p ? `<div class="flex items-center justify-between gap-2 pt-1"><span class="text-[11px] text-slate-500">${ps.pro ? 'Pro' : 'Pro ended'}${ps.p.untilMs ? ` · ${ps.pro ? 'until' : 'on'} ${featDate(ps.p.untilMs)}` : ' · no end date'}${ps.p.by ? ` · set by ${featE(ps.p.by)}` : ''}</span>
+              <button type="button" onclick="adminRemovePro('${id}')" id="adminUnproBtn" class="shrink-0 h-8 px-2.5 rounded-lg bg-white border border-rose-200 text-rose-700 text-[11px] font-bold">Remove Pro</button></div>` : ''}
+          </div>
+          <div class="rounded-xl bg-white border border-slate-200 p-3 space-y-2" data-admin-trial>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1"><i class="ph-bold ph-crown text-amber-500"></i> Trial</p>
+            ${ps.t ? `<p class="text-xs text-slate-700">${featDate(ps.t.startMs)} to ${featDate(ps.t.untilMs)} · <b>${ps.trial ? `${plural(ps.left, 'day')} left` : 'ended'}</b>${ps.t.by ? ` · started by ${featE(ps.t.by)}` : ''}</p>
+              <div class="flex flex-wrap items-center gap-1.5"><span class="text-[11px] font-bold text-slate-600">Extend</span>${[3, 7, 14, 30].map(ext).join('')}</div>
+              <div class="flex flex-wrap gap-1.5">
+                ${ps.trial ? `<button type="button" onclick="adminEndTrial('${id}')" id="adminEndTrialBtn" class="h-8 px-2.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-[11px] font-bold">End the trial now</button>` : ''}
+                <button type="button" onclick="adminClearTrial('${id}')" id="adminNewTrialBtn" class="h-8 px-2.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-[11px] font-bold">Allow a new trial</button></div>`
+              : `<p class="text-xs text-slate-600">No trial yet. The custodian can start one on More · Pro.</p>
+              ${ps.pro ? '' : `<button type="button" onclick="adminGiveTrial('${id}')" id="adminGiveTrialBtn" class="h-8 px-2.5 rounded-lg bg-white border border-amber-200 text-amber-800 text-[11px] font-bold">Give a ${TRIAL_DAYS}-day trial now</button>`}`}
+          </div>
+        </div>`;
+    }
+    function adminCopy(text, label) {
+      const done = () => showToast(`${label} copied`, 'ph-copy');
+      try { navigator.clipboard.writeText(text).then(done, () => appPrompt(`${label}:`, text, { title: 'Copy' })); }
+      catch (e) { appPrompt(`${label}:`, text, { title: 'Copy' }); }
+    }
+    function adminProPreset(months) {
+      const el = document.getElementById('adminProUntil');
+      if (!el) return;
+      if (!months) { el.value = ''; return; }
+      const d = new Date();
+      d.setMonth(d.getMonth() + months);
+      el.value = localISODate(d);
+    }
+    async function adminWriteSchool(id, patch, done, act) {
+      if (!isAdminDevice() || !cloud.db) return false;
       const F = cloud.sdk;
       try {
         await F.updateDoc(F.doc(cloud.db, 'schools', id), patch);
-        const s = (adminView.list || []).find(x => x.id === id);
+        const s = adminSchoolById(id);
         if (s) Object.assign(s, patch);
         renderAdmin();
+        proNav();
         showToast(done, 'ph-seal-check');
-      } catch (err) { showToast(`Saving failed: ${cloudErrorText(err)}`, 'ph-warning'); }
+        if (act) featWrite({}, { f: 'school', sid: id, name: String((s && s.name) || 'School').slice(0, 120), act, by: adminBy(), ms: Date.now() });   // Activity
+        return true;
+      } catch (err) { showToast(`Saving failed: ${cloudErrorText(err)}`, 'ph-warning'); return false; }
     }
     async function adminSetPro(id) {
-      const s = (adminView.list || []).find(x => x.id === id);
+      const s = adminSchoolById(id);
       if (!s || id === ADMIN_SCHOOL) return;
       const untilISO = ((document.getElementById('adminProUntil') || {}).value || '').trim();
       const untilMs = untilISO ? new Date(untilISO + 'T23:59:59').getTime() : 0;
       if (untilISO && !(untilMs > Date.now())) { showToast('Pick an end date after today', 'ph-warning'); return; }
       if (!await appConfirm(`${s.name || 'This school'} gets every Pro feature${untilISO ? ` until ${featDate(untilMs)}` : ', with no end date'}: its custodian, School Head and teachers.`,
         { title: 'Make this school Pro?', ok: 'Make Pro', icon: 'ph-seal-check' })) return;
-      await adminWriteSchool(id, { pro: { untilISO, untilMs, by: adminBy(), ms: Date.now() } }, `${s.name || 'School'} is Pro${untilISO ? ` until ${featDate(untilMs)}` : ''}`);
+      await adminWriteSchool(id, { pro: { untilISO, untilMs, by: adminBy(), ms: Date.now() } }, `${s.name || 'School'} is Pro${untilISO ? ` until ${featDate(untilMs)}` : ''}`,
+        `Made Pro${untilISO ? ` until ${featDate(untilMs)}` : ', no end date'}`);
     }
     async function adminRemovePro(id) {
-      const s = (adminView.list || []).find(x => x.id === id);
+      const s = adminSchoolById(id);
       if (!s) return;
       if (!await appConfirm('Pro features become view only at this school. What they saved stays.', { title: `Remove Pro from ${s.name || 'this school'}?`, ok: 'Remove Pro', tone: 'warn' })) return;
-      await adminWriteSchool(id, { pro: null }, 'Pro removed');
+      await adminWriteSchool(id, { pro: null }, 'Pro removed', 'Removed Pro');
     }
-    async function adminExtendTrial(id) {
-      const s = (adminView.list || []).find(x => x.id === id);
+    async function adminExtendTrial(id, days = TRIAL_DAYS) {
+      const s = adminSchoolById(id);
       if (!s || !s.trial) return;
-      const untilMs = Math.max(Date.now(), s.trial.untilMs || 0) + TRIAL_MS;
-      await adminWriteSchool(id, { trial: { ...s.trial, untilMs } }, `Trial extended to ${featDate(untilMs)}`);
+      const untilMs = Math.max(Date.now(), s.trial.untilMs || 0) + days * 86400000;
+      await adminWriteSchool(id, { trial: { ...s.trial, untilMs } }, `Trial extended to ${featDate(untilMs)}`, `Extended the trial ${plural(days, 'day')}, to ${featDate(untilMs)}`);
+    }
+    async function adminEndTrial(id) {
+      const s = adminSchoolById(id);
+      if (!s || !s.trial) return;
+      if (!await appConfirm('Pro features become view only at this school now. The trial counts as used.', { title: 'End the trial now?', ok: 'End the trial', tone: 'warn' })) return;
+      await adminWriteSchool(id, { trial: { ...s.trial, untilMs: Date.now() } }, 'Trial ended', 'Ended the trial');
     }
     async function adminClearTrial(id) {
-      const s = (adminView.list || []).find(x => x.id === id);
+      const s = adminSchoolById(id);
       if (!s || !s.trial) return;
       if (!await appConfirm(`The trial record is cleared, so the school's custodian can tap Try Pro free for ${TRIAL_DAYS} days again. A trial running now ends.`, { title: 'Allow a new trial?', ok: 'Allow', tone: 'warn' })) return;
-      await adminWriteSchool(id, { trial: null }, 'The school can start a new trial');
+      await adminWriteSchool(id, { trial: null }, 'The school can start a new trial', 'Allowed a new trial');
     }
+    async function adminGiveTrial(id) {
+      const s = adminSchoolById(id);
+      if (!s || s.trial || id === ADMIN_SCHOOL) return;
+      if (!await appConfirm(`${s.name || 'This school'} gets every Pro feature for ${TRIAL_DAYS} days, starting now. It counts as their one trial.`, { title: `Give a ${TRIAL_DAYS}-day trial?`, ok: 'Give the trial', icon: 'ph-crown' })) return;
+      const startMs = Date.now();
+      await adminWriteSchool(id, { trial: { startMs, untilMs: startMs + TRIAL_MS, by: adminBy() } }, `Trial given · ends ${featDate(startMs + TRIAL_MS)}`, `Gave a ${TRIAL_DAYS}-day trial`);
+    }
+    function adminExportCSV() {
+      const list = adminFiltered();
+      if (!list.length) return;
+      const q = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+      const iso = ms => (ms ? localISODate(new Date(ms)) : '');
+      const rows = [['School', 'School ID', 'Custodian', 'Users', 'Teachers', 'Status', 'Pro until', 'Trial start', 'Trial ends', 'Joined', 'App ID']];
+      list.forEach(s => {
+        const ps = proState(s), c = s.counts || {};
+        rows.push([s.name || '', s.schoolNo || '', s.custodianName || '', c.total ?? '', c.teachers ?? '', adminSchoolTag(s)[0],
+          ps.p ? (ps.p.untilISO || 'no end date') : '', ps.t ? iso(ps.t.startMs) : '', ps.t ? iso(ps.t.untilMs) : '', iso(admMs(s.createdAt)), s.id]);
+      });
+      downloadText('\ufeff' + rows.map(r => r.map(q).join(',')).join('\r\n'), `schools-${localISODate()}.csv`, 'text/csv');
+      showToast(`${plural(list.length, 'school')} exported`, 'ph-file-csv');
+    }
+
+    // ---- Ending soon: the admin's Home and a reminder (the list is checked about twice a day) ----------
+    function adminHomeAttention(add) {
+      if (!isAdminDevice() || !adminView.list) return;
+      const soon = adminSoonList();
+      if (!soon.length) return;
+      add('amber', 'ph-crown', soon.length === 1 ? `${soon[0].name || 'A school'}: ${proState(soon[0]).trial ? 'the Pro trial' : 'Pro'} ends soon` : `${plural(soon.length, 'school')}: Pro or the trial ends soon`,
+        soon.slice(0, 3).map(s => `${s.name || 'School'} (${featDate(adminEndMs(s))})`).join(' · ') + ' · follow up about Pro', 'admin-soon', "openAdminPanel('schools'); setAdminFilter('soon')");
+    }
+    async function adminCheckSoon(now = Date.now()) {
+      if (!isAdminDevice() || !cloud.user || !notifScope()) return;
+      let last = 0;
+      try { last = Number(localStorage.getItem(ADMIN_CHECK_KEY)) || 0; } catch (e) {}
+      if (now - last > 12 * 3600000 || !adminView.list) {
+        try { localStorage.setItem(ADMIN_CHECK_KEY, String(now)); } catch (e) {}
+        await adminLoadSchools(true);
+      }
+      const st = loadNotifs();
+      const due = adminSoonList().filter(s => !st.seen['as:' + s.id + ':' + adminEndMs(s)]);
+      if (!due.length) return;
+      due.forEach(s => { st.seen['as:' + s.id + ':' + adminEndMs(s)] = 1; });
+      saveNotifs();
+      addNotif(due.length === 1
+        ? { title: `${due[0].name || 'A school'}: ${proState(due[0]).trial ? 'Pro trial' : 'Pro'} ends ${featDate(adminEndMs(due[0]))}`, body: 'Follow up about Pro · Admin panel', icon: 'ph-crown', tone: 'amber', go: 'admin' }
+        : { title: `${due.length} schools: Pro or the trial ends soon`, body: due.slice(0, 4).map(s => s.name || 'School').join(', '), icon: 'ph-crown', tone: 'amber', go: 'admin' });
+    }
+
     // Users at this school, for the admin's list (written by the custodian's devices)
     function schoolCounts() {
       if (!memberSrv || !lastSchoolDoc) return null;
@@ -18117,7 +18351,7 @@
       return y.start.slice(0, 7);
     }
     // All leaves out national activities and those for some grades only (NAT, NSPC…): DepEd shows them
-    const calMatch = e => (calFilter === 'all' ? !e.nat : calFilter === 'events' ? e.kind === 'event' : calFilter === 'off' ? !!(CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off) : !!e.deped || ['term', 'exam', 'deped', 'working'].includes(e.kind));
+    const calMatch = e => (calFilter === 'all' ? !e.nat : calFilter === 'events' ? e.kind === 'event' : calFilter === 'off' ? !!(CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off) : calFilter === 'exam' ? e.kind === 'exam' : !!e.deped || ['term', 'exam', 'deped', 'working'].includes(e.kind));
     function calViewHTML(page) {
       const sy = calCurSy(), y = calYears[sy] || null, edit = calCanEdit();
       const starter = CAL_STARTER[sy];
@@ -18155,7 +18389,7 @@
         </div>` : ''}
         ${y || calEvents.length ? `
         <div class="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-200/70" role="tablist">${seg('agenda', 'Agenda', 'ph-list-bullets')}${seg('month', 'Month', 'ph-calendar')}</div>
-        <div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('events', 'School events')}${chip('off', 'No classes')}${chip('deped', 'DepEd')}</div>
+        <div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('events', 'School events')}${chip('off', 'No classes')}${chip('exam', 'Exams')}${chip('deped', 'DepEd')}</div>
         <div id="calBody" class="space-y-4">${calMode === 'month' ? calMonthHTML(list, y) : calAgendaHTML(list)}</div>
         ${y ? `<div class="flex flex-wrap items-center justify-between gap-2 px-1">
           <button type="button" onclick="openCalSheet('classdays')" id="calDaysBtn" class="text-xs font-bold text-teal-700 flex items-center gap-1"><i class="ph-bold ph-chart-bar"></i> Class days</button>
@@ -18166,10 +18400,11 @@
     function calRowHTML(e, dayView) {
       const k = CAL_KINDS[e.kind] || CAL_KINDS.event;
       const multi = e.to && e.to !== e.from;
+      const exam = e.kind === 'exam';   // term exams and summative tests: a light violet card
       const bits = [multi && !dayView ? calRangeText(e.from, e.to) : '', e.kind === 'holiday' && e.sub ? `${e.sub === 'regular' ? 'Regular' : 'Special'} holiday` : e.nat ? 'DepEd · national' : k.label, e.time, e.venue].filter(Boolean);
       return `
-        <button type="button" onclick="openCalSheet('view', '${calE(e.key)}')" data-cal-entry="${calE(e.key)}" data-cal-kind="${e.kind}" class="w-full text-left rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-start gap-3 ${e.cancelled ? 'opacity-60' : ''}">
-          <span class="w-9 h-9 shrink-0 rounded-xl ${k.tone} flex items-center justify-center"><i class="ph-bold ${k.icon} text-lg"></i></span>
+        <button type="button" onclick="openCalSheet('view', '${calE(e.key)}')" data-cal-entry="${calE(e.key)}" data-cal-kind="${e.kind}" class="w-full text-left rounded-2xl border ${exam ? 'bg-violet-50/60 border-violet-200' : 'bg-white border-slate-200'} shadow-sm p-3 flex items-start gap-3 ${e.cancelled ? 'opacity-60' : ''}">
+          <span class="w-9 h-9 shrink-0 rounded-xl ${exam ? 'bg-violet-100 text-violet-700' : k.tone} flex items-center justify-center"><i class="ph-bold ${k.icon} text-lg"></i></span>
           <span class="min-w-0 flex-1">
             <span class="block text-sm font-extrabold text-slate-900 leading-snug ${e.cancelled ? 'line-through' : ''}">${calE(e.title)}</span>
             <span class="block text-[11px] text-slate-500">${calE(bits.join(' · '))}${e.cancelled ? ' · <b class="text-rose-700">Cancelled</b>' : ''}${e.sending ? ' · <i class="ph-bold ph-cloud-arrow-up"></i> sending' : ''}</span>
@@ -28038,6 +28273,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     window.addEventListener('resize', () => { if (activeMainView === 'TEACHERS') { tvListFade(); rvScrolled(); } }, { passive: true });
     SIDEBAR_MQ.addEventListener?.('change', () => {
       if (activeMainView === 'TEACHERS') renderTeachersView();
+      if (activeMainView === 'ADMIN') renderAdmin();   // the school picked: side panel or in its card
       const modal = document.getElementById('coaModal');
       if (!modal || modal.classList.contains('hidden')) return;
       modal.classList.toggle('coa-page', sidebarLayout());
@@ -29489,6 +29725,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       if (notifPrefs.reminders !== false && isCustodianDevice() && !isAssistant()) { notifReliefDue(now); notifYearEnd(now); }
       if (notifPrefs.reminders !== false) { try { notifBookDue(now); notifBookYear(now); } catch (e) { console.warn(e); } }
       try { notifProTrial(now); } catch (e) { console.warn(e); }   // the Pro trial ends (always on)
+      try { adminCheckSoon(now); } catch (e) { console.warn(e); }   // the admin: other schools' Pro or trial ends soon
     }
 
     // ---- A Purchase Request approved more than 30 days ago and not delivered yet (custodian) ----
@@ -29894,6 +30131,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         openYearEnd();
       } else if (n.go === 'pro') {                   // the Pro trial: More → Pro
         openProSheet();
+      } else if (n.go === 'admin') {                 // the admin: schools whose Pro or trial ends soon
+        adminView.f = 'soon';
+        openAdminPanel('schools');
       } else if (n.go === 'life') {
         openLifeSheet('due');
       } else if (n.go === 'turnover') {              // custodian: the Turnover panel; School Head: their screen
@@ -30081,6 +30321,16 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-admin-page', date: 'Nov 2026', title: 'The Admin panel is now a page', points: [
+        'Testing ES: the Admin panel is a page now. On a computer it is under Admin in the sidebar (Schools, Features, Activity); on a phone, More \u00b7 Admin panel.',
+        'Schools: boxes for schools, Pro, trials, ending soon and users; search, filters (with Ending soon), sorting, and a CSV export. Pick a school to see its users and features, and to make it Pro (with 1, 3, 6 or 12-month shortcuts), give, extend or end a trial.',
+        'Trials ending within 2 days (and Pro within 7) show on Home, in the sidebar and as a reminder.',
+        'Activity: every switch moved and every Pro or trial given, newest first.'
+      ], pilot: 'admin' },
+      { id: '2026-11-calendar-exams', date: 'Nov 2026', title: 'School calendar: an Exams filter', points: [
+        'New: an Exams filter on the School calendar shows only the term examinations and the teacher-made summative tests.',
+        'Exam days now have a light violet card, so they stand out in the Agenda and on a day in Month.'
+      ], pilot: 'plan' },
       { id: '2026-11-pro-trial-admin', date: 'Nov 2026', title: 'Pro, a 7-day free trial, and the Admin panel', points: [
         'New: More \u00b7 Pro shows what Pro adds for your school: Leave & CS Form 6, the School calendar, and new features as they come. Everything you use today stays free.',
         'Property custodian: tap \u201cTry Pro free for 7 days\u201d on More \u00b7 Pro (once per school). A strip on Home shows the days left, with reminders 2 days before the trial ends and on the last day.',
@@ -30665,7 +30915,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
 
     // What's new on this phone: a pilot's note only where the pilot is on
-    function wnList() { return WHATS_NEW.filter(r => !r.pilot || (r.pilot === 'leave' && leaveOn()) || (r.pilot === 'plan' && planOn())); }
+    function wnList() { return WHATS_NEW.filter(r => !r.pilot || (r.pilot === 'leave' && leaveOn()) || (r.pilot === 'plan' && planOn()) || (r.pilot === 'admin' && isAdminDevice())); }
     function initAppUpdates() {
       syncTitleBarMode();
       if (navigator.windowControlsOverlay && navigator.windowControlsOverlay.addEventListener) {

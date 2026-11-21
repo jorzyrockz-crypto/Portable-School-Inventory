@@ -2,7 +2,8 @@
 // through Off · Testing · Pro · Everyone, sees every school with its users, makes schools Pro (with
 // an optional end date) and handles the 7-day Pro trial. Another school sees More → Pro, starts
 // the trial once (reminders before it ends), and keeps what it saved, view only, when it ends.
-// The rules (firestore.rules featureOn / isPro) refuse the rest.
+// The rules (firestore.rules featureOn / isPro) refuse the rest. The Admin panel is a page: Admin in
+// the sidebar on a computer (Schools · Features · Activity), More → Admin panel on a phone.
 import { createBackend } from './lib/fake-backend.mjs';
 import { out, check, sleep, ev, until, closeAll, summary, errors } from './lib/harness.mjs';
 import { waitNode, custodian, teacher, refused } from './lib/school-setup.mjs';
@@ -30,7 +31,16 @@ try {
   check(doc(`schools/${sB}`).counts.total === 2, 'users: the custodian and the teacher');
 
   out('2 a switch: Leave to Pro');
-  await ev(a, () => openAdminPanel());
+  check(await shown(a, 'sideAdminSchools') && await shown(a, 'sideAdminFeatures') && await shown(a, 'sideAdminActivity') && await shown(a, 'sideAdminLabel'), 'admin, computer: Admin in the sidebar (Schools · Features · Activity)');
+  check(!(await shown(b, 'sideAdminSchools')) && !(await shown(b, 'sideAdminLabel')), 'another school: no Admin in the sidebar');
+  await ev(b, () => switchMainView('ADMIN'));
+  check(await ev(b, () => activeMainView === 'HOME' && document.getElementById('viewAdmin').classList.contains('hidden')), 'another school: the Admin page sends it back Home');
+  await ev(a, () => document.getElementById('sideAdminSchools').click());
+  check(await ev(a, () => activeMainView === 'ADMIN' && adminView.tab === 'schools' && !document.getElementById('viewAdmin').classList.contains('hidden')), 'Schools opens the Admin page (Schools first)');
+  check(await ev(a, () => sideAdminSchools.getAttribute('aria-current') === 'page' && sideAdminFeatures.getAttribute('aria-current') !== 'page'), 'sidebar: Schools lit');
+  check(!(await ev(a, () => !!document.getElementById('adminModal'))), 'no Admin pop-up any more');
+  await ev(a, () => document.getElementById('sideAdminFeatures').click());
+  check(await ev(a, () => adminView.tab === 'features' && sideAdminFeatures.getAttribute('aria-current') === 'page' && sideAdminSchools.getAttribute('aria-current') !== 'page'), 'Features: its sidebar item lit');
   check(await ev(a, () => !!document.querySelector('[data-feat="leave"][data-feat-now="testing"]') && !!document.querySelector('[data-feat="plan"]')), 'Features: Leave and School calendar at Testing');
   await ev(a, () => document.querySelector('[data-feat-stage="leave:pro"]').click());
   check(await waitNode(() => (doc('appConfig/features').leave || {}).stage === 'pro'), 'saved: appConfig/features leave = pro');
@@ -73,12 +83,34 @@ try {
 
   out('5 the admin’s schools list');
   await ev(a, () => setAdminTab('schools'));
+  await ev(a, () => adminLoadSchools());   // loaded when the page opened (step 2), before the trial
   await until(a, () => !!document.querySelector(`[data-admin-school]`) && !adminView.loading, 'schools loaded');
+  check(await ev(a, () => document.querySelector('[data-admin-stats]').dataset.adminStats === '2' && /^\s*1\s*Trial/i.test(document.querySelector('[data-admin-tile="trial"]').textContent)), 'KPI boxes: 2 schools, 1 on trial');
+  check(await ev(a, () => !!document.getElementById('adminSide') && !!document.querySelector('[data-admin-side-empty]')), 'computer: a side panel (“Pick a school”)');
   check(await ev(a, (s, x) => !!document.querySelector(`[data-admin-school="${s}"][data-admin-kind="admin"]`) && !!document.querySelector(`[data-admin-school="${x}"][data-admin-kind="trial"]`), sA, sB), 'list: the admin school, and Lahug ES on Trial');
   check(await ev(a, x => document.querySelector(`[data-admin-school="${x}"] [data-admin-users]`).dataset.adminUsers === '2' && /Trial · ends/.test(document.querySelector(`[data-admin-school="${x}"] [data-admin-tag]`).textContent), sB), 'Lahug ES: 2 users, “Trial · ends …”');
   const no = doc(`schools/${sB}`).schoolNo;
   await ev(a, n => { adminSearch.focus(); setAdminQuery(n); }, no);
   check(await ev(a, x => document.querySelectorAll('#adminList [data-admin-school]').length === 1 && !!document.querySelector(`#adminList [data-admin-school="${x}"]`), sB), 'search by School ID finds it');
+
+  out('5b ending soon, the reminder, sorting and CSV');
+  await ev(a, () => { adminSearch.blur(); setAdminQuery(''); });
+  await ev(a, x => { const s = adminView.list.find(s => s.id === x); s.trial = { ...s.trial, untilMs: Date.now() + 1.5 * 86400000 }; setAdminFilter('soon'); }, sB);
+  check(await ev(a, x => document.querySelectorAll('#adminList [data-admin-school]').length === 1 && !!document.querySelector(`#adminList [data-admin-school="${x}"][data-admin-soon]`), sB), 'Ending soon: Lahug ES (trial ends in 2 days)');
+  await ev(a, () => proNav());
+  check(await ev(a, () => sideAdminCount.textContent === '1' && !sideAdminCount.classList.contains('hidden')), 'sidebar: Schools · 1 ending soon');
+  check(await ev(a, () => homeAttention().some(x => x.key === 'admin-soon')), 'admin’s Home: “… the Pro trial ends soon”');
+  await ev(a, () => { localStorage.setItem(ADMIN_CHECK_KEY, String(Date.now())); return adminCheckSoon(Date.now()); });
+  check(await notif(a, /Pro trial ends/), 'notified: “Lahug Elementary School: Pro trial ends …”');
+  const nA = await ev(a, () => loadNotifs().items.filter(n => n.go === 'admin').length);
+  await ev(a, () => adminCheckSoon(Date.now()));
+  check(await ev(a, () => loadNotifs().items.filter(n => n.go === 'admin').length) === nA, 'the reminder once');
+  await ev(a, (x, tr) => { adminView.list.find(s => s.id === x).trial = tr; proNav(); setAdminFilter('all'); }, sB, doc(`schools/${sB}`).trial);
+  await ev(a, () => setAdminSort('users'));
+  check(await ev(a, x => document.querySelector('#adminList [data-admin-school]').dataset.adminSchool === x, sB), 'Most users: Lahug ES (2) first');
+  const csv = await ev(a, () => { let got = ''; const o = window.downloadText; window.downloadText = t => { got = t; }; adminExportCSV(); window.downloadText = o; return got; });
+  check(/^\ufeff?"School","School ID","Custodian","Users"/.test(csv) && /Lahug Elementary School/.test(csv) && csv.trim().split('\r\n').length === 3, 'CSV: a header and 2 schools');
+  await ev(a, () => setAdminSort('name'));
 
   out('6 the trial ends: view only');
   await ev(a, x => adminWriteSchool(x, { trial: { ...adminView.list.find(s => s.id === x).trial, untilMs: Date.now() - 60000 } }, 'test: ended'), sB);
@@ -98,6 +130,7 @@ try {
 
   out('7 the admin extends the trial, then allows a new one');
   await ev(a, x => { setAdminQuery(''); adminOpenRow(x); }, sB);
+  check(await ev(a, x => !!document.querySelector(`#adminSide [data-admin-side="${x}"]`) && !!document.querySelector('#adminSide #adminExtendBtn') && !document.querySelector('#adminList [data-admin-actions]'), sB), 'computer: the school opens in the side panel');
   await ev(a, () => document.getElementById('adminExtendBtn').click());
   check(await waitNode(() => doc(`schools/${sB}`).trial.untilMs > Date.now() + 6.9 * DAY), 'extended: 7 more days');
   await until(b, () => !featEnded('leave') && leaveOn() && schoolPro().trial, 'Free school: back on');
@@ -108,6 +141,8 @@ try {
 
   out('8 Make Pro with an end date, then Remove Pro');
   await ev(a, x => { if (adminView.open !== x) adminOpenRow(x); }, sB);
+  await ev(a, () => document.querySelector('[data-admin-preset="3"]').click());
+  check(await ev(a, () => { const d = new Date(); d.setMonth(d.getMonth() + 3); return adminProUntil.value === localISODate(d); }), 'preset: 3 months fills the date');
   await ev(a, () => { adminProUntil.value = '2027-06-30'; document.getElementById('adminProBtn').click(); });
   check(await waitNode(() => (doc(`schools/${sB}`).pro || {}).untilISO === '2027-06-30'), 'saved: Pro until Jun 30, 2027');
   await until(b, () => schoolPro().pro && leaveOn(), 'Free school is Pro');
@@ -128,12 +163,32 @@ try {
   check(await waitNode(() => (doc('appConfig/features').plan || {}).stage === 'off'), 'saved: plan = off');
   await until(a, () => !planOn(), 'admin school: off too');
   await until(b, () => !planOn(), 'Free school: off');
-  check(doc('appConfig/features').log.length === 3, 'history: 3 entries');
-  check(await ev(a, () => document.querySelector('[data-feat-log]').dataset.featLog === '3'), 'Admin panel: History · 3');
+  const log = doc('appConfig/features').log;
+  check(log.filter(x => x.f !== 'school').length === 3, 'history: 3 switches');
+  check(log.filter(x => x.f === 'school').length === 4 && log.some(x => x.f === 'school' && /Made Pro/.test(x.act)), 'history: 4 school actions (extend, new trial, Pro, remove)');
+  await ev(a, () => document.getElementById('sideAdminActivity').click());
+  check(await ev(a, () => adminView.tab === 'activity' && document.querySelector('[data-admin-activity]').dataset.adminActivity === '7'), 'Activity: 7 entries');
+  await ev(a, () => setAdminLogFilter('school'));
+  check(await ev(a, () => document.querySelectorAll('[data-admin-log="school"]').length === 4 && !document.querySelector('[data-admin-log="switch"]')), 'Activity · Pro & trials: 4');
 
-  // (when the admin clears the trial or Pro, an open Leave listener is refused before the school's
+  out('10 on a phone: More → Admin panel, the school opens in its card');
+  await a.setViewport({ width: 390, height: 844 });
+  await sleep(300);
+  check(!(await ev(a, () => sidebarLayout())), 'phone layout');
+  await ev(a, () => { switchMainView('HOME'); openMoreMenu(); });
+  check(await shown(a, 'moreAdminItem'), 'More: Admin panel');
+  await ev(a, () => moreAdminItem.click());
+  check(await ev(a, () => activeMainView === 'ADMIN' && !document.getElementById('viewAdmin').classList.contains('hidden')), 'opens the Admin page');
+  await ev(a, () => setAdminTab('schools'));
+  check(await ev(a, () => !document.getElementById('adminSide') && document.querySelectorAll('[role=tab][data-admin-tab]').length === 3), 'phone: tabs on top, no side panel');
+  await ev(a, x => { adminView.open = ''; adminOpenRow(x); }, sB);
+  check(await ev(a, x => !!document.querySelector(`#adminList [data-admin-school="${x}"] [data-admin-actions]`), sB), 'phone: the school opens in its card');
+  await ev(a, () => closeAdminPanel());
+  check(await ev(a, () => activeMainView === 'HOME'), 'back to Home');
+
+  // (when the admin clears the trial or Pro, or turns a feature off, an open Leave or Calendar listener is refused before the school's
   // change reaches the phone, which then stops it)
-  const bad = backend.denied.filter(d => !/features write|Pro and the trial|leave create|leave:|read leave/.test(d));
+  const bad = backend.denied.filter(d => !/features write|Pro and the trial|leave create|leave:|read leave|read planYears|read ppas/.test(d));
   check(!bad.length, `no refused writes besides the test’s own (${bad.join(' | ').slice(0, 400)})`);
   check(!errors.length, `no page errors (${errors.join(' | ').slice(0, 300)})`);
   await sleep(100);
