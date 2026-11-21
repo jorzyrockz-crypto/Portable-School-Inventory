@@ -61,6 +61,12 @@ try {
   check(D('Year-End Break (wellness break of learners and teachers)').to === '2026-12-31' && Y().days.filter(d => d.kind === 'inset').length === 4 && Y().days.filter(d => /teacher-made summative/.test(d.title)).length === 6 && Y().days.filter(d => /^PTA meeting/.test(d.title)).length === 3,
     'DO 009: Year-End Break Dec 19–31, 4 INSET dates, 6 summative tests, 3 PTA meetings');
   check(await ev(a, () => { const f = calFilter; calFilter = 'all'; const all = calEntries('2026-2027').filter(calMatch).some(e => /Palarong|NAT for/.test(e.title)); calFilter = 'deped'; const dep = calEntries('2026-2027').filter(calMatch).some(e => /Palarong/.test(e.title)); calFilter = f; return !all && dep; }), 'national activities (NAT, Palaro…) show under DepEd, not under All');
+  await ev(a, () => setCalFilter('exam'));
+  check(await ev(a, () => { const rows = [...document.querySelectorAll('#calView [data-cal-entry], [data-cal-entry]')]; return rows.length > 0 && rows.every(r => r.dataset.calKind === 'exam') && calEntries('2026-2027').filter(calMatch).filter(e => /summative/.test(e.title)).length === 6; }), 'Exams filter: only exams, the 6 summative tests and the term exams');
+  check(await ev(a, () => { const r = document.querySelector('[data-cal-kind="exam"]'); return r.classList.contains('bg-violet-50/60') && r.classList.contains('border-violet-200'); }), 'exam cards have a light violet background');
+  check(await ev(a, () => !!document.querySelector('[data-cal-filter="exam"][aria-pressed="true"]')), 'the Exams chip is on');
+  await ev(a, () => setCalFilter('all'));
+  check(await ev(a, () => !document.querySelector('[data-cal-kind="holiday"]').classList.contains('bg-violet-50/60')), 'other cards stay white');
 
   out('3 the teacher: a read-only Calendar tab');
   await ev(t, () => setTeacherTab('calendar'));

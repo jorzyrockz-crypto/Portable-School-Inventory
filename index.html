@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="6c20ad1d6690">
+  <meta name="app-version" content="d1bacf6cdf3c">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -18117,7 +18117,7 @@
       return y.start.slice(0, 7);
     }
     // All leaves out national activities and those for some grades only (NAT, NSPC…): DepEd shows them
-    const calMatch = e => (calFilter === 'all' ? !e.nat : calFilter === 'events' ? e.kind === 'event' : calFilter === 'off' ? !!(CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off) : !!e.deped || ['term', 'exam', 'deped', 'working'].includes(e.kind));
+    const calMatch = e => (calFilter === 'all' ? !e.nat : calFilter === 'events' ? e.kind === 'event' : calFilter === 'off' ? !!(CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off) : calFilter === 'exam' ? e.kind === 'exam' : !!e.deped || ['term', 'exam', 'deped', 'working'].includes(e.kind));
     function calViewHTML(page) {
       const sy = calCurSy(), y = calYears[sy] || null, edit = calCanEdit();
       const starter = CAL_STARTER[sy];
@@ -18155,7 +18155,7 @@
         </div>` : ''}
         ${y || calEvents.length ? `
         <div class="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-200/70" role="tablist">${seg('agenda', 'Agenda', 'ph-list-bullets')}${seg('month', 'Month', 'ph-calendar')}</div>
-        <div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('events', 'School events')}${chip('off', 'No classes')}${chip('deped', 'DepEd')}</div>
+        <div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('events', 'School events')}${chip('off', 'No classes')}${chip('exam', 'Exams')}${chip('deped', 'DepEd')}</div>
         <div id="calBody" class="space-y-4">${calMode === 'month' ? calMonthHTML(list, y) : calAgendaHTML(list)}</div>
         ${y ? `<div class="flex flex-wrap items-center justify-between gap-2 px-1">
           <button type="button" onclick="openCalSheet('classdays')" id="calDaysBtn" class="text-xs font-bold text-teal-700 flex items-center gap-1"><i class="ph-bold ph-chart-bar"></i> Class days</button>
@@ -18166,10 +18166,11 @@
     function calRowHTML(e, dayView) {
       const k = CAL_KINDS[e.kind] || CAL_KINDS.event;
       const multi = e.to && e.to !== e.from;
+      const exam = e.kind === 'exam';   // term exams and summative tests: a light violet card
       const bits = [multi && !dayView ? calRangeText(e.from, e.to) : '', e.kind === 'holiday' && e.sub ? `${e.sub === 'regular' ? 'Regular' : 'Special'} holiday` : e.nat ? 'DepEd · national' : k.label, e.time, e.venue].filter(Boolean);
       return `
-        <button type="button" onclick="openCalSheet('view', '${calE(e.key)}')" data-cal-entry="${calE(e.key)}" data-cal-kind="${e.kind}" class="w-full text-left rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-start gap-3 ${e.cancelled ? 'opacity-60' : ''}">
-          <span class="w-9 h-9 shrink-0 rounded-xl ${k.tone} flex items-center justify-center"><i class="ph-bold ${k.icon} text-lg"></i></span>
+        <button type="button" onclick="openCalSheet('view', '${calE(e.key)}')" data-cal-entry="${calE(e.key)}" data-cal-kind="${e.kind}" class="w-full text-left rounded-2xl border ${exam ? 'bg-violet-50/60 border-violet-200' : 'bg-white border-slate-200'} shadow-sm p-3 flex items-start gap-3 ${e.cancelled ? 'opacity-60' : ''}">
+          <span class="w-9 h-9 shrink-0 rounded-xl ${exam ? 'bg-violet-100 text-violet-700' : k.tone} flex items-center justify-center"><i class="ph-bold ${k.icon} text-lg"></i></span>
           <span class="min-w-0 flex-1">
             <span class="block text-sm font-extrabold text-slate-900 leading-snug ${e.cancelled ? 'line-through' : ''}">${calE(e.title)}</span>
             <span class="block text-[11px] text-slate-500">${calE(bits.join(' · '))}${e.cancelled ? ' · <b class="text-rose-700">Cancelled</b>' : ''}${e.sending ? ' · <i class="ph-bold ph-cloud-arrow-up"></i> sending' : ''}</span>
@@ -30081,6 +30082,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-calendar-exams', date: 'Nov 2026', title: 'School calendar: an Exams filter', points: [
+        'New: an Exams filter on the School calendar shows only the term examinations and the teacher-made summative tests.',
+        'Exam days now have a light violet card, so they stand out in the Agenda and on a day in Month.'
+      ], pilot: 'plan' },
       { id: '2026-11-pro-trial-admin', date: 'Nov 2026', title: 'Pro, a 7-day free trial, and the Admin panel', points: [
         'New: More \u00b7 Pro shows what Pro adds for your school: Leave & CS Form 6, the School calendar, and new features as they come. Everything you use today stays free.',
         'Property custodian: tap \u201cTry Pro free for 7 days\u201d on More \u00b7 Pro (once per school). A strip on Home shows the days left, with reminders 2 days before the trial ends and on the last day.',
