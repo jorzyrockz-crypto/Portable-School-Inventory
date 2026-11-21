@@ -47,7 +47,7 @@ try {
   await ev(t, () => setTeacherTab('items'));
   check(await ev(a, () => document.getElementById('sideLeave').style.display === '' && document.getElementById('moreLeaveItem').style.display === ''), 'custodian: Leave in the sidebar and More');
   check(await ev(t, () => !document.getElementById('rqTab-leave').classList.contains('hidden') && document.getElementById('rqTabs').classList.contains('grid-cols-5')), 'teacher: a fifth tab, Leave');
-  check(await ev(t, () => wnList()[0].pilot === 'leave' && wnList().some(r => r.id === '2026-11-leave-pilot')), 'What’s new: the pilot notes show here');
+  check(await ev(t, () => wnList().some(r => r.pilot === 'leave') && !wnList().some(r => r.pilot === 'admin') && wnList().some(r => r.id === '2026-11-leave-pilot')), 'What’s new: the pilot notes show here');
   const { page: h } = await schoolHead(backend, a, sid);
 
   out('3 the teacher applies');

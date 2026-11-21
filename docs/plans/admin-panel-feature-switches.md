@@ -1,6 +1,7 @@
 # Plan: Admin panel and feature switches (Testing ES as the admin school)
 
 Status: **A1 built** (Nov 2026): the switches, Pro, the 7-day trial, the Admin panel and More → Pro.
+Update (Nov 2026): the Admin panel is a page (Admin in the sidebar: Schools · Features · Activity; More → Admin panel on phones), with a side panel per school, Ending soon (Home card, sidebar count, reminder), sorting, CSV, Pro shortcuts, Give / End trial, and an Activity log. See the README.
 Decisions are in section 10 (answered 2026-11-21); F1 and F2 use the recommended defaults.
 Rollout: built and tested at Testing ES (`97JbEODfGJhWcejYDWhO`), like Leave and the School Calendar.
 
