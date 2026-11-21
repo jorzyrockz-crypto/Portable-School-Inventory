@@ -63,8 +63,9 @@ try {
   out('3 art, colour and what shows');
   await set(a, 'weekStart', 1);
   check(await prev(a, () => document.querySelector('#cprPreview .cpr-grid > .cpr-cell').dataset.cprDay === '2026-06-01' && /^Mon/.test(document.querySelector('#cprPreview .cpr-dows').textContent)), 'Monday first: June 1 in the 1st box');
-  await set(a, 'theme', 'g:grounds');
-  check(await prev(a, () => /login-landscape\.webp/.test(document.querySelector('#cprPreview .cpr-banner img').getAttribute('src'))), 'a general scene: School grounds');
+  check(await ev(a, () => document.querySelectorAll('[data-cpr-theme^="g:"]').length === 6), '6 general scenes to pick from');
+  await set(a, 'theme', 'g:library');
+  check(await prev(a, () => /cal-art\/g3\.webp/.test(document.querySelector('#cprPreview .cpr-banner img').getAttribute('src'))), 'a general scene: Library');
   await set(a, 'place', 'page');
   check(await prev(a, () => !document.querySelector('#cprPreview .cpr-banner') && !!document.querySelector('#cprPreview .cpr-wm')), 'behind the grid: a watermark, no banner');
   await set(a, 'theme', 'none');
@@ -81,6 +82,7 @@ try {
   out('4 paper and months per sheet');
   await ev(a, () => { cprSet('range', 'sy'); });
   check(await ev(a, () => /Sheet 1 of 11 · 11 months/.test(document.getElementById('cprCount').textContent)), 'whole SY: 11 sheets (June to April)');
+  check(await ev(a, () => ['2026-11', '2026-12'].every(m => cprArtFor({ ...cprOpts(), theme: 'auto' }, m) === `assets/cal-art/m${m.slice(5)}.webp`)), 'November and December have their own pictures');
   await set(a, 'per', 2);
   check(await ev(a, () => /Sheet 1 of 6/.test(document.getElementById('cprCount').textContent) && cpr.orient === 'portrait' && document.querySelectorAll('#cprPreview [data-cpr-month]').length === 2), '2 per sheet, stacked: 6 sheets, portrait');
   check(await prev(a, () => { const m = [...document.querySelectorAll('#cprPreview [data-cpr-month]')].map(x => x.getBoundingClientRect()); return m[1].top >= m[0].bottom - 1; }), 'stacked: one month above the other');
