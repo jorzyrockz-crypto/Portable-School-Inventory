@@ -163,7 +163,8 @@ schools/{sid}/ppas/{id}              one per program, project or activity
 |---|---|---|
 | **D1** (first) | School year setup + Calendar (agenda and month), the DepEd starter dates, holidays and suspensions, school events, class-day count. The head and AO edit; teachers get a read-only Calendar tab; the head gets a Plan tab and the AO a Calendar page. | M |
 | **D2** (built) | Programs, Projects, Activities: the head and AO encode, edit, copy and repeat; on the calendar; "Mine" for teachers; reminders. Teachers propose (or suggest a change), and the School Head approves or returns it in the Approve tab (decided on the ppa document). | L |
-| **D3** | Prints: AIP (Annex 10), Work Plan and Budget Matrix (Annex 9), monthly calendar. | M |
+| **D3** | The printed **Monthly Calendar** only, with customization (clay-style art per month, general scenes or the school's photo; colours, paper, months, what to show, header and footer). Plan: `docs/plans/monthly-calendar-print.md`. | M |
+| **D3b** (later) | Prints: AIP (Annex 10), Work Plan and Budget Matrix (Annex 9). | M |
 | **D4** | Done / Moved / Cancelled with accomplishments; teachers mark their own activities Done; monitoring report; overdue reminders. | M |
 | **D5** | Links: PR "For activity" with budget utilization; leave and inventory entries on the calendar. | M |
 
