@@ -327,18 +327,18 @@ Once a School Head is confirmed, more goes to their phone than PRs.
 - **Cards:** Purchase Requests approved this month / quarter / year (by approval date), delivered, waiting and the head's average time to decide (from the PRs and approvals the head already reads); condition of tagged units with the repair and unserviceable value (waiting for disposal, IIRUP); 12-month bars of supplies issued (RIS ₱) and property value (recorded at the start of each month, `valueTrend` in the school info); who uses the most supplies this month / this year (top items and people).
 - **Who holds what:** tap a name to see their units (property no., serial no., ICS / PAR, condition, lost) and **Print their list** for a clearance. Up to 2,500 units in all are carried in the summary.
 - **Print the monthly summary:** one page with the property figures, PRs approved this month, supplies issued, what needs attention and who holds the most.
-- **Tabs** (like a teacher's), so the School Head scrolls less, on phones and laptops alike:
-  - **Approve** (opens first, with the count waiting): Needs your attention, Waiting for you, Approve all. A custodian turnover waiting for their Confirm shows here too.
+- **The same look as the custodian's** (since November 2026). On a phone or upright tablet, tabs at the bottom: **Today · Approve · School · Calendar · More** (Calendar where the School calendar is on). On a computer or landscape tablet, a **sidebar** like the custodian's lists every page (Today, Approve, School, Calendar, then *Records*: Inventory, Who holds what, Your decisions, My leave), so there is no More there.
+  - **Today** (opens first): Needs your attention; **Waiting for you** with the count, the first 4 items (each opens Approve) and **Approve all**; **This week** on the school calendar with **+ Activity** (where the calendar is on); **My leave** with **Apply** (where Leave is on); **Purchase Requests** (waiting, approved this month and this year) and **School property** (items, value, units with staff), which open School.
+  - **Approve** (with the count waiting): Waiting for you and Approve all (side by side on a computer). A custodian turnover waiting for their Confirm shows here too.
   - **School:** the property tiles, condition, Purchase Requests approved, trends, who uses the most supplies, stock levels, request status, Books & Library and *Print the monthly summary*.
-  - **People:** who holds what, open, with a name search from 8 people (tap a name, print their list for a clearance) and the custodian turnover link.
-  - **Items:** the whole inventory, view only (see *The School Head's Items tab* below).
-  - **History:** recently decided with its search, and School history.
+  - **Calendar:** the school calendar and the Plan.
+  - **More** (phones): **Inventory** (the whole inventory, view only; see *The School Head's Inventory page* below), **Who holds what** (with a name search from 8 people, print their list for a clearance, and the custodian turnover link), **Your decisions** (recently decided with its search), **My leave**, and **School history**. Each page has *‹ More* at the top.
 
-  A notification for the head opens Approve. On a laptop or landscape tablet each tab uses two columns (attention beside waiting; the School cards in two columns; people in two columns). Phones stay one column.
+  A notification for the head opens Approve. On a laptop or landscape tablet, Today, School and Who holds what use two columns. Phones stay one column.
 - Everything comes from `dashboard/summary` (one document the custodian's devices keep current) and the PRs and approvals the head already reads, so it adds no reads. No rules change.
 - **Rules.** These items are kept in `approvals`. Only the confirmed head approves or returns one, and only while it is waiting. The custodian and assistants can send, send again or cancel, never decide. A teacher can't read them.
 
-### The School Head's Items tab: view the inventory, suggest changes
+### The School Head's Inventory page: view the inventory, suggest changes
 
 - **View only.** The head's **Items** tab lists the whole school inventory, the same items, units, holders and history the custodian sees. It has a search (name, code, room, property number) and the filters *All, Equipment, Supplies, Low stock*. Tapping an item opens the Item preview with no Release and no stock in. It loads only when the head opens the tab, so the head's other tabs cost no extra reads.
 - **Helping encode.** In the preview, **Suggest a change** opens the usual edit form (room, details, quantity, units, date acquired…). The tab also has **New item** and **Scan ICS / PAR** for old slips. Nothing reaches the inventory yet: the change is kept on the head's phone as *Your change · not sent*. A yellow card lists the changes, with **Send to the custodian** and **Discard**. Once sent, the items show *Suggested · waiting for the custodian*, and the head can **Take it back** while it waits. Other changes (release, stock in, delete…) are refused on the head's phone.

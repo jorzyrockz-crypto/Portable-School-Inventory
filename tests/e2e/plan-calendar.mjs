@@ -81,7 +81,7 @@ try {
   await ev(t, () => { localStorage.removeItem(LEAVE_PILOT_KEY); renderRequesterView(); });
 
   out('4 the School Head: a Plan tab, adds an event');
-  await until(h, () => !document.getElementById('hdTab-plan').classList.contains('hidden'), 'Plan tab', 8000);
+  await until(h, () => document.getElementById('hdTab-plan').style.display !== 'none', 'Calendar tab', 8000);
   await ev(h, () => setHeadTab('plan'));
   check(await ev(h, () => document.getElementById('hdTitle').textContent === 'School calendar'), 'Plan: School calendar');
   await until(h, () => !!document.querySelector('[data-hd-pane="plan"] #calAddEvent'), 'head can add', 10000);

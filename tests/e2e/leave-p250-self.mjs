@@ -130,8 +130,8 @@ try {
   check(/you \(the AO\)/.test(S().log.slice(-1)[0].x), 'history: Form 6 prepared for the AO');
   check(await ev(a, i => lvCanPrint(lvById(i)), S().id), 'the AO prints their own Form 6');
 
-  out('6 the School Head: a Leave tab');
-  check(await ev(h, () => !document.getElementById('hdTab-leave').classList.contains('hidden') && document.getElementById('hdTabs').classList.contains('grid-cols-6')), 'six tabs: Leave is the sixth');
+  out('6 the School Head: My leave (under More; in the sidebar on a computer)');
+  check(await ev(h, () => document.getElementById('hdTab-leave').style.display !== 'none' && !!document.querySelector('[data-hd-more-row="leave"]') && !!document.querySelector('[data-hd-today="leave"]')), 'My leave: under More, a card on Today');
   await ev(h, () => setHeadTab('leave'));
   check(await ev(h, () => document.getElementById('hdTitle').textContent === 'My leave' && !!document.querySelector('[data-hd-pane="leave"]:not(.hidden) #lvApplyBtn')), 'My leave: Apply for leave');
   check(await ev(h, () => /Division/.test(document.querySelector('[data-hd-pane="leave"]').textContent)), 'it says the Division approves it');
