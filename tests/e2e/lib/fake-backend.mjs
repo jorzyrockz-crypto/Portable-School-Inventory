@@ -426,7 +426,13 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
         ['', 'mooe', 'sef', 'pta', 'canteen', 'igp', 'donation', 'other'].includes(data.source ?? '') &&
         typeof (data.budget ?? 0) === 'number' && (data.budget ?? 0) >= 0 && (data.budget ?? 0) <= 100000000 &&
         Array.isArray(data.who ?? []) && (data.who ?? []).length <= 30 && Array.isArray(data.team ?? []) && (data.team ?? []).length <= 30 &&
-        Array.isArray(data.log ?? []) && (data.log ?? []).length <= 80;
+        Array.isArray(data.log ?? []) && (data.log ?? []).length <= 80 &&
+        Array.isArray(data.moved ?? []) && (data.moved ?? []).length <= 20 && str(data.cancelWhy ?? '', 300) &&
+        (data.done == null || (typeof data.done === 'object' && typeof data.done.on === 'string' && data.done.on.length === 10 &&
+          str(data.done.what ?? '', 1500) && str(data.done.remarks ?? '', 400) && str(data.done.byName ?? '', 80) &&
+          typeof (data.done.cost ?? 0) === 'number' && data.done.cost >= 0 && data.done.cost <= 100000000 &&
+          typeof (data.done.people ?? 0) === 'number' && (data.done.people ?? 0) >= 0 && (data.done.people ?? 0) <= 100000 &&
+          typeof (data.done.photos ?? 0) === 'number' && (data.done.photos ?? 0) >= 0 && (data.done.photos ?? 0) <= 3));
       if (!ok) deny('ppa body', { path, data });
       if (isStaff(ctx, sid) || isHeadOf(ctx, sid)) return;
       const own = ['program', 'project', 'activity'].includes(data.kind) && ((data.by || {}).uid ?? '') === ctx.uid && !data.removed;
@@ -435,7 +441,21 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
         deny('ppa write: create', { path, data });
       }
       if (isMember(ctx, sid) && own && ((before.by || {}).uid ?? '') === ctx.uid && ['proposed', 'returned'].includes(before.status) && ['proposed', 'withdrawn'].includes(data.status) && JSON.stringify(data.decision ?? null) === JSON.stringify(before.decision ?? null)) return;
+      // D4: a teacher responsible for the activity marks it Done (or fixes their own report)
+      if (isMember(ctx, sid) && kind !== 'create' && before.kind === 'activity' && !before.removed && ['planned', 'ongoing', 'moved', 'done'].includes(before.status) &&
+          data.status === 'done' && data.done && data.done.byUid === ctx.uid &&
+          changedKeys(before, data).every(k => ['status', 'done', 'log', 'updatedAt'].includes(k)) &&
+          (before.who || []).some(w => w.uid === ctx.uid && w.name === data.done.byName && Object.keys(w).length === 2) &&
+          (before.status !== 'done' || (before.done || {}).byUid === ctx.uid)) return;
       deny('ppa write', { path, data });
+    }
+    if (p.length === 4 && sub === 'ppaPhotos') {
+      if (!planOn(sid)) deny('ppa photos: not a pilot school', { path });
+      if (data.ppaId !== p[3] || !Array.isArray(data.photos ?? []) || (data.photos ?? []).length > 3 || !str(data.byName ?? '', 80)) deny('ppa photos body', { path });
+      if (isStaff(ctx, sid) || isHeadOf(ctx, sid)) return;
+      const act = store.get(`schools/${sid}/ppas/${p[3]}`) || {};
+      if (isMember(ctx, sid) && data.byUid === ctx.uid && (act.who || []).some(w => w.uid === ctx.uid && w.name === data.byName && Object.keys(w).length === 2)) return;
+      deny('ppa photos write', { path });
     }
     if (p.length === 4 && sub === 'leaveCards') {
       if (!leaveOn(sid)) deny('leave card: not a pilot school', { path });
@@ -554,7 +574,7 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
       if (!filters.some(f => f.field === 'uid' && f.op === '==' && f.value === ctx.uid)) deny('list leaves', { path, filters });
       return;
     }
-    if (sub === 'planYears' || sub === 'ppas') {
+    if (sub === 'planYears' || sub === 'ppas' || sub === 'ppaPhotos') {
       if (!planRead(sid)) deny(`read ${sub}: not a pilot school`, { path });
       if (canView(ctx, sid) || isHeadOf(ctx, sid) || isMember(ctx, sid)) return;
       deny(`read ${sub}`, { path, uid: ctx.uid });

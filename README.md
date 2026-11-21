@@ -454,6 +454,17 @@ The first part of **School Planning** (plan: `docs/plans/school-calendar-and-ppa
 
 Data: `schools/{schoolId}/planYears/{sy}` (one per school year: `start`, `end`, `memo`, `terms[]` with `blocks[]`, `days[]`, `people[]`) and `schools/{schoolId}/ppas/{id}` (`kind`: `event`, `program`, `project` or `activity`; `parentId`, dates, `who[]`, `team[]`, `budget`, `source`, `status`, `decision`, `log[]`). Everyone at the school reads them; the School Head and the AO write them; a teacher may only create their own proposal and change or withdraw it while it waits or was returned. **Publish `firestore.rules` again** to turn it on.
 
+#### Done, Moved, Cancelled and the monitoring report
+
+Part D4 of School Planning (the same pilot switch).
+
+- **Mark Done** on an activity (from its first day) opens the accomplishment report: the actual date(s), what was done, the actual cost, the number of participants, remarks and up to 3 photos. Photos are made small on the phone (JPEG, about 150 KB each) and kept apart in `ppaPhotos/{activity id}`, read only when someone opens the activity or prints the report. The School Head and the AO mark any activity; a teacher marks the ones with their name in Person(s) responsible (with their account) and may change their own report. **Not done** (the head or AO) puts it back on the plan; the report stays in its history. The head and the AO are told when a teacher marks one Done.
+- **Move** asks for the new date and why (required); so does **Change** when the date changes. The activity becomes *Moved*, keeps every old date and reason (`moved[]`), and the people responsible are told with the reason. **Cancel** asks for the reason (`cancelWhy`).
+- **Overdue:** an activity past its last day and not marked Done. It shows as *Overdue* on its row, a card and an **Overdue** filter on the Plan page, a card on the calendar, the AO's Home and the School Head's *Needs your attention*. Reminders the day after and then every week: each person responsible gets one for each of theirs; the School Head and the AO get one for all of them (not for activities they put on the plan in the last day, so filling in past activities doesn't remind them).
+- **Monitoring report** (the head and the AO, on the Plan page): Term 1, Term 2, Term 3 (end to end, from June 1 to May 31, so nothing falls between terms), Mid-year (to the end of Term 2) or Year-end. It shows the % done (of the activities not cancelled), done, overdue, moved and coming, the budget against the actual cost (also by fund source), the % done per project, and each activity with its target date (before any move) and actual date. **Print the report** (A4 landscape): grouped by program and project, with the accomplishment, reasons, participants, budget, actual cost and fund source, totals, *Prepared by* and *Noted* (the School Head), and the photo documentation.
+
+Rules: a teacher may change only `status` (to `done`), `done` and `log` of an activity whose `who[]` has `{ uid: their uid, name: done.byName }`, and only their own report once it is Done; photos the same way (checked against the activity). **Publish `firestore.rules` again.**
+
 #### Reading the calendar from a PDF or photo
 
 **Read a calendar PDF or photo** (on the setup card of a school year that is not set up yet) or **Read dates from a PDF or photo** (under the add buttons) reads any calendar paper: the DepEd Order on the school calendar, a region or division memo, or the school's own calendar (plan: `docs/plans/calendar-from-pdf.md`). The School Head and the AO use it; teachers don't.

@@ -165,7 +165,7 @@ schools/{sid}/ppas/{id}              one per program, project or activity
 | **D2** (built) | Programs, Projects, Activities: the head and AO encode, edit, copy and repeat; on the calendar; "Mine" for teachers; reminders. Teachers propose (or suggest a change), and the School Head approves or returns it in the Approve tab (decided on the ppa document). | L |
 | **D3** | The printed **Monthly Calendar** only, with customization (clay-style art per month, general scenes or the school's photo; colours, A4 / Folio / A3, 1 or 2 months per sheet, months, what to show, header and footer). Plan: `docs/plans/monthly-calendar-print.md`. | M |
 | **D3b** (later) | Prints: AIP (Annex 10), Work Plan and Budget Matrix (Annex 9). | M |
-| **D4** | Done / Moved / Cancelled with accomplishments; teachers mark their own activities Done; monitoring report; overdue reminders. | M |
+| **D4** (built) | Done / Moved / Cancelled with accomplishments (actual date, what was done, actual cost, participants, remarks, up to 3 photos in `ppaPhotos`); teachers mark their own activities Done; Move needs a new date and a reason; monitoring report by term, mid-year and year-end (printed with the photos); overdue reminders the day after and weekly (the people responsible; one for all to the head and AO). | M |
 | **D5** | Links: PR "For activity" with budget utilization; leave and inventory entries on the calendar. | M |
 
 Each PR follows the usual pattern:
