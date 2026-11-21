@@ -198,7 +198,7 @@ The app opens on **Home**, which only asks one thing: *What are you encoding?*
 If nothing matches, the last row offers to add what you typed as a new custom item.
 
 When the search box is empty, Home shows:
-- three big tiles: **Scan ICS**, **Import** and **Count**. While a count is running, the Count tile shows a progress bar. A **Scan tag** tile appears once you have tagged units.
+- **Quick actions** (reorganized November 2026): up to 8 small tiles, 4 a row (on phones only the name; wider screens add a hint). While the inventory is still being set up (fewer than 15 items in stock and no tagged units), **Scan ICS** and **Import** come first. After that the daily ones lead: **Scan tag** (once units are tagged), **Release**, **Count**, **New PR**, **Forms**, **Year-end**, **Invite**, then Scan ICS / Import (they are always in ☰ More too). Release, New PR and Invite need the custodian's sign-in. While a count is running, the Count tile says *Continue count* with a progress bar.
 - **Needs your attention** (since November 2026), below the tiles. It lists deadlines and things waiting on the custodian, most urgent first, and each line opens the right place:
   - lost units, with the days left to apply for relief (COA: within 30 days), opening Teachers with the *Lost* filter;
   - supply requests waiting more than 2 days, and teacher reports or returns waiting more than 3 days;
@@ -208,8 +208,14 @@ When the search box is empty, Home shows:
   - ICS / PAR older than 3 years, and the fidelity bond or designation order ending within 30 days (Year-end & reminders);
   - units in *Needs repair* for more than 30 days, low and out-of-stock supplies, and overdue library books.
 
+  It does not repeat what a card already shows: useful life (the Useful life card), leave applications (the Leave card), *This week* (the This week card), and the count's percent while you are counting (the Count tile).
+
   The first 5 show, with **Show all**. With nothing due it says *All clear*. It is hidden until something is encoded, and never shown on a teacher's or School Head's phone. Everything comes from what the device already has: no extra reads.
+- **This week** (where the School calendar is on): today to 6 days ahead: activities, events, days without classes, exams, who is on approved leave and inventory dates, the first 5 as rows that open on the calendar, *See all n on the calendar*, and **+ Activity**. Overdue activities stay in Needs your attention.
+- the cards: **Supply requests**, **Deliveries**, **Leave** (where Leave is on: the number to act on, Form 6 on hold, and **Encode**), **Useful life**, **Teachers** and **Books & Library**.
 - your last 5 **recently encoded** items, which you can tap to edit.
+
+On a computer (and a tablet in landscape, 1180 px and wider), Home uses **two columns**: the search, Quick actions and Needs your attention on the left; This week and the cards on the right. Phones and tablets in portrait keep one column.
 - one status line with the number of items, total value and last backup. It links to Reports. The backup reminder appears here only when a backup is overdue.
 
 Everything else moved out of the way:
@@ -448,7 +454,7 @@ The first part of **School Planning** (plan: `docs/plans/school-calendar-and-ppa
 - **Plan (programs, projects and activities):** a **Calendar · Plan** switch at the top. The Plan is the school's SIP / AIP for the school year: **programs**, **projects** under a program (objective, problem, root cause, expected output, project team) and **activities** under a project or on their own (dates, all day or a time, venue, the person(s) responsible, budget and fund source: MOOE, SEF / LGU, PTA, Canteen, IGP, Donations, Others). Tiles count the programs, projects and activities and add up the budget, also by fund source. Each one keeps its history; a moved activity keeps its old dates.
   - The School Head and the AO add and change them directly. **Copy** makes a new one with the same details; **Repeat** (every week, every 2 weeks, every month, until a date, at most 52; days without classes can be skipped) makes the whole series at once. **Cancel** keeps it struck out; **Remove** takes it off the plan.
   - People are picked from the school's teachers, staff and School Head (or typed in). The AO's devices keep the list on the school year document (`people`) so teachers' phones can pick from it.
-  - Activities show on the calendar for everyone, with the people responsible; filters **Mine** (activities with your name) and **Activities**. **This week** shows on the calendar and on the AO's Home.
+  - Activities show on the calendar for everyone, with the people responsible; filters **Mine** (activities with your name) and **Activities**. **This week** shows on the calendar and as a card on the AO's Home.
   - **Teachers propose** a program, project or activity (**Propose an activity / a project**), or **Suggest a change** to an activity. The School Head approves it, or returns it with a note, in the **Approve** tab (with no School Head in the app, the AO decides on the Plan page). A returned proposal can be changed and sent again, or withdrawn. Proposals are seen only by the teacher who sent them, the School Head and the AO. An approved change moves the activity and keeps its history.
   - Reminders: the day before an activity with your name (*Tomorrow: …*), when you are made responsible for one, and when it is moved or cancelled. The School Head is told of new proposals; the teacher, of the answer.
 

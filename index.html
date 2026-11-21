@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="4eff8c41ea76">
+  <meta name="app-version" content="689b268be0cf">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -364,6 +364,13 @@
        narrower in rem (13rem, about 260 px) and its rows are taller for a finger. The extra Inventory / Catalog columns
        only fit on the big ones (1300px+, e.g. a 12.9" iPad Pro); below that the rows stay as on
        an upright tablet. */
+    /* Home (custodian) on a laptop: two columns (search, quick actions, needs your attention |
+       this week and the cards). Phones and tablets in portrait keep one column. */
+    @media screen and (min-width: 1180px) and (not (pointer: coarse)), screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1180px) and (min-height: 600px) {
+      #viewHome { max-width: 76rem; }
+      #viewHome .home-cols { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+      #viewHome .home-cols > * { margin-top: 0 !important; }
+    }
     @media screen and (pointer: coarse) and (orientation: landscape) and (min-width: 1000px) and (min-height: 600px) {
       :root { --side-w: 13rem; }
       #tabBar { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
@@ -811,6 +818,8 @@
       <button onclick="exportBackupJSON()" class="h-9 px-3 shrink-0 rounded-xl bg-amber-700 hover:bg-amber-800 text-xs font-bold text-white active:scale-95 transition">Back up</button>
     </div>
 
+    <div class="home-cols space-y-5">
+    <div class="home-col-a space-y-5">
     <div id="homeSearchCard" class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5">
       <label for="homeSearch" class="block text-lg font-extrabold text-slate-900 mb-2.5">What are you encoding?</label>
       <div class="relative">
@@ -826,34 +835,19 @@
       <div id="homeResults" class="hidden mt-2 bg-white rounded-2xl border border-slate-200/90 overflow-hidden divide-y divide-slate-100"></div>
     </div>
 
-    <div id="homeIdle" class="space-y-5">
-      <div id="homeTiles" class="grid grid-cols-3 gap-3">
-        <button onclick="openIcsScanner()" class="rounded-2xl bg-white border border-slate-200/90 hover:border-violet-300 shadow-sm p-4 flex flex-col items-center text-center gap-1.5 active:scale-95 transition">
-          <span class="w-11 h-11 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="ph-bold ph-file-text text-2xl"></i></span>
-          <span class="text-sm font-extrabold text-slate-800">Scan ICS</span>
-          <span class="text-[11px] text-slate-500 leading-tight">Photo of a custodian slip</span>
-        </button>
-        <button onclick="openImport()" class="rounded-2xl bg-white border border-slate-200/90 hover:border-sky-300 shadow-sm p-4 flex flex-col items-center text-center gap-1.5 active:scale-95 transition">
-          <span class="w-11 h-11 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center"><i class="ph-bold ph-file-arrow-up text-2xl"></i></span>
-          <span class="text-sm font-extrabold text-slate-800">Import</span>
-          <span class="text-[11px] text-slate-500 leading-tight">Excel or CSV list</span>
-        </button>
-        <button id="homeCountTile" onclick="homeCountAction()" class="rounded-2xl bg-white border border-slate-200/90 hover:border-emerald-300 shadow-sm p-4 flex flex-col items-center text-center gap-1.5 active:scale-95 transition">
-          <span class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="ph-bold ph-list-checks text-2xl"></i></span>
-          <span id="homeCountTitle" class="text-sm font-extrabold text-slate-800">Count</span>
-          <span id="homeCountSub" class="text-[11px] text-slate-500 leading-tight">Physical count</span>
-          <span id="homeCountBarWrap" class="hidden w-full h-1.5 rounded-full bg-slate-100 overflow-hidden mt-0.5"><span id="homeCountBar" class="block h-full bg-emerald-500 rounded-full" style="width:0%"></span></span>
-        </button>
-        <button id="homeQrTile" onclick="openScanner()" class="hidden rounded-2xl bg-white border border-slate-200/90 hover:border-violet-300 shadow-sm p-4 flex-col items-center text-center gap-1.5 active:scale-95 transition">
-          <span class="w-11 h-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center"><i class="ph-bold ph-scan text-2xl"></i></span>
-          <span class="text-sm font-extrabold text-slate-800">Scan tag</span>
-          <span class="text-[11px] text-slate-500 leading-tight">QR property label</span>
-        </button>
-      </div>
+    <div id="homeIdleA" class="space-y-5">
+      <!-- Quick actions (renderHomeTiles): set-up first, then the daily ones -->
+      <div id="homeTiles" class="grid grid-cols-4 gap-2"></div>
 
       <!-- Needs your attention: deadlines and things waiting (custodian) -->
       <div id="proStrip" class="hidden"></div>
       <div id="homeAttention" class="hidden"></div>
+    </div>
+    </div>
+
+    <div id="homeIdle" class="home-col-b space-y-5">
+      <!-- This week: the School calendar (where the Plan is on) -->
+      <div id="homeWeek" class="hidden"></div>
 
       <!-- Supply requests: teachers request, the custodian reviews → Purchase Request -->
       <div id="homeReqCard" class="rounded-2xl bg-white border border-slate-200/90 shadow-sm p-3 flex items-center gap-3">
@@ -887,6 +881,8 @@
           <i class="ph-bold ph-package"></i> Stock in
         </button>
       </div>
+      <!-- Leave (where the Leave pilot is on) -->
+      <div id="homeLeaveCard" class="hidden"></div>
       <!-- Useful life of ICS / PAR property: past, ending within 12 months, to replace -->
       <button id="homeLifeCard" type="button" onclick="openLifeSheet()" class="hidden w-full rounded-2xl bg-white border border-slate-200/90 shadow-sm p-3 items-center gap-3 text-left hover:bg-slate-50">
         <span class="relative w-11 h-11 shrink-0 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center">
@@ -927,6 +923,7 @@
         <span id="homeStatusText" class="text-left leading-snug">No items encoded yet</span>
         <span class="shrink-0 font-bold text-brand-600 flex items-center gap-1">Reports <i class="ph-bold ph-caret-right"></i></span>
       </button>
+    </div>
     </div>
   </section>
 
@@ -9823,7 +9820,7 @@
       if (period.open && live.length) {
         const done = live.filter(x => (x.unit.seen || 0) >= period.start).length;
         const pct = Math.min(100, Math.round(done / live.length * 100));
-        if (pct < 100) add('brand', 'ph-clipboard-text', `${period.label}: ${pct}% counted (${done} of ${live.length} units)`,
+        if (pct < 100 && !countSession) add('brand', 'ph-clipboard-text', `${period.label}: ${pct}% counted (${done} of ${live.length} units)`,
           `As at ${formatShortDate(period.asAt + 'T00:00:00')}${/year-end/i.test(period.label) ? ` · report due ${formatShortDate(`${Number(period.asAt.slice(0, 4)) + 1}-01-31T00:00:00`)}` : ''}`, 'count', 'homeCountAction()');
       } else if (!period.open && live.length && period.start > now && period.start - now <= 14 * DAY_MS) {
         add('slate', 'ph-calendar', `${period.label} starts ${formatShortDate(period.start)}`, `As at ${formatShortDate(period.asAt + 'T00:00:00')}`, 'count');
@@ -9831,10 +9828,7 @@
       const renew = icsRenewDue(now);
       if (renew.length) add('amber', 'ph-arrows-clockwise', `${plural(renew.length, 'unit')} on an ICS / PAR older than ${ICS_RENEW_YEARS} years`,
         `${plural(new Set(renew.map(x => personId(x.unit.toUid, x.unit.to))).size, 'person')} · renew them in Year-end & reminders`, 'renew', 'openYearEnd()');
-      const ls = lifeStats(lifeUnits(now));
-      if (ls.past.length || ls.soon.length) add(ls.past.length ? 'amber' : 'slate', 'ph-hourglass-medium',
-        ls.past.length ? `${plural(ls.past.length, 'unit')} past ${itsTheir(ls.past.length)} useful life · still serviceable?` : `${plural(ls.soon.length, 'unit')} reach the end of ${itsTheir(ls.soon.length)} useful life within ${LIFE_WARN_MONTHS} months`,
-        [ls.past.length && ls.soon.length && `${ls.soon.length} more within ${LIFE_WARN_MONTHS} months`, ls.cost && `₱${peso2(ls.cost)} to replace`].filter(Boolean).join(' · '), 'life', 'openLifeSheet()');
+      // Useful life: its own card on Home (renderHomeLife)
       [['bondUntil', 'Your fidelity bond'], ['desigUntil', 'Your designation order']].forEach(([k, label]) => {
         const iso = schoolInfo[k];
         if (!iso || isAssistant()) return;
@@ -9855,8 +9849,7 @@
         [...outOf, ...low].slice(0, 3).map(i => i.name).join(' · '), 'stock', "switchMainView('ITEMS'); setLedgerFilter('LOW'); window.scrollTo({ top: 0 })");
       const bs = typeof bkDashSummary === 'function' ? bkDashSummary() : null;
       if (bs && bs.od) add('amber', 'ph-books', `${plural(bs.od, 'library book')} overdue`, 'Books & Library', 'books', "switchMainView('BOOKS')");
-      const lvN = leaveOn() && isCustodianDevice() ? lvTodo().length : 0;
-      if (lvN) add('brand', 'ph-calendar-check', `${plural(lvN, 'leave application')} to act on`, 'Leave · CS Form 6', 'leave', 'openLeaveView()');
+      // Leave: its own card on Home (renderHomeLeave)
       return out;
     }
     var HOME_REPORT_DAYS = 3;
@@ -9899,6 +9892,7 @@
       document.getElementById('homeSearchClear').classList.toggle('flex', !!query);
       // While searching, only the results are shown.
       document.getElementById('homeIdle').classList.toggle('hidden', !!query);
+      document.getElementById('homeIdleA').classList.toggle('hidden', !!query);
       results.classList.toggle('hidden', !query);
       if (query) {
         const { list, total } = homeSearchItems(query);
@@ -9912,26 +9906,9 @@
         return;
       }
 
-      // Tiles: count state + QR tile once units are tagged
-      const qrTile = document.getElementById('homeQrTile');
-      const hasTags = allTaggedUnits().length > 0;
-      qrTile.classList.toggle('hidden', !hasTags);
-      qrTile.classList.toggle('flex', hasTags);
-      document.getElementById('homeTiles').className = `grid gap-3 ${hasTags ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`;
-      const barWrap = document.getElementById('homeCountBarWrap');
-      if (countSession) {
-        const { scope, counted } = countProgress();
-        const pct = scope.length ? Math.round(counted / scope.length * 100) : 0;
-        document.getElementById('homeCountTitle').textContent = 'Continue count';
-        document.getElementById('homeCountSub').textContent = `${counted} of ${scope.length} counted`;
-        document.getElementById('homeCountBar').style.width = pct + '%';
-        barWrap.classList.remove('hidden');
-      } else {
-        document.getElementById('homeCountTitle').textContent = 'Count';
-        document.getElementById('homeCountSub').textContent = 'Physical count';
-        barWrap.classList.add('hidden');
-      }
-
+      try { renderHomeTiles(); } catch (e) { console.warn('home actions', e); }
+      try { renderHomeWeek(); } catch (e) { console.warn('home week', e); }
+      try { renderHomeLeave(); } catch (e) { console.warn('home leave', e); }
       renderHomeDeliveries();
       renderHomeAttention();
       const recent = recentEncodedItems();
@@ -9993,6 +9970,133 @@
         return;
       }
       startCount(); // switches to Inventory when the count starts
+    }
+
+    // ---- Home (custodian), Nov 2026: Quick actions, This week, Leave ---------------------------
+    // Quick actions: up to 8 small tiles. While the inventory is being set up, Scan ICS and Import
+    // come first; after that the daily ones (Scan tag, Release, Count, a PR, Forms, Year-end) and
+    // Scan ICS / Import last (they stay in More too). What a card already does (Stock in, Request,
+    // Leave, the calendar) is not repeated here. Phones: 4 a row, the name only; wider: the hint too.
+    const HOME_SETUP_ITEMS = 15;
+    function homeActions() {
+      const cust = isCustodianDevice() && !!cloud.user && !isViewOnly();
+      const hasTags = allTaggedUnits().length > 0;
+      const setup = items.filter(i => i.qty > 0).length < HOME_SETUP_ITEMS && !hasTags;
+      let count = { id: 'count', icon: 'ph-list-checks', tone: 'bg-emerald-50 text-emerald-600', label: 'Count', sub: 'Physical count', act: 'homeCountAction()', domId: 'homeCountTile' };
+      if (countSession) {
+        const { scope, counted } = countProgress();
+        count = { ...count, label: 'Continue count', sub: `${counted} of ${scope.length} counted`, bar: scope.length ? Math.round(counted / scope.length * 100) : 0 };
+      }
+      const A = {
+        ics: { id: 'ics', icon: 'ph-file-text', tone: 'bg-violet-50 text-violet-600', label: 'Scan ICS', sub: 'Photo of a custodian slip', act: 'openIcsScanner()' },
+        import: { id: 'import', icon: 'ph-file-arrow-up', tone: 'bg-sky-50 text-sky-600', label: 'Import', sub: 'Excel or CSV list', act: 'openImport()' },
+        count,
+        tag: hasTags ? { id: 'tag', icon: 'ph-scan', tone: 'bg-slate-100 text-slate-700', label: 'Scan tag', sub: 'QR property label', act: 'openScanner()', domId: 'homeQrTile' } : null,
+        release: cust ? { id: 'release', icon: 'ph-hand-arrow-up', tone: 'bg-brand-50 text-brand-600', label: 'Release', sub: 'ICS / RIS to a teacher', act: 'openRelease()' } : null,
+        pr: cust ? { id: 'pr', icon: 'ph-receipt', tone: 'bg-amber-50 text-amber-700', label: 'New PR', sub: 'Purchase Request', act: 'homeNewPr()' } : null,
+        forms: { id: 'forms', icon: 'ph-stamp', tone: 'bg-teal-50 text-teal-700', label: 'Forms', sub: 'COA & accounting', act: 'openCoa()' },
+        ye: { id: 'ye', icon: 'ph-flag-checkered', tone: 'bg-rose-50 text-rose-600', label: 'Year-end', sub: 'Count, renewals, bond', act: 'openYearEnd()' },
+        invite: cust ? { id: 'invite', icon: 'ph-user-plus', tone: 'bg-indigo-50 text-indigo-600', label: 'Invite', sub: 'Teachers, head, assistant', act: 'openInvite()' } : null
+      };
+      const order = setup ? ['ics', 'import', 'count', 'tag', 'release', 'pr', 'forms', 'invite', 'ye'] : ['tag', 'release', 'count', 'pr', 'forms', 'ye', 'invite', 'ics', 'import'];
+      return order.map(k => A[k]).filter(Boolean).slice(0, 8);
+    }
+    function renderHomeTiles() {
+      const box = document.getElementById('homeTiles');
+      if (!box) return;
+      const list = homeActions();
+      box.className = `grid gap-2 ${list.length === 3 || list.length === 6 ? 'grid-cols-3' : 'grid-cols-4'}`;
+      box.dataset.homeActs = list.map(x => x.id).join(',');
+      box.innerHTML = list.map(x => `
+        <button type="button" ${x.domId ? `id="${x.domId}"` : ''} onclick="${x.act}" data-home-act="${x.id}" class="min-w-0 rounded-2xl bg-white border border-slate-200/90 hover:border-brand-300 shadow-sm px-1 pt-2.5 pb-2 flex flex-col items-center text-center gap-1 active:scale-95 transition">
+          <span class="w-10 h-10 rounded-xl ${x.tone} flex items-center justify-center"><i class="ph-bold ${x.icon} text-xl"></i></span>
+          <span class="text-xs font-extrabold text-slate-800 leading-tight">${escapeHTML(x.label)}</span>
+          <span class="${x.bar !== undefined ? 'block' : 'hidden sm:block'} text-[11px] text-slate-500 leading-tight">${escapeHTML(x.sub)}</span>
+          ${x.bar !== undefined ? `<span class="w-4/5 h-1 rounded-full bg-slate-100 overflow-hidden"><span class="block h-full bg-emerald-500 rounded-full" style="width:${x.bar}%"></span></span>` : ''}
+        </button>`).join('');
+    }
+    function homeNewPr() {
+      if (!isCustodianDevice() || !cloud.user || isViewOnly()) { appAlert('Sign in as the property custodian to prepare a Purchase Request.'); return; }
+      openPrDraft({ lines: [], purpose: '', sub: `Appendix 60 · add the items${planOn() ? ', and the activity it is for' : ''}` });
+    }
+
+    // This week (School calendar, where the Plan is on): today to 6 days ahead, everything this
+    // device may see: activities, events, days without classes, exams, who is on leave (the AO),
+    // inventory dates. Overdue things stay in Needs your attention.
+    function homeWeekList(now = Date.now()) {
+      const today = localISODate(new Date(now)), end = calNext(today, 6);
+      return calViewEntries(calSyOf(today)).filter(e => !e.cancelled && !e.proposed && !e.nat && !e.over && e.from <= end && e.to >= today);
+    }
+    function renderHomeWeek() {
+      const box = document.getElementById('homeWeek');
+      if (!box) return;
+      const on = planOn() && isCustodianDevice() && calCanRead();
+      box.classList.toggle('hidden', !on);
+      if (!on) { box.innerHTML = ''; return; }
+      const today = localISODate(), sy = calSyOf(today), y = calYears[sy];
+      const list = !calEvSy || calEvSy === sy ? homeWeekList() : [];   // events loaded for this SY
+      const shown = list.slice(0, 5);
+      const day = iso => (iso <= today ? 'Today' : iso === calNext(today) ? 'Tomorrow' : new Date(iso + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'short', day: 'numeric' }));
+      const n = k => list.filter(e => (k === 'off' ? !!(CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off) : e.kind === k)).length;
+      const parts = [n('activity') && ppaActs(n('activity')), n('event') && plural(n('event'), 'event'), n('off') && `${plural(n('off'), 'day')} without classes`, n('exam') && 'exams',
+        n('leave') && `${n('leave') === 1 ? '1 person' : `${n('leave')} people`} on leave`, n('inv') && plural(n('inv'), 'inventory date')].filter(Boolean);
+      const sub = !calYearsLoaded && !y ? 'Loading…' : !y ? 'Set up the school year on the calendar' : parts.length ? parts.join(' · ') : 'Nothing on the calendar this week';
+      const rows = shown.map(e => {
+        const k = CAL_KINDS[e.kind] || CAL_KINDS.event;
+        const bits = e.kind === 'leave' ? ['Approved leave'] : [CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off ? 'No classes' : k.label, e.time, e.venue].filter(Boolean);
+        const go = e.src === 'ppa' ? `homeWeekOpen('ppa', '${calE(e.id)}')` : `homeWeekOpen('view', '${calE(e.key)}')`;
+        return `<button type="button" onclick="${go}" data-home-week="${calE(e.kind)}" class="w-full text-left flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50">
+          <span class="w-16 shrink-0 text-[11px] font-bold ${e.from <= today ? 'text-teal-700' : 'text-slate-500'}">${calE(day(e.from))}</span>
+          <span class="w-2 h-2 shrink-0 rounded-full ${k.dot}"></span>
+          <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900 truncate">${calE(e.title)}</span><span class="block text-[11px] text-slate-500 truncate">${calE(bits.join(' · '))}</span></span>
+          <i class="ph-bold ph-caret-right text-slate-300"></i></button>`;
+      }).join('');
+      box.innerHTML = `
+        <div class="rounded-2xl bg-white border border-slate-200/90 shadow-sm overflow-hidden" data-home-week-card="${list.length}">
+          <div class="p-3 flex items-center gap-3">
+            <button type="button" onclick="openCalendar()" class="flex-1 min-w-0 flex items-center gap-3 text-left">
+              <span class="w-11 h-11 shrink-0 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center"><i class="ph-bold ph-calendar-dots text-2xl"></i></span>
+              <span class="min-w-0"><span class="block text-sm font-extrabold text-slate-800">This week</span><span class="block text-[11px] text-slate-500 truncate" data-home-week-sub>${calE(sub)}</span></span>
+            </button>
+            ${calCanEdit() && y ? `<button type="button" onclick="homeAddActivity()" id="homeWeekAdd" class="shrink-0 h-10 px-3 rounded-xl bg-teal-700 hover:bg-teal-800 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 transition"><i class="ph-bold ph-plus"></i> Activity</button>` : ''}
+          </div>
+          ${rows ? `<div class="border-t border-slate-100 divide-y divide-slate-100">${rows}</div>` : ''}
+          ${list.length > shown.length ? `<button type="button" onclick="openCalendar()" id="homeWeekMore" class="w-full border-t border-slate-100 min-h-10 text-xs font-bold text-teal-700 hover:bg-slate-50">See all ${list.length} on the calendar</button>` : ''}
+        </div>`;
+    }
+    function homeWeekOpen(view, key) {
+      openCalendar();
+      openCalSheet(view, key);
+    }
+    function homeAddActivity() {
+      if (!calCanEdit()) return;
+      openCalendar();
+      try { setCalPage('plan'); } catch (e) {}
+      ppaNew('activity');
+    }
+
+    // Leave (where the Leave pilot is on): what the AO has to act on, Form 6 on hold, Encode
+    const HOME_LV_ON = ['approved', 'hold', 'review', 'handed', 'signed', 'done'];
+    function renderHomeLeave() {
+      const box = document.getElementById('homeLeaveCard');
+      if (!box) return;
+      const on = leaveOn() && isCustodianDevice();
+      box.classList.toggle('hidden', !on);
+      if (!on) { box.innerHTML = ''; return; }
+      const todo = lvTodo().length, hold = lvList.filter(l => l.status === 'hold').length, today = localISODate();
+      const out = planOn() ? [] : lvList.filter(l => HOME_LV_ON.includes(l.status) && l.from && l.from <= today && (l.to || l.from) >= today);   // with the Plan: in This week
+      const sub = !lvLoaded ? 'Loading…' : [todo ? `${todo} to act on` : 'Nothing waiting', hold && `${hold} Form 6 on hold`, out.length && `${out.map(l => l.name).slice(0, 2).join(', ')}${out.length > 2 ? ` + ${out.length - 2}` : ''} on leave today`].filter(Boolean).join(' · ');
+      box.innerHTML = `
+        <div class="rounded-2xl bg-white border border-slate-200/90 shadow-sm p-3 flex items-center gap-3" data-home-leave="${todo}">
+          <button type="button" onclick="openLeaveView()" class="flex-1 min-w-0 flex items-center gap-3 text-left">
+            <span class="relative w-11 h-11 shrink-0 rounded-xl bg-cyan-50 text-cyan-700 flex items-center justify-center">
+              <i class="ph-bold ph-calendar-check text-2xl"></i>
+              ${todo ? `<span class="absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-rose-500 text-white text-[11px] font-extrabold flex items-center justify-center">${todo > 99 ? '99+' : todo}</span>` : ''}
+            </span>
+            <span class="min-w-0"><span class="block text-sm font-extrabold text-slate-800">Leave <span class="text-[11px] font-bold text-slate-400">CS Form 6</span></span><span class="block text-[11px] text-slate-500 truncate">${escapeHTML(sub)}</span></span>
+          </button>
+          ${lvCanManage() ? `<button type="button" onclick="openLvSheet('apply')" id="homeLeaveEncode" class="shrink-0 h-10 px-3 rounded-xl bg-cyan-700 hover:bg-cyan-800 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 transition"><i class="ph-bold ph-plus"></i> Encode</button>` : ''}
+        </div>`;
     }
 
     // ---- Encode sheet ---------------------------------------------------------
@@ -16829,7 +16933,7 @@
         if (activeMainView === 'REQUESTER' && isTeacherDevice()) { lvTeacherDot(); if (teacherTab === 'leave') renderTeacherLeave(); }
         if (activeMainView === 'HEAD' && isHeadDevice()) renderHeadLeave();
         if (lvSheet) renderLvModal();
-        if (activeMainView === 'HOME' && typeof renderHomeAttention === 'function') renderHomeAttention();
+        if (activeMainView === 'HOME' && typeof renderHomeAttention === 'function') { renderHomeAttention(); renderHomeLeave(); if (planOn()) renderHomeWeek(); }
       } catch (e) { console.warn('leave render', e); }
     }
     // The menu entries (custodian) show only at the pilot school
@@ -18271,6 +18375,7 @@
         if (activeMainView === 'REQUESTER' && isTeacherDevice() && teacherTab === 'calendar') renderTeacherCalendar();
         if (activeMainView === 'HEAD' && isHeadDevice()) renderHeadView();   // the Plan tab, and proposals in Approve
         if (calSheet) renderCalModal();
+        if (activeMainView === 'HOME' && isCustodianDevice()) renderHomeWeek();
       } catch (e) { console.warn('calendar render', e); }
     }
     // The menu entries (custodian) show only at the pilot school
@@ -21311,11 +21416,7 @@
     }
     function calHomeAttention(add, now = Date.now()) {
       if (!planOn() || !calEvLoaded || !calCanRead()) return;
-      const w = calWeek(now);
-      if (w.acts.length || w.evs.length) {
-        const parts = [w.acts.length && ppaActs(w.acts.length), w.evs.length && plural(w.evs.length, 'event'), w.off.length && `${plural(w.off.length, 'day')} without classes`].filter(Boolean);
-        add('slate', 'ph-calendar-check', `This week: ${parts.join(', ')}`, w.acts.concat(w.evs).slice(0, 3).map(e => `${e.title} (${calShort(e.from)})`).join(' · '), 'cal-week', 'openCalendar()');
-      }
+      // This week is its own card on Home (renderHomeWeek)
       const over = ppaOverdueMine(calSyOf(localISODate(new Date(now))), localISODate(new Date(now)));
       if (over.length) add('amber', 'ph-alarm', `Overdue: ${ppaActs(over.length)} to mark Done or move`, over.slice(0, 3).map(p => `${p.title} (${calShort(ppaEndOf(p))})`).join(' · ') + (over.length > 3 ? ` · + ${over.length - 3} more` : ''), 'ppa-overdue', 'ppaOpenOverdue()');
       const wait = ppaWaitingForMe(calSyOf(localISODate(new Date(now))));
@@ -32878,6 +32979,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-home-reorg', date: 'Nov 2026', title: 'A tidier Home for the property custodian', points: [
+        'Quick actions: smaller tiles with more in reach: Scan tag, Release, Count, New PR, Forms, Year-end and Invite. While you are still setting up, Scan ICS and Import come first (they are always in More too).',
+        'Needs your attention no longer repeats what a card already shows (useful life, leave, the calendar, the count you are doing).',
+        'Where the School calendar is on: a This week card with the activities, events, days without classes, who is on leave and inventory dates, and + Activity. Where Leave is on: a Leave card with what to act on and Encode.',
+        'On a laptop, Home uses two columns: search, quick actions and what needs your attention on the left; this week and the cards on the right. Phones and tablets keep one column.'
+      ] },
       { id: '2026-11-plan-links', date: 'Nov 2026', title: 'PRs for activities, leaves and inventory dates on the calendar', points: [
         'New: For activity on the Purchase Request. Pick one of this school year\u2019s approved activities with a budget, and the Purpose is filled in for you (change it if you like). The approval by the School Head works as before.',
         'Each activity now shows Budget, PRs and Left: every PR for it that is not cancelled counts, and the ones still waiting for approval are shown apart. Only the property custodian / AO and the School Head see it. Make a Purchase Request for it from the activity too.',

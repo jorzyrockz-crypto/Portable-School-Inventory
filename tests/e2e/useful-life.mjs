@@ -44,8 +44,7 @@ try {
   const card = await ev(a, () => ({ life: document.getElementById('homeLifeCard').dataset.life, sub: document.getElementById('homeLifeSub').textContent, badge: document.getElementById('homeLifeBadge').textContent }));
   check(card.life === `${st.p}/${st.s}` && st.p >= 1 && st.s >= 1, `card: ${card.sub}`);
   check(/past/.test(card.sub) && /ending within 12 months/.test(card.sub) && /to replace/.test(card.sub) && card.badge === String(st.p), 'past · ending within 12 months · to replace, red badge');
-  const row = await ev(a, () => (document.querySelector('[data-hatt="life"]') || {}).textContent || '');
-  check(/past (its|their) useful life · still serviceable\?/.test(row.replace(/\s+/g, ' ')), `Needs your attention: ${row.replace(/\s+/g, ' ').trim().slice(0, 120)}`);
+  check(await ev(a, () => !document.querySelector('[data-hatt="life"]') && !homeAttention().some(x => x.key === 'life')), 'Needs your attention does not repeat the Useful life card');
 
   out('3 a teacher’s phone: Past its useful life · Working / Not working');
   await ev(t, () => { switchMainView('REQUESTER'); setTeacherTab('items'); });
