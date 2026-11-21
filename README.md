@@ -383,7 +383,7 @@ Books are scattered across rooms, so the app keeps one list of every title and *
 - **Lost and disposal.** *Report lost* takes copies off the count onto the **Summary of Losses**. Unserviceable copies are disposed of with the School Head's approval (or *signed on paper* when there is no head in the app yet).
 - **Prints:** book inventory, Book Issuance List, loan ledger, overdue list, accession register, spine labels, Summary of Losses, disposal list, and the class sheet.
 
-**The Library (every teacher).** Teachers get a fourth tab, **Library**: search by title, author, subject or ISBN and see *free / total* in each place (*Library corner 3/4 · Grade 4 (Ana Reyes) 2/2*). **Borrow** sends the request to whoever keeps those copies: the teacher whose room it is, the librarian, or the custodian for places without a keeper. The keeper **Lends**, **Declines** (with a reason) or confirms the return (the borrower can tap *I returned it*), and both sides are notified, with a reminder once a loan is overdue. Teachers read only a small catalogue (`bookIndex`, a few documents for the whole school) kept current by the custodian's and librarian's devices. Textbooks are not lent by default (*Teachers may borrow it* on the title).
+**The Library (every teacher).** Teachers get a **Library** page (under More on a phone, in the sidebar on a computer): search by title, author, subject or ISBN and see *free / total* in each place (*Library corner 3/4 · Grade 4 (Ana Reyes) 2/2*). **Borrow** sends the request to whoever keeps those copies: the teacher whose room it is, the librarian, or the custodian for places without a keeper. The keeper **Lends**, **Declines** (with a reason) or confirms the return (the borrower can tap *I returned it*), and both sides are notified, with a reminder once a loan is overdue. Teachers read only a small catalogue (`bookIndex`, a few documents for the whole school) kept current by the custodian's and librarian's devices. Textbooks are not lent by default (*Teachers may borrow it* on the title).
 
 **Librarian.** **Books & Library → Librarian** makes a teacher the librarian. They keep their teacher account and get a **Library desk**: add books, manage places, lend and take returns. They don't see equipment, supplies, purchase requests, money or learner names, and they don't issue textbooks to classes. When the librarian is removed, the library places they kept and the open requests come back to the custodian.
 
@@ -433,7 +433,7 @@ The teacher is told at each step and sees a progress bar; the AO is told about n
 - **Receive** shows the days left and what remains after the leave. **Prepare Form 6** fills in 7.A from the card: VL/SL in their columns, and service credits in the first column, named on the memo line.
 - **Adjust** (plus or minus, with a reason) and **void** a wrong line (with a reason; it stays on the card, struck out).
 - **Print leave card**: every line with earned, used and the running balance for each kind of credit, the balance as of today, and *Certified correct*.
-- Teachers see **My leave credits** on the Leave tab (their own card, view only, with Print), the days left under each option when applying, and a notification when credits are added.
+- Teachers see **My leave credits** on the Leave page (their own card, view only, with Print), the days left under each option when applying, and a notification when credits are added.
 
 Data: `schools/{schoolId}/leaves/{id}` and `schools/{schoolId}/leaveCards/{uid or id}` (written by the AO only; a teacher reads their own). The School Head's decision goes through `approvals` (kind `leave`). **Publish `firestore.rules` again** to turn it on. 
 **₱250 log** (Leave page → ₱250 tab): whole-day absences paid with ₱250 (up to 2 a month for each person), by month and person. The AO taps **Paid** when the money is handed in (amount and date), then **Turn over to the Faculty President** (name and date) and prints the turnover list for signing. Stored on the application as `p250 { amount, paidISO, turnISO, turnTo }`.
@@ -507,7 +507,7 @@ No new rules: `dashboard/summary` is read only by staff, viewers and the head, w
 
 ### School stock and “I took this” (teachers)
 
-Teachers kept asking *“Sir, meron pa ba nito?”*. The teacher's phone now has a third tab, **Stock**:
+Teachers kept asking *“Sir, meron pa ba nito?”*. The teacher's phone now has a **School stock** page (under More; in the sidebar on a computer):
 
 - Every **supply** with its category icon and the exact number left (*85 ream left*), searchable, with **Low** and **Out** filters. Equipment, prices and holders are never shown. The custodian's devices publish only the code, name, category, unit and quantity, all supplies in one document (`schools/{id}/stock/_all`), so opening the Stock tab costs a teacher one read. Teachers still read the older per-supply documents (`stock/{code}`) until the custodian's phone has updated.
 - **Request** on a line adds it to one request (tap again for one more). The bar at the bottom, **Review & send · 3 items**, opens it to check the amounts and send everything together.
@@ -832,10 +832,11 @@ The inventory committee, COA representative, fund cluster and similar names are 
 
 ## A teacher's My Items
 
-On a teacher's phone the screen has two tabs: **My Items** and **Requests**.
+On a teacher's phone the tabs are at the bottom, like the custodian's: **Today** (opens first), **My Items**, **Requests**, **Calendar** (where the School calendar is on) and **More** (**School stock**, **Library**, **Leave** where it is on, and the **Library desk** for the librarian). Pages opened from More show *‹ More* at the top. Change my name, Reset and Leave school stay at the bottom of every page.
 
+- **Today:** *Needs your attention* (below) and **Supply requests** (the number in progress, **+ Request** and the latest 3) on the left; **This week** from the School calendar (where it is on), **My Items** (items, value, slips to mark Received), **Library** and **Leave** (with **+ Apply**, where it is on) on the right. A line that points into My Items opens it there.
 - **At a glance** (top of My Items): tiles for the items under the teacher's name, their value, supplies received this school year (June to May) and library books borrowed (shown only when there are some).
-- **Needs your attention:** slips to mark *Received*, items the custodian asks back, the year-end count, reports waiting for the custodian, items in repair or lost, ICS / PAR older than 3 years (the custodian renews them), overdue library books, books issued to them and requests to borrow from their room. Tapping a line goes there. With nothing waiting it shows *All clear*. Everything comes from what the phone already reads: no extra reads, no rules change.
+- **Needs your attention** (on Today): slips to mark *Received*, items the custodian asks back, the year-end count, reports waiting for the custodian, items in repair or lost, ICS / PAR older than 3 years (the custodian renews them), overdue library books, books issued to them and requests to borrow from their room. Tapping a line goes there. With nothing waiting it shows *All clear*. Everything comes from what the phone already reads: no extra reads, no rules change.
 - **Leaving the school? Clearance** (bottom): **Return everything** sends one return request per slip for every unit that can be returned (not lost ones), the same as tapping *Return* on each. The steps, **Print my list** (Summary of Accountability), and, once nothing is left, a reminder to ask the custodian for the certificate (Teachers → their page → **Clearance**).
 - **New from the property custodian:** each RIS or ICS released to the teacher, with a **Received** button. The custodian's records show who confirmed.
 - **Accountable equipment · ICS:** every unit under the teacher's name, with its property number, serial, ICS no. and value. Returns are subtracted. Each unit has two actions:
@@ -859,7 +860,7 @@ Teachers create only their own reports and read only their own. Only the custodi
 
 ### On a computer
 
-On a computer or a tablet held sideways (1000 px and wider), the teacher's account uses a wider page, the same width as the School Head's (72rem), with the tabs across the top. **My Items** has two columns. Equipment and supplies are on the left: each item is one row, with **Report a problem** and **Return** on the right, and RIS slips sit side by side. The totals, *Needs your attention*, slips to mark **Received**, the count, **Print my list** and **Clearance** are on the right. **Stock**, **Requests** and **Library** show their cards in columns. Phones and upright tablets look the same as before.
+On a computer or a tablet held sideways (1000 px and wider), the teacher's account has the custodian's **sidebar** on the left: Today, My Items, Requests and Calendar, then *School*: School stock, Library and Leave (no More). **Today** has two columns, and so does **My Items**. Equipment and supplies are on the left: each item is one row, with **Report a problem** and **Return** on the right, and RIS slips sit side by side. The totals, slips to mark **Received**, the count, **Print my list** and **Clearance** are on the right. **Stock**, **Requests** and **Library** show their cards in columns. Phones and upright tablets look the same as before.
 
 ## Released to teachers (overview)
 
@@ -1060,7 +1061,7 @@ node teachers-attention.mjs         # Teachers page: Needs your attention for ev
 node useful-life.mjs                # useful life: end dates (date acquired / ICS date, est.), Home card + attention row, the sheet (Still serviceable, Unserviceable, Dates, Use the ICS date, Print), monthly notification, teacher Working / Not working, Teachers page, School Head
 node item-preview.mjs               # the Item preview: computer side panel beside the list, chips, Overview / People / History tabs, Edit details in place (Save, Cancel, Esc), More menu, openers (Catalog, notification, teacher's page, Useful life, See everything), view only, phone bottom sheet
 node unsynced-marks.mjs             # Not synced yet marks: offline edit marks only that row (Inventory, Catalog, Item preview chip), top chip counts it, offline release slip + delivery marked, all clear when back online
-node teacher-dashboard.mjs          # teacher's My Items: tiles, Needs your attention (slips, asked back, reports, repair, old slips, overdue books), Clearance: Return everything, then nothing under their name
+node teacher-dashboard.mjs          # teacher's My Items tiles, Needs your attention on Today (slips, asked back, reports, repair, old slips, overdue books), Clearance: Return everything, then nothing under their name
 node home-attention.mjs             # custodian Home: Needs your attention (lost + relief days, waiting requests/reports, unconfirmed slips, ICS renewal, bond, repairs, stock), Show all, taps, hidden for teachers
 # (make-screenshots.mjs and make-banner.mjs redraw images; npm test skips them)
 # or: npm test (all suites)

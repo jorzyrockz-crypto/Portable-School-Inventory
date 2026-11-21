@@ -524,8 +524,8 @@ try {
   await sleep(250);
   await a.screenshot({ path: `${SHOTS}/tour-dark.png` });
   await ev(a, () => { document.getElementById('tourModal').classList.add('hidden'); });
-  const t2Shot = await ev(t2, () => { setTheme('dark'); setTeacherTab('items'); return getComputedStyle(document.getElementById('rqTab-items')).backgroundColor; });
-  check(t2Shot === 'rgb(58, 74, 107)', 'teacher tabs: selected tab stands out in dark mode');
+  const t2Shot = await ev(t2, () => { setTheme('dark'); setTeacherTab('items'); const b = document.getElementById('rqTab-items'), o = document.getElementById('rqTab-requests'); return getComputedStyle(b).color !== getComputedStyle(o).color && !b.querySelector('.tab-ind').classList.contains('opacity-0'); });
+  check(t2Shot, 'teacher tabs: selected tab stands out in dark mode');
   await sleep(250);
   await t2.screenshot({ path: `${SHOTS}/teacher-items-dark.png` });
   // Signed-out phone in dark mode: the sign-in art is the night version.

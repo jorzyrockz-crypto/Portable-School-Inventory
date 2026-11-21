@@ -9,8 +9,8 @@ import { waitNode, custodian, teacher } from './lib/school-setup.mjs';
 const backend = createBackend();
 const reports = () => backend.docs('schools/').filter(d => /\/teacherReports\//.test(d.path));
 const P = '45111609-MM-P01', S = '12191601-AL-E04';
-const pane = page => ev(page, () => document.getElementById('rqItemsPane').innerText);
-const attKeys = page => ev(page, () => [...document.querySelectorAll('#tOverview [data-t-att]')].map(e => e.dataset.tAtt));
+const pane = page => ev(page, () => ['rqTodayPane', 'rqItemsPane'].map(id => document.getElementById(id).textContent.replace(/\s+/g, ' ')).join(' '));   // Needs your attention is on Today
+const attKeys = page => ev(page, () => [...document.querySelectorAll('#rqTodayPane [data-t-att]')].map(e => e.dataset.tAtt));
 const tile = (page, k) => ev(page, k => (document.querySelector(`[data-t-tile="${k}"]`) || {}).innerText || '', k);
 
 async function release(a, uid, lines) {

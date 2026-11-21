@@ -1,4 +1,4 @@
-// A teacher's account on a computer (Nov 2026): the same tabs on a wider page, sized like the School Head's. My Items puts
+// A teacher's account on a computer (Nov 2026): the custodian's sidebar (Today first) and Today in two columns. My Items puts
 // equipment and supplies on the left (Report a problem / Return on each item's row) and the
 // overview, slips to receive, the count and clearance on the right; Stock, Requests and Library
 // show their cards in columns. Phones keep one column in the same order as before.
@@ -43,10 +43,10 @@ try {
   await sleep(400);
   await ev(t, () => setTeacherTab('items'));
   await sleep(300);
-  const page = await box(t, '#viewRequester'), tabs = await box(t, '#rqTabs'), main = await box(t, '.t-main'), side = await box(t, '.t-side'), foot = await box(t, '.t-foot');
+  const page = await box(t, '#viewRequester'), tabs = await box(t, '#rqTab-today'), more = await ev(t, () => getComputedStyle(document.getElementById('rqTab-more')).display), main = await box(t, '.t-main'), side = await box(t, '.t-side'), foot = await box(t, '.t-foot');
   const head = await ev(t, () => { const v = document.getElementById('viewHead'), was = v.classList.contains('hidden'); v.classList.remove('hidden'); const w = v.getBoundingClientRect().width; if (was) v.classList.add('hidden'); return w; });
   check(page.w > 1100 && Math.abs(page.w - head) < 1, `wider page, the same width as the School Head's (${Math.round(page.w)} px · head ${Math.round(head)} px)`);
-  check(tabs.w > page.w - 40, `the tabs go across the page, as on the School Head's (${Math.round(tabs.w)} px)`);
+  check(tabs.r <= page.l + 1 && more === 'none' && await ev(t, () => !!document.getElementById('rqTab-stock').offsetParent), `the sidebar on the left with every page, no More (${Math.round(tabs.r)} · ${Math.round(page.l)})`);
   check(main.r <= side.l && main.w > side.w * 1.8 && Math.abs(main.t - side.t) < 4, `equipment and supplies on the left (${Math.round(main.w)} px), the rest on the right (${Math.round(side.w)} px)`);
   check(foot.l >= side.l - 1 && foot.t >= side.b, 'Clearance under the right column');
   const inSide = await ev(t, () => ['#tOverview', '#tAckBox', '#tPrintMine'].every(s => document.querySelector('.t-side ' + s)) && !!document.querySelector('.t-main #tEquipList'));
@@ -60,6 +60,11 @@ try {
   const ris = await ev(t, () => { const r = [...document.querySelectorAll('.t-ris')].map(e => e.getBoundingClientRect()); return r.length === 2 && Math.abs(r[0].top - r[1].top) < 2 && r[0].right <= r[1].left; });
   check(ris, 'RIS slips side by side');
   check(await ev(t, () => document.documentElement.scrollWidth <= innerWidth), 'the page does not scroll sideways');
+
+  await ev(t, () => setTeacherTab('today'));
+  await sleep(300);
+  const cols = await ev(t, () => { const c = [...document.querySelectorAll('#rqTodayPane .t-today > *')].map(e => e.getBoundingClientRect()); return c.length === 2 && c[0].right <= c[1].left && Math.abs(c[0].top - c[1].top) < 2; });
+  check(cols, 'Today: two columns on a computer');
 
   out('4 computer: Stock and Requests in columns');
   await ev(t, () => setTeacherTab('stock'));
@@ -75,6 +80,8 @@ try {
   await t.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await ev(t, () => setTeacherTab('items'));
   await sleep(300);
+  const ph = await ev(t, () => { setTeacherTab('today'); const c = [...document.querySelectorAll('#rqTodayPane .t-today > *')].map(e => e.getBoundingClientRect()); setTeacherTab('items'); return getComputedStyle(document.getElementById('rqTab-more')).display !== 'none' && getComputedStyle(document.getElementById('rqTab-stock')).display === 'none' && c[1].top >= c[0].bottom; });
+  check(ph, 'phone: bottom tabs with More, Today in one column');
   const back = await ev(t, () => { const m = document.querySelector('.t-main').getBoundingClientRect(), s = document.querySelector('.t-side').getBoundingClientRect(); return s.bottom <= m.top + 1 && Math.abs(m.width - s.width) < 2; });
   check(back, 'phone: one column again');
 } catch (e) {
