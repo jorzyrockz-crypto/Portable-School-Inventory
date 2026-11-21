@@ -61,13 +61,17 @@ try {
   check(await ev(h, () => loadNotifs().items.filter(n => /has waited/.test(n.title)).length === 1), 'reminded once only');
 
   out('3 the head: property, spending, trends, usage, who holds what');
-  const tabs = await ev(h, () => ({ on: !document.getElementById('hdTabs').classList.contains('hidden'), n: document.querySelectorAll('#hdTabs [role=tab]:not(.hidden)').length,
-    sel: document.querySelector('#hdTabs [aria-selected=true]')?.id, count: document.getElementById('hdApproveCount').textContent, title: document.getElementById('hdTitle').textContent }));
-  check(tabs.on && tabs.n === 5 && tabs.sel === 'hdTab-approve' && tabs.count === '2' && tabs.title === 'For your approval', `tabs: Approve (2) · School · Items · People · History, Approve first (${JSON.stringify(tabs)})`);
-  check(await ev(h, () => document.querySelector('[data-hd-pane="school"]').classList.contains('hidden') && !document.querySelector('[data-hd-pane="approve"]').classList.contains('hidden')), 'only the Approve pane shows');
+  const tabs = await ev(h, () => ({ on: !document.getElementById('tabBar').classList.contains('hidden') && !document.getElementById('hdNav').classList.contains('hidden') && document.getElementById('cuNav').classList.contains('hidden'),
+    bottom: [...document.querySelectorAll('#hdNav .tab-btn')].filter(b => getComputedStyle(b).display !== 'none').map(b => b.dataset.hdTab).join(),
+    sel: document.querySelector('#hdNav [aria-selected=true]')?.id, count: document.getElementById('hdApproveCount').textContent, title: document.getElementById('hdTitle').textContent }));
+  check(tabs.on && tabs.bottom === 'today,approve,school,more' && tabs.sel === 'hdTab-today' && tabs.count === '2' && tabs.title === 'Today', `bottom tabs: Today · Approve (2) · School · More, Today first (${JSON.stringify(tabs)})`);
+  check(await ev(h, () => !document.querySelector('[data-hd-pane="today"]').classList.contains('hidden') && document.querySelector('[data-hd-pane="approve"]').classList.contains('hidden')), 'only the Today pane shows');
+  const today = await ev(h, () => ({ wait: document.querySelector('[data-hd-today-wait]').dataset.hdTodayWait, all: (document.querySelector('[data-hd-today-all]') || {}).dataset?.hdTodayAll, rows: document.querySelectorAll('[data-hd-pane="today"] [data-hd-today-row]').length, att: !!document.querySelector('[data-hd-pane="today"] [data-head-attention]'), cards: [...document.querySelectorAll('[data-hd-today]')].map(e => e.dataset.hdToday).join() }));
+  check(today.wait === '2' && today.all === '2' && today.rows === 2 && today.att && today.cards === 'prs,school', `Today: Needs your attention, Waiting for you 2 (Approve all 2), PRs and School property cards (${JSON.stringify(today)})`);
+  check(await ev(h, () => !document.querySelector('[data-hd-pane="approve"] [data-head-attention]')), 'Needs your attention is not repeated in Approve');
   await h.click('#hdTab-school');
   check(await ev(h, () => !document.querySelector('[data-hd-pane="school"]').classList.contains('hidden') && document.querySelector('[data-hd-pane="approve"]').classList.contains('hidden') && document.getElementById('hdTitle').textContent === 'School property'), 'School tab: property, spending, trends (title School property)');
-  check(await ev(h, () => document.querySelector('#hdTabs [aria-selected=true]').id === 'hdTab-school' && document.getElementById('hdTab-school').classList.contains('seg-on') && !document.getElementById('hdTab-approve').classList.contains('seg-on')), 'School tab marked selected');
+  check(await ev(h, () => document.querySelector('#hdNav [aria-selected=true]').id === 'hdTab-school' && document.getElementById('hdTab-school').classList.contains('text-brand-600') && !document.getElementById('hdTab-approve').classList.contains('text-brand-600')), 'School tab marked selected');
   const view = await ev(h, () => ({
     health: (document.querySelector('[data-head-health]') || {}).textContent || '',
     spend: (document.querySelector('[data-head-spend]') || {}).textContent || '',
@@ -79,7 +83,10 @@ try {
   check(view.trend && view.usage.includes(supply.name) && /Ana Reyes/.test(view.usage), 'trend bars and who uses the most supplies');
   await h.click('[data-head-use="yr"]');
   check(await ev(h, () => headUseYr && /This year/.test(document.querySelector('[data-head-usage]').textContent)), 'This year toggle');
-  await h.click('#hdTab-people');
+  await h.click('#hdTab-more');
+  check(await ev(h, () => document.getElementById('hdTitle').textContent === 'More' && document.querySelectorAll('[data-hd-more-row]').length === 4 && document.getElementById('hdBack').classList.contains('hidden')), 'More: Inventory, Who holds what, Your decisions, School history');
+  await h.click('[data-hd-more-row="people"] button');
+  check(await ev(h, () => !document.getElementById('hdBack').classList.contains('hidden') && document.getElementById('hdTab-more').getAttribute('aria-selected') === 'true'), 'phone: ‹ More back button, More stays selected');
   check(await ev(h, () => !!document.querySelector('[data-hd-pane="people"] [data-dash-holders][open]') && document.getElementById('hdTitle').textContent === 'Who holds what'), 'People tab: who holds what, already open');
   check(await ev(h, () => !document.querySelector('[data-hd-pane="school"] [data-dash-holders]')), 'not repeated under School');
   await ev(h, () => { document.querySelector('[data-dash-holder="0"]').open = true; });
@@ -101,7 +108,8 @@ try {
   await until(h, () => !document.querySelector('[data-head-approve-all]') && !!document.querySelector('[data-head-decided]'), 'decided list');
   check(await ev(h, () => !!document.querySelector('[data-hd-pane="history"] [data-head-decided]') && !!document.querySelector('[data-hd-pane="history"] [data-head-history]')), 'History tab: recently decided and School history');
   check(await ev(h, () => document.getElementById('hdApproveCount').classList.contains('hidden')), 'Approve count gone with nothing waiting');
-  await h.click('#hdTab-history');
+  await h.click('#hdTab-more');
+  await h.click('[data-hd-more-row="history"] button');
   const sp = await ev(h, () => document.querySelector('[data-head-spend]').textContent.replace(/\s+/g, ' '));
   check(/₱8,400\.00/.test(sp) || /₱8\.4K/.test(sp), `spending now counts them as approved (${sp.slice(0, 90)})`);
   check(await ev(h, () => !!document.querySelector('[data-spend-avg]')), 'average time to decide shown');
@@ -129,10 +137,10 @@ try {
   const sc = await colsOf('[data-hd-pane="school"] .hd-grid'); const scd = await ev(h, () => { const e = document.querySelector('[data-hd-pane="school"] .hd-grid'); return [getComputedStyle(e).display, getComputedStyle(e).gridTemplateColumns, e.parentElement.className, document.querySelectorAll('[data-hd-pane="school"] .hd-grid').length]; });
   check(sc === 2, `laptop: School cards in two columns (${sc} ${JSON.stringify(scd)})`);
   await h.click('#hdTab-people');
-  check(await colsOf('[data-hd-pane="people"] .hd-holders') === 2, 'laptop: people in two columns');
-  await h.click('#hdTab-approve');
-  check(await colsOf('[data-hd-pane="approve"] .hd-grid') === 2, 'laptop: Needs your attention beside Waiting for you');
-  check(await ev(h, () => !document.getElementById('hdTabs').classList.contains('hidden')), 'laptop: tabs too');
+  check(await colsOf('[data-hd-pane="people"] .hd-holders') === 2, 'laptop: people in two columns (Who holds what in the sidebar)');
+  await h.click('#hdTab-today');
+  check(await colsOf('[data-hd-pane="today"] .hd-grid') === 2, 'laptop: Today in two columns');
+  check(await ev(h, () => { const n = document.getElementById('tabBar').getBoundingClientRect(), v = document.getElementById('viewHead').getBoundingClientRect(); return n.height > 500 && n.width < 300 && v.left >= n.right - 1 && getComputedStyle(document.getElementById('hdTab-more')).display === 'none' && getComputedStyle(document.getElementById('hdTab-history')).display !== 'none'; }), 'laptop: a sidebar like the custodian’s (every page listed, no More)');
   await h.screenshot({ path: '/tmp/head_laptop.png' });
   await h.click('#hdTab-school');
   await sleep(400);
