@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="f8573b8c18e1">
+  <meta name="app-version" content="3f6d5734e183">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -2201,6 +2201,7 @@
     <div id="calModalBox" role="dialog" aria-modal="true" class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 safe-pad max-h-[94vh] overflow-y-auto">
       <div id="calModalBody" class="space-y-4"></div>
     </div>
+    <div id="ppaPhotoBig" class="hidden fixed inset-0 z-[60] bg-black/85 flex items-center justify-center p-4" onclick="this.classList.add('hidden')" role="dialog" aria-label="Photo"></div>
   </div>
   <div id="lvModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeLvModal()" onkeydown="if (event.key === 'Escape') closeLvModal()">
     <div id="lvModalBox" role="dialog" aria-modal="true" class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 safe-pad max-h-[94vh] overflow-y-auto">
@@ -18244,7 +18245,7 @@
         calError = '';
         calRender();
         notifFromCalEvents(snap.metadata, sy);
-        try { notifFromPpas(snap.metadata, sy); if (calEvLoaded) notifPpaTomorrow(); } catch (e) { console.warn('plan notifications', e); }
+        try { notifFromPpas(snap.metadata, sy); if (calEvLoaded) { notifPpaTomorrow(); notifPpaOverdue(); } } catch (e) { console.warn('plan notifications', e); }
       }, err => { console.warn('calendar events', err); calError = cloudErrorText(err); calEvLoaded = true; calRender(); });
     }
     function calStop() {
@@ -18431,6 +18432,7 @@
           </div>` : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500" data-cal-none><i class="ph-duotone ph-calendar-dots text-3xl text-slate-400"></i><p class="mt-1 font-bold text-slate-700 text-sm">The calendar for ${calSyText(sy)} is not set up yet</p><p>The School Head or the AO sets it up.</p></div>`) : ''}
         ${y ? calStripHTML(y) : ''}
         ${calWeekHTML()}
+        ${ppaOverdueHTML(sy)}
         ${edit && y && starter && (y.depedV || 1) < starter.v ? `<button type="button" onclick="openCalSheet('deped')" id="calDepedBtn" class="w-full text-left rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center gap-3"><i class="ph-bold ph-arrows-clockwise text-xl text-amber-700 shrink-0"></i><span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-amber-900">The DepEd calendar was updated</span><span class="block text-[11px] text-amber-800">Add the missing DepEd dates · your own dates stay</span></span><i class="ph-bold ph-caret-right text-amber-700"></i></button>` : ''}
         ${edit && (y || !setup) ? `<div class="grid grid-cols-2 gap-2">
           <button onclick="openCalSheet('event')" id="calAddEvent" class="h-12 rounded-2xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-calendar-plus text-lg"></i> Add an event</button>
@@ -19023,13 +19025,14 @@
       if (v !== 'view' && v !== 'classdays' && v !== 'ppa' && calSheet.drawn) return;   // forms keep what is being typed
       const box = document.getElementById('calModalBox');
       if (box) box.classList.toggle('cal-wide', v === 'print');   // the print sheet: preview and options side by side on computers
-      const html = v === 'print' ? cprPrintSheetHTML() : v === 'ppa' ? ppaViewHTML() : v === 'ppaForm' ? ppaFormHTML() : v === 'event' ? calEventHTML() : v === 'date' ? calDateHTML() : v === 'year' ? calYearHTML() : v === 'classdays' ? calClassDaysHTML() : v === 'deped' ? calDepedHTML() : v === 'pdf' ? cpdfHTML() : calViewSheetHTML();
+      const html = v === 'print' ? cprPrintSheetHTML() : v === 'ppa' ? ppaViewHTML() : v === 'ppaForm' ? ppaFormHTML() : v === 'ppaDone' ? ppaDoneHTML() : v === 'ppaMove' ? ppaMoveHTML() : v === 'ppaReport' ? ppaReportHTML() : v === 'event' ? calEventHTML() : v === 'date' ? calDateHTML() : v === 'year' ? calYearHTML() : v === 'classdays' ? calClassDaysHTML() : v === 'deped' ? calDepedHTML() : v === 'pdf' ? cpdfHTML() : calViewSheetHTML();
       if (!html) { closeCalModal(); return; }
       body.innerHTML = html;
       calSheet.drawn = true;
       if (v === 'date') calDateKind();
       if (v === 'event') calEventAllDay();
       if (v === 'ppaForm') { ppaAllDayChanged(); ppaSourceChanged(); }
+      if (v === 'ppaDone') ppaDonePaint();
       if (v === 'print') requestAnimationFrame(cprPreview);
     }
     const calHead = (icon, title, sub) => `
@@ -20070,6 +20073,8 @@
       const programs = live.filter(p => p.kind === 'program'), projects = live.filter(p => p.kind === 'project');
       const mine = ppaFilter === 'mine';
       const nMine = acts.filter(p => ppaIsMine(p)).length;
+      const overList = ppaOverdueMine(sy), over = ppaFilter === 'overdue';
+      const nDone = counted.filter(p => p.status === 'done').length;
       const tile = (n, label, k) => `<div class="rounded-xl bg-white border border-slate-200 px-2 py-2 text-center" data-ppa-tile="${k}"><span class="block ${String(n).length > 6 ? 'text-sm sm:text-lg' : 'text-lg'} font-extrabold font-mono leading-tight whitespace-nowrap tracking-tight">${n}</span><span class="block text-[10px] font-bold uppercase text-slate-500 leading-tight">${label}</span></div>`;
       const chip = (k, label) => `<button type="button" onclick="setPpaFilter('${k}')" data-ppa-filter="${k}" aria-pressed="${ppaFilter === k}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${ppaFilter === k ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700'}">${label}</button>`;
       // Add buttons follow the plan: Program · Project · Activity. Program is the main one until the year has a program; then Activity (added most often)
@@ -20121,13 +20126,17 @@
         <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-3 space-y-2.5" data-ppa-summary>
           <div class="grid grid-cols-4 gap-1.5">${tile(programs.length, 'Programs', 'programs')}${tile(projects.length, 'Projects', 'projects')}${tile(counted.length, 'Activities', 'activities')}${tile(budget ? `₱${Math.round(budget).toLocaleString('en-PH')}` : '₱0', 'Budget', 'budget')}</div>
           ${Object.keys(bySrc).length ? `<div class="flex flex-wrap gap-1.5" data-ppa-sources>${PPA_SOURCES.filter(s => bySrc[s[0]]).map(s => `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700" data-ppa-src="${s[0]}">${s[1]} ${ppaPeso(bySrc[s[0]])}</span>`).join('')}</div>` : ''}
+          ${counted.length ? `<div class="flex items-center gap-2" data-ppa-progress="${nDone}"><span class="min-w-0 flex-1"><span class="block text-[11px] text-slate-600"><b class="text-emerald-700">${nDone} of ${calE(ppaActs(counted.length))} done</b>${overList.length && edit ? ` · <b class="text-amber-700">${overList.length} overdue</b>` : ''}</span><span class="block h-1.5 mt-1 rounded-full bg-slate-100 overflow-hidden"><span class="block h-full bg-emerald-500" style="width:${Math.round(nDone / counted.length * 100)}%"></span></span></span>
+            ${edit ? `<button type="button" onclick="ppaReportOpen()" id="ppaReportBtn" class="shrink-0 h-9 px-3 rounded-xl bg-white border border-slate-200 hover:border-teal-300 text-xs font-bold text-slate-800 flex items-center gap-1.5"><i class="ph-bold ph-chart-bar"></i> Monitoring report</button>` : ''}</div>` : ''}
         </div>
         ${edit ? `<div class="grid grid-cols-3 gap-2" data-ppa-add="${programs.length ? 'activity' : 'program'}">${addBtn('program', 'Program', 'ph-plus', !programs.length, 'ppaAddProgram')}${addBtn('project', 'Project', 'ph-plus', false, 'ppaAddProject')}${addBtn('activity', 'Activity', 'ph-plus', !!programs.length, 'ppaAddActivity')}</div>`
           : propose ? `<div class="space-y-1.5"><div class="grid grid-cols-2 gap-2">${addBtn('project', 'Propose a project', 'ph-paper-plane-tilt', false, 'ppaProposeProject')}${addBtn('activity', 'Propose an activity', 'ph-paper-plane-tilt', true, 'ppaProposeActivity')}</div>
               <p class="text-[11px] text-slate-500 px-1">The School Head approves it first; then it joins the plan and the calendar.</p></div>` : ''}
         ${waiting.length ? `<div class="space-y-2" data-ppa-waiting="${waiting.length}">${h(edit ? `For approval · ${waiting.length}` : `Your proposals · ${waiting.length}`)}${waiting.map(p => ppaPropCardHTML(p)).join('')}</div>` : ''}
-        ${!empty ? `<div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('mine', `Mine${nMine ? ` · ${nMine}` : ''}`)}</div>` : ''}
-        ${!calEvLoaded && empty ? '<p class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">Loading…</p>' : empty ? `
+        ${over ? '' : ppaOverdueHTML(sy)}
+        ${!empty ? `<div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('mine', `Mine${nMine ? ` · ${nMine}` : ''}`)}${overList.length || over ? chip('overdue', `Overdue${overList.length ? ` · ${overList.length}` : ''}`) : ''}</div>` : ''}
+        ${over && !empty ? `<div class="space-y-1.5" data-ppa-overdue-list="${overList.length}">${overList.length ? `<p class="text-[11px] text-slate-500 px-1">${edit ? 'Past their date and not marked Done. Open one to mark it Done with the accomplishment, or move it.' : 'Past their date and not marked Done. Open one to write what was done.'}</p>${overList.map(ppaActRowHTML).join('')}` : '<p class="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-center text-xs font-bold text-emerald-800" data-ppa-overdue-none><i class="ph-bold ph-check-circle"></i> Nothing overdue</p>'}</div>` : ''}
+        ${over && !empty ? '' : !calEvLoaded && empty ? '<p class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">Loading…</p>' : empty ? `
           <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500" data-ppa-empty>
             <i class="ph-duotone ph-tree-structure text-3xl text-slate-400"></i>
             <p class="mt-1 font-bold text-slate-700 text-sm">No programs, projects or activities yet for ${calSyText(sy)}</p>
@@ -20159,7 +20168,7 @@
           <span class="min-w-0 flex-1"><span class="block text-[13px] font-bold text-slate-900 leading-snug ${cancelled ? 'line-through' : ''}">${calE(p.title)}</span>
             <span class="block text-[11px] text-slate-500 truncate">${calE(bits.join(' · '))}${p.sending ? ' · <i class="ph-bold ph-cloud-arrow-up"></i>' : ''}</span></span>
           <span class="shrink-0 text-right">${Number(p.budget) > 0 ? `<span class="block text-[11px] font-bold font-mono text-slate-800">${ppaPeso(p.budget)}</span><span class="block text-[10px] text-slate-500">${calE(ppaSrc(p.source))}</span>` : ''}
-            ${cancelled ? '<span class="block text-[10px] font-bold text-rose-700">Cancelled</span>' : p.status === 'done' ? '<span class="block text-[10px] font-bold text-emerald-700">Done</span>' : mine ? '<span class="block text-[10px] font-bold text-teal-700">Yours</span>' : ''}</span>
+            ${ppaStatusBadge(p)}</span>
         </button>`;
     }
     // A proposal: what changes (for a suggested change), the note when returned, and the buttons
@@ -20226,7 +20235,10 @@
           acts.push(btn('Withdraw', 'ph-x', `ppaWithdraw('${p.id}')`, '', 'data-ppa-act="withdraw"'));
         } else if (edit && !p.changeOf) acts.push(btn('Change before deciding', 'ph-pencil-simple', `ppaEdit('${p.id}')`, '', 'data-ppa-act="edit"'));
       } else if (edit) {
-        acts.push(btn('Change', 'ph-pencil-simple', `ppaEdit('${p.id}')`, 'teal', 'data-ppa-act="edit"'));
+        if (p.kind === 'activity' && ppaCanReport(p)) acts.push(p.status === 'done' ? btn('Change the report', 'ph-note-pencil', `ppaDoneOpen('${p.id}')`, '', 'data-ppa-act="report"') : btn('Mark Done', 'ph-check-circle', `ppaDoneOpen('${p.id}')`, 'green', 'data-ppa-act="done"'));
+        if (p.kind === 'activity' && p.status !== 'done' && p.status !== 'cancelled') acts.push(btn('Move', 'ph-calendar-dots', `ppaMoveOpen('${p.id}')`, '', 'data-ppa-act="move"'));
+        acts.push(btn('Change', 'ph-pencil-simple', `ppaEdit('${p.id}')`, p.kind === 'activity' ? '' : 'teal', 'data-ppa-act="edit"'));
+        if (p.kind === 'activity' && p.status === 'done') acts.push(btn('Not done', 'ph-arrow-counter-clockwise', `ppaUndoDone('${p.id}')`, '', 'data-ppa-act="undo-done"'));
         if (p.kind === 'activity') {
           acts.push(btn('Copy', 'ph-copy', `ppaCopy('${p.id}')`, '', 'data-ppa-act="copy"'));
           acts.push(p.status === 'cancelled' ? btn('Not cancelled', 'ph-arrow-counter-clockwise', `ppaSetStatus('${p.id}', 'planned')`, '', 'data-ppa-act="restore"') : btn('Cancel', 'ph-calendar-x', `ppaSetStatus('${p.id}', 'cancelled')`, 'rose', 'data-ppa-act="cancel"'));
@@ -20236,7 +20248,8 @@
         }
         acts.push(btn('Remove', 'ph-trash', `ppaRemove('${p.id}')`, '', 'data-ppa-act="remove"'));
       } else if (ppaCanPropose()) {
-        if (p.kind === 'activity') acts.push(btn('Suggest a change', 'ph-chat-circle-text', `ppaSuggest('${p.id}')`, 'teal', 'data-ppa-act="suggest"'));
+        if (p.kind === 'activity' && ppaCanReport(p)) acts.push(p.status === 'done' ? btn('Change my report', 'ph-note-pencil', `ppaDoneOpen('${p.id}')`, '', 'data-ppa-act="report"') : btn('Mark Done', 'ph-check-circle', `ppaDoneOpen('${p.id}')`, 'green', 'data-ppa-act="done"'));
+        if (p.kind === 'activity') { if (p.status !== 'done') acts.push(btn('Suggest a change', 'ph-chat-circle-text', `ppaSuggest('${p.id}')`, ppaCanReport(p) ? '' : 'teal', 'data-ppa-act="suggest"')); }
         else acts.push(btn('Propose an activity here', 'ph-paper-plane-tilt', `ppaNew('activity', '${p.id}')`, 'teal', 'data-ppa-act="propose-here"'));
       }
       // Under a program or project: its parts
@@ -20257,6 +20270,7 @@
         ${p.status === 'proposed' ? `<p class="rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold px-3 py-2" data-ppa-banner="proposed">${p.changeOf ? 'A suggested change' : 'A proposal'} from ${calE((p.by && p.by.name) || 'a teacher')} · waiting for the School Head’s approval.</p>` : ''}
         ${p.status === 'returned' ? `<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs px-3 py-2" data-ppa-banner="returned"><b>Returned by ${calE((p.decision && p.decision.byName) || 'the School Head')}</b>${p.decision && p.decision.note ? `: “${calE(p.decision.note)}”` : ''}</p>` : ''}
         ${p.status === 'cancelled' ? '<p class="rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold px-3 py-2" data-ppa-banner="cancelled">This activity was cancelled.</p>' : ''}
+        ${ppaDoneCardHTML(p)}
         ${p.changeOf && ppaById(p.changeOf) ? `<div class="rounded-xl bg-amber-50/60 border border-amber-100 px-3 py-2 text-xs text-slate-700 space-y-0.5"><p class="font-bold">Changes to “${calE(ppaById(p.changeOf).title)}”</p>${ppaDiff(ppaById(p.changeOf), p).map(([a, v]) => `<p><b>${a}:</b> ${calE(v)}</p>`).join('') || '<p>No changes</p>'}</div>` : ''}
         <div class="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden" data-ppa-view="${p.id}">
           ${p.kind === 'activity' ? `${row('When', calE(calRangeText(p.from, p.to)))}${row('Time', calE(calTimeText(p)) || 'All day')}${row('Venue', calE(p.venue))}` : ''}
@@ -20359,6 +20373,7 @@
               ${calLbl('Starts', `<input id="ppaStart" type="time" value="${calE(d.startTime || '08:00')}" class="${CAL_IN}">`)}
               ${calLbl('Ends (optional)', `<input id="ppaEnd" type="time" value="${calE(d.endTime || '')}" class="${CAL_IN}">`)}
             </div>
+            ${s.key && base && !ppaPending(base) && base.status !== 'done' ? calLbl('If you change the date: why (required)', `<input id="ppaMoveWhy" type="text" maxlength="300" value="" class="${CAL_IN}" placeholder="e.g. Class suspension (typhoon)">`, 'col-span-2') : ''}
             ${calLbl('Venue (optional)', `<input id="ppaVenue" type="text" maxlength="120" value="${calE(d.venue || '')}" class="${CAL_IN}" placeholder="e.g. Library">`, 'col-span-2')}
             ${people('who')}
             ${calLbl('Budget (₱, optional)', `<input id="ppaBudget" type="text" inputmode="decimal" value="${Number(d.budget) > 0 ? calE(String(d.budget)) : ''}" class="${CAL_IN} font-mono" placeholder="0.00">`)}
@@ -20475,9 +20490,12 @@
         const resend = !edit || (ppaMineBy(old) && old.status === 'returned');
         const status = resend ? 'proposed' : old.status;
         const moved = kind === 'activity' && !ppaPending(old) && (old.from !== data.from || old.to !== data.to);
-        const x = resend ? (old.status === 'returned' ? 'Changed and sent again to the School Head' : 'Changed the proposal') : moved ? `Moved to ${calRangeText(data.from, data.to)}` : 'Changed';
+        const why = moved ? calVal('ppaMoveWhy').slice(0, 300) : '';
+        if (moved && !why && old.status !== 'done') return calErr('The date changed: write why it is moved. It goes in the monitoring report.');
+        const x = resend ? (old.status === 'returned' ? 'Changed and sent again to the School Head' : 'Changed the proposal') : moved ? `Moved to ${calRangeText(data.from, data.to)}${why ? `: ${why}` : ''}` : 'Changed';
         const log = [...(old.log || []), { at: now, by: who.name, x }].slice(-80);
-        const body = cleanJSON({ ...data, sy: syOf(data), status, log, ...(moved ? { moved: [...(old.moved || []), { from: old.from, to: old.to, atMs: now, by: who.name }].slice(-20) } : {}) });
+        const st2 = moved && PPA_OPEN.includes(old.status) ? 'moved' : status;
+        const body = cleanJSON({ ...data, sy: syOf(data), status: st2, log, ...(moved ? { moved: [...(old.moved || []), { from: old.from, to: old.to, atMs: now, by: who.name, why }].slice(-20) } : {}) });
         cloudWrite(F.updateDoc(F.doc(calPpaCol(), old.id), { ...body, updatedAt: F.serverTimestamp() }), resend ? 'Sending to the School Head' : 'Saving');
         Object.assign(old, body);
       } else {
@@ -20508,10 +20526,18 @@
       Object.assign(p, body);
       calRender();
     }
-    function ppaSetStatus(id, status) {
+    async function ppaSetStatus(id, status) {
       const p = ppaById(id);
       if (!p || !calCanEdit() || ppaPending(p)) return;
-      ppaLogged(p, status === 'cancelled' ? 'Cancelled' : 'Not cancelled after all', { status });
+      if (status === 'cancelled') {
+        let why = await appPrompt('Why is it cancelled? It goes in the monitoring report and the people responsible see it.', '', { title: `Cancel “${String(p.title).slice(0, 60)}”?`, label: 'Reason', ok: 'Cancel it', tone: 'warn', icon: 'ph-calendar-x' });
+        if (why === null || why === undefined || why === false) return;
+        why = String(why).trim().slice(0, 300);
+        if (!why) { showToast('Write why it is cancelled', 'ph-warning'); return; }
+        ppaLogged(p, `Cancelled: ${why}`, { status, cancelWhy: why });
+        return;
+      }
+      ppaLogged(p, 'Not cancelled after all', { status: (p.moved || []).length ? 'moved' : 'planned', cancelWhy: '' });
     }
     async function ppaRemove(id) {
       const p = ppaById(id);
@@ -20547,7 +20573,8 @@
         if (p.from) patch.sy = calSyOf(p.from);
         const moved = orig.from !== p.from || orig.to !== p.to;
         const log = [...(orig.log || []), { at: now, by: who.name, x: `Changed as ${(p.by && p.by.name) || 'a teacher'} suggested${moved ? ` · moved to ${calRangeText(p.from, p.to)}` : ''}` }].slice(-80);
-        const body = cleanJSON({ ...patch, log, ...(moved ? { moved: [...(orig.moved || []), { from: orig.from, to: orig.to, atMs: now, by: who.name }].slice(-20) } : {}) });
+        const why = `As ${(p.by && p.by.name) || 'a teacher'} suggested${p.note ? `: ${String(p.note).slice(0, 200)}` : ''}`;
+        const body = cleanJSON({ ...patch, log, ...(moved ? { moved: [...(orig.moved || []), { from: orig.from, to: orig.to, atMs: now, by: who.name, why }].slice(-20), ...(PPA_OPEN.includes(orig.status) ? { status: 'moved' } : {}) } : {}) });
         cloudWrite(F.updateDoc(F.doc(calPpaCol(), orig.id), { ...body, updatedAt: F.serverTimestamp() }), 'Changing the activity');
         Object.assign(orig, body);
       }
@@ -20560,6 +20587,496 @@
       calRender();
       if (isHeadDevice()) renderHeadView();
       showToast(ok ? (orig ? 'Approved · the activity was changed' : 'Approved · on the plan and the calendar') : 'Returned with your note', ok ? 'ph-seal-check' : 'ph-arrow-u-up-left');
+    }
+
+    // ---- Done, Moved, Cancelled; overdue; the monitoring report (School Planning, part D4) ------
+    // An activity is marked Done with its accomplishment report: the actual date(s), what was done,
+    // the actual cost, the participants, remarks and up to 3 photos (made small on the phone and
+    // kept in ppaPhotos/{activity id}, read only when someone opens them). The School Head and the
+    // AO mark any activity; a teacher marks the ones with their name (Person(s) responsible) and
+    // may fix their own report; the head or the AO can undo it. Moving one asks for the new date
+    // and the reason (kept in moved[]; the report shows the target and the actual date). Past its
+    // date and still not done = overdue: a reminder the day after, then every week (the people
+    // responsible; the School Head and the AO get one for all of them).
+    //   ppas/{id}.done     { on, to, what, cost, people, remarks, photos (how many), byUid, byName, role, atMs }
+    //   ppas/{id}.moved[]  { from, to, atMs, by, why }       ppas/{id}.cancelWhy
+    //   ppaPhotos/{id}     { ppaId, sy, photos: [JPEG data URL], byUid, byName, updatedAt }
+    const PPA_OPEN = ['planned', 'ongoing', 'moved'];
+    const PPA_PHOTO_MAX = 3, PPA_PHOTO_BYTES = 150 * 1024;
+    var ppaPhotoCache = {}, ppaPhotoLoading = {}, ppaRepPeriod = '';
+    const calPhotoCol = () => cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'ppaPhotos');
+    const ppaEndOf = p => (p && (p.to || p.from)) || '';
+    const ppaDaysPast = (iso, today) => Math.round((Date.parse(today + 'T00:00:00Z') - Date.parse(iso + 'T00:00:00Z')) / 86400000);
+    const ppaOverdue = (p, today = localISODate()) => !!p && p.kind === 'activity' && !p.removed && !ppaPending(p) && PPA_OPEN.includes(p.status) && !!p.from && ppaEndOf(p) < today;
+    // Their own entry in Person(s) responsible (with their account, so the database knows it is them)
+    const ppaWhoMe = p => ((p && p.who) || []).find(w => w.uid && w.uid === ppaMe()) || null;
+    // The first date it was planned for (before any move)
+    const ppaTarget = p => ((p.moved || []).length ? { from: p.moved[0].from, to: p.moved[0].to || p.moved[0].from } : { from: p.from, to: p.to || p.from });
+    // Who can write the accomplishment report: the head and the AO; a teacher responsible for it (and only their own report)
+    function ppaCanReport(p) {
+      if (!p || p.kind !== 'activity' || p.removed || ppaPending(p) || p.status === 'cancelled' || !p.from || p.from > localISODate()) return false;
+      if (calCanEdit()) return true;
+      if (!planOn() || featEnded('plan') || !isTeacherDevice() || myMemberStatus() !== 'active' || !ppaWhoMe(p)) return false;
+      return p.status !== 'done' || !!(p.done && p.done.byUid === ppaMe());
+    }
+    // Overdue for this person: every one (the head and the AO), or the ones with their name
+    function ppaOverdueMine(sy, today = localISODate()) {
+      if (!planOn() || !calCanRead()) return [];
+      const edit = calCanEdit();
+      return ppaLive(sy).filter(p => ppaOverdue(p, today) && (edit || ppaIsMine(p))).sort((a, b) => ppaEndOf(a).localeCompare(ppaEndOf(b)));
+    }
+    function ppaOpenOverdue() {
+      calPage = 'plan'; ppaFilter = 'overdue';
+      openCalendar();
+      calRender();
+      try { window.scrollTo({ top: 0 }); } catch (e) {}
+    }
+    function ppaOverdueHTML(sy) {
+      if (calSyOf(localISODate()) !== sy || !calEvLoaded) return '';
+      const list = ppaOverdueMine(sy);
+      if (!list.length) return '';
+      const edit = calCanEdit();
+      return `<button type="button" onclick="ppaOpenOverdue()" class="w-full text-left rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center gap-3" data-ppa-overdue-card="${list.length}">
+          <span class="w-9 h-9 shrink-0 rounded-xl bg-white text-amber-700 flex items-center justify-center"><i class="ph-bold ph-alarm text-lg"></i></span>
+          <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-amber-900">Overdue: ${calE(ppaActs(list.length))}${edit ? '' : ' with your name'}</span>
+            <span class="block text-[11px] text-amber-800 truncate">${edit ? 'Mark each Done (with the accomplishment) or move it' : 'Mark them Done with what was done'} · ${calE(list.slice(0, 2).map(p => p.title).join(' · '))}</span></span>
+          <i class="ph-bold ph-caret-right text-amber-700"></i></button>`;
+    }
+    function ppaStatusBadge(p) {
+      if (p.status === 'cancelled') return '<span class="block text-[10px] font-bold text-rose-700" data-ppa-badge="cancelled">Cancelled</span>';
+      if (p.status === 'done') return '<span class="block text-[10px] font-bold text-emerald-700" data-ppa-badge="done"><i class="ph-bold ph-check-circle"></i> Done</span>';
+      if (ppaOverdue(p)) return '<span class="block text-[10px] font-bold text-amber-700" data-ppa-badge="overdue">Overdue</span>';
+      if (p.status === 'moved') return '<span class="block text-[10px] font-bold text-sky-700" data-ppa-badge="moved">Moved</span>';
+      return ppaIsMine(p) ? '<span class="block text-[10px] font-bold text-teal-700">Yours</span>' : '';
+    }
+
+    // ---- Photos (up to 3, about 150 KB each) ------------------------------------------------------
+    function ppaShrinkPhoto(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file), img = new Image();
+        img.onload = () => {
+          try {
+            let side = 1280, q = 0.72, out = '';
+            for (let i = 0; i < 10; i++) {
+              const k = Math.min(1, side / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+              const c = document.createElement('canvas');
+              c.width = Math.max(1, Math.round((img.naturalWidth || 1) * k));
+              c.height = Math.max(1, Math.round((img.naturalHeight || 1) * k));
+              const g = c.getContext('2d');
+              g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+              g.drawImage(img, 0, 0, c.width, c.height);
+              out = c.toDataURL('image/jpeg', q);
+              if ((out.length - 23) * 0.75 <= PPA_PHOTO_BYTES) break;
+              if (q > 0.5) q = Math.round((q - 0.1) * 100) / 100; else side = Math.round(side * 0.8);
+            }
+            URL.revokeObjectURL(url);
+            resolve(out);
+          } catch (e) { URL.revokeObjectURL(url); reject(e); }
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Not a picture')); };
+        img.src = url;
+      });
+    }
+    // The photos of an activity, read once when someone opens them
+    async function ppaPhotosLoad(id) {
+      if (ppaPhotoCache[id]) return ppaPhotoCache[id];
+      if (ppaPhotoLoading[id]) return ppaPhotoLoading[id];
+      if (!cloud.db || !cloud.sdk) return [];
+      const F = cloud.sdk;
+      ppaPhotoLoading[id] = F.getDoc(F.doc(calPhotoCol(), id)).then(snap => {
+        const d = snap && snap.exists() ? snap.data() || {} : {};
+        ppaPhotoCache[id] = Array.isArray(d.photos) ? d.photos.filter(x => typeof x === 'string' && x.startsWith('data:image/')).slice(0, PPA_PHOTO_MAX) : [];
+        return ppaPhotoCache[id];
+      }).catch(e => { console.warn('activity photos', e); return []; }).finally(() => { delete ppaPhotoLoading[id]; });
+      return ppaPhotoLoading[id];
+    }
+    function ppaPhotoView(id, i) {
+      const src = (ppaPhotoCache[id] || [])[i];
+      if (!src) return;
+      const w = document.getElementById('ppaPhotoBig');
+      if (!w) return;
+      w.innerHTML = `<img src="${src}" alt="Photo ${i + 1}" class="max-w-full max-h-[85vh] rounded-xl shadow-2xl">`;
+      w.classList.remove('hidden');
+    }
+
+    // ---- Mark Done: the accomplishment report ------------------------------------------------------
+    function ppaDoneOpen(id) {
+      const p = ppaById(id);
+      if (!p || !ppaCanReport(p)) return;
+      if (featEnded('plan')) { proEndedNotice(); return; }
+      // the photos already kept (also after Not done) come back on the sheet
+      calSheet = { view: 'ppaDone', key: id, drawn: false, photos: (ppaPhotoCache[id] || []).slice(), photosChanged: false, photosReady: !!ppaPhotoCache[id] };
+      document.getElementById('calModal').classList.remove('hidden');
+      renderCalModal();
+      const box = document.getElementById('calModalBox');
+      if (box) box.scrollTop = 0;
+      if (!ppaPhotoCache[id]) ppaPhotosLoad(id).then(list => {
+        if (!calSheet || calSheet.view !== 'ppaDone' || calSheet.key !== id || calSheet.photosChanged) return;
+        calSheet.photos = list.slice();
+        calSheet.photosReady = true;
+        ppaDonePaint();
+      });
+    }
+    function ppaDoneHTML() {
+      const s = calSheet, p = ppaById(s.key);
+      if (!p || !ppaCanReport(p)) return '';
+      const d = p.done || {}, again = p.status === 'done';
+      const today = localISODate(), end = ppaEndOf(p);
+      const ta = (id, v, ph, max, rows = 3) => `<textarea id="${id}" maxlength="${max}" rows="${rows}" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-teal-500" placeholder="${ph}">${calE(v || '')}</textarea>`;
+      return `
+        ${calHead('ph-check-circle', again ? 'Change the accomplishment report' : 'Mark it Done', calE(p.title))}
+        <p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">Planned ${calE(calRangeText(p.from, p.to))}${Number(p.budget) > 0 ? ` · budget <b class="font-mono">${ppaPeso(p.budget)}</b> (${calE(ppaSrc(p.source))})` : ''}${p.output ? `<span class="block">Expected output: ${calE(p.output)}</span>` : ''}</p>
+        <div class="grid grid-cols-2 gap-3" data-ppa-done-form="${p.id}">
+          ${calLbl('Done on', `<input id="pdOn" type="date" max="${today}" value="${calE(d.on || p.from)}" onchange="(function(){var t=document.getElementById('pdTo'),f=document.getElementById('pdOn').value;if(t&&f&&(!t.value||t.value<f))t.value=f;})()" class="${CAL_IN}">`)}
+          ${calLbl('To', `<input id="pdTo" type="date" max="${today}" value="${calE(d.to || (end <= today ? end : today))}" class="${CAL_IN}">`)}
+          ${calLbl('What was done (accomplishment)', ta('pdWhat', d.what, 'e.g. 38 of 40 Grade 4 learners took the reading test; 12 were found frustration readers and grouped for remedial reading.', 1500, 4), 'col-span-2')}
+          ${calLbl('Actual cost (₱)', `<input id="pdCost" type="text" inputmode="decimal" value="${d.cost ? calE(String(d.cost)) : ''}" class="${CAL_IN} font-mono" placeholder="${Number(p.budget) > 0 ? calE(String(p.budget)) : '0.00'}">`)}
+          ${calLbl('Participants', `<input id="pdPeople" type="text" inputmode="numeric" value="${d.people ? calE(String(d.people)) : ''}" class="${CAL_IN} font-mono" placeholder="e.g. 40">`)}
+          ${calLbl('Remarks (optional)', ta('pdRemarks', d.remarks, 'e.g. Moved to the library because of rain', 400, 2), 'col-span-2')}
+          <div class="col-span-2 space-y-1.5" data-ppa-done-photos>
+            <span class="block text-[11px] font-bold uppercase text-slate-500">Photos (optional, up to ${PPA_PHOTO_MAX})</span>
+            <div id="pdThumbs" class="grid grid-cols-3 gap-2"></div>
+            <input id="pdPick" type="file" accept="image/*" multiple class="hidden" onchange="ppaDonePick(this)">
+            <p class="text-[11px] text-slate-500">They are made small on this phone (about 150 KB each) and printed with the monitoring report.</p>
+          </div>
+        </div>
+        ${CAL_ERR_P}
+        <button type="button" onclick="ppaDoneSave()" id="pdSave" class="w-full h-12 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-check-circle"></i> ${again ? 'Save the report' : 'Mark Done'}</button>`;
+    }
+    function ppaDonePaint() {
+      const el = document.getElementById('pdThumbs'), s = calSheet;
+      if (!el || !s || s.view !== 'ppaDone') return;
+      const list = s.photos || [];
+      el.innerHTML = list.map((src, i) => `
+          <div class="relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100" data-pd-thumb="${i}">
+            <img src="${src}" alt="Photo ${i + 1}" class="w-full h-full object-cover">
+            <button type="button" onclick="ppaDoneDrop(${i})" class="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center" aria-label="Remove photo ${i + 1}"><i class="ph-bold ph-x"></i></button>
+          </div>`).join('') + (!s.photosReady ? '<div class="aspect-square rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-[11px] text-slate-500">Loading…</div>'
+        : list.length < PPA_PHOTO_MAX ? `<button type="button" onclick="document.getElementById('pdPick').click()" id="pdAddPhoto" class="aspect-square rounded-xl border-2 border-dashed border-slate-300 hover:border-teal-400 text-slate-500 flex flex-col items-center justify-center gap-1 text-[11px] font-bold"><i class="ph-bold ph-camera text-2xl"></i> Add a photo</button>` : '');
+    }
+    async function ppaDonePick(input) {
+      const s = calSheet;
+      const files = [...((input && input.files) || [])];
+      if (input) input.value = '';
+      if (!s || s.view !== 'ppaDone' || !files.length) return;
+      calErr('');
+      const room = PPA_PHOTO_MAX - (s.photos || []).length;
+      if (room <= 0) return calErr(`Up to ${PPA_PHOTO_MAX} photos.`);
+      if (files.length > room) calErr(`Only ${room} more ${room === 1 ? 'photo fits' : 'photos fit'}; the first ${room === 1 ? 'one was' : `${room} were`} added.`);
+      for (const f of files.slice(0, room)) {
+        try {
+          const src = await ppaShrinkPhoto(f);
+          if (calSheet !== s) return;
+          s.photos = [...(s.photos || []), src].slice(0, PPA_PHOTO_MAX);
+          s.photosChanged = true;
+        } catch (e) { calErr('That file is not a picture the phone can read. Try a JPG or PNG photo.'); }
+      }
+      ppaDonePaint();
+    }
+    function ppaDoneDrop(i) {
+      const s = calSheet;
+      if (!s || s.view !== 'ppaDone') return;
+      s.photos = (s.photos || []).filter((_, j) => j !== i);
+      s.photosChanged = true;
+      ppaDonePaint();
+    }
+    function ppaDoneSave() {
+      const s = calSheet;
+      if (!s || s.view !== 'ppaDone' || !cloud.db || !cloud.user) return;
+      const p = ppaById(s.key);
+      if (!p || !ppaCanReport(p)) return;
+      if (featEnded('plan')) { proEndedNotice(); return; }
+      if (!s.photosReady) return calErr('Wait for the photos to load.');
+      const today = localISODate();
+      const on = calVal('pdOn'), to = calVal('pdTo') || on;
+      if (!on) return calErr('Pick the date it was done.');
+      if (on > today || to > today) return calErr('It can be marked Done only on or after the day it happened.');
+      if (to < on) return calErr('The last day is before the first day.');
+      const what = calVal('pdWhat').slice(0, 1500);
+      if (!what) return calErr('Write what was done: the accomplishment, e.g. how many attended and the output.');
+      const raw = calVal('pdCost').replace(/[₱,\s]/g, '');
+      const cost = raw ? Math.round(Number(raw) * 100) / 100 : 0;
+      if (!isFinite(cost) || cost < 0 || cost > 100000000) return calErr('Type the actual cost in pesos, e.g. 4500 (0 if nothing was spent).');
+      const praw = calVal('pdPeople').replace(/[,\s]/g, '');
+      const people = praw ? Math.round(Number(praw)) : 0;
+      if (!isFinite(people) || people < 0 || people > 100000) return calErr('Type the number of participants, e.g. 40.');
+      const F = cloud.sdk, who = calWho(), mine = ppaWhoMe(p), edit = calCanEdit();
+      const byName = !edit && mine ? mine.name : who.name;
+      const photos = (s.photos || []).slice(0, PPA_PHOTO_MAX);
+      if (s.photosChanged) {
+        const body = { ppaId: p.id, sy: p.sy, photos, byUid: who.uid, byName };
+        cloudWrite(F.setDoc(F.doc(calPhotoCol(), p.id), { ...body, updatedAt: F.serverTimestamp() }), photos.length ? 'Saving the photos' : 'Removing the photos');
+        ppaPhotoCache[p.id] = photos.slice();
+      }
+      const again = p.status === 'done';
+      const done = { on, to, what, cost, people, remarks: calVal('pdRemarks').slice(0, 400), photos: photos.length, byUid: who.uid, byName, role: who.role, atMs: Date.now() };
+      const late = on > ppaEndOf(p) ? ` · done ${calRangeText(on, to)}, after the planned date` : on !== p.from ? ` · done ${calRangeText(on, to)}` : '';
+      ppaLogged(p, again ? 'Changed the accomplishment report' : `Marked Done${late}`, { status: 'done', done });
+      openCalSheet('ppa', p.id);
+      showToast(again ? 'Report saved' : 'Marked Done · thank you', 'ph-check-circle');
+    }
+    // The head or the AO: it was not done after all (the report stays in the history)
+    async function ppaUndoDone(id) {
+      const p = ppaById(id);
+      if (!p || !calCanEdit() || p.status !== 'done') return;
+      if (!await appConfirm(`${p.title} · it goes back to the plan${ppaEndOf(p) < localISODate() ? ' (overdue)' : ''}. The report stays in its history.`, { title: 'Mark it not done?', ok: 'Not done', tone: 'warn', icon: 'ph-arrow-counter-clockwise' })) return;
+      const was = p.done && p.done.what ? `: “${String(p.done.what).slice(0, 120)}”` : '';
+      ppaLogged(p, `Not done after all (the report was by ${(p.done && p.done.byName) || '?'}${was})`, { status: (p.moved || []).length ? 'moved' : 'planned', done: null });
+      showToast('Back on the plan', 'ph-arrow-counter-clockwise');
+    }
+
+    // ---- Move: a new date and the reason ----------------------------------------------------------
+    function ppaMoveOpen(id) {
+      const p = ppaById(id);
+      if (!p || !calCanEdit() || p.kind !== 'activity' || ppaPending(p) || p.status === 'done' || p.status === 'cancelled') return;
+      calSheet = { view: 'ppaMove', key: id, drawn: false };
+      document.getElementById('calModal').classList.remove('hidden');
+      renderCalModal();
+    }
+    function ppaMoveHTML() {
+      const p = ppaById(calSheet.key);
+      if (!p || !calCanEdit()) return '';
+      const n = (p.who || []).length;
+      return `
+        ${calHead('ph-calendar-dots', 'Move to another date', calE(p.title))}
+        <p class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">Now: <b>${calE(calRangeText(p.from, p.to))}</b>${(p.moved || []).length ? ` · first planned ${calE(calRangeText(ppaTarget(p).from, ppaTarget(p).to))}` : ''}</p>
+        <div class="grid grid-cols-2 gap-3" data-ppa-move-form="${p.id}">
+          ${calLbl('New date', `<input id="pmFrom" type="date" value="${calE(p.from)}" onchange="(function(){var t=document.getElementById('pmTo'),f=document.getElementById('pmFrom').value;if(t&&f&&(!t.value||t.value<f))t.value=f;})()" class="${CAL_IN}">`)}
+          ${calLbl('To', `<input id="pmTo" type="date" value="${calE(p.to || p.from)}" class="${CAL_IN}">`)}
+          ${calLbl('Why it is moved', `<textarea id="pmWhy" maxlength="300" rows="2" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-teal-500" placeholder="e.g. Class suspension (typhoon); the speaker is not available"></textarea>`, 'col-span-2')}
+        </div>
+        <p class="text-[11px] text-slate-500">${n ? `${plural(n, 'person')} responsible ${n === 1 ? 'is' : 'are'} told. ` : ''}The old date and the reason stay in its history and in the monitoring report.</p>
+        ${CAL_ERR_P}
+        <button type="button" onclick="ppaMoveSave()" id="pmSave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-calendar-check"></i> Move it</button>`;
+    }
+    function ppaMoveSave() {
+      const s = calSheet;
+      if (!s || s.view !== 'ppaMove' || !cloud.db || !cloud.user) return;
+      const p = ppaById(s.key);
+      if (!p || !calCanEdit() || p.status === 'done' || p.status === 'cancelled') return;
+      const from = calVal('pmFrom'), to = calVal('pmTo') || from, why = calVal('pmWhy').slice(0, 300);
+      if (!from) return calErr('Pick the new date.');
+      if (to < from) return calErr('The last day is before the first day.');
+      if (calNext(from, 366) < to) return calErr('An activity can be up to a year long.');
+      if (from === p.from && to === (p.to || p.from)) return calErr('Pick a date different from the one now.');
+      if (!why) return calErr('Write why it is moved. It goes in the monitoring report.');
+      const who = calWho(), now = Date.now();
+      const moved = [...(p.moved || []), { from: p.from, to: p.to || p.from, atMs: now, by: who.name, why }].slice(-20);
+      ppaLogged(p, `Moved from ${calRangeText(p.from, p.to)} to ${calRangeText(from, to)}: ${why}`, { from, to, sy: calSyOf(from), moved, status: 'moved' });
+      closeCalModal();
+      if (calSyOf(from) !== calCurSy()) { calSy = calSyOf(from); calSync(); }
+      calRender();
+      showToast(`Moved to ${calRangeText(from, to)}`, 'ph-calendar-check');
+    }
+
+    // ---- What the activity sheet shows about Done / Moved / Cancelled ------------------------------
+    function ppaDoneCardHTML(p) {
+      if (p.kind !== 'activity') return '';
+      const parts = [];
+      if (p.status === 'done' && p.done) {
+        const d = p.done, n = Number(d.photos) || 0, pics = ppaPhotoCache[p.id];
+        if (n && !pics) ppaPhotosLoad(p.id).then(() => { if (calSheet && calSheet.view === 'ppa' && calSheet.key === p.id) renderCalModal(); });
+        const b = Number(p.budget) || 0, c = Number(d.cost) || 0;
+        parts.push(`
+          <div class="rounded-2xl bg-emerald-50 border border-emerald-200 p-3 space-y-2" data-ppa-done="${p.id}">
+            <p class="text-xs font-extrabold text-emerald-800 flex items-center gap-1.5"><i class="ph-bold ph-check-circle text-base"></i> Done ${calE(calRangeText(d.on, d.to))}</p>
+            <p class="text-[13px] text-slate-800 whitespace-pre-line" data-ppa-done-what>${calE(d.what)}</p>
+            <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-700">
+              ${d.people ? `<span><b>${Number(d.people).toLocaleString()}</b> participants</span>` : ''}
+              <span data-ppa-done-cost>Actual cost <b class="font-mono">${ppaPeso(c)}</b>${b ? ` of <span class="font-mono">${ppaPeso(b)}</span>${c > b ? ' <b class="text-rose-700">(over)</b>' : ''}` : ''}</span>
+            </div>
+            ${d.remarks ? `<p class="text-[11px] text-slate-600"><b>Remarks:</b> ${calE(d.remarks)}</p>` : ''}
+            ${n ? `<div class="grid grid-cols-3 gap-2" data-ppa-photos="${n}">${pics ? pics.map((src, i) => `<button type="button" onclick="ppaPhotoView('${p.id}', ${i})" class="aspect-square rounded-xl overflow-hidden border border-emerald-200 bg-white"><img src="${src}" alt="Photo ${i + 1}" class="w-full h-full object-cover"></button>`).join('')
+              : Array.from({ length: n }, () => '<span class="aspect-square rounded-xl bg-emerald-100/60 animate-pulse"></span>').join('')}</div>` : ''}
+            <p class="text-[10px] text-slate-500">Reported by ${calE(d.byName || '')}${d.atMs ? ` · ${calE(featWhen(d.atMs))}` : ''}</p>
+          </div>`);
+      } else if (ppaOverdue(p)) {
+        parts.push(`<p class="rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold px-3 py-2 flex items-center gap-1.5" data-ppa-banner="overdue"><i class="ph-bold ph-alarm"></i> Overdue: its date has passed. ${calCanEdit() ? 'Mark it Done with the accomplishment, or move it.' : ppaWhoMe(p) ? 'Mark it Done with what was done.' : 'Waiting for the people responsible.'}</p>`);
+      }
+      if (p.status === 'cancelled' && p.cancelWhy) parts.push(`<p class="text-[11px] text-rose-800 px-1" data-ppa-cancel-why><b>Why:</b> ${calE(p.cancelWhy)}</p>`);
+      const mv = (p.moved || []).filter(m => m.why || m.from);
+      if (mv.length) parts.push(`<div class="rounded-xl bg-sky-50 border border-sky-100 px-3 py-2 text-[11px] text-slate-700 space-y-0.5" data-ppa-moved="${mv.length}"><p class="font-bold text-sky-800">Moved ${mv.length === 1 ? 'once' : `${mv.length} times`} · first planned ${calE(calRangeText(ppaTarget(p).from, ppaTarget(p).to))}</p>${mv.map(m => `<p>From ${calE(calRangeText(m.from, m.to))}${m.why ? `: ${calE(m.why)}` : ''}${m.by ? ` <span class="text-slate-400">· ${calE(m.by)}</span>` : ''}</p>`).join('')}</div>`);
+      return parts.join('');
+    }
+
+    // ---- Overdue reminders: the day after, then every week -----------------------------------------
+    function notifPpaOverdue(now = Date.now()) {
+      if (!planOn() || !cloud.user || !calCanRead() || !notifScope() || !calEvLoaded) return;
+      const today = localISODate(new Date(now)), st = loadNotifs(), edit = calCanEdit();
+      const wk = p => Math.max(0, Math.floor((ppaDaysPast(ppaEndOf(p), today) - 1) / 7));
+      // not about what this person has just put on the plan (filling in past activities)
+      const over = ppaLive().filter(p => ppaOverdue(p, today) && !(p.by && p.by.uid === ppaMe() && now - (Number(p.createdMs) || 0) < DAY_MS));
+      const out = [];
+      if (!edit) over.filter(p => ppaIsMine(p)).forEach(p => {
+        const k = `pod:${p.id}:${ppaEndOf(p)}:${wk(p)}`;
+        if (st.seen[k]) return;
+        st.seen[k] = 1;
+        out.push({ title: `Overdue: ${p.title}`, body: `${calRangeText(p.from, p.to)} · ${ppaWhoMe(p) ? 'mark it Done with what was done' : 'tell the School Head if it was done'}`, icon: 'ph-alarm', tone: 'amber', go: 'overdue' });
+      });
+      if (edit && over.length) {
+        const key = p => `pos:${p.id}:${ppaEndOf(p)}:${wk(p)}`;
+        if (over.some(p => !st.seen[key(p)])) {
+          over.forEach(p => { st.seen[key(p)] = 1; });
+          out.push({ title: `Overdue: ${ppaActs(over.length)} to mark Done or move`, body: over.slice(0, 3).map(p => `${p.title} (${calShort(ppaEndOf(p))})`).join(' · ') + (over.length > 3 ? ` · + ${over.length - 3} more` : ''), icon: 'ph-alarm', tone: 'amber', go: 'overdue' });
+        }
+      }
+      if (!out.length) return;
+      saveNotifs();
+      out.forEach(addNotif);
+    }
+
+    // ---- The monitoring report (by term, mid-year, year-end) ---------------------------------------
+    // Terms run into each other (Term 1 from the start of the school year, each until the next one
+    // begins) so nothing falls between them; mid-year = the start to the end of Term 2.
+    function ppaPeriods(sy) {
+      const y0 = sy.slice(0, 4), y1 = sy.slice(5), a = `${y0}-06-01`, z = `${y1}-05-31`;
+      const terms = (((calYears[sy] || {}).terms) || []).filter(t => t.from).slice().sort((x, w) => x.n - w.n);
+      const out = terms.map((t, i) => ({ k: 't' + t.n, label: `Term ${t.n}`, from: i ? t.from : a, to: terms[i + 1] ? calNext(terms[i + 1].from, -1) : z }));
+      const t2 = out.find(x => x.k === 't2');
+      out.push({ k: 'mid', label: 'Mid-year', from: a, to: t2 ? t2.to : `${y0}-12-31` });
+      out.push({ k: 'year', label: 'Year-end', from: a, to: z });
+      return out;
+    }
+    function ppaDefaultPeriod(sy) {
+      const today = localISODate(), ps = ppaPeriods(sy);
+      if (calSyOf(today) !== sy) return 'year';
+      const t = ps.find(x => /^t/.test(x.k) && x.from <= today && x.to >= today);
+      return t ? t.k : 'year';
+    }
+    function ppaReportData(sy, k) {
+      const ps = ppaPeriods(sy), per = ps.find(x => x.k === k) || ps[ps.length - 1];
+      const inR = d => !!d && d >= per.from && d <= per.to;
+      const today = localISODate();
+      const acts = ppaLive(sy).filter(p => p.kind === 'activity' && (inR(p.from) || inR(ppaTarget(p).from))).sort(ppaOrder);
+      const st = { n: acts.length, done: 0, moved: 0, cancelled: 0, overdue: 0, coming: 0, budget: 0, cost: 0, src: {} };
+      acts.forEach(p => {
+        if (p.status === 'cancelled') { st.cancelled++; return; }
+        if (p.status === 'done') st.done++;
+        else if (ppaOverdue(p, today)) st.overdue++;
+        else st.coming++;
+        if ((p.moved || []).length) st.moved++;
+        const b = Number(p.budget) || 0, c = p.status === 'done' && p.done ? Number(p.done.cost) || 0 : 0, sk = p.source || (b || c ? 'other' : '');
+        st.budget += b; st.cost += c;
+        if (sk) { const r = st.src[sk] || (st.src[sk] = { b: 0, c: 0 }); r.b += b; r.c += c; }
+      });
+      st.counted = st.n - st.cancelled;
+      st.pct = st.counted ? Math.round(st.done / st.counted * 100) : 0;
+      // Program > project > activities
+      const groups = new Map();
+      acts.forEach(p => {
+        const par = ppaParentOf(p);
+        const proj = par && par.kind === 'project' ? par : null;
+        const prog = proj ? ppaParentOf(proj) : par && par.kind === 'program' ? par : null;
+        const gk = prog ? prog.id : '';
+        if (!groups.has(gk)) groups.set(gk, { prog, projs: new Map() });
+        const g = groups.get(gk), pk = proj ? proj.id : '';
+        if (!g.projs.has(pk)) g.projs.set(pk, { proj, acts: [] });
+        g.projs.get(pk).acts.push(p);
+      });
+      const order = [...groups.values()].sort((a, b) => (a.prog ? 0 : 1) - (b.prog ? 0 : 1) || String(a.prog ? a.prog.title : '').localeCompare(String(b.prog ? b.prog.title : '')));
+      order.forEach(g => {
+        g.list = [...g.projs.values()].sort((a, b) => (a.proj ? 0 : 1) - (b.proj ? 0 : 1) || String(a.proj ? a.proj.title : '').localeCompare(String(b.proj ? b.proj.title : '')));
+        g.list.forEach(x => {
+          const live = x.acts.filter(p => p.status !== 'cancelled');
+          x.done = live.filter(p => p.status === 'done').length;
+          x.n = live.length;
+          x.pct = x.n ? Math.round(x.done / x.n * 100) : 0;
+          x.budget = live.reduce((s, p) => s + (Number(p.budget) || 0), 0);
+          x.cost = live.reduce((s, p) => s + (p.status === 'done' && p.done ? Number(p.done.cost) || 0 : 0), 0);
+        });
+      });
+      return { per, ps, acts, st, groups: order };
+    }
+    const ppaRepStatus = p => (p.status === 'done' ? 'Done' : p.status === 'cancelled' ? 'Cancelled' : ppaOverdue(p) ? 'Not done (overdue)' : p.status === 'moved' ? 'Moved' : 'Not yet due');
+    function ppaReportOpen() {
+      if (!calCanEdit()) return;
+      const sy = calCurSy();
+      ppaRepPeriod = ppaDefaultPeriod(sy);
+      openCalSheet('ppaReport');
+    }
+    function ppaSetPeriod(k) { ppaRepPeriod = k; if (calSheet && calSheet.view === 'ppaReport') { calSheet.drawn = false; renderCalModal(); } }
+    function ppaReportHTML() {
+      if (!calCanEdit()) return '';
+      const sy = calCurSy(), r = ppaReportData(sy, ppaRepPeriod || ppaDefaultPeriod(sy)), st = r.st;
+      const chip = x => `<button type="button" onclick="ppaSetPeriod('${x.k}')" data-ppa-period="${x.k}" aria-pressed="${r.per.k === x.k}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${r.per.k === x.k ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700'}">${x.label}</button>`;
+      const tile = (n, label, k, tone = '') => `<div class="rounded-xl bg-white border border-slate-200 px-1.5 py-2 text-center" data-ppa-rep="${k}"><span class="block text-lg font-extrabold font-mono leading-tight ${tone}">${n}</span><span class="block text-[10px] font-bold uppercase text-slate-500 leading-tight">${label}</span></div>`;
+      const bar = pct => `<span class="block h-1.5 rounded-full bg-slate-100 overflow-hidden"><span class="block h-full bg-emerald-500" style="width:${pct}%"></span></span>`;
+      const projs = [];
+      r.groups.forEach(g => g.list.forEach(x => { if (x.proj || g.prog) projs.push({ ...x, prog: g.prog }); }));
+      return `
+        ${calHead('ph-chart-bar', 'Monitoring report', `${calSyText(sy)} · Annual Implementation Plan`)}
+        <div class="flex gap-1.5 overflow-x-auto no-scrollbar" data-ppa-periods>${r.ps.map(chip).join('')}</div>
+        <p class="text-[11px] text-slate-500 px-1" data-ppa-rep-range>${calE(r.per.label)}: ${calE(calRangeText(r.per.from, r.per.to))}</p>
+        ${!st.n ? '<p class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500" data-ppa-rep-none>No activities in this period.</p>' : `
+        <div class="rounded-2xl bg-slate-50 border border-slate-200 p-3 space-y-2.5">
+          <div class="flex items-center gap-3"><span class="text-3xl font-extrabold font-mono text-emerald-700" data-ppa-rep-pct>${st.pct}%</span>
+            <span class="min-w-0 flex-1 text-xs text-slate-700"><b>${st.done} of ${calE(ppaActs(st.counted))} done</b>${st.cancelled ? ` · ${st.cancelled} cancelled` : ''}${bar(st.pct)}</span></div>
+          <div class="grid grid-cols-4 gap-1.5">${tile(st.done, 'Done', 'done', 'text-emerald-700')}${tile(st.overdue, 'Overdue', 'overdue', st.overdue ? 'text-amber-700' : '')}${tile(st.moved, 'Moved', 'moved')}${tile(st.coming, 'Coming', 'coming')}</div>
+          <div class="rounded-xl bg-white border border-slate-200 divide-y divide-slate-100 text-xs" data-ppa-rep-money>
+            <div class="flex justify-between px-3 py-1.5"><span class="text-slate-500">Budget</span><b class="font-mono">${ppaPeso(st.budget)}</b></div>
+            <div class="flex justify-between px-3 py-1.5"><span class="text-slate-500">Actual cost (done)</span><b class="font-mono" data-ppa-rep-cost>${ppaPeso(st.cost)}</b></div>
+            ${PPA_SOURCES.filter(s => st.src[s[0]]).map(s => `<div class="flex justify-between px-3 py-1 text-[11px] text-slate-600"><span>${s[1]}</span><span class="font-mono">${ppaPeso(st.src[s[0]].c)} of ${ppaPeso(st.src[s[0]].b)}</span></div>`).join('')}
+          </div>
+        </div>
+        ${projs.length ? `<div class="space-y-1.5" data-ppa-rep-projects><p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">By project</p>${projs.map(x => `
+          <div class="rounded-xl bg-white border border-slate-200 px-3 py-2 space-y-1">
+            <div class="flex items-start justify-between gap-2"><span class="min-w-0 text-[13px] font-bold text-slate-900 leading-snug">${calE(x.proj ? x.proj.title : 'Activities under the program')}${x.prog ? `<span class="block text-[10px] font-semibold text-slate-500">${calE(x.prog.title)}</span>` : ''}</span><span class="shrink-0 text-xs font-extrabold font-mono text-emerald-700">${x.pct}%</span></div>
+            ${bar(x.pct)}<p class="text-[11px] text-slate-500">${x.done} of ${calE(ppaActs(x.n))} done${x.budget || x.cost ? ` · ${ppaPeso(x.cost)} of ${ppaPeso(x.budget)}` : ''}</p>
+          </div>`).join('')}</div>` : ''}
+        <div class="space-y-1.5" data-ppa-rep-list="${r.acts.length}"><p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1">Activities · target and actual</p>${r.acts.map(p => {
+          const t = ppaTarget(p), act = p.status === 'done' && p.done ? calRangeText(p.done.on, p.done.to) : (p.moved || []).length ? `moved to ${calRangeText(p.from, p.to)}` : '';
+          return `<button type="button" onclick="openCalSheet('ppa', '${p.id}')" class="w-full text-left rounded-xl bg-white border border-slate-200 px-3 py-2 flex items-start gap-2" data-ppa-rep-row="${p.id}">
+            <span class="min-w-0 flex-1"><span class="block text-[13px] font-bold text-slate-900 leading-snug ${p.status === 'cancelled' ? 'line-through' : ''}">${calE(p.title)}</span>
+              <span class="block text-[11px] text-slate-500">Target ${calE(calRangeText(t.from, t.to))}${act ? ` · <b class="text-slate-700">${calE(act)}</b>` : ''}</span></span>
+            <span class="shrink-0">${ppaStatusBadge(p)}</span></button>`;
+        }).join('')}</div>`}
+        <label class="flex items-center gap-2 text-sm font-semibold text-slate-700"><input id="ppaRepPhotos" type="checkbox" checked class="w-4 h-4 accent-teal-700"> Print the photos too</label>
+        <button type="button" onclick="ppaReportPrint()" id="ppaRepPrint" ${st.n ? '' : 'disabled'} class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 disabled:opacity-50 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-printer"></i> Print the report</button>`;
+    }
+    async function ppaReportPrint() {
+      if (!calCanEdit()) return;
+      const sy = calCurSy(), r = ppaReportData(sy, ppaRepPeriod || ppaDefaultPeriod(sy)), st = r.st;
+      if (!st.n) return;
+      const withPics = !!(document.getElementById('ppaRepPhotos') || {}).checked;
+      const e = calE;
+      let pics = [];
+      if (withPics) {
+        const need = r.acts.filter(p => p.status === 'done' && p.done && Number(p.done.photos) > 0);
+        if (need.length) showToast('Getting the photos…', 'ph-image');
+        const got = await Promise.all(need.map(p => ppaPhotosLoad(p.id).then(list => ({ p, list }))));
+        pics = got.filter(x => x.list.length);
+      }
+      const school = schoolInfo.school || reqRole.schoolName || '';
+      let no = 0;
+      const cols = 11;
+      const row = p => {
+        const t = ppaTarget(p), d = p.status === 'done' ? p.done || {} : null;
+        const actual = d ? calRangeText(d.on, d.to) : (p.moved || []).length ? `Moved to ${calRangeText(p.from, p.to)}` : '';
+        const notes = [d && d.what, d && d.remarks, p.status === 'cancelled' && p.cancelWhy ? `Cancelled: ${p.cancelWhy}` : '', (p.moved || []).filter(m => m.why).map(m => `Moved: ${m.why}`).join('; ')].filter(Boolean);
+        return `<tr><td class="c">${++no}</td><td>${e(p.title)}</td><td>${e(ppaNames(p.who))}</td><td class="c">${e(calRangeText(t.from, t.to))}</td><td class="c">${e(actual)}</td><td class="c">${e(ppaRepStatus(p))}</td>
+          <td style="white-space:pre-line">${e(notes.join('\n'))}</td><td class="c">${d && d.people ? Number(d.people).toLocaleString() : ''}</td><td class="r">${Number(p.budget) > 0 ? peso2(p.budget) : ''}</td><td class="r">${d && d.cost ? peso2(d.cost) : ''}</td><td class="c">${e(ppaSrc(p.source))}</td></tr>`;
+      };
+      const body = r.groups.map(g => `${g.prog ? `<tr><td colspan="${cols}" style="background:#e5e7eb"><b>PROGRAM: ${e(g.prog.title)}</b></td></tr>` : r.groups.length > 1 ? `<tr><td colspan="${cols}" style="background:#e5e7eb"><b>OTHER ACTIVITIES</b></td></tr>` : ''}
+        ${g.list.map(x => `${x.proj ? `<tr><td colspan="${cols}" style="background:#f3f4f6"><b>Project: ${e(x.proj.title)}</b> · ${x.done} of ${e(ppaActs(x.n))} done (${x.pct}%)${x.budget || x.cost ? ` · actual ${peso2(x.cost)} of ${peso2(x.budget)}` : ''}${x.proj.objective ? `<br><span style="font-size:8pt">Objective: ${e(x.proj.objective)}</span>` : ''}</td></tr>` : ''}${x.acts.map(row).join('')}`).join('')}`).join('');
+      const srcRows = PPA_SOURCES.filter(s => st.src[s[0]]).map(s => `<tr><td>${s[1]}</td><td class="r">${peso2(st.src[s[0]].b)}</td><td class="r">${peso2(st.src[s[0]].c)}</td></tr>`).join('');
+      const head = (() => { try { return { n: headName(), d: headDesig() }; } catch (x) { return { n: '', d: 'School Head' }; } })();
+      const me = calWho();
+      const photoHTML = pics.length ? `<div style="break-before:page;page-break-before:always">
+          <h1 style="font-size:12pt;margin:0 0 6pt">PHOTO DOCUMENTATION</h1>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4mm">${pics.map(x => x.list.map((src, i) => `<figure style="margin:0;break-inside:avoid"><img src="${src}" style="width:100%;height:58mm;object-fit:cover;border:1px solid #999"><figcaption style="font-size:8pt;margin-top:1mm"><b>${e(x.p.title)}</b>${x.list.length > 1 ? ` (${i + 1})` : ''} · ${e(calRangeText(x.p.done.on, x.p.done.to))}</figcaption></figure>`).join('')).join('')}</div></div>` : '';
+      printFormHTML(`<div class="pr-form pr-wide" data-ppa-print>
+        <h1 style="margin-bottom:2pt">MONITORING REPORT ON THE IMPLEMENTATION OF THE ANNUAL IMPLEMENTATION PLAN</h1>
+        <p style="text-align:center;margin:0 0 6pt"><b>${e(school)}</b> · ${e(calSyText(sy))} · ${e(r.per.label === 'Year-end' ? 'Year-end report' : r.per.label === 'Mid-year' ? 'Mid-year report' : r.per.label)} (${e(calRangeText(r.per.from, r.per.to))})</p>
+        <p style="margin:0 0 4pt;font-size:9pt">Activities: <b>${st.counted}</b>${st.cancelled ? ` (+ ${st.cancelled} cancelled)` : ''} · Done: <b>${st.done} (${st.pct}%)</b> · Not done (overdue): <b>${st.overdue}</b> · Moved: <b>${st.moved}</b> · Not yet due: <b>${st.coming}</b> · Budget: <b>${peso2(st.budget)}</b> · Actual cost: <b>${peso2(st.cost)}</b></p>
+        <table class="pr-table" style="table-layout:fixed;width:100%"><colgroup><col style="width:3%"><col style="width:15%"><col style="width:10%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:23%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:5%"></colgroup><tr><th>#</th><th>Program / Project / Activity</th><th>Person(s) responsible</th><th>Target date</th><th>Actual date</th><th>Status</th><th>Accomplishment / Remarks</th><th>Partici&shy;pants</th><th>Budget</th><th>Actual cost</th><th>Fund source</th></tr>
+          ${body}
+          <tr><td colspan="8" class="r"><b>TOTAL</b></td><td class="r"><b>${peso2(st.budget)}</b></td><td class="r"><b>${peso2(st.cost)}</b></td><td></td></tr></table>
+        ${srcRows ? `<table class="pr-table" style="margin-top:6pt;width:auto"><tr><th>Fund source</th><th>Budget</th><th>Actual cost</th></tr>${srcRows}</table>` : ''}
+        <table class="pr-table" style="margin-top:14pt"><colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+          <tr><td><i>Prepared by:</i></td><td><i>Noted:</i></td></tr><tr><td class="pr-sig"></td><td class="pr-sig"></td></tr>
+          <tr><td class="c"><b>${me.role === 'head' ? '' : e(me.name).toUpperCase()}</b><br><span style="font-size:8.5pt">${me.role === 'ao' ? e(schoolInfo.custodianDesig || schoolInfo.position || 'Administrative Officer') : me.role === 'head' ? 'School Planning Team' : ''}</span></td>
+          <td class="c"><b>${e(head.n).toUpperCase()}</b><br><span style="font-size:8.5pt">${e(head.d || 'School Head')}</span></td></tr></table>
+        ${photoHTML}</div>`);
     }
 
     // ---- This week (calendar, AO's Home) and reminders --------------------------------------------
@@ -20588,6 +21105,8 @@
         const parts = [w.acts.length && ppaActs(w.acts.length), w.evs.length && plural(w.evs.length, 'event'), w.off.length && `${plural(w.off.length, 'day')} without classes`].filter(Boolean);
         add('slate', 'ph-calendar-check', `This week: ${parts.join(', ')}`, w.acts.concat(w.evs).slice(0, 3).map(e => `${e.title} (${calShort(e.from)})`).join(' · '), 'cal-week', 'openCalendar()');
       }
+      const over = ppaOverdueMine(calSyOf(localISODate(new Date(now))), localISODate(new Date(now)));
+      if (over.length) add('amber', 'ph-alarm', `Overdue: ${ppaActs(over.length)} to mark Done or move`, over.slice(0, 3).map(p => `${p.title} (${calShort(ppaEndOf(p))})`).join(' · ') + (over.length > 3 ? ` · + ${over.length - 3} more` : ''), 'ppa-overdue', 'ppaOpenOverdue()');
       const wait = ppaWaitingForMe(calSyOf(localISODate(new Date(now))));
       if (wait.length && ppaCanDecide()) add('amber', 'ph-paper-plane-tilt', `${plural(wait.length, 'proposal')} from teachers to approve`, 'No School Head in the app: you approve them · School calendar → Plan', 'ppa-wait', "openCalendar(); setCalPage('plan')");
     }
@@ -20630,11 +21149,16 @@
             if (!mine || (p.to || p.from) < localISODate()) return null;
             const q = String(prev || '').split('|');
             if (prev === undefined || q[0] !== '1') return p.status === 'cancelled' ? null : { title: `You are responsible: ${p.title}`, body: when, icon: 'ph-user-circle-plus', tone: 'brand', go: 'calendar' };
-            if (p.status === 'cancelled' && q[4] !== 'cancelled') return { title: `Cancelled: ${p.title}`, body: when, icon: 'ph-calendar-x', tone: 'rose', go: 'calendar' };
-            if (q[1] !== p.from || q[2] !== p.to || q[3] !== (p.startTime || '')) return { title: `Moved: ${p.title}`, body: when, icon: 'ph-calendar-dots', tone: 'amber', go: 'calendar' };
+            if (p.status === 'cancelled' && q[4] !== 'cancelled') return { title: `Cancelled: ${p.title}`, body: [when, p.cancelWhy].filter(Boolean).join(' · '), icon: 'ph-calendar-x', tone: 'rose', go: 'calendar' };
+            const lastMove = (p.moved || [])[(p.moved || []).length - 1];
+            if (q[1] !== p.from || q[2] !== p.to || q[3] !== (p.startTime || '')) return { title: `Moved: ${p.title}`, body: [when, lastMove && lastMove.why].filter(Boolean).join(' · '), icon: 'ph-calendar-dots', tone: 'amber', go: 'calendar' };
             return null;
           } });
         }
+      });
+      if (calCanEdit()) list.filter(p => p.kind === 'activity' && !ppaPending(p) && !p.removed).forEach(p => {
+        entries.push({ key: 'pp:d:' + p.id, sig: p.status === 'done' ? 'd' : '', make: prev => (p.status === 'done' && prev !== 'd' && p.done && p.done.byUid && p.done.byUid !== me
+          ? { title: `Done: ${p.title}`, body: `${p.done.byName || 'A teacher'} · ${String(p.done.what || '').slice(0, 120)}`, icon: 'ph-check-circle', tone: 'emerald', go: 'plan' } : null) });
       });
       notifCheck('ppas:' + sy, entries, fromCacheOf(meta));
     }
@@ -21056,6 +21580,10 @@
         if (d.books && d.books.od) add('amber', 'ph-books', `${plural(d.books.od, 'library book')} overdue`, 'Books & Library', 'books');
         if (d.nOut) add('slate', 'ph-package', `${d.nOut === 1 ? '1 supply' : `${d.nOut} supplies`} out of stock`, (d.out || []).slice(0, 3).map(x => x.n).join(' · '), 'out');
       }
+      try {   // School calendar: activities past their date and not marked Done
+        const over = planOn() && calEvLoaded ? ppaOverdueMine(calSyOf(localISODate(new Date(now))), localISODate(new Date(now))) : [];
+        if (over.length) add('amber', 'ph-alarm', `Overdue: ${ppaActs(over.length)} to mark Done or move`, over.slice(0, 3).map(p => `${p.title} (${calShort(ppaEndOf(p))})`).join(' · ') + (over.length > 3 ? ` · + ${over.length - 3} more` : ''), 'ppa-overdue');
+      } catch (e) {}
       const latePrs = prsNotDelivered(now);
       if (latePrs.length) add('amber', 'ph-truck', `${plural(latePrs.length, 'approved Purchase Request')} not delivered after ${PR_LATE_DAYS} days`,
         latePrs.slice(0, 3).map(x => `PR No. ${x.pr.prNo} (${x.days} days)`).join(' · '), 'late-prs');
@@ -31952,6 +32480,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       } else if (n.go === 'plan') {                 // School Planning: programs, projects, activities
         calPage = 'plan';
         openCalendar();
+      } else if (n.go === 'overdue') {              // School Planning: activities past their date, not marked Done
+        ppaOpenOverdue();
       } else if (n.go === 'head-leave') {
         if (isHeadDevice()) { headTab = 'leave'; switchMainView('HEAD'); renderHeadView(); }
       } else if (n.go === 'teacher-leave') {
@@ -32127,6 +32657,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-plan-done', date: 'Nov 2026', title: 'Mark activities Done, move them, and the monitoring report', points: [
+        'New: Mark Done on an activity with its accomplishment report: the actual date, what was done, the actual cost, the number of participants, remarks and up to 3 photos (made small on your phone). Teachers mark the activities with their name; the School Head or the AO can undo it.',
+        'Move asks for the new date and why; the old date stays in its history and the people responsible are told. Cancel now asks for the reason too.',
+        'Overdue reminders: the day after an activity\u2019s date, if it is not marked Done, the people responsible, the School Head and the AO are reminded, then every week. Home and the Plan page show what is overdue.',
+        'Monitoring report on the Plan page: by term, mid-year or year-end, with the % done per project, budget against actual cost, and target against actual dates. Print it with the photos.'
+      ], pilot: 'plan' },
       { id: '2026-11-calendar-from-pdf', date: 'Nov 2026', title: 'Read the school calendar from a PDF', points: [
         'New: Read a calendar PDF or photo on the School calendar. Choose the DepEd Order, a region or division memo, or your school\u2019s own calendar (a typed PDF, a scanned one, a photo, or pasted text), and every date found is listed with what kind it is: holiday, no classes, break, exams, INSET, DepEd activity or school event.',
         'Check each one before adding: change the title, kind or dates, untick what you don\u2019t want. Dates already on the calendar are marked Already there and left out. For a school year not set up yet, the first and last day and the terms are filled in from the paper.',
@@ -33168,7 +33704,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     // so nothing syncs back. Typed RESET confirms; the page reloads clean.
     var resetScope = 'device';
     var resetBusy = false;
-    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites', 'turnovers', 'turnoverInvites', 'staff', 'staffInvites', 'approvals', 'suggestions', 'dashboard', 'books', 'bookMeta', 'bookIndex', 'bookMoves', 'loans', 'classBooks', 'leaves', 'leaveCards', 'planYears', 'ppas'];
+    const RESET_SUBS = ['inspections', 'teacherReports', 'releases', 'stockHolds', 'stock', 'requests', 'purchaseRequests', 'inventory', 'catalog', 'settings', 'invites', 'members', 'heads', 'headInvites', 'turnovers', 'turnoverInvites', 'staff', 'staffInvites', 'approvals', 'suggestions', 'dashboard', 'books', 'bookMeta', 'bookIndex', 'bookMoves', 'loans', 'classBooks', 'leaves', 'leaveCards', 'planYears', 'ppas', 'ppaPhotos'];
     const canEraseCloud = () => isCustodianDevice() && !isViewOnly() && !isAssistant() && !!cloud.user && !!cloud.db && !!(reqRole && reqRole.schoolId);
     function openResetApp() {
       if (typeof closeMoreMenu === 'function') { try { closeMoreMenu(); } catch (e) {} }
@@ -33285,7 +33821,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const refs = [];
       for (const sub of RESET_SUBS) {
         if ((sub === 'leaves' || sub === 'leaveCards') && !leaveOn()) continue;   // the Leave pilot: other schools can't read it (and have none)
-        if ((sub === 'planYears' || sub === 'ppas') && !planOn()) continue;       // the School Calendar pilot, the same
+        if ((sub === 'planYears' || sub === 'ppas' || sub === 'ppaPhotos') && !planOn()) continue;       // the School Calendar pilot, the same
         const snap = await F.getDocs(F.collection(db, 'schools', sid, sub));
         snap.docs.forEach(d => refs.push(F.doc(db, 'schools', sid, sub, d.id)));
       }
