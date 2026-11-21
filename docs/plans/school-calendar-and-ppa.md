@@ -81,6 +81,7 @@ may have no project.
 schools/{sid}/planYears/{sy}        one per school year, e.g. "2026-2027"
   { sy, start, end, terms: [{ n, from, to, blocks: [{ kind: opening|instructional|endterm, from, to }] }],
     days: [{ at | from,to, kind: holiday|break|inset|suspension|noclass|exam|event, title, ref }],
+    people: [{ uid, name, pos }],        (D2) the school's people, for "Person(s) responsible" on teachers' phones
     classDays, updatedAt }
 
 schools/{sid}/ppas/{id}              one per program, project or activity
@@ -89,10 +90,20 @@ schools/{sid}/ppas/{id}              one per program, project or activity
     from, to, allDay, startTime, endTime, venue,
     who: [{ uid, name }], team: [{ uid, name, role }],
     budget, source: mooe|sef|pta|canteen|igp|donation|other, sourceNote,
-    status: proposed|returned|planned|ongoing|done|moved|cancelled, done: { atMs, byName, note, actual },
-    by: { uid, name, role: head|ao|teacher }, apId,        a teacher's proposal: the approval waiting
-    moved: [{ from, to, why, atMs }], log: [...], createdAt, updatedAt }
+    status: proposed|returned|withdrawn|merged|planned|ongoing|done|moved|cancelled, done: { atMs, byName, note, actual },
+    by: { uid, name, role: head|ao|teacher },
+    decision: { ok, byUid, byName, role, atMs, note },     the School Head's answer to a proposal
+    changeOf,                                               a teacher's suggested change to this activity id
+    series,                                                 activities made together by Repeat
+    moved: [{ from, to, atMs, by }], log: [...], removed, createdMs, createdAt, updatedAt }
 ```
+
+- **As built in D2:** a proposal is decided on the ppa document itself, not through an approvals
+  document (so no `apId`, no approvals kind `plan`): Approve sets `status: 'planned'` (or, for a
+  suggested change, copies its fields onto the activity and sets the suggestion to `merged`);
+  Return sets `status: 'returned'` with `decision.note`. The School Head decides; with no School
+  Head in the app, the AO does. The Approve tab lists proposals with the PRs and the other
+  approvals.
 
 - One document per activity keeps writes small. A school has about 30–150 per year, well
   within the 50k reads / 20k writes a day.
@@ -102,7 +113,8 @@ schools/{sid}/ppas/{id}              one per program, project or activity
   - Write: the head (`isHead`) and staff (the AO / custodian, assistants), freely.
   - A teacher (member) may create only with `status: 'proposed'` and `by.uid` = their own uid,
     and may edit or withdraw their own while it is `proposed` or `returned`.
-  - A teacher may update only `status`/`done` (to Done) on an activity where they are in `who`.
+  - A teacher may not change the School Head's `decision`, approve their own, or add straight to the plan.
+  - (D4) A teacher may update only `status`/`done` (to Done) on an activity where they are in `who`.
   - Read: members, staff and head. A member does not see other teachers' `proposed`/`returned`
     entries (the app filters them; the rules allow reading the school's plan).
   - Delete: custodian only (Reset app).
@@ -150,7 +162,7 @@ schools/{sid}/ppas/{id}              one per program, project or activity
 | PR | What | Size |
 |---|---|---|
 | **D1** (first) | School year setup + Calendar (agenda and month), the DepEd starter dates, holidays and suspensions, school events, class-day count. The head and AO edit; teachers get a read-only Calendar tab; the head gets a Plan tab and the AO a Calendar page. | M |
-| **D2** | Programs, Projects, Activities: the head and AO encode, edit, copy and repeat; on the calendar; "Mine" for teachers; reminders. Teachers propose, and the School Head approves (approvals kind `plan`). | L |
+| **D2** (built) | Programs, Projects, Activities: the head and AO encode, edit, copy and repeat; on the calendar; "Mine" for teachers; reminders. Teachers propose (or suggest a change), and the School Head approves or returns it in the Approve tab (decided on the ppa document). | L |
 | **D3** | Prints: AIP (Annex 10), Work Plan and Budget Matrix (Annex 9), monthly calendar. | M |
 | **D4** | Done / Moved / Cancelled with accomplishments; teachers mark their own activities Done; monitoring report; overdue reminders. | M |
 | **D5** | Links: PR "For activity" with budget utilization; leave and inventory entries on the calendar. | M |
