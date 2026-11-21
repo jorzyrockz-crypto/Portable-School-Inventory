@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="1f0f903b4293">
+  <meta name="app-version" content="cfb772db95c7">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -18531,9 +18531,14 @@
     // (localStorage and IndexedDB): nothing is saved in the cloud.
     const CPR_KEY = 'cp_calprint_v1';
     const CPR_DB = 'cp-print-pictures';
-    const CPR_ART_MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10'];   // assets/cal-art/mMM.webp
+    const CPR_ART_MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];   // assets/cal-art/mMM.webp
     const CPR_SCENES = [
-      ['grounds', 'School grounds', 'assets/brand/login-landscape.webp']
+      ['grounds', 'School grounds', 'assets/cal-art/g1.webp'],
+      ['classroom', 'Classroom', 'assets/cal-art/g2.webp'],
+      ['library', 'Library', 'assets/cal-art/g3.webp'],
+      ['sports', 'Sports day', 'assets/cal-art/g4.webp'],
+      ['garden', 'Nature and garden', 'assets/cal-art/g5.webp'],
+      ['stage', 'Celebration', 'assets/cal-art/g6.webp']
     ];
     const CPR_PAPER = { a4: [210, 297, 'A4'], folio: [215.9, 330.2, 'Folio · 8.5 × 13 in'], a3: [297, 420, 'A3'] };
     const CPR_ACCENT = { teal: ['#0f766e', '#ccfbf1', 'Teal'], blue: ['#1d4ed8', '#dbeafe', 'Blue'], green: ['#15803d', '#dcfce7', 'Green'], red: ['#b91c1c', '#fee2e2', 'Red'], violet: ['#6d28d9', '#ede9fe', 'Violet'], orange: ['#c2410c', '#ffedd5', 'Orange'], bw: ['#111111', '#e5e5e5', 'Black & white'] };
@@ -19492,6 +19497,7 @@
       const nMine = acts.filter(p => ppaIsMine(p)).length;
       const tile = (n, label, k) => `<div class="rounded-xl bg-white border border-slate-200 px-2 py-2 text-center" data-ppa-tile="${k}"><span class="block ${String(n).length > 6 ? 'text-sm sm:text-lg' : 'text-lg'} font-extrabold font-mono leading-tight whitespace-nowrap tracking-tight">${n}</span><span class="block text-[10px] font-bold uppercase text-slate-500 leading-tight">${label}</span></div>`;
       const chip = (k, label) => `<button type="button" onclick="setPpaFilter('${k}')" data-ppa-filter="${k}" aria-pressed="${ppaFilter === k}" class="shrink-0 h-8 px-3 rounded-full border text-xs font-bold ${ppaFilter === k ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700'}">${label}</button>`;
+      // Add buttons follow the plan: Program · Project · Activity. Program is the main one until the year has a program; then Activity (added most often)
       const addBtn = (kind, label, icon, primary, id) => `<button type="button" onclick="ppaNew('${kind}')" id="${id}" class="h-12 rounded-2xl ${primary ? 'bg-teal-700 hover:bg-teal-800 text-white' : 'bg-white border border-slate-200 hover:border-teal-300 text-slate-800'} text-sm font-extrabold flex items-center justify-center gap-1.5"><i class="ph-bold ${icon} text-lg"></i> ${label}</button>`;
       // The tree: programs with their projects and activities, then what is not under one
       const ids = new Set(programs.concat(projects).map(p => p.id));
@@ -19541,8 +19547,8 @@
           <div class="grid grid-cols-4 gap-1.5">${tile(programs.length, 'Programs', 'programs')}${tile(projects.length, 'Projects', 'projects')}${tile(counted.length, 'Activities', 'activities')}${tile(budget ? `₱${Math.round(budget).toLocaleString('en-PH')}` : '₱0', 'Budget', 'budget')}</div>
           ${Object.keys(bySrc).length ? `<div class="flex flex-wrap gap-1.5" data-ppa-sources>${PPA_SOURCES.filter(s => bySrc[s[0]]).map(s => `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700" data-ppa-src="${s[0]}">${s[1]} ${ppaPeso(bySrc[s[0]])}</span>`).join('')}</div>` : ''}
         </div>
-        ${edit ? `<div class="grid grid-cols-3 gap-2">${addBtn('activity', 'Activity', 'ph-plus', true, 'ppaAddActivity')}${addBtn('project', 'Project', 'ph-plus', false, 'ppaAddProject')}${addBtn('program', 'Program', 'ph-plus', false, 'ppaAddProgram')}</div>`
-          : propose ? `<div class="space-y-1.5"><div class="grid grid-cols-2 gap-2">${addBtn('activity', 'Propose an activity', 'ph-paper-plane-tilt', true, 'ppaProposeActivity')}${addBtn('project', 'Propose a project', 'ph-paper-plane-tilt', false, 'ppaProposeProject')}</div>
+        ${edit ? `<div class="grid grid-cols-3 gap-2" data-ppa-add="${programs.length ? 'activity' : 'program'}">${addBtn('program', 'Program', 'ph-plus', !programs.length, 'ppaAddProgram')}${addBtn('project', 'Project', 'ph-plus', false, 'ppaAddProject')}${addBtn('activity', 'Activity', 'ph-plus', !!programs.length, 'ppaAddActivity')}</div>`
+          : propose ? `<div class="space-y-1.5"><div class="grid grid-cols-2 gap-2">${addBtn('project', 'Propose a project', 'ph-paper-plane-tilt', false, 'ppaProposeProject')}${addBtn('activity', 'Propose an activity', 'ph-paper-plane-tilt', true, 'ppaProposeActivity')}</div>
               <p class="text-[11px] text-slate-500 px-1">The School Head approves it first; then it joins the plan and the calendar.</p></div>` : ''}
         ${waiting.length ? `<div class="space-y-2" data-ppa-waiting="${waiting.length}">${h(edit ? `For approval · ${waiting.length}` : `Your proposals · ${waiting.length}`)}${waiting.map(p => ppaPropCardHTML(p)).join('')}</div>` : ''}
         ${!empty ? `<div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('mine', `Mine${nMine ? ` · ${nMine}` : ''}`)}</div>` : ''}
@@ -31546,6 +31552,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-plan-order', date: 'Nov 2026', title: 'Plan in order: program, project, activity', points: [
+        'The add buttons on the Plan page now follow the plan: Program, then Project, then Activity. Program is the main button until the school year has its first program; after that, Activity is (the one added most often). Teachers see Propose a project, then Propose an activity.',
+        'Printing the calendar: November (Reading Month) and December (Christmas) have their own pictures now, and there are 6 general scenes to choose from: school grounds, classroom, library, sports day, nature and garden, and a celebration.'
+      ], pilot: 'plan' },
       { id: '2026-11-calendar-print', date: 'Nov 2026', title: 'Print the school calendar', points: [
         'New: Print on the School calendar makes a wall calendar for the month, a range of months or the whole school year, with clay-style art for each month (or a general scene, your school\u2019s own photo, or none to save ink).',
         'Choose A4, Folio (8.5 \u00d7 13 in) or A3, landscape or portrait, and 1 or 2 months on a sheet (stacked or side by side). A preview shows each sheet before printing.',

@@ -50,11 +50,15 @@ try {
   out('2 the Plan page: a program, a project, an activity');
   check(await ev(a, () => !!document.querySelector('[data-cal-page="plan"]') && !!document.querySelector('[data-cal-page="cal"][aria-pressed="true"]')), 'Calendar · Plan switch');
   await ev(a, () => document.querySelector('[data-cal-page="plan"]').click());
-  check(await ev(a, () => !!document.querySelector('[data-ppa-empty]') && !!document.getElementById('ppaAddProgram') && !!document.getElementById('ppaAddActivity')), 'empty plan: add Activity · Project · Program');
+  check(await ev(a, () => !!document.querySelector('[data-ppa-empty]') && !!document.getElementById('ppaAddProgram') && !!document.getElementById('ppaAddActivity')), 'empty plan: add Program · Project · Activity');
+  const addOrder = () => ev(a, () => { const g = document.querySelector('[data-ppa-add]'); return g ? [...g.children].map(b => b.id.replace('ppaAdd', '') + (/bg-teal-700/.test(b.className) ? '*' : '')).join(' ') : ''; });
+  check(await addOrder() === 'Program* Project Activity', 'no program yet: the buttons go Program · Project · Activity, Program first');
   await ev(a, () => document.getElementById('ppaAddProgram').click());
   await fill(a, { title: 'Reading Program', note: 'Reading and numeracy for all grade levels' });
   await waitNode(() => ppas(sid).some(p => p.kind === 'program' && p.title === 'Reading Program'));
   const prog = ppas(sid).find(p => p.kind === 'program');
+  await until(a, () => !!document.querySelector('[data-ppa-add="activity"]'), 'Activity first');
+  check(await addOrder() === 'Program Project Activity*', 'after the first program: Activity is the main button');
   check(prog.status === 'planned' && prog.sy === '2026-2027' && !prog.from && prog.by.role === 'ao', 'saved: the program (planned, SY 2026–2027)');
   await ev(a, () => document.getElementById('ppaAddProject').click());
   await fill(a, { parent: prog.id, title: 'Project READ', objective: 'Halve the frustration readers in Grades 4 to 6', output: '120 learners reading at grade level', team: ['Ana Reyes'] });
