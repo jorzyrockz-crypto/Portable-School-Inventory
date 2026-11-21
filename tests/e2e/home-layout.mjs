@@ -31,6 +31,7 @@ try {
   await ev(a, () => loadSampleData({ ask: false }));
   await until(a, () => !!sampleStore() && allTaggedUnits().length > 0 && !!countSession, 'the sample data', 15000);
   await home(a);
+  await until(a, () => (document.getElementById('homeTiles').dataset.homeActs || '').startsWith('tag'), 'the tiles with Scan tag', 5000);
   k = (await acts(a)).split(',');
   out(`   ${k.join(', ')}`);
   check(k[0] === 'tag' && k.indexOf('ics') > k.indexOf('release'), 'Scan tag first; Scan ICS after Release');

@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="689b268be0cf">
+  <meta name="app-version" content="29728fc20aaa">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -204,6 +204,8 @@
     html.dark .ip-tab-n { background: rgb(20 184 166 / 0.2); color: #5eead4; }
     html.dark .ip-link:hover { color: #a5b4fc; }
     .lap-only, .lap-col { display: none; }
+    #tabBar > div.hidden { display: none !important; }
+    .hd-count { position: absolute; top: 0.375rem; left: 50%; margin-left: 0.375rem; }
     :root { --side-w: 14.5rem; }
     /* Teachers page on a phone: the list, or the person picked (side by side on computers, below) */
     #tvPanes.tv-sel > #tvListPane, #tvPanes:not(.tv-sel) > #tvDetailPane { display: none; }
@@ -227,6 +229,10 @@
       html:not(.no-tabs) body { padding-left: var(--side-w); padding-bottom: 2.5rem; }
       #hdBody .hd-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
       #hdBody .hd-grid > * { margin-top: 0 !important; }
+      #hdBody .hd-wait { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; align-items: start; }
+      #hdBody .hd-wait > * { margin-top: 0 !important; }
+      #tabBar #hdTab-more { display: none !important; }
+      #tabBar .hd-count { position: static; margin-left: auto; }
       #hdBody .hd-holders { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; align-items: start; }
       #hdBody .hd-holders > * { margin-top: 0 !important; }
       html:not(.no-tabs) body > header { margin-left: calc(-1 * var(--side-w)); }
@@ -1450,6 +1456,7 @@
 
   <!-- SCHOOL HEAD (head's phone): approve or return Purchase Requests -->
   <section id="viewHead" class="hidden max-w-xl mx-auto px-4 pt-5 space-y-5 no-print">
+    <button id="hdBack" type="button" onclick="setHeadTab('more')" class="hidden lap-hide -mb-3 h-9 -ml-1 px-1 text-xs font-bold text-brand-700 items-center gap-1"><i class="ph-bold ph-caret-left"></i> More</button>
     <div class="flex items-start gap-3">
       <div class="min-w-0 flex-1">
         <p id="hdHello" class="text-sm text-slate-500"></p>
@@ -1457,15 +1464,6 @@
         <p id="hdSchool" class="text-xs text-slate-500"></p>
       </div>
       <span id="hdAvatar" class="hidden shrink-0 mt-1 rounded-full ring-2 ring-white shadow-sm"></span>
-    </div>
-    <div id="hdTabs" role="tablist" aria-label="To approve, school property, items, people or history" class="hidden grid-cols-5 gap-1 p-1 rounded-2xl bg-slate-200/70">
-      <button id="hdTab-approve" role="tab" onclick="setHeadTab('approve')"><i class="ph-bold ph-seal-check text-base"></i> Approve <span id="hdApproveCount" class="hidden"></span></button>
-      <button id="hdTab-school" role="tab" onclick="setHeadTab('school')"><i class="ph-bold ph-buildings text-base"></i> School</button>
-      <button id="hdTab-items" role="tab" onclick="setHeadTab('items')"><i class="ph-bold ph-package text-base"></i> Items</button>
-      <button id="hdTab-people" role="tab" onclick="setHeadTab('people')"><i class="ph-bold ph-users-three text-base"></i> People</button>
-      <button id="hdTab-history" role="tab" onclick="setHeadTab('history')"><i class="ph-bold ph-clock-counter-clockwise text-base"></i> History</button>
-      <button id="hdTab-leave" role="tab" onclick="setHeadTab('leave')" class="hidden"><i class="ph-bold ph-calendar-check text-base"></i> Leave</button>
-      <button id="hdTab-plan" role="tab" onclick="setHeadTab('plan')" class="hidden"><i class="ph-bold ph-calendar-dots text-base"></i> Plan</button>
     </div>
     <p id="hdSync" class="hidden rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-2 flex items-center gap-2"></p>
     <div id="hdBody" class="space-y-5"></div>
@@ -1587,7 +1585,7 @@
 
   <!-- BOTTOM TAB BAR -->
   <nav id="tabBar" class="safe-bottom fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_16px_rgba(15,23,42,0.06)] no-print">
-    <div class="max-w-xl mx-auto grid grid-cols-4">
+    <div id="cuNav" class="max-w-xl mx-auto grid grid-cols-4">
       <button onclick="switchMainView('HOME')" data-view="HOME" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-brand-600">
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 "></span>
         <i class="ph-bold ph-house text-[22px]"></i>
@@ -1654,6 +1652,55 @@
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
         <i class="ph-bold ph-clock-counter-clockwise text-[22px]"></i>
         <span class="flex items-center gap-1">Activity</span>
+      </button>
+    </div>
+    <!-- The School Head: Today · Approve · School · Calendar · More (a sidebar on a computer, the More pages listed) -->
+    <div id="hdNav" role="tablist" aria-label="School Head" class="hidden max-w-xl mx-auto grid grid-cols-5">
+      <button id="hdTab-today" role="tab" data-hd-tab="today" onclick="setHeadTab('today')" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-house text-[22px]"></i>
+        <span class="flex items-center gap-1">Today</span>
+      </button>
+      <button id="hdTab-approve" role="tab" data-hd-tab="approve" onclick="setHeadTab('approve')" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-seal-check text-[22px]"></i>
+        <span class="flex items-center gap-1">Approve</span><span id="hdApproveCount" class="hidden"></span>
+      </button>
+      <button id="hdTab-school" role="tab" data-hd-tab="school" onclick="setHeadTab('school')" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-buildings text-[22px]"></i>
+        <span class="flex items-center gap-1">School</span>
+      </button>
+      <button id="hdTab-plan" role="tab" data-hd-tab="plan" onclick="setHeadTab('plan')" style="display:none" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-calendar-dots text-[22px]"></i>
+        <span class="flex items-center gap-1">Calendar</span>
+      </button>
+      <button id="hdTab-more" role="tab" data-hd-tab="more" onclick="setHeadTab('more')" class="tab-btn relative h-16 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-dots-three-circle text-[22px]"></i>
+        <span class="flex items-center gap-1">More</span>
+      </button>
+      <span class="side-label lap-only">Records</span>
+      <button id="hdTab-items" role="tab" data-hd-tab="items" onclick="setHeadTab('items')" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-package text-[22px]"></i>
+        <span class="flex items-center gap-1">Inventory</span>
+      </button>
+      <button id="hdTab-people" role="tab" data-hd-tab="people" onclick="setHeadTab('people')" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-users-three text-[22px]"></i>
+        <span class="flex items-center gap-1">Who holds what</span>
+      </button>
+      <button id="hdTab-history" role="tab" data-hd-tab="history" onclick="setHeadTab('history')" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-clock-counter-clockwise text-[22px]"></i>
+        <span class="flex items-center gap-1">Your decisions</span>
+      </button>
+      <button id="hdTab-leave" role="tab" data-hd-tab="leave" onclick="setHeadTab('leave')" style="display:none" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-calendar-check text-[22px]"></i>
+        <span class="flex items-center gap-1">My leave</span>
       </button>
     </div>
   </nav>
@@ -3607,6 +3654,8 @@
       const solo = viewName === 'REQUESTER' || viewName === 'HEAD' || (viewName === 'BOOKS' && isTeacherDevice());
       document.getElementById('tabBar').classList.toggle('hidden', solo);
       document.documentElement.classList.toggle('no-tabs', solo);
+      document.getElementById('cuNav').classList.toggle('hidden', viewName === 'HEAD');
+      document.getElementById('hdNav').classList.toggle('hidden', viewName !== 'HEAD');   // shown once the head is confirmed (renderHeadTabs)
       document.getElementById('moreMenuBtn').classList.toggle('hidden', solo);
       const ab = document.getElementById('appearBtn'); // a teacher or head has no More menu: Appearance gets its own button
       ab.classList.toggle('hidden', !solo);
@@ -3635,6 +3684,16 @@
     function paintTabs() {
       const forms = coaIsPage();
       document.querySelectorAll('#tabBar .tab-btn').forEach(btn => {
+        const hd = btn.dataset.hdTab;
+        if (hd) {
+          const on = activeMainView === 'HEAD' && (hd === headTab || (hd === 'more' && HEAD_MORE.includes(headTab)));
+          btn.classList.toggle('text-brand-600', on);
+          btn.classList.toggle('text-slate-500', !on);
+          btn.setAttribute('aria-current', on ? 'page' : 'false');
+          btn.setAttribute('aria-selected', on ? 'true' : 'false');
+          btn.querySelector('.tab-ind').classList.toggle('opacity-0', !on);
+          return;
+        }
         const on = forms ? btn.id === 'sideForms' : btn.dataset.adminTab ? activeMainView === 'ADMIN' && !!adminView && adminView.tab === btn.dataset.adminTab
           : !!btn.dataset.view && btn.dataset.view === activeMainView;
         btn.classList.toggle('text-brand-600', on);
@@ -10032,7 +10091,10 @@
       if (!box) return;
       const on = planOn() && isCustodianDevice() && calCanRead();
       box.classList.toggle('hidden', !on);
-      if (!on) { box.innerHTML = ''; return; }
+      box.innerHTML = on ? weekCardHTML() : '';
+    }
+    // The This week card: the custodian's Home and the School Head's Today
+    function weekCardHTML() {
       const today = localISODate(), sy = calSyOf(today), y = calYears[sy];
       const list = !calEvSy || calEvSy === sy ? homeWeekList() : [];   // events loaded for this SY
       const shown = list.slice(0, 5);
@@ -10051,7 +10113,7 @@
           <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900 truncate">${calE(e.title)}</span><span class="block text-[11px] text-slate-500 truncate">${calE(bits.join(' · '))}</span></span>
           <i class="ph-bold ph-caret-right text-slate-300"></i></button>`;
       }).join('');
-      box.innerHTML = `
+      return `
         <div class="rounded-2xl bg-white border border-slate-200/90 shadow-sm overflow-hidden" data-home-week-card="${list.length}">
           <div class="p-3 flex items-center gap-3">
             <button type="button" onclick="openCalendar()" class="flex-1 min-w-0 flex items-center gap-3 text-left">
@@ -16931,7 +16993,7 @@
         lvNav();
         if (activeMainView === 'LEAVE') renderLeaveView();
         if (activeMainView === 'REQUESTER' && isTeacherDevice()) { lvTeacherDot(); if (teacherTab === 'leave') renderTeacherLeave(); }
-        if (activeMainView === 'HEAD' && isHeadDevice()) renderHeadLeave();
+        if (activeMainView === 'HEAD' && isHeadDevice()) { renderHeadView(); renderHeadLeave(); }
         if (lvSheet) renderLvModal();
         if (activeMainView === 'HOME' && typeof renderHomeAttention === 'function') { renderHomeAttention(); renderHomeLeave(); if (planOn()) renderHomeWeek(); }
       } catch (e) { console.warn('leave render', e); }
@@ -23507,20 +23569,17 @@
         nTab = nWait + (turnWait ? turnPending().length : 0);
         const left = `
           ${turnWait ? headTurnoverHTML() : ''}
-          <div class="hd-grid space-y-5">
-          ${headAttentionHTML(headAttention(dashLoaded ? dashDoc : null, headWaitList()))}
           <div class="space-y-2.5">
             <div class="flex items-center justify-between gap-2 px-1">
               <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Waiting for you · ${nWait}</h2>
               ${nRoutine >= 2 ? `<button onclick="headApproveAll()" data-head-approve-all="${nRoutine}" class="h-8 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-1"><i class="ph-bold ph-checks"></i> Approve all ${nRoutine}</button>` : ''}
             </div>
-            ${nWait ? waiting.map(p => headPrCardHTML(p, true)).join('') + aps.map(a => headApCardHTML(a, true)).join('') + plans.map(p => ppaPropCardHTML(p, true)).join('') : `
+            ${nWait ? `<div class="hd-wait space-y-2.5">${waiting.map(p => headPrCardHTML(p, true)).join('') + aps.map(a => headApCardHTML(a, true)).join('') + plans.map(p => ppaPropCardHTML(p, true)).join('')}</div>` : `
               <div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500">
                 <i class="ph-bold ph-seal-check text-3xl text-slate-300"></i>
                 <p class="mt-1 font-bold text-slate-700 text-sm">Nothing to approve</p>
                 <p>Purchase Requests, write-offs and count reports from the property custodian show up here.</p>
               </div>`}
-          </div>
           </div>`;
         const history = `
           ${decided.all ? `
@@ -23543,7 +23602,7 @@
             <i class="ph-bold ph-caret-right text-slate-400"></i>
           </button>`;
         const pane = (k, inner) => `<div data-hd-pane="${k}" class="space-y-5 ${headTab === k ? '' : 'hidden'}">${inner}</div>`;
-        html = pane('approve', left) + pane('school', headDashHTML()) + pane('items', headTab === 'items' ? headItemsHTML() : '') + pane('people', headPeopleHTML()) + pane('history', history) + (leaveOn() ? pane('leave', lvMineHTML()) : '') + (planOn() ? pane('plan', (calSync(), calViewHTML(false))) : '');
+        html = pane('today', headTodayHTML({ waiting, aps, plans, nRoutine, turnWait })) + pane('approve', left) + pane('more', headMoreHTML()) + pane('school', headDashHTML()) + pane('items', headTab === 'items' ? headItemsHTML() : '') + pane('people', headPeopleHTML()) + pane('history', history) + (leaveOn() ? pane('leave', lvMineHTML()) : '') + (planOn() ? pane('plan', (calSync(), calViewHTML(false))) : '');
       }
       renderHeadTabs(two, nTab);
       const body = document.getElementById('hdBody');
@@ -23556,9 +23615,9 @@
       }
     }
     // Tabs like a teacher's: Approve (with the count waiting) · School · People · History.
-    var headTab = 'approve';
+    var headTab = 'today';
     var headPeopleQ = '';
-    var HEAD_TITLES = { approve: 'For your approval', school: 'School property', items: 'School inventory', people: 'Who holds what', history: 'Your decisions', leave: 'My leave', plan: 'School calendar' };
+    var HEAD_TITLES = { today: 'Today', approve: 'For your approval', school: 'School property', items: 'School inventory', people: 'Who holds what', history: 'Your decisions', leave: 'My leave', plan: 'School calendar', more: 'More' };
     function setHeadTab(t) {
       if (!HEAD_TITLES[t] || (t === 'leave' && !leaveOn()) || (t === 'plan' && !planOn())) return;
       const was = headTab;
@@ -23570,29 +23629,101 @@
       renderHeadTabs(!!document.querySelector('#hdBody [data-hd-pane]'));
       window.scrollTo({ top: 0 });
     }
+    // ---- School Head, Nov 2026: Today and More (the same look as the custodian's Home) ----------
+    const HEAD_MORE = ['items', 'people', 'history', 'leave'];
+    function headCardHTML(o) {
+      return `<div class="rounded-2xl bg-white border border-slate-200/90 shadow-sm p-3 flex items-center gap-3" ${o.attr || ''}>
+        <button type="button" onclick="${o.go}" class="flex-1 min-w-0 flex items-center gap-3 text-left">
+          <span class="relative w-11 h-11 shrink-0 rounded-xl ${o.tone} flex items-center justify-center"><i class="ph-bold ${o.icon} text-2xl"></i>${o.badge ? `<span class="absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-rose-500 text-white text-[11px] font-extrabold flex items-center justify-center">${o.badge > 99 ? '99+' : o.badge}</span>` : ''}</span>
+          <span class="min-w-0"><span class="block text-sm font-extrabold text-slate-800">${o.title}</span><span class="block text-[11px] text-slate-500 truncate">${escapeHTML(o.sub || '')}</span></span>
+        </button>
+        ${o.btn || '<i class="ph-bold ph-caret-right text-slate-400"></i>'}
+      </div>`;
+    }
+    // Today: Needs your attention and Waiting for you (left), This week and the cards (right)
+    function headTodayHTML(c) {
+      const d = dashLoaded ? dashDoc : null;
+      const rows = [
+        ...(c.turnWait ? [{ icon: 'ph-handshake', tone: 'bg-amber-50 text-amber-700', label: 'Custodian turnover to confirm', sub: 'The new property custodian takes over the school property' }] : []),
+        ...c.waiting.map(p => ({ icon: 'ph-receipt', tone: 'bg-amber-50 text-amber-700', label: `Purchase Request No. ${p.prNo}`, sub: [`₱${peso2(Number(p.total) || 0)}`, p.purpose].filter(Boolean).join(' · '), ms: (prApproval(p) || {}).submittedMs || p.createdMs })),
+        ...c.aps.map(a => ({ icon: a.kind === 'leave' ? 'ph-calendar-check' : a.kind === 'count' ? 'ph-list-checks' : 'ph-stamp', tone: a.kind === 'leave' ? 'bg-cyan-50 text-cyan-700' : 'bg-violet-50 text-violet-700', label: `${AP_KIND[a.kind] || 'Approval'}${a.title ? `: ${a.title}` : ''}`, sub: Number(a.total) ? `₱${peso2(Number(a.total))}` : '', ms: a.submittedMs })),
+        ...c.plans.map(p => ({ icon: 'ph-paper-plane-tilt', tone: 'bg-teal-50 text-teal-700', label: `Proposal: ${p.title || ''}`, sub: `From ${(p.by && p.by.name) || 'a teacher'}`, ms: p.createdMs }))
+      ];
+      const n = rows.length, shown = rows.slice(0, 4);
+      const wait = `
+        <div class="rounded-2xl bg-white border ${n ? 'border-violet-200' : 'border-slate-200/90'} shadow-sm overflow-hidden" data-hd-today-wait="${n}">
+          <div class="p-3 flex items-center gap-3">
+            <button type="button" onclick="setHeadTab('approve')" class="flex-1 min-w-0 flex items-center gap-3 text-left">
+              <span class="relative w-11 h-11 shrink-0 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center"><i class="ph-bold ph-seal-check text-2xl"></i>${n ? `<span class="absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-violet-600 text-white text-[11px] font-extrabold flex items-center justify-center">${n > 99 ? '99+' : n}</span>` : ''}</span>
+              <span class="min-w-0"><span class="block text-sm font-extrabold text-slate-800">Waiting for you</span><span class="block text-[11px] text-slate-500 truncate">${n ? `${n} to approve or return` : 'Nothing to approve'}</span></span>
+            </button>
+            ${c.nRoutine >= 2 ? `<button type="button" onclick="headApproveAll()" data-hd-today-all="${c.nRoutine}" class="shrink-0 h-10 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 transition"><i class="ph-bold ph-checks"></i> Approve all ${c.nRoutine}</button>` : ''}
+          </div>
+          ${shown.length ? `<div class="border-t border-slate-100 divide-y divide-slate-100">${shown.map(r => `
+            <button type="button" onclick="setHeadTab('approve')" data-hd-today-row class="w-full text-left flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50">
+              <span class="w-8 h-8 shrink-0 rounded-lg ${r.tone} flex items-center justify-center"><i class="ph-bold ${r.icon} text-base"></i></span>
+              <span class="min-w-0 flex-1"><span class="block text-xs font-bold text-slate-900 truncate">${escapeHTML(r.label)}</span>${r.sub ? `<span class="block text-[11px] text-slate-500 truncate">${escapeHTML(r.sub)}</span>` : ''}</span>
+              ${r.ms ? headAgeChip(r.ms) : ''}<i class="ph-bold ph-caret-right text-slate-300"></i>
+            </button>`).join('')}</div>` : ''}
+          ${n > shown.length ? `<button type="button" onclick="setHeadTab('approve')" class="w-full border-t border-slate-100 min-h-10 text-xs font-bold text-violet-700 hover:bg-slate-50">See all ${n} in Approve</button>` : ''}
+        </div>`;
+      const cards = [];
+      if (planOn() && calHeadOk()) cards.push(weekCardHTML());
+      if (leaveOn() && lvHeadOk()) {
+        const open = lvList.filter(l => LV_OPEN.includes(l.status)).length;
+        cards.push(headCardHTML({ attr: 'data-hd-today="leave"', go: "setHeadTab('leave')", tone: 'bg-cyan-50 text-cyan-700', icon: 'ph-calendar-check', title: 'My leave',
+          sub: !lvLoaded ? 'Loading…' : open ? `${open} in progress · Form 6 and leave credits` : 'Apply · Form 6 and leave credits',
+          btn: featEnded('leave') ? '' : `<button type="button" onclick="openLvSheet('apply')" id="hdTodayLeave" class="shrink-0 h-10 px-3 rounded-xl bg-cyan-700 hover:bg-cyan-800 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 transition"><i class="ph-bold ph-plus"></i> Apply</button>` }));
+      }
+      const sp = headSpend();
+      cards.push(headCardHTML({ attr: 'data-hd-today="prs"', go: "setHeadTab('school')", tone: 'bg-emerald-50 text-emerald-700', icon: 'ph-wallet', title: 'Purchase Requests',
+        sub: [sp.nPend && `${sp.nPend} waiting (${pesoShort(sp.pend)})`, sp.mo && `${pesoShort(sp.mo)} approved this month`, sp.yr ? `${pesoShort(sp.yr)} approved in ${sp.year}` : `None approved yet in ${sp.year}`].filter(Boolean).join(' · ') }));
+      cards.push(headCardHTML({ attr: 'data-hd-today="school"', go: "setHeadTab('school')", tone: 'bg-brand-50 text-brand-600', icon: 'ph-buildings', title: 'School property',
+        sub: !dashLoaded ? 'Loading…' : d ? [plural(d.items || 0, 'item'), pesoShort(d.value || 0), d.units && `${d.held || 0} of ${d.units} units with staff`].filter(Boolean).join(' · ') : 'Shows after the property custodian’s phone is online' }));
+      return `
+        <div class="hd-grid space-y-5">
+          <div class="space-y-5">${headAttentionHTML(headAttention(d, headWaitList()))}${wait}</div>
+          <div class="space-y-3">${cards.join('')}</div>
+        </div>`;
+    }
+    // More (phones): the pages that are in the sidebar on a computer
+    function headMoreHTML() {
+      const row = (go, icon, tone, title, sub, attr) => headCardHTML({ go, icon, tone, title, sub, attr });
+      return `
+        <div class="space-y-3" data-hd-more>
+          ${row("setHeadTab('items')", 'ph-package', 'bg-sky-50 text-sky-700', 'Inventory', 'Every item and unit · view only · suggest a change', 'data-hd-more-row="items"')}
+          ${row("setHeadTab('people')", 'ph-users-three', 'bg-indigo-50 text-indigo-600', 'Who holds what', 'Teachers and the property in their care', 'data-hd-more-row="people"')}
+          ${row("setHeadTab('history')", 'ph-clock-counter-clockwise', 'bg-violet-50 text-violet-700', 'Your decisions', 'What you approved or returned, with a search', 'data-hd-more-row="history"')}
+          ${leaveOn() && lvHeadOk() ? row("setHeadTab('leave')", 'ph-calendar-check', 'bg-cyan-50 text-cyan-700', 'My leave', 'Apply · Form 6 and leave credits', 'data-hd-more-row="leave"') : ''}
+          ${row('openSchoolHistory()', 'ph-lock-key', 'bg-slate-100 text-slate-600', 'School history', 'Every change on the custodian’s devices · can’t be edited', 'data-hd-more-row="log"')}
+        </div>`;
+    }
+    // The tab bar is the School Head's while their page is open (and they are confirmed)
+    function headNavShow(on) {
+      document.getElementById('tabBar').classList.toggle('hidden', !on);
+      document.documentElement.classList.toggle('no-tabs', !on);
+      document.getElementById('cuNav').classList.add('hidden');
+      document.getElementById('hdNav').classList.toggle('hidden', !on);
+    }
     function renderHeadTabs(on, n) {
-      const bar = document.getElementById('hdTabs');
-      if (!bar) return;
-      bar.classList.toggle('hidden', !on);
-      bar.classList.toggle('grid', !!on);
-      const lvTab = leaveOn(), calTab = planOn();
-      if ((headTab === 'leave' && !lvTab) || (headTab === 'plan' && !calTab)) headTab = 'approve';
-      const nTabs = 5 + (lvTab ? 1 : 0) + (calTab ? 1 : 0);
-      bar.classList.toggle('grid-cols-5', nTabs === 5);
-      bar.classList.toggle('grid-cols-6', nTabs === 6);
-      bar.classList.toggle('grid-cols-7', nTabs === 7);
+      const nav = document.getElementById('hdNav');
+      if (!nav) return;
+      if (activeMainView === 'HEAD') headNavShow(!!on);
+      const lvTab = leaveOn() && lvHeadOk(), calTab = planOn();
+      if ((headTab === 'leave' && !lvTab) || (headTab === 'plan' && !calTab)) headTab = 'today';
+      document.getElementById('hdTab-plan').style.display = calTab ? '' : 'none';
+      document.getElementById('hdTab-leave').style.display = lvTab ? '' : 'none';
+      nav.classList.toggle('grid-cols-5', calTab);
+      nav.classList.toggle('grid-cols-4', !calTab);
       document.getElementById('hdTitle').textContent = on ? HEAD_TITLES[headTab] : HEAD_TITLES.approve;
-      Object.keys(HEAD_TITLES).forEach(t => {
-        const b = document.getElementById(`hdTab-${t}`);
-        const sel = t === headTab;
-        if ((t === 'leave' && !lvTab) || (t === 'plan' && !calTab)) { b.className = 'hidden'; return; }
-        b.className = `relative h-12 sm:h-11 rounded-xl text-[11px] min-[400px]:text-xs sm:text-sm font-extrabold flex flex-col sm:flex-row items-center justify-center gap-0 sm:gap-1.5 transition ${sel ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5 seg-on' : 'text-slate-500 hover:text-slate-800'}`;
-        b.setAttribute('aria-selected', sel ? 'true' : 'false');
-      });
+      const back = document.getElementById('hdBack');
+      back.classList.toggle('hidden', !(on && HEAD_MORE.includes(headTab)));
+      back.classList.toggle('flex', !!(on && HEAD_MORE.includes(headTab)));
+      paintTabs();
       if (n === undefined) return;
       const c = document.getElementById('hdApproveCount');
-      c.textContent = n || '';
-      c.className = n ? 'absolute top-0.5 right-0.5 sm:static min-w-5 h-5 px-1.5 rounded-full bg-violet-600 text-white text-[11px] font-bold inline-flex items-center justify-center' : 'hidden';
+      c.textContent = n ? (n > 99 ? '99+' : n) : '';
+      c.className = n ? 'hd-count min-w-5 h-5 px-1.5 rounded-full bg-violet-600 text-white text-[11px] font-bold inline-flex items-center justify-center' : 'hidden';
     }
     function headPrCardHTML(pr, wait) {
       const a = prApproval(pr) || {};
@@ -32979,6 +33110,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-head-today', date: 'Nov 2026', title: 'The School Head’s screen looks like the custodian’s', points: [
+        'A new Today page opens first: Needs your attention, Waiting for you (with Approve all), This week on the school calendar, My leave, Purchase Requests and School property.',
+        'Five tabs at the bottom of the phone: Today, Approve, School, Calendar and More. Inventory, Who holds what, Your decisions, My leave and School history are under More.',
+        'On a computer, a sidebar like the custodian’s, with every page listed. Waiting cards in Approve sit side by side.'
+      ] },
       { id: '2026-11-home-reorg', date: 'Nov 2026', title: 'A tidier Home for the property custodian', points: [
         'Quick actions: smaller tiles with more in reach: Scan tag, Release, Count, New PR, Forms, Year-end and Invite. While you are still setting up, Scan ICS and Import come first (they are always in More too).',
         'Needs your attention no longer repeats what a card already shows (useful life, leave, the calendar, the count you are doing).',
