@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="fb43db72ee18">
+  <meta name="app-version" content="1f0f903b4293">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -407,6 +407,35 @@
       .pr-table tr { break-inside: avoid; }
       .pr-pages > .pr-form + .pr-form { break-before: page; page-break-before: always; }
     }
+    /* Printed calendar (School Planning D3): sizes are set in mm by cprSheetsHTML */
+    .cpr-sheet { position: relative; box-sizing: border-box; background: #fff; color: #0f172a; overflow: hidden; display: flex; flex-direction: column; font-family: Inter, Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cpr-sheet * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cpr-hdr { display: flex; align-items: center; flex: none; }
+    .cpr-ft { display: flex; align-items: center; justify-content: space-between; flex: none; }
+    .cpr-lg { display: inline-flex; align-items: center; gap: 1mm; white-space: nowrap; }
+    .cpr-month { position: relative; display: flex; flex-direction: column; flex: none; }
+    .cpr-wm { position: absolute; inset: 0; z-index: 0; }
+    .cpr-month > :not(.cpr-wm) { position: relative; z-index: 1; }
+    .cpr-banner { position: relative; overflow: hidden; flex: none; background: #fbf3e4; }
+    .cpr-banner img { position: absolute; inset: 0; }
+    .cpr-banner-t { position: absolute; left: 0; right: 0; top: 0; text-align: center; text-shadow: 0 0 1.2mm #fff8ea, 0 0 2.4mm #fff8ea, 0 0 0.5mm #fff8ea; }
+    .cpr-dows { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: center; text-align: center; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; flex: none; }
+    .cpr-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); flex: none; }
+    .cpr-cell { min-width: 0; overflow: hidden; }
+    .cpr-en { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+    .cpr-mk { display: inline-block; margin-right: 0.6mm; vertical-align: 0.05em; }
+    .cpr-mk-dot { border-radius: 50%; } .cpr-mk-sq { border-radius: 0.3mm; }
+    .cpr-mk-tri { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+    .cpr-mk-star { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+    .cpr-mk-dia { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+    .cpr-ui { display: grid; gap: 0.75rem; }
+    @media (min-width: 640px) { #calModalBox.cal-wide { max-width: 40rem; } }
+    @media (min-width: 900px) {
+      #calModalBox.cal-wide { max-width: 70rem; }
+      #calModalBox.cal-wide .cpr-ui { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; }
+      #calModalBox.cal-wide .cpr-ui-prev { position: sticky; top: 0; }
+    }
+    @media print { body.printing-cal #printPrSection { padding: 0 !important; margin: 0 !important; max-width: none !important; } }
     @keyframes dlgIn { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
     @keyframes dlgNudge { 0%, 100% { transform: none; } 30% { transform: scale(1.02); } 60% { transform: scale(0.99); } }
     #appDialog:not(.hidden) .dlg-card { animation: dlgIn 0.18s ease-out; }
@@ -18406,7 +18435,8 @@
           <button onclick="openCalSheet('date')" id="calAddDate" class="h-12 rounded-2xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-2"><i class="ph-bold ph-prohibit text-rose-600"></i> No classes / a date</button>
         </div>` : ''}
         ${y || calEvents.length ? `
-        <div class="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-200/70" role="tablist">${seg('agenda', 'Agenda', 'ph-list-bullets')}${seg('month', 'Month', 'ph-calendar')}</div>
+        <div class="flex gap-2"><div class="flex-1 grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-200/70" role="tablist">${seg('agenda', 'Agenda', 'ph-list-bullets')}${seg('month', 'Month', 'ph-calendar')}</div>
+          ${y ? `<button type="button" onclick="openCalPrint()" id="calPrintBtn" class="shrink-0 h-12 px-3.5 rounded-2xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-800 flex items-center gap-1.5" aria-label="Print the calendar"><i class="ph-bold ph-printer text-lg text-teal-700"></i><span class="hidden sm:inline">Print</span></button>` : ''}</div>
         <div class="flex gap-1.5 overflow-x-auto no-scrollbar">${chip('all', 'All')}${chip('mine', 'Mine')}${chip('acts', 'Activities')}${chip('events', 'School events')}${chip('off', 'No classes')}${chip('exam', 'Exams')}${chip('deped', 'DepEd')}</div>
         <div id="calBody" class="space-y-4">${calMode === 'month' ? calMonthHTML(list, y) : calAgendaHTML(list)}</div>
         ${y ? `<div class="flex flex-wrap items-center justify-between gap-2 px-1">
@@ -18494,6 +18524,473 @@
         </div>`;
     }
 
+    // ---- Print the calendar (School Planning, part D3) ------------------------------------------
+    // A wall calendar for the month (or a range of months, 1 or 2 per sheet) with clay-style art:
+    // this month's picture, a general scene, the school's own photo, or none. Everyone who sees
+    // the calendar can print it. The options and the school's photo and logo stay on this device
+    // (localStorage and IndexedDB): nothing is saved in the cloud.
+    const CPR_KEY = 'cp_calprint_v1';
+    const CPR_DB = 'cp-print-pictures';
+    const CPR_ART_MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10'];   // assets/cal-art/mMM.webp
+    const CPR_SCENES = [
+      ['grounds', 'School grounds', 'assets/brand/login-landscape.webp']
+    ];
+    const CPR_PAPER = { a4: [210, 297, 'A4'], folio: [215.9, 330.2, 'Folio · 8.5 × 13 in'], a3: [297, 420, 'A3'] };
+    const CPR_ACCENT = { teal: ['#0f766e', '#ccfbf1', 'Teal'], blue: ['#1d4ed8', '#dbeafe', 'Blue'], green: ['#15803d', '#dcfce7', 'Green'], red: ['#b91c1c', '#fee2e2', 'Red'], violet: ['#6d28d9', '#ede9fe', 'Violet'], orange: ['#c2410c', '#ffedd5', 'Orange'], bw: ['#111111', '#e5e5e5', 'Black & white'] };
+    // What to show: groups of calendar kinds
+    const CPR_SHOW = [
+      ['holiday', 'Holidays'], ['off', 'No classes'], ['exam', 'Exams'], ['event', 'School events'],
+      ['act', 'Activities'], ['sy', 'School year dates (terms, INSET, DepEd)'], ['nat', 'DepEd national dates (NAT, NSPC…)']
+    ];
+    const CPR_DEFAULTS = {
+      theme: 'auto', strength: 'full', place: 'banner', photoY: 50, accent: 'teal',
+      paper: 'a4', orient: 'landscape', per: 1, layout: 'stack', range: 'month', from: '', to: '', weekStart: 0,
+      show: { holiday: true, off: true, exam: true, event: true, act: true, sy: true, nat: false },
+      mine: false, times: true, venues: false, people: false, termLine: true,
+      hdrLogo: true, hdrName: true, hdrId: true, hdrDiv: false, hdrSy: true, division: '',
+      legend: true, motto: '', printed: true
+    };
+    let cpr = null, cprPics = { photo: '', logo: '' }, cprPicsFor = '', cprSheetNo = 0, cprZoom = false;
+    function cprOpts() {
+      if (cpr) return cpr;
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem(CPR_KEY) || '{}') || {}; } catch (e) {}
+      cpr = { ...CPR_DEFAULTS, ...saved, show: { ...CPR_DEFAULTS.show, ...(saved.show || {}) } };
+      if (!CPR_PAPER[cpr.paper]) cpr.paper = 'a4';
+      if (!CPR_ACCENT[cpr.accent]) cpr.accent = 'teal';
+      cpr.per = cpr.per === 2 ? 2 : 1;
+      return cpr;
+    }
+    function cprSave() { try { localStorage.setItem(CPR_KEY, JSON.stringify(cpr)); } catch (e) {} }
+    // The months of the school year (June to May, or the set first and last day)
+    function cprSyMonths(sy) {
+      const y = calYears[sy];
+      const a = y && y.start ? y.start.slice(0, 7) : `${sy.slice(0, 4)}-06`;
+      const b = y && y.end ? y.end.slice(0, 7) : `${sy.slice(5, 9)}-05`;
+      const out = [];
+      for (let m = a, i = 0; m <= b && i < 14; i++) { out.push(m); const d = new Date(m + '-01T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + 1); m = d.toISOString().slice(0, 7); }
+      return out;
+    }
+    function cprMonths() {
+      const o = cprOpts(), sy = calCurSy(), all = cprSyMonths(sy);
+      const cur = calMonth && all.includes(calMonth) ? calMonth : (all.includes(calDefaultMonth()) ? calDefaultMonth() : all[0]);
+      if (o.range === 'sy') return all;
+      if (o.range === 'range') {
+        const a = all.includes(o.from) ? o.from : cur, b = all.includes(o.to) ? o.to : a;
+        return all.filter(m => m >= (a < b ? a : b) && m <= (a < b ? b : a));
+      }
+      return [cur];
+    }
+    const cprMonthName = mo => new Date(mo + '-01T00:00:00').toLocaleDateString('en-PH', { month: 'long' });
+    const cprArtFor = (o, mo) => {
+      if (o.theme === 'none') return '';
+      if (o.theme === 'photo' && cprPics.photo) return cprPics.photo;
+      const sc = CPR_SCENES.find(s => 'g:' + s[0] === o.theme);
+      if (sc) return sc[2];
+      const mm = mo.slice(5, 7);
+      return CPR_ART_MONTHS.includes(mm) ? `assets/cal-art/m${mm}.webp` : CPR_SCENES[0][2];
+    };
+    // Which "What to show" group an entry belongs to
+    function cprGroup(e) {
+      if (e.nat) return 'nat';
+      if (e.kind === 'holiday') return 'holiday';
+      if (CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off) return 'off';
+      if (e.kind === 'exam') return 'exam';
+      if (e.kind === 'event') return 'event';
+      if (e.kind === 'activity') return 'act';
+      return 'sy';
+    }
+    function cprEntries(o) {
+      // Mine only: just my activities; the other dates stay
+      return calEntries(calCurSy()).filter(e => !e.cancelled && !e.proposed && o.show[cprGroup(e)] && (!o.mine || e.kind !== 'activity' || e.mine));
+    }
+    // Marks (shapes, so they stay clear in black and white)
+    const CPR_MARK = { off: 'sq', holiday: 'sq', exam: 'tri', event: 'star', act: 'dot', sy: 'dia', nat: 'dia' };
+    function cprColor(o, e) {
+      if (o.accent === 'bw') return '#333';
+      const g = cprGroup(e);
+      return g === 'holiday' ? '#be123c' : g === 'off' ? (e.kind === 'suspension' ? '#b45309' : e.kind === 'break' ? '#64748b' : '#e11d48') : g === 'exam' ? '#7c3aed' : g === 'event' ? '#059669' : g === 'act' ? '#4f46e5' : '#0d9488';
+    }
+    const cprMarkHTML = (shape, color, mm) => `<span class="cpr-mk cpr-mk-${shape}" style="width:${mm}mm;height:${mm}mm;background:${color}"></span>`;
+    const cprFill = (o, d) => {
+      if (!d) return '';
+      if (o.accent === 'bw') return '#ececec';
+      return d.kind === 'holiday' || d.kind === 'noclass' ? '#ffe4e6' : d.kind === 'suspension' ? '#fef3c7' : '#eef2f6';
+    };
+
+    // ---- One sheet of paper: the page builder -------------------------------------------------
+    function cprGeom(o) {
+      const p = CPR_PAPER[o.paper] || CPR_PAPER.a4;
+      const land = o.orient === 'landscape';
+      const W = land ? p[1] : p[0], H = land ? p[0] : p[1];
+      const M = o.paper === 'a3' ? 10 : 8;
+      return { W, H, M, w: W - 2 * M, h: H - 2 * M - 0.6, k: Math.min(W - 2 * M, H - 2 * M) / 194 };
+    }
+    function cprSheetsHTML(months, onlyIdx) {
+      const o = cprOpts(), g = cprGeom(o), ac = CPR_ACCENT[o.accent] || CPR_ACCENT.teal;
+      const sy = calCurSy(), y = calYears[sy] || null;
+      const list = cprEntries(o), off = calOffMap(y), cd = calClassDays(y);
+      const name = String(reqRole && reqRole.schoolName || schoolInfo.school || '').trim();
+      const bare = name.replace(/^\d{6}\s*[-–·]?\s*/, '').trim() || name, no = schoolNoOf(name);
+      const div = String(o.division || schoolInfo.division || '').trim();
+      const hdr = (o.hdrLogo && cprPics.logo) || (o.hdrName && bare) || (o.hdrId && no) || (o.hdrDiv && div) || o.hdrSy;
+      const kH = g.k;
+      const hdrH = hdr ? 15 * kH : 0, ftH = (o.legend || o.motto || o.printed) ? 6.5 * kH : 0, gap = 4 * kH;
+      const per = o.per === 2 ? 2 : 1, side = per === 2 && o.layout === 'side';
+      const availH = g.h - hdrH - ftH - (hdr ? 2 * kH : 0) - (ftH ? 1.5 * kH : 0);
+      const bw = side ? (g.w - gap) / 2 : g.w, bh = per === 2 && !side ? (availH - gap) / 2 : availH;
+      const sheets = [];
+      for (let i = 0; i < months.length; i += per) sheets.push(months.slice(i, i + per));
+      const header = () => !hdr ? '' : `
+        <div class="cpr-hdr" style="height:${hdrH}mm;margin-bottom:${2 * kH}mm;border-bottom:${0.5 * kH}mm solid ${ac[0]};gap:${3 * kH}mm">
+          ${o.hdrLogo && cprPics.logo ? `<img src="${cprPics.logo}" alt="" style="height:${hdrH - 2 * kH}mm;width:auto;max-width:${hdrH * 1.6}mm;object-fit:contain">` : ''}
+          <div style="min-width:0;flex:1">
+            ${o.hdrDiv && div ? `<div style="font-size:${7 * kH}pt;color:#475569;line-height:1.15">Republic of the Philippines · Department of Education · ${calE(div)}</div>` : ''}
+            ${o.hdrName && bare ? `<div data-cpr-school style="font-size:${13 * kH}pt;font-weight:800;line-height:1.1;color:#0f172a;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${calE(bare)}</div>` : ''}
+            <div style="font-size:${7.5 * kH}pt;color:#475569;line-height:1.2">${[o.hdrId && no ? `School ID ${calE(no)}` : '', o.hdrSy ? calE(calSyText(sy)) : ''].filter(Boolean).join(' · ')}</div>
+          </div>
+        </div>`;
+      const footer = () => !ftH ? '' : `
+        <div class="cpr-ft" style="height:${ftH}mm;margin-top:${1.5 * kH}mm;font-size:${6.5 * kH}pt;gap:${4 * kH}mm">
+          ${o.legend ? `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:${1.2 * kH}mm ${3.5 * kH}mm" data-cpr-legend>
+            ${o.show.off || o.show.holiday ? `<span class="cpr-lg"><span style="display:inline-block;width:${3.2 * kH}mm;height:${2.6 * kH}mm;background:${cprFill(o, { kind: 'holiday' })};border:0.2mm solid #cbd5e1"></span> No classes</span>` : ''}
+            ${o.show.exam ? `<span class="cpr-lg">${cprMarkHTML('tri', cprColor(o, { kind: 'exam' }), 2.2 * kH)} Exam</span>` : ''}
+            ${o.show.event ? `<span class="cpr-lg">${cprMarkHTML('star', cprColor(o, { kind: 'event' }), 2.4 * kH)} School event</span>` : ''}
+            ${o.show.act ? `<span class="cpr-lg">${cprMarkHTML('dot', cprColor(o, { kind: 'activity' }), 2 * kH)} Activity</span>` : ''}
+            ${o.show.sy || o.show.nat ? `<span class="cpr-lg">${cprMarkHTML('dia', cprColor(o, { kind: 'term' }), 2.1 * kH)} School year / DepEd</span>` : ''}
+          </div>` : '<span></span>'}
+          ${o.motto ? `<div data-cpr-motto style="flex:1;min-width:0;text-align:center;font-style:italic;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${calE(o.motto)}</div>` : ''}
+          ${o.printed ? `<div style="color:#64748b;white-space:nowrap">Printed ${calE(longDate(localISODate()))}</div>` : ''}
+        </div>`;
+      const block = mo => cprMonthHTML(o, g, mo, bw, bh, side, { y, list, off, cd, ac });
+      const pageHTML = (ms, idx) => `
+        <div class="cpr-sheet" data-cpr-sheet="${idx}" style="width:${g.W}mm;height:${g.H - 0.4}mm;padding:${g.M}mm">
+          ${header()}
+          <div style="display:flex;flex-direction:${side ? 'row' : 'column'};gap:${gap}mm;height:${availH}mm">${ms.map(block).join('')}</div>
+          ${footer()}
+        </div>`;
+      return {
+        g, count: sheets.length,
+        html: sheets.map((ms, i) => (onlyIdx == null || onlyIdx === i ? pageHTML(ms, i) : '')).join('')
+      };
+    }
+    // One month: the art and title, the weekday row, the grid, and what did not fit
+    function cprMonthHTML(o, g, mo, bw, bh, side, ctx) {
+      const { y, list, off, cd, ac } = ctx;
+      const k = g.k * (o.per === 2 ? (side ? 0.78 : 0.82) : 1);
+      const ws = Number(o.weekStart) === 1 ? 1 : 0;
+      const first = mo + '-01', lead = (calDow(first) - ws + 7) % 7;
+      const days = new Date(Date.UTC(Number(mo.slice(0, 4)), Number(mo.slice(5, 7)), 0)).getUTCDate();
+      const weeks = Math.ceil((lead + days) / 7);
+      const art = cprArtFor(o, mo), banner = art && o.place === 'banner';
+      const artOp = o.strength === 'light' ? 0.28 : o.strength === 'soft' ? 0.6 : 1;
+      const titleH = banner ? Math.min(bh * 0.27, bw / 2.36) : 11 * k;
+      const dowH = 5 * k;
+      const cellW = bw / 7;
+      // term line: which term(s), and the class days of the month
+      const terms = y ? (y.terms || []).filter(t => t.from && t.from.slice(0, 7) <= mo && (t.to || t.from).slice(0, 7) >= mo).map(t => `Term ${t.n}`) : [];
+      const nDays = cd.months[mo] || 0;
+      const termLine = o.termLine && y ? [terms.join(' · '), nDays ? plural(nDays, 'class day') : (y.start && mo >= y.start.slice(0, 7) && mo <= y.end.slice(0, 7) ? 'No classes' : '')].filter(Boolean).join(' · ') : '';
+      const fit = moreH => {
+        const gridH = bh - titleH - dowH - moreH;
+        const rowH = gridH / weeks;
+        const datePt = Math.max(6, Math.min(15, cellW * 0.2, rowH * 0.9));
+        const dnH = datePt * 0.3528 * 1.25;
+        let ept = Math.max(4.6, Math.min(9.5, cellW * 0.16 + 0.6));
+        ept = Math.min(ept, Math.max(4.6, (rowH - dnH - 0.6) / (2 * 0.3528 * 1.2)));
+        const lineMm = ept * 0.3528 * 1.2;
+        const cap = Math.max(0, Math.floor((rowH - dnH - 0.6) / lineMm));
+        const cpl = Math.max(4, (cellW - 1.6) / (ept * 0.3528 * 0.53));
+        const more = new Map(), cells = [];
+        for (let i = 0; i < lead; i++) cells.push({ blank: true });
+        for (let d = 1; d <= days; d++) {
+          const iso = `${mo}-${String(d).padStart(2, '0')}`, col = (lead + d - 1) % 7;
+          const on = list.filter(e => e.from <= iso && e.to >= iso)
+            .sort((a, b) => (a.from === a.to) - (b.from === b.to) || ['holiday', 'off', 'exam', 'sy', 'nat', 'event', 'act'].indexOf(cprGroup(a)) - ['holiday', 'off', 'exam', 'sy', 'nat', 'event', 'act'].indexOf(cprGroup(b)) || String(a.startTime || '').localeCompare(String(b.startTime || '')));
+          const items = on.map(e => {
+            // A multi-day entry: its name on its first day and on each Monday after (or the first box of
+            // the row); a short one (up to 10 days) shows a thin bar on its other weekdays, a long one nothing.
+            const wdy = calDow(iso), cont = e.from !== iso && !(wdy === 1 || (col === 0 && wdy !== 0 && wdy !== 6));
+            if (cont) { const span = (Date.parse(e.to) - Date.parse(e.from)) / 864e5 + 1; if (span > 10 || wdy === 0 || wdy === 6) return null; }
+            const text = [o.times && e.startTime ? calTime12(e.startTime) : '', e.title].filter(Boolean).join(' ') + (o.venues && e.venue ? ` · ${e.venue}` : '') + (o.people && e.who ? ` · ${e.who}` : '');
+            return { e, cont, text, cost: cont ? 0.55 : Math.min(2, Math.ceil(text.length / cpl)) };
+          }).filter(Boolean);
+          let used = 0, shown = [];
+          const total = items.reduce((n, it) => n + it.cost, 0);
+          if (total <= cap + 0.01) shown = items;
+          else for (const it of items) { if (used + it.cost > cap - 1 + 0.01) break; used += it.cost; shown.push(it); }
+          const hidden = items.filter(it => !shown.includes(it));
+          hidden.forEach(it => { if (!more.has(it.e.key)) more.set(it.e.key, it.e); });
+          cells.push({ iso, d, col, items: shown, nMore: hidden.filter(it => !it.cont).length || hidden.length, off: off[iso], outside: y && y.start && (iso < y.start || iso > y.end) });
+        }
+        while (cells.length % 7) cells.push({ blank: true });
+        return { gridH, rowH, datePt, dnH, ept, lineMm, cells, more: [...more.values()] };
+      };
+      let FT = fit(0), moreH = 0;
+      if (FT.more.length) {
+        const mpt = Math.max(5, Math.min(8, FT.ept));
+        const chars = FT.more.reduce((n, e) => n + e.title.length + 12, 0);
+        const lines = Math.min(4, Math.ceil(chars / Math.max(20, (bw - 4) / (mpt * 0.3528 * 0.53))));
+        moreH = lines * mpt * 0.3528 * 1.25 + 2.4 * k;
+        FT = fit(moreH);
+      }
+      const line = `${0.25 * g.k}mm solid ${o.accent === 'bw' ? '#9ca3af' : '#cbd5e1'}`;
+      const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dows = Array.from({ length: 7 }, (_, i) => wd[(i + ws) % 7]);
+      const cellHTML = c => {
+        if (c.blank) return `<div class="cpr-cell" style="border-right:${line};border-bottom:${line};background:#fafafa"></div>`;
+        const w = calDow(c.iso), wk = w === 0 || w === 6;
+        const bg = c.off ? cprFill(o, c.off) : wk ? (o.accent === 'bw' ? '#f7f7f7' : '#f8fafc') : '#ffffff';
+        return `<div class="cpr-cell" data-cpr-day="${c.iso}" ${c.off ? 'data-cpr-off' : ''} style="border-right:${line};border-bottom:${line};background:${bg};padding:${0.5 * k}mm ${0.7 * k}mm">
+          <div style="font-size:${FT.datePt}pt;line-height:1.2;font-weight:800;color:${c.outside ? '#cbd5e1' : c.off ? cprColor(o, c.off) : wk ? '#64748b' : '#0f172a'}">${c.d}</div>
+          ${c.items.map(it => it.cont
+            ? `<div class="cpr-bar" style="height:${FT.lineMm * 0.45}mm;margin:${FT.lineMm * 0.05}mm 0;background:${cprColor(o, it.e)};opacity:0.35;border-radius:${FT.lineMm}mm"></div>`
+            : `<div class="cpr-en" data-cpr-entry="${calE(it.e.key)}" style="font-size:${FT.ept}pt;line-height:1.2;max-height:${FT.lineMm * 2}mm;${cprGroup(it.e) === 'holiday' ? `color:${cprColor(o, it.e)};font-weight:700;` : ''}">${cprMarkHTML(CPR_MARK[cprGroup(it.e)], cprColor(o, it.e), FT.ept * 0.3528 * 0.62)}${calE(it.text)}</div>`).join('')}
+          ${c.nMore && c.items.length < (c.items.length + c.nMore) ? `<div data-cpr-more style="font-size:${FT.ept}pt;line-height:1.2;font-weight:700;color:#64748b">+${c.nMore} more</div>` : ''}
+        </div>`;
+      };
+      const titlePt = Math.max(14, titleH * (banner ? 0.3 : 0.62) / 0.3528);
+      const title = `<div style="font-size:${titlePt}pt;font-weight:800;letter-spacing:-0.01em;line-height:1;color:${o.accent === 'bw' ? '#111' : ac[0]}">${calE(cprMonthName(mo))} <span style="font-weight:600;color:#475569">${mo.slice(0, 4)}</span></div>
+        ${termLine ? `<div data-cpr-term style="font-size:${Math.max(6, titlePt * 0.3)}pt;font-weight:600;color:#334155;margin-top:${0.8 * k}mm">${calE(termLine)}</div>` : ''}`;
+      const imgStyle = `width:100%;height:100%;object-fit:cover;object-position:center ${o.theme === 'photo' && cprPics.photo ? o.photoY : 62}%;${o.accent === 'bw' ? 'filter:grayscale(1);' : ''}`;
+      return `
+        <div class="cpr-month" data-cpr-month="${mo}" style="width:${bw}mm;height:${bh}mm">
+          ${art && !banner ? `<img class="cpr-wm" src="${art}" alt="" data-cpr-art="${calE(art)}" style="${imgStyle}opacity:${o.strength === 'full' ? 0.32 : artOp * 0.5}">` : ''}
+          ${banner ? `<div class="cpr-banner" style="height:${titleH}mm;border-radius:${2.5 * k}mm">
+              <img src="${art}" alt="" data-cpr-art="${calE(art)}" style="${imgStyle}opacity:${artOp}">
+              <div class="cpr-banner-t" style="padding-top:${titleH * 0.1}mm">${title}</div>
+            </div>` : `<div style="height:${titleH}mm;display:flex;flex-direction:column;justify-content:center;position:relative">${title}</div>`}
+          <div class="cpr-dows" style="height:${dowH}mm;background:${o.accent === 'bw' ? '#e5e5e5' : ac[0]};color:${o.accent === 'bw' ? '#111' : '#fff'};font-size:${Math.max(6, 8 * k)}pt;margin-top:${banner ? 1.2 * k : 0}mm;border-radius:${1.4 * k}mm ${1.4 * k}mm 0 0">${dows.map(d => `<div>${d}</div>`).join('')}</div>
+          <div class="cpr-grid" style="height:${FT.gridH - (banner ? 1.2 * k : 0)}mm;grid-template-rows:repeat(${weeks},1fr);border-left:${line};border-top:${line}">${FT.cells.map(cellHTML).join('')}</div>
+          ${FT.more.length ? `<div data-cpr-morelist style="height:${moreH}mm;overflow:hidden;font-size:${Math.max(5, Math.min(8, FT.ept))}pt;line-height:1.25;color:#334155;padding-top:${1.2 * k}mm"><b>More this month:</b> ${FT.more.map(e => `${calE(e.from === e.to ? calShort(e.from) : calRangeText(e.from, e.to))} ${calE(e.title)}`).join(' · ')}</div>` : ''}
+        </div>`;
+    }
+
+    // ---- The print sheet: preview and options -------------------------------------------------
+    function openCalPrint() {
+      if (!planOn() || !calCanRead()) return;
+      cprOpts();
+      cprSheetNo = 0; cprZoom = false;
+      openCalSheet('print');
+      cprLoadPics();
+    }
+    function cprPrintSheetHTML() {
+      const o = cprOpts(), sy = calCurSy(), months = cprSyMonths(sy);
+      const sel = (id, val, opts, on) => `<select id="${id}" onchange="${on}" class="${CAL_IN}">${opts.map(([v, l]) => `<option value="${v}" ${String(v) === String(val) ? 'selected' : ''}>${calE(l)}</option>`).join('')}</select>`;
+      const seg = (key, val, opts) => `<div class="grid gap-1 p-1 rounded-xl bg-slate-100" style="grid-template-columns:repeat(${opts.length},minmax(0,1fr))">${opts.map(([v, l]) => `<button type="button" onclick="cprSet('${key}', ${typeof v === 'number' ? v : `'${v}'`})" data-cpr-opt="${key}:${v}" aria-pressed="${String(o[key]) === String(v)}" class="h-9 rounded-lg text-xs font-bold ${String(o[key]) === String(v) ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5' : 'text-slate-500'}">${l}</button>`).join('')}</div>`;
+      const tick = (key, label, sub) => `<label class="flex items-center gap-2.5 py-1.5"><input type="checkbox" ${sub ? `onchange="cprShow('${key}', this.checked)" ${o.show[key] ? 'checked' : ''}` : `onchange="cprSet('${key}', this.checked)" ${o[key] ? 'checked' : ''}`} data-cpr-tick="${key}" class="w-5 h-5 rounded accent-teal-700"><span class="text-sm text-slate-700">${label}</span></label>`;
+      const sec = (id, icon, title, inner, open) => `<details class="rounded-2xl border border-slate-200 bg-white" data-cpr-sec="${id}" ${open ? 'open' : ''}><summary class="px-3 py-2.5 text-sm font-extrabold text-slate-800 cursor-pointer flex items-center gap-2"><i class="ph-bold ${icon} text-teal-700"></i> ${title}</summary><div class="px-3 pb-3 space-y-2">${inner}</div></details>`;
+      const mo = cprMonths()[0];
+      const thumb = (v, label, src, icon = 'ph-prohibit') => `<button type="button" onclick="cprSet('theme', '${v}')" data-cpr-theme="${v}" aria-pressed="${o.theme === v}" class="text-left rounded-xl overflow-hidden border-2 ${o.theme === v ? 'border-teal-600' : 'border-transparent'} bg-slate-50">
+          <span class="block h-14 bg-slate-100">${src ? `<img src="${src}" alt="" loading="lazy" class="w-full h-full object-cover">` : `<span class="w-full h-full flex items-center justify-center text-slate-400"><i class="ph-bold ${icon} text-xl"></i></span>`}</span>
+          <span class="block px-1.5 py-1 text-[11px] font-bold text-slate-700 leading-tight">${label}</span></button>`;
+      const photoOk = !!cprPics.photo;
+      const artInner = `
+        <div class="grid grid-cols-3 gap-2">
+          ${thumb('auto', 'This month’s art', cprArtFor({ ...o, theme: 'auto' }, mo))}
+          ${CPR_SCENES.map(s => thumb('g:' + s[0], s[1], s[2])).join('')}
+          ${thumb('photo', 'School photo', cprPics.photo, 'ph-image')}
+          ${thumb('none', 'None (saves ink)', '')}
+        </div>
+        ${o.theme === 'photo' ? `<div class="rounded-xl bg-slate-50 border border-slate-200 p-2.5 space-y-2" data-cpr-photo-box>
+          <p class="text-xs text-slate-600">${photoOk ? 'Your school’s photo, kept on this device only.' : 'Pick a photo of your school (or a banner). It is kept on this device only.'}</p>
+          <div class="flex gap-2"><label class="flex-1 h-10 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5 cursor-pointer"><i class="ph-bold ph-image"></i> ${photoOk ? 'Change photo' : 'Pick a photo'}<input type="file" accept="image/*" id="cprPhotoIn" class="hidden" onchange="cprPickPic('photo', this)"></label>
+            ${photoOk ? `<button type="button" onclick="cprDropPic('photo')" class="h-10 px-3 rounded-xl bg-white border border-slate-200 text-sm font-bold text-rose-700">Remove</button>` : ''}</div>
+          ${photoOk ? `<label class="block"><span class="block text-[11px] font-bold uppercase text-slate-500">Which part shows: top to bottom</span><input type="range" min="0" max="100" value="${o.photoY}" oninput="cprSet('photoY', Number(this.value), true)" id="cprPhotoY" class="w-full accent-teal-700"></label>` : ''}
+        </div>` : ''}
+        ${o.theme !== 'none' ? `<p class="text-[11px] font-bold uppercase text-slate-500">Strength</p>${seg('strength', o.strength, [['full', 'Full'], ['soft', 'Soft'], ['light', 'Light']])}
+          <p class="text-[11px] font-bold uppercase text-slate-500">Where</p>${seg('place', o.place, [['banner', 'Top banner'], ['page', 'Behind the grid']])}` : ''}
+        <p class="text-[11px] font-bold uppercase text-slate-500">Colour</p>
+        <div class="flex flex-wrap gap-2">${Object.entries(CPR_ACCENT).map(([k, a]) => `<button type="button" onclick="cprSet('accent', '${k}')" data-cpr-accent="${k}" aria-pressed="${o.accent === k}" title="${a[2]}" aria-label="${a[2]}" class="w-9 h-9 rounded-full border-2 ${o.accent === k ? 'border-slate-900' : 'border-white'} shadow ring-1 ring-slate-200" style="background:${k === 'bw' ? 'linear-gradient(135deg,#111 50%,#fff 50%)' : a[0]}"></button>`).join('')}</div>`;
+      const pageInner = `
+        <p class="text-[11px] font-bold uppercase text-slate-500">Paper</p>${seg('paper', o.paper, [['a4', 'A4'], ['folio', 'Folio'], ['a3', 'A3']])}
+        <p class="text-[11px] text-slate-500 -mt-1">Folio is 8.5 × 13 in (long bond, “portfolio”). A3 needs an A3 printer, or save it as a PDF for a print shop.</p>
+        ${seg('orient', o.orient, [['landscape', 'Landscape'], ['portrait', 'Portrait']])}
+        <p class="text-[11px] font-bold uppercase text-slate-500">Months per sheet</p>${seg('per', o.per, [[1, '1 month'], [2, '2 months']])}
+        ${o.per === 2 ? seg('layout', o.layout, [['stack', 'Stacked'], ['side', 'Side by side']]) : ''}
+        <p class="text-[11px] font-bold uppercase text-slate-500">Months</p>${seg('range', o.range, [['month', 'This month'], ['range', 'From – to'], ['sy', 'Whole SY']])}
+        ${o.range === 'range' ? `<div class="grid grid-cols-2 gap-2">${calLbl('From', sel('cprFrom', o.from || mo, months.map(m => [m, calShort(m + '-01', true).replace(/ \d+,/, '')]), "cprSet('from', this.value)"))}${calLbl('To', sel('cprTo', o.to || o.from || mo, months.map(m => [m, calShort(m + '-01', true).replace(/ \d+,/, '')]), "cprSet('to', this.value)"))}</div>` : ''}
+        <p class="text-[11px] font-bold uppercase text-slate-500">Week starts on</p>${seg('weekStart', o.weekStart, [[0, 'Sunday'], [1, 'Monday']])}`;
+      const showInner = `
+        ${CPR_SHOW.map(([k, l]) => tick(k, l, true)).join('')}
+        <hr class="border-slate-100">
+        ${tick('mine', 'Mine only (activities with my name)')}${tick('times', 'Times')}${tick('venues', 'Venues')}${tick('people', 'People responsible')}${tick('termLine', 'Term and class days under the month')}`;
+      const hdrInner = `
+        ${tick('hdrName', 'School name')}${tick('hdrId', 'School ID')}${tick('hdrSy', 'School year')}${tick('hdrDiv', 'DepEd and division line')}
+        ${o.hdrDiv ? calLbl('Division', `<input id="cprDiv" type="text" maxlength="100" value="${calE(o.division || schoolInfo.division || '')}" placeholder="e.g. Division of Cebu City" oninput="cprSet('division', this.value, true)" class="${CAL_IN}">`) : ''}
+        ${tick('hdrLogo', 'School logo')}
+        ${o.hdrLogo ? `<div class="flex gap-2 items-center">${cprPics.logo ? `<img src="${cprPics.logo}" alt="School logo" class="w-10 h-10 object-contain rounded-lg bg-slate-50 border border-slate-200">` : ''}<label class="flex-1 h-10 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5 cursor-pointer"><i class="ph-bold ph-seal"></i> ${cprPics.logo ? 'Change logo' : 'Pick the logo'}<input type="file" accept="image/*" id="cprLogoIn" class="hidden" onchange="cprPickPic('logo', this)"></label>${cprPics.logo ? `<button type="button" onclick="cprDropPic('logo')" class="h-10 px-3 rounded-xl bg-white border border-slate-200 text-sm font-bold text-rose-700">Remove</button>` : ''}</div>` : ''}
+        <hr class="border-slate-100">
+        ${tick('legend', 'Legend')}${tick('printed', 'Printed date')}
+        ${calLbl('Motto or note line', `<input id="cprMotto" type="text" maxlength="140" value="${calE(o.motto)}" placeholder="e.g. the school’s vision, or Approved: the School Head" oninput="cprSet('motto', this.value, true)" class="${CAL_IN}">`)}`;
+      return `
+        ${calHead('ph-printer', 'Print the calendar', `${calSyText(sy)} · ${calE(CPR_PAPER[o.paper][2])} ${o.orient}`)}
+        <div class="cpr-ui">
+          <div class="cpr-ui-prev space-y-2">
+            <div id="cprPreview" onclick="cprToggleZoom()" class="rounded-2xl bg-slate-200/70 p-2 overflow-auto cursor-zoom-in" data-cpr-preview></div>
+            <div class="flex items-center justify-between gap-2 text-xs font-bold text-slate-600">
+              <button type="button" onclick="cprGo(-1)" id="cprPrev" class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center" aria-label="Previous sheet"><i class="ph-bold ph-caret-left"></i></button>
+              <span id="cprCount" data-cpr-count></span>
+              <button type="button" onclick="cprGo(1)" id="cprNext" class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center" aria-label="Next sheet"><i class="ph-bold ph-caret-right"></i></button>
+            </div>
+          </div>
+          <div class="cpr-ui-opts space-y-2">
+            ${sec('art', 'ph-paint-brush', 'Art and colour', artInner, true)}
+            ${sec('page', 'ph-file', 'Paper and months', pageInner, true)}
+            ${sec('show', 'ph-funnel', 'What to show', showInner, false)}
+            ${sec('hdr', 'ph-text-aa', 'Header and footer', hdrInner, false)}
+            <p class="text-[11px] text-slate-500 px-1">In the print box, pick the same paper size and tick <b>Background graphics</b> so the art and colours print. Your choices are kept on this device.</p>
+            <button type="button" onclick="cprPrint()" id="cprPrintBtn" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-printer text-lg"></i> Print</button>
+          </div>
+        </div>`;
+    }
+    // Draw the preview: one sheet at a time, scaled to fit
+    function cprPreview() {
+      const box = document.getElementById('cprPreview');
+      if (!box || !calSheet || calSheet.view !== 'print') return;
+      const months = cprMonths();
+      const all = cprSheetsHTML(months, null);
+      cprSheetNo = Math.max(0, Math.min(cprSheetNo, all.count - 1));
+      const one = cprSheetsHTML(months, cprSheetNo);
+      const pxW = one.g.W * 3.7795, pxH = one.g.H * 3.7795;
+      const avail = Math.max(200, box.clientWidth - 16);
+      const sc = (cprZoom ? Math.min(1, (avail * 2) / pxW) : avail / pxW);
+      box.innerHTML = `<div style="width:${pxW * sc}px;height:${pxH * sc}px;margin:0 auto;box-shadow:0 2px 10px rgb(0 0 0 / .15);background:#fff;overflow:hidden"><div style="transform:scale(${sc});transform-origin:0 0;width:${pxW}px">${one.html}</div></div>`;
+      box.classList.toggle('cursor-zoom-in', !cprZoom); box.classList.toggle('cursor-zoom-out', cprZoom);
+      const c = document.getElementById('cprCount');
+      if (c) c.textContent = `Sheet ${cprSheetNo + 1} of ${all.count} · ${plural(months.length, 'month')}`;
+      const p = document.getElementById('cprPrev'), n = document.getElementById('cprNext');
+      if (p) p.disabled = cprSheetNo <= 0;
+      if (n) n.disabled = cprSheetNo >= all.count - 1;
+    }
+    function cprRedraw() {
+      const body = document.getElementById('calModalBody'), boxEl = document.getElementById('calModalBox');
+      if (!body || !calSheet || calSheet.view !== 'print') return;
+      const top = boxEl ? boxEl.scrollTop : 0;
+      const open = [...body.querySelectorAll('details[data-cpr-sec]')].map(d => [d.dataset.cprSec, d.open]);
+      body.innerHTML = cprPrintSheetHTML();
+      open.forEach(([id, on]) => { const d = body.querySelector(`details[data-cpr-sec="${id}"]`); if (d) d.open = on; });
+      if (boxEl) boxEl.scrollTop = top;
+      cprPreview();
+    }
+    // Change an option. `soft`: typing or sliding, so only the preview is drawn again.
+    function cprSet(key, val, soft) {
+      const o = cprOpts();
+      if (key === 'motto') val = String(val || '').slice(0, 140);
+      if (key === 'division') val = String(val || '').slice(0, 100);
+      o[key] = val;
+      if (key === 'per' && val === 2 && o.orient === 'landscape' && o.layout === 'stack') o.orient = 'portrait';
+      if (key === 'per' && val === 1 && o.orient === 'portrait') o.orient = 'landscape';
+      if (key === 'layout') o.orient = val === 'side' ? 'landscape' : 'portrait';
+      if (['range', 'from', 'to', 'per', 'layout'].includes(key)) cprSheetNo = 0;
+      if (key === 'place' && val === 'page' && o.strength === 'full') o.strength = 'soft';
+      cprSave();
+      if (soft) cprPreview(); else cprRedraw();
+    }
+    function cprShow(key, on) { const o = cprOpts(); o.show = { ...o.show, [key]: !!on }; cprSave(); cprPreview(); }
+    function cprGo(n) { cprSheetNo += n; cprPreview(); }
+    function cprToggleZoom() { cprZoom = !cprZoom; cprPreview(); }
+
+    // ---- The school's photo and logo (this device only, IndexedDB) ---------------------------
+    function cprDb() {
+      return new Promise((res, rej) => {
+        let r;
+        try { r = indexedDB.open(CPR_DB, 1); } catch (e) { rej(e); return; }
+        r.onupgradeneeded = () => r.result.createObjectStore('pics');
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      });
+    }
+    async function cprIdb(mode, fn) {
+      const db = await cprDb();
+      try {
+        return await new Promise((res, rej) => {
+          const tx = db.transaction('pics', mode), st = tx.objectStore('pics');
+          let out;
+          const req = fn(st);
+          if (req) req.onsuccess = () => { out = req.result; };
+          tx.oncomplete = () => res(out);
+          tx.onerror = tx.onabort = () => rej(tx.error);
+        });
+      } finally { db.close(); }
+    }
+    const cprPicKey = kind => `${kind}:${(reqRole && reqRole.schoolId) || 'local'}`;
+    async function cprLoadPics() {
+      const sid = (reqRole && reqRole.schoolId) || 'local';
+      if (cprPicsFor === sid) { cprPreview(); return; }
+      cprPicsFor = sid;
+      for (const kind of ['photo', 'logo']) {
+        try {
+          const blob = await cprIdb('readonly', st => st.get(cprPicKey(kind)));
+          if (cprPics[kind]) URL.revokeObjectURL(cprPics[kind]);
+          cprPics[kind] = blob ? URL.createObjectURL(blob) : '';
+        } catch (e) { cprPics[kind] = ''; }
+      }
+      if (calSheet && calSheet.view === 'print') cprRedraw();
+    }
+    // Shrink a picked picture (the photo to 1600 px wide, the logo to 400 px) and keep it here
+    function cprShrink(file, max, type) {
+      return new Promise((res, rej) => {
+        const url = URL.createObjectURL(file), img = new Image();
+        img.onload = () => {
+          const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(img.naturalWidth * s)); c.height = Math.max(1, Math.round(img.naturalHeight * s));
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          // toDataURL, not toBlob: it answers right away (toBlob can wait on a busy or hidden page)
+          const data = c.toDataURL(type, 0.85), bin = atob(data.split(',')[1] || '');
+          const u8 = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+          if (!u8.length) { rej(new Error('That picture could not be read.')); return; }
+          res(new Blob([u8], { type: data.slice(5, data.indexOf(';')) || type }));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('That file is not a picture.')); };
+        img.src = url;
+      });
+    }
+    async function cprPickPic(kind, input) {
+      const file = input && input.files && input.files[0];
+      if (!file) return;
+      try {
+        const blob = await cprShrink(file, kind === 'logo' ? 400 : 1600, kind === 'logo' ? 'image/png' : 'image/jpeg');
+        await cprIdb('readwrite', st => st.put(blob, cprPicKey(kind)));
+        if (cprPics[kind]) URL.revokeObjectURL(cprPics[kind]);
+        cprPics[kind] = URL.createObjectURL(blob);
+        const o = cprOpts();
+        if (kind === 'photo') o.theme = 'photo'; else o.hdrLogo = true;
+        cprSave();
+        showToast(kind === 'logo' ? 'Logo saved on this device' : 'Photo saved on this device', 'ph-image');
+      } catch (e) { appAlert(String((e && e.message) || e)); }
+      cprRedraw();
+    }
+    async function cprDropPic(kind) {
+      try { await cprIdb('readwrite', st => st.delete(cprPicKey(kind))); } catch (e) {}
+      if (cprPics[kind]) URL.revokeObjectURL(cprPics[kind]);
+      cprPics[kind] = '';
+      const o = cprOpts();
+      if (kind === 'photo' && o.theme === 'photo') o.theme = 'auto';
+      cprSave();
+      cprRedraw();
+    }
+
+    // ---- Print -------------------------------------------------------------------------------
+    async function cprPrint() {
+      const months = cprMonths();
+      if (!months.length) return;
+      const res = cprSheetsHTML(months, null), g = res.g;
+      const sec = document.getElementById('printPrSection');
+      sec.innerHTML = `<style>@page cpr { size: ${g.W}mm ${g.H}mm; margin: 0; } @media print { .cpr-sheet { page: cpr; } }</style><div class="cpr-print">${res.html}</div>`;
+      // the pictures must be there before the print box opens
+      const imgs = [...sec.querySelectorAll('img')];
+      await Promise.race([Promise.all(imgs.map(i => (i.complete ? Promise.resolve() : new Promise(r => { i.onload = i.onerror = r; })))), new Promise(r => setTimeout(r, 4000))]);
+      document.body.classList.remove('printing-labels');
+      document.body.classList.add('printing-pr', 'printing-cal');
+      const done = () => { document.body.classList.remove('printing-pr', 'printing-cal'); window.removeEventListener('afterprint', done); };
+      window.addEventListener('afterprint', done);
+      setTimeout(() => window.print(), 50);
+    }
+
     // ---- Sheets -----------------------------------------------------------------------------
     function openCalSheet(view, key) {
       if (!planOn()) return;
@@ -18505,6 +19002,8 @@
     }
     function closeCalModal() {
       calSheet = null;
+      const box = document.getElementById('calModalBox');
+      if (box) box.classList.remove('cal-wide');
       document.getElementById('calModal').classList.add('hidden');
       document.getElementById('calModalBody').innerHTML = '';
     }
@@ -18513,13 +19012,16 @@
       if (!body || !calSheet) return;
       const v = calSheet.view;
       if (v !== 'view' && v !== 'classdays' && v !== 'ppa' && calSheet.drawn) return;   // forms keep what is being typed
-      const html = v === 'ppa' ? ppaViewHTML() : v === 'ppaForm' ? ppaFormHTML() : v === 'event' ? calEventHTML() : v === 'date' ? calDateHTML() : v === 'year' ? calYearHTML() : v === 'classdays' ? calClassDaysHTML() : v === 'deped' ? calDepedHTML() : calViewSheetHTML();
+      const box = document.getElementById('calModalBox');
+      if (box) box.classList.toggle('cal-wide', v === 'print');   // the print sheet: preview and options side by side on computers
+      const html = v === 'print' ? cprPrintSheetHTML() : v === 'ppa' ? ppaViewHTML() : v === 'ppaForm' ? ppaFormHTML() : v === 'event' ? calEventHTML() : v === 'date' ? calDateHTML() : v === 'year' ? calYearHTML() : v === 'classdays' ? calClassDaysHTML() : v === 'deped' ? calDepedHTML() : calViewSheetHTML();
       if (!html) { closeCalModal(); return; }
       body.innerHTML = html;
       calSheet.drawn = true;
       if (v === 'date') calDateKind();
       if (v === 'event') calEventAllDay();
       if (v === 'ppaForm') { ppaAllDayChanged(); ppaSourceChanged(); }
+      if (v === 'print') requestAnimationFrame(cprPreview);
     }
     const calHead = (icon, title, sub) => `
       <div class="flex items-start justify-between gap-3">
@@ -31044,6 +31546,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-calendar-print', date: 'Nov 2026', title: 'Print the school calendar', points: [
+        'New: Print on the School calendar makes a wall calendar for the month, a range of months or the whole school year, with clay-style art for each month (or a general scene, your school\u2019s own photo, or none to save ink).',
+        'Choose A4, Folio (8.5 \u00d7 13 in) or A3, landscape or portrait, and 1 or 2 months on a sheet (stacked or side by side). A preview shows each sheet before printing.',
+        'Change the colour, what shows (holidays, no classes, exams, events, activities, or only yours), the header with the school\u2019s logo, name and School ID, and a motto or note line. Your choices, photo and logo stay on this device.'
+      ], pilot: 'plan' },
       { id: '2026-11-plan-ppas', date: 'Nov 2026', title: 'School calendar: programs, projects and activities', points: [
         'New: the School calendar has a Plan page with the school\u2019s programs, projects and activities (SIP / AIP): dates, venue, the people responsible, budget and fund source (MOOE, SEF / LGU, PTA, Canteen, IGP, Donations, Others), with totals.',
         'The School Head and the AO add and change them; an activity can be copied or repeated every week, every 2 weeks or every month (days without classes skipped). Activities show on everyone\u2019s calendar.',
@@ -32268,6 +32775,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         // Firestore's offline copy of our project ("firestore/[DEFAULT]/<project>/main");
         // the delete finishes as the page reloads.
         names.filter(n => /^firestore/i.test(n) && ids.some(id => n.includes(id))).forEach(n => { try { indexedDB.deleteDatabase(n); } catch (e) {} });
+        if (names.includes(CPR_DB)) { try { indexedDB.deleteDatabase(CPR_DB); } catch (e) {} }   // the calendar print's photo and logo
         const shared = [['firebaseLocalStorageDb', 'firebaseLocalStorage'], ['firebase-heartbeat-database', 'firebase-heartbeat-store']].filter(([n]) => names.includes(n));
         await Promise.race([Promise.all(shared.map(([n, st]) => deleteOwnIdbEntries(n, st, ids))), new Promise(r => setTimeout(r, 1500))]);
       } catch (e) {}
