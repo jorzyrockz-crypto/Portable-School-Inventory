@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="560a46b7beaf">
+  <meta name="app-version" content="f91dd0ce8bbf">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -17329,6 +17329,7 @@
     // holidays of Proclamation No. 1006 (2026) and No. 1427 (2027). The planner checks and edits.
     const CAL_STARTER = {
       '2026-2027': {
+        v: 2,   // 1: the first list (Nov 2026); 2: every date of Annex B of the order
         memo: 'DepEd Order No. 009, s. 2026 · Proclamations No. 1006 (2026) and No. 1427 (2027)',
         start: '2026-06-08', end: '2027-04-08',
         terms: [
@@ -17336,30 +17337,79 @@
           { n: 2, from: '2026-09-16', to: '2026-12-18', blocks: [{ kind: 'instructional', from: '2026-09-16', to: '2026-12-04' }, { kind: 'endterm', from: '2026-12-07', to: '2026-12-18' }] },
           { n: 3, from: '2027-01-04', to: '2027-04-08', blocks: [{ kind: 'instructional', from: '2027-01-04', to: '2027-03-23' }, { kind: 'endterm', from: '2027-03-24', to: '2027-04-08' }] }
         ],
+        // [kind, from, to, title, holiday (regular | special), 'nat' = national or for some grades only]
         days: [
           ['deped', '2026-06-01', '2026-06-05', 'Brigada Eskwela'],
+          ['deped', '2026-06-01', '2026-06-05', 'Enrollment period'],
+          ['deped', '2026-06-08', '2026-07-03', 'Mandatory learners’ health assessment'],
+          ['deped', '2026-06-08', '2026-07-10', 'BOSY assessments testing window (CRLA, RMA, Phil-IRI)'],
           ['holiday', '2026-06-12', '', 'Independence Day', 'regular'],
+          ['deped', '2026-06-22', '2026-06-26', 'Phil ECD Checklist for BOSY', '', 'nat'],
+          ['deped', '2026-06-23', '', 'DepEd Founding Anniversary: flag raising and opening', '', 'nat'],
+          ['deped', '2026-06-24', '', 'DepEd Founding Anniversary'],
+          ['exam', '2026-07-06', '', 'Term 1: first teacher-made summative test'],
+          ['deped', '2026-07-13', '2026-07-17', 'MFAT', '', 'nat'],
+          ['deped', '2026-07-20', '2026-07-24', 'National Federation SELG and SSLG election', '', 'nat'],
+          ['exam', '2026-07-28', '', 'Term 1: second teacher-made summative test'],
           ['holiday', '2026-08-21', '', 'Ninoy Aquino Day', 'special'],
-          ['exam', '2026-08-28', '2026-09-01', 'Term 1 examinations'],
+          ['exam', '2026-08-28', '', 'Term 1 examinations'],
           ['holiday', '2026-08-31', '', 'National Heroes Day', 'regular'],
+          ['exam', '2026-09-01', '', 'Term 1 examinations'],
+          ['deped', '2026-09-05', '2026-10-05', 'National Teachers’ Month'],
+          ['deped', '2026-09-09', '', 'PTA meeting and distribution of report cards'],
+          ['inset', '2026-09-10', '2026-09-11', 'INSET'],
+          ['deped', '2026-09-10', '2026-09-15', 'Wellness break of learners (guided asynchronous learning)'],
+          ['deped', '2026-09-14', '2026-09-15', 'Wellness break of teachers'],
+          ['deped', '2026-09-16', '2026-12-04', 'NCAE testing window (Grade 10)', '', 'nat'],
+          ['deped', '2026-09-21', '2026-10-23', 'MOSY assessments testing window (CRLA, RMA, Phil-IRI)'],
+          ['deped', '2026-10-05', '', 'World Teachers’ Day'],
+          ['deped', '2026-10-05', '2026-10-09', 'NAT for Grade 10', '', 'nat'],
+          ['exam', '2026-10-07', '', 'Term 2: first teacher-made summative test'],
+          ['exam', '2026-10-29', '', 'Term 2: second teacher-made summative test'],
           ['holiday', '2026-11-01', '', 'All Saints’ Day', 'special'],
           ['holiday', '2026-11-02', '', 'All Souls’ Day', 'special'],
+          ['deped', '2026-11-15', '', 'PEPT (Luzon and VisMin clusters)', '', 'nat'],
+          ['deped', '2026-11-27', '', 'Araw ng Pagbasa'],
           ['holiday', '2026-11-30', '', 'Bonifacio Day', 'regular'],
           ['exam', '2026-12-03', '2026-12-04', 'Term 2 examinations'],
           ['holiday', '2026-12-08', '', 'Feast of the Immaculate Conception of Mary', 'special'],
-          ['break', '2026-12-19', '2027-01-03', 'Christmas break'],
+          ['deped', '2026-12-15', '', 'PTA meeting and distribution of progress / performance reports'],
+          ['deped', '2026-12-16', '', 'Year-end activity'],
+          ['inset', '2026-12-17', '2026-12-18', 'INSET'],
+          ['deped', '2026-12-17', '2026-12-18', 'Wellness break of learners (guided asynchronous learning)'],
+          ['break', '2026-12-19', '2026-12-31', 'Year-End Break (wellness break of learners and teachers)'],
           ['holiday', '2026-12-24', '', 'Christmas Eve', 'special'],
           ['holiday', '2026-12-25', '', 'Christmas Day', 'regular'],
           ['holiday', '2026-12-30', '', 'Rizal Day', 'regular'],
           ['holiday', '2026-12-31', '', 'Last Day of the Year', 'special'],
           ['holiday', '2027-01-01', '', 'New Year’s Day', 'regular'],
+          ['exam', '2027-01-25', '', 'Term 3: first teacher-made summative test'],
+          ['deped', '2027-01-30', '2027-02-26', 'Early registration (incoming Kinder, Grades 1, 7 and 11, OSCYA and transferees)'],
+          ['deped', '2027-02-01', '2027-03-12', 'EOSY assessments testing window (CRLA, RMA, Phil-IRI)'],
           ['holiday', '2027-02-06', '', 'Chinese New Year', 'special'],
+          ['deped', '2027-02-15', '2027-02-19', 'NAT for Grade 12', '', 'nat'],
+          ['exam', '2027-02-16', '', 'Term 3: second teacher-made summative test'],
           ['working', '2027-02-25', '', 'EDSA People Power Revolution Anniversary'],
-          ['exam', '2027-03-22', '2027-03-23', 'Term 3 examinations'],
+          ['deped', '2027-03-01', '2027-03-05', 'ELLNA for Grade 3', '', 'nat'],
+          ['deped', '2027-03-08', '2027-03-12', 'NAT for Grade 6', '', 'nat'],
+          ['exam', '2027-03-15', '2027-03-16', 'Term 3 examinations (moving up / graduating learners)'],
+          ['deped', '2027-03-15', '2027-03-19', 'Phil ECD Checklist for EOSY', '', 'nat'],
+          ['deped', '2027-03-17', '2027-03-23', 'Computation of grades and academic deliberation (moving up / graduating learners)'],
+          ['exam', '2027-03-22', '2027-03-23', 'Term 3 examinations (other grade levels)'],
+          ['deped', '2027-03-24', '', 'Announcement of academic excellence awardees (moving up / graduating learners)'],
           ['holiday', '2027-03-25', '', 'Maundy Thursday', 'regular'],
           ['holiday', '2027-03-26', '', 'Good Friday', 'regular'],
           ['holiday', '2027-03-27', '', 'Black Saturday', 'special'],
-          ['deped', '2027-04-06', '2027-04-07', 'End-of-School-Year rites']
+          ['inset', '2027-04-02', '', 'INSET'],
+          ['inset', '2027-04-05', '', 'INSET'],
+          ['deped', '2027-04-06', '2027-04-07', 'End-of-School-Year rites'],
+          ['deped', '2027-04-08', '', 'PTA meeting and distribution of report cards'],
+          ['holiday', '2027-04-09', '', 'The Day of Valor', 'regular'],
+          ['break', '2027-04-09', '2027-05-09', 'End-of-school-year break'],
+          ['deped', '2027-04-19', '2027-04-23', '2027 National Schools Press Conference (NSPC)', '', 'nat'],
+          ['deped', '2027-04-26', '2027-04-30', '2027 National Festival of Talents (NFOT)', '', 'nat'],
+          ['holiday', '2027-05-01', '', 'Labor Day', 'regular'],
+          ['deped', '2027-05-03', '2027-05-07', '2027 Palarong Pambansa', '', 'nat']
         ]
       }
     };
@@ -17455,7 +17505,7 @@
       if (y) {
         (y.days || []).forEach(d => {
           if (!CAL_KINDS[d.kind] || !d.from) return;
-          out.push({ key: 'd:' + d.id, src: 'day', id: d.id, kind: d.kind, title: d.title, from: d.from, to: d.to || d.from, sub: d.sub, note: d.note, by: d.by, deped: d.src === 'deped' });
+          out.push({ key: 'd:' + d.id, src: 'day', id: d.id, kind: d.kind, title: d.title, from: d.from, to: d.to || d.from, sub: d.sub, note: d.note, by: d.by, deped: d.src === 'deped', nat: !!d.nat });
         });
         (y.terms || []).forEach(t => {
           if (!t.from) return;
@@ -17571,7 +17621,8 @@
       if (calSyOf(today) === calCurSy() || !y || !y.start) return today.slice(0, 7);
       return y.start.slice(0, 7);
     }
-    const calMatch = e => calFilter === 'all' || (calFilter === 'events' ? e.kind === 'event' : calFilter === 'off' ? !!(CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off) : e.deped || ['term', 'exam', 'deped', 'working'].includes(e.kind));
+    // All leaves out national activities and those for some grades only (NAT, NSPC…): DepEd shows them
+    const calMatch = e => (calFilter === 'all' ? !e.nat : calFilter === 'events' ? e.kind === 'event' : calFilter === 'off' ? !!(CAL_KINDS[e.kind] && CAL_KINDS[e.kind].off) : !!e.deped || ['term', 'exam', 'deped', 'working'].includes(e.kind));
     function calViewHTML(page) {
       const sy = calCurSy(), y = calYears[sy] || null, edit = calCanEdit();
       const starter = CAL_STARTER[sy];
@@ -17601,6 +17652,7 @@
             <button onclick="openCalSheet('year')" id="calBlankBtn" class="w-full h-11 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800">${starter ? 'Type the dates myself' : 'Set the school year dates'}</button>
           </div>` : `<div class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center text-xs text-slate-500" data-cal-none><i class="ph-duotone ph-calendar-dots text-3xl text-slate-400"></i><p class="mt-1 font-bold text-slate-700 text-sm">The calendar for ${calSyText(sy)} is not set up yet</p><p>The School Head or the AO sets it up.</p></div>`) : ''}
         ${y ? calStripHTML(y) : ''}
+        ${edit && y && starter && (y.depedV || 1) < starter.v ? `<button type="button" onclick="openCalSheet('deped')" id="calDepedBtn" class="w-full text-left rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center gap-3"><i class="ph-bold ph-arrows-clockwise text-xl text-amber-700 shrink-0"></i><span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-amber-900">The DepEd calendar was updated</span><span class="block text-[11px] text-amber-800">Add the missing DepEd dates · your own dates stay</span></span><i class="ph-bold ph-caret-right text-amber-700"></i></button>` : ''}
         ${edit && (y || !setup) ? `<div class="grid grid-cols-2 gap-2">
           <button onclick="openCalSheet('event')" id="calAddEvent" class="h-12 rounded-2xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-calendar-plus text-lg"></i> Add an event</button>
           <button onclick="openCalSheet('date')" id="calAddDate" class="h-12 rounded-2xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-2"><i class="ph-bold ph-prohibit text-rose-600"></i> No classes / a date</button>
@@ -17618,7 +17670,7 @@
     function calRowHTML(e, dayView) {
       const k = CAL_KINDS[e.kind] || CAL_KINDS.event;
       const multi = e.to && e.to !== e.from;
-      const bits = [multi && !dayView ? calRangeText(e.from, e.to) : '', e.kind === 'holiday' && e.sub ? `${e.sub === 'regular' ? 'Regular' : 'Special'} holiday` : k.label, e.time, e.venue].filter(Boolean);
+      const bits = [multi && !dayView ? calRangeText(e.from, e.to) : '', e.kind === 'holiday' && e.sub ? `${e.sub === 'regular' ? 'Regular' : 'Special'} holiday` : e.nat ? 'DepEd · national' : k.label, e.time, e.venue].filter(Boolean);
       return `
         <button type="button" onclick="openCalSheet('view', '${calE(e.key)}')" data-cal-entry="${calE(e.key)}" data-cal-kind="${e.kind}" class="w-full text-left rounded-2xl bg-white border border-slate-200 shadow-sm p-3 flex items-start gap-3 ${e.cancelled ? 'opacity-60' : ''}">
           <span class="w-9 h-9 shrink-0 rounded-xl ${k.tone} flex items-center justify-center"><i class="ph-bold ${k.icon} text-lg"></i></span>
@@ -17711,7 +17763,7 @@
       if (!body || !calSheet) return;
       const v = calSheet.view;
       if (v !== 'view' && v !== 'classdays' && calSheet.drawn) return;   // forms keep what is being typed
-      const html = v === 'event' ? calEventHTML() : v === 'date' ? calDateHTML() : v === 'year' ? calYearHTML() : v === 'classdays' ? calClassDaysHTML() : calViewSheetHTML();
+      const html = v === 'event' ? calEventHTML() : v === 'date' ? calDateHTML() : v === 'year' ? calYearHTML() : v === 'classdays' ? calClassDaysHTML() : v === 'deped' ? calDepedHTML() : calViewSheetHTML();
       if (!html) { closeCalModal(); return; }
       body.innerHTML = html;
       calSheet.drawn = true;
@@ -17904,7 +17956,7 @@
     function calSaveYear(sy, patch, what) {
       if (!calCanEdit() || !cloud.db || !cloud.user) return;
       const F = cloud.sdk, y = calYears[sy] || {};
-      const body = cleanJSON({ sy, start: y.start || '', end: y.end || '', memo: y.memo || '', terms: y.terms || [], days: y.days || [], ...patch, updatedBy: calWho().name, updatedMs: Date.now() });
+      const body = cleanJSON({ sy, start: y.start || '', end: y.end || '', memo: y.memo || '', terms: y.terms || [], days: y.days || [], depedV: y.depedV || undefined, ...patch, updatedBy: calWho().name, updatedMs: Date.now() });
       body.sy = sy;
       cloudWrite(F.setDoc(F.doc(calYearCol(), sy), { ...body, updatedAt: F.serverTimestamp() }), what || 'Saving the calendar');
       calYears = { ...calYears, [sy]: { ...body, id: sy } };
@@ -17915,10 +17967,53 @@
       if (!st || !calCanEdit() || calYears[sy]) return;
       const who = calWho();
       calSaveYear(sy, {
-        start: st.start, end: st.end, memo: st.memo, terms: st.terms,
-        days: st.days.map(([kind, from, to, title, sub], i) => cleanJSON({ id: `deped${i}`, kind, from, to: to || from, title, sub: sub || '', src: 'deped', by: { uid: who.uid, name: who.name, role: who.role }, ms: Date.now() }))
+        start: st.start, end: st.end, memo: st.memo, terms: st.terms, depedV: st.v,
+        days: st.days.map((row, i) => calStarterDay(row, `d${st.v}-${i}`, who))
       }, 'Loading the DepEd calendar');
       showToast(`${calSyText(sy)} loaded · check the dates`, 'ph-calendar-check');
+    }
+    const calStarterDay = ([kind, from, to, title, sub, nat], id, who) => cleanJSON({ id, kind, from, to: to || from, title, sub: sub || '', nat: nat === 'nat' ? true : undefined, src: 'deped', by: { uid: who.uid, name: who.name, role: who.role }, ms: Date.now() });
+    const calRowSig = r => [r[0], r[1], r[2] || r[1], r[3]].join('|');
+    const calDaySig = d => [d.kind, d.from, d.to || d.from, d.title].join('|');
+    // A school year loaded from an older DepEd list: what updating it does. DepEd dates the school
+    // never changed are replaced by the new list; dates the school changed or added stay as they are.
+    function calDepedDiff(sy) {
+      const st = CAL_STARTER[sy], y = calYears[sy];
+      if (!st || !y || (y.depedV || 1) >= st.v) return null;
+      const wantSigs = new Set(st.days.map(calRowSig));
+      const days = y.days || [];
+      const mine = days.filter(d => d.src === 'deped' && !d.changedBy);
+      const edited = days.filter(d => d.src === 'deped' && d.changedBy);
+      const keep = mine.filter(d => wantSigs.has(calDaySig(d)));
+      const drop = mine.filter(d => !wantSigs.has(calDaySig(d)));
+      const have = new Set(keep.map(calDaySig));
+      const editedTitles = new Set(edited.map(d => d.title));
+      const add = st.days.filter(r => !have.has(calRowSig(r)) && !editedTitles.has(r[3]));
+      return { st, y, add, drop, edited, keep };
+    }
+    function calDepedHTML() {
+      if (!calCanEdit()) return '';
+      const sy = calCurSy(), diff = calDepedDiff(sy);
+      if (!diff) return '';
+      const li = (t, from, to, cls = '') => `<li class="flex justify-between gap-3 px-3 py-1.5 text-xs ${cls}"><span class="min-w-0">${calE(t)}</span><span class="shrink-0 text-slate-500">${calE(calRangeText(from, to || from))}</span></li>`;
+      return `
+        ${calHead('ph-arrows-clockwise', 'Update the DepEd calendar', `${calSyText(sy)} · ${calE(diff.st.memo.split(' · ')[0])}`)}
+        <p class="text-xs text-slate-600">The DepEd dates now follow the order exactly (Annex B): exam days, the Year-End Break, summative tests, PTA meetings, INSET, assessments and national activities. Your school’s own dates and events stay, and so do DepEd dates you changed.</p>
+        ${diff.add.length ? `<div><p class="text-[11px] font-bold uppercase text-teal-700 mb-1 px-1" data-cal-dp-add="${diff.add.length}">Added · ${diff.add.length}</p><ul class="rounded-2xl border border-slate-200 divide-y divide-slate-100 max-h-56 overflow-y-auto">${diff.add.map(r => li(r[3], r[1], r[2])).join('')}</ul></div>` : ''}
+        ${diff.drop.length ? `<div><p class="text-[11px] font-bold uppercase text-rose-700 mb-1 px-1" data-cal-dp-drop="${diff.drop.length}">Replaced · ${diff.drop.length}</p><ul class="rounded-2xl border border-slate-200 divide-y divide-slate-100">${diff.drop.map(d => li(d.title, d.from, d.to, 'line-through text-slate-500')).join('')}</ul></div>` : ''}
+        ${diff.edited.length ? `<p class="text-[11px] text-slate-500" data-cal-dp-kept="${diff.edited.length}">Kept as you changed them: ${diff.edited.map(d => calE(d.title)).join(', ')}.</p>` : ''}
+        <button onclick="calApplyDeped('${sy}')" id="calDepedSave" class="w-full h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-extrabold flex items-center justify-center gap-2"><i class="ph-bold ph-arrows-clockwise"></i> Update</button>`;
+    }
+    function calApplyDeped(sy) {
+      const diff = calDepedDiff(sy);
+      if (!diff || !calCanEdit()) return;
+      const who = calWho(), dropIds = new Set(diff.drop.map(d => d.id));
+      const days = (diff.y.days || []).filter(d => !dropIds.has(d.id))
+        .concat(diff.add.map(r => calStarterDay(r, `d${diff.st.v}-${diff.st.days.indexOf(r)}`, who)))
+        .sort((a, b) => String(a.from).localeCompare(String(b.from)));
+      calSaveYear(sy, { days, depedV: diff.st.v }, 'Updating the DepEd calendar');
+      closeCalModal();
+      showToast(`DepEd calendar updated · ${diff.add.length} added`, 'ph-calendar-check');
     }
     // The first and last day of the school year and the terms
     function calYearHTML() {
@@ -29486,6 +29581,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-calendar-do009', date: 'Nov 2026', title: 'Fixes: the DepEd calendar follows DO 009 exactly', points: [
+        'Fixes: the DepEd calendar now follows DepEd Order No. 009, s. 2026 (Annex B) exactly: Term 1 exams on Aug 28 and Sep 1, Term 3 exams on Mar 15\u201316 (moving up and graduating) and Mar 22\u201323, and the Year-End Break on Dec 19\u201331.',
+        'Added: the teacher-made summative tests, PTA meetings, INSET, wellness breaks, enrollment and early registration, the BOSY, MOSY and EOSY assessment windows, and observances such as Teachers\u2019 Month and Araw ng Pagbasa.',
+        'National activities and tests for some grades (NAT, ELLNA, NSPC, Palarong Pambansa\u2026) show under the DepEd filter, not under All.',
+        'School Head and AO: if you already loaded the calendar, tap \u201cThe DepEd calendar was updated\u201d to add the missing dates. Your own dates, and DepEd dates you changed, stay.'
+      ], pilot: 'plan' },
       { id: '2026-11-school-calendar', date: 'Nov 2026', title: 'School calendar · pilot at this school', points: [
         'This is a pilot: it shows only at this school for now. It is the first part of School Planning; programs, projects and activities (the AIP) come next.',
         'One school calendar for everyone: the terms of the school year, holidays, breaks, exams, days without classes and school events. Agenda (what is coming up) or Month. A strip shows the term and the class day, and how many class days are left.',

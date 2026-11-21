@@ -34,7 +34,7 @@ try {
   const { page: h } = await schoolHead(backend, a, sid);
   await turnOn(h);
   await ev(h, () => renderHeadView());
-  check(await ev(a, () => WHATS_NEW[0].id === '2026-11-school-calendar' && WHATS_NEW[0].pilot === 'plan' && wnList().some(r => r.id === '2026-11-school-calendar')), 'What’s new: the school calendar (pilot)');
+  check(await ev(a, () => WHATS_NEW.some(r => r.id === '2026-11-school-calendar' && r.pilot === 'plan') && wnList().some(r => r.id === '2026-11-school-calendar')), 'What’s new: the school calendar (pilot)');
   check(await ev(a, () => document.getElementById('moreCalItem').style.display === '' && document.getElementById('sideCalendar').style.display === ''), 'AO: School calendar in More and in the sidebar');
 
   out('2 the AO sets up SY 2026-2027 from the DepEd calendar');
@@ -44,7 +44,7 @@ try {
   await ev(a, () => document.getElementById('calLoadBtn').click());
   await waitNode(() => !!year(sid));
   const Y = () => year(sid);
-  check(Y().start === '2026-06-08' && Y().end === '2027-04-08' && Y().terms.length === 3 && Y().days.length === 23 && Y().days.every(d => d.src === 'deped'), 'saved: Jun 8, 2026 to Apr 8, 2027, three terms, 23 DepEd dates');
+  check(Y().start === '2026-06-08' && Y().end === '2027-04-08' && Y().terms.length === 3 && Y().days.length === 71 && Y().days.every(d => d.src === 'deped') && Y().depedV === 2, 'saved: Jun 8, 2026 to Apr 8, 2027, three terms, 71 DepEd dates');
   await until(a, () => !!document.querySelector('[data-cal-strip]'), 'term strip');
   check(/Term 2/.test(await text(a, '[data-cal-strip]')), `strip: Term 2 (${await text(a, '[data-cal-today]')})`);
   check(await ev(a, () => calClassDays(calYears['2026-2027']).total === 201), 'class days: 201, as in the DepEd order');
@@ -55,6 +55,12 @@ try {
   check(await ev(a, () => /Within the law/.test(document.getElementById('calModalBody').textContent) && ['1', '2', '3'].every(n => +document.querySelector(`[data-cal-term="${n}"]`).textContent > 50)), 'within the law (200 to 220); each term counted');
   await ev(a, () => closeCalModal());
   check(await ev(a, () => document.querySelectorAll('[data-cal-entry]').length > 3 && !!document.querySelector('[data-cal-kind="holiday"]')), 'agenda: what is coming up, holidays included');
+  const D = (title, from) => Y().days.find(d => d.title === title && (!from || d.from === from));
+  check(!!D('Term 1 examinations', '2026-08-28') && !!D('Term 1 examinations', '2026-09-01') && D('Term 1 examinations', '2026-08-28').to === '2026-08-28', 'DO 009: Term 1 exams on Aug 28 and Sep 1 (two days, not a span)');
+  check(D('Term 3 examinations (moving up / graduating learners)').from === '2027-03-15' && D('Term 3 examinations (other grade levels)').from === '2027-03-22', 'DO 009: Term 3 exams Mar 15–16 (moving up) and Mar 22–23');
+  check(D('Year-End Break (wellness break of learners and teachers)').to === '2026-12-31' && Y().days.filter(d => d.kind === 'inset').length === 4 && Y().days.filter(d => /teacher-made summative/.test(d.title)).length === 6 && Y().days.filter(d => /^PTA meeting/.test(d.title)).length === 3,
+    'DO 009: Year-End Break Dec 19–31, 4 INSET dates, 6 summative tests, 3 PTA meetings');
+  check(await ev(a, () => { const f = calFilter; calFilter = 'all'; const all = calEntries('2026-2027').filter(calMatch).some(e => /Palarong|NAT for/.test(e.title)); calFilter = 'deped'; const dep = calEntries('2026-2027').filter(calMatch).some(e => /Palarong/.test(e.title)); calFilter = f; return !all && dep; }), 'national activities (NAT, Palaro…) show under DepEd, not under All');
 
   out('3 the teacher: a read-only Calendar tab');
   await ev(t, () => setTeacherTab('calendar'));
@@ -114,7 +120,7 @@ try {
   await ev(a, () => { calTitle.value = 'Typhoon Ada · classes suspended'; calFrom.value = '2027-01-15'; calTo.value = '2027-01-14'; document.getElementById('calDateSave').click(); });
   check(/before the first day/.test(await text(a, '#calErr')), 'the last day can’t be before the first');
   await ev(a, () => { calTo.value = '2027-01-15'; calNote.value = 'Division Memo No. 12, s. 2027'; document.getElementById('calDateSave').click(); });
-  await waitNode(() => Y().days.length === 24);
+  await waitNode(() => Y().days.length === 72);
   const S = () => Y().days.find(d => d.src === 'school');
   check(S().kind === 'suspension' && S().from === '2027-01-15' && S().by.role === 'ao', 'saved on the school year');
   check(await ev(a, () => calClassDays(calYears['2026-2027']).total === 200), 'class days: 200 now');
@@ -127,7 +133,7 @@ try {
   check(/Class day \d+ of 200/.test(await text(a, '[data-cal-dayno]')), `month: a school day shows its number (${await text(a, '[data-cal-dayno]')})`);
   await ev(a, () => setCalMode('agenda'));
   await ev(a, i => calRemoveDate(i), S().id);
-  await waitNode(() => Y().days.length === 23);
+  await waitNode(() => Y().days.length === 71);
   check(await ev(a, () => calClassDays(calYears['2026-2027']).total === 201), 'removed: back to 201');
 
   out('7 school year dates; removing an event');
@@ -144,7 +150,37 @@ try {
   await until(a, () => !document.querySelector('[data-cal-kind="event"]'), 'event gone');
   check(true, 'removed: the event is gone from the calendar (kept with removed: true)');
 
-  out('8 outside the pilot, and the rules');
+  out('8 a school year loaded from the first DepEd list: Update');
+  const OLD = [['deped', '2026-06-01', '2026-06-05', 'Brigada Eskwela'], ['holiday', '2026-06-12', '', 'Independence Day', 'regular'], ['holiday', '2026-08-21', '', 'Ninoy Aquino Day', 'special'],
+    ['exam', '2026-08-28', '2026-09-01', 'Term 1 examinations'], ['holiday', '2026-08-31', '', 'National Heroes Day', 'regular'], ['holiday', '2026-11-01', '', 'All Saints’ Day', 'special'],
+    ['holiday', '2026-11-02', '', 'All Souls’ Day', 'special'], ['holiday', '2026-11-30', '', 'Bonifacio Day', 'regular'], ['exam', '2026-12-03', '2026-12-04', 'Term 2 examinations'],
+    ['holiday', '2026-12-08', '', 'Feast of the Immaculate Conception of Mary', 'special'], ['break', '2026-12-21', '2027-01-03', 'Christmas break'], ['holiday', '2026-12-24', '', 'Christmas Eve', 'special'],
+    ['holiday', '2026-12-25', '', 'Christmas Day', 'regular'], ['holiday', '2026-12-30', '', 'Rizal Day', 'regular'], ['holiday', '2026-12-31', '', 'Last Day of the Year', 'special'],
+    ['holiday', '2027-01-01', '', 'New Year’s Day', 'regular'], ['holiday', '2027-02-06', '', 'Chinese New Year', 'special'], ['working', '2027-02-25', '', 'EDSA People Power Revolution Anniversary'],
+    ['exam', '2027-03-22', '2027-03-23', 'Term 3 examinations'], ['holiday', '2027-03-25', '', 'Maundy Thursday', 'regular'], ['holiday', '2027-03-26', '', 'Good Friday', 'regular'],
+    ['holiday', '2027-03-27', '', 'Black Saturday', 'special'], ['deped', '2027-04-06', '2027-04-07', 'End-of-School-Year rites']];
+  await ev(a, old => {
+    const F = cloud.sdk, y = calYears['2026-2027'];
+    const days = old.map(([kind, from, to, title, sub], i) => ({ id: `deped${i}`, kind, from, to: to || from, title, sub: sub || '', src: 'deped', ms: 1, ...(title === 'Christmas break' ? { changedBy: 'Rhea' } : {}) }))
+      .concat([{ id: 'own1', kind: 'noclass', from: '2027-01-29', to: '2027-01-29', title: 'Town fiesta', src: 'school', ms: 2 }]);
+    return F.setDoc(F.doc(cloud.db, 'schools', reqRole.schoolId, 'planYears', '2026-2027'), { sy: '2026-2027', start: y.start, end: y.end, memo: y.memo, terms: y.terms, days });
+  }, OLD);
+  await waitNode(() => Y().days.length === 24 && !Y().depedV);
+  await until(a, () => !!document.getElementById('calDepedBtn'), 'Update banner', 8000);
+  check(await ev(a, () => calClassDays(calYears['2026-2027']).total === 200), 'old list plus a town fiesta: 200 class days');
+  check(!(await ev(t, () => !!document.getElementById('calDepedBtn'))), 'teachers don’t see the Update banner');
+  await ev(a, () => document.getElementById('calDepedBtn').click());
+  await until(a, () => !!document.getElementById('calDepedSave'), 'update sheet');
+  const dp = await ev(a, () => ({ add: document.querySelector('[data-cal-dp-add]').dataset.calDpAdd, drop: document.querySelector('[data-cal-dp-drop]').dataset.calDpDrop, kept: document.querySelector('[data-cal-dp-kept]').textContent }));
+  check(dp.add === '51' && dp.drop === '2' && /Christmas break/.test(dp.kept), `preview: 51 added, 2 replaced, Christmas break kept as changed (${JSON.stringify(dp)})`);
+  await ev(a, () => document.getElementById('calDepedSave').click());
+  await waitNode(() => Y().depedV === 2);
+  check(Y().days.length === 73 && !!D('Town fiesta') && !!D('Christmas break') && !D('Term 3 examinations') && !Y().days.some(d => d.title === 'Term 1 examinations' && d.to === '2026-09-01' && d.from === '2026-08-28'),
+    'updated: 73 dates; the school’s own and the changed one stay; the old exam spans are gone');
+  check(await ev(a, () => calClassDays(calYears['2026-2027']).total === 200 && !document.getElementById('calDepedBtn')), 'still 200 class days (the fiesta); the banner is gone');
+  check(new Set(Y().days.map(d => d.id)).size === Y().days.length, 'every date has its own id');
+
+  out('9 outside the pilot, and the rules');
   check(await refused(t, F => F.setDoc(F.doc(F.collection(cloud.db, 'schools', reqRole.schoolId, 'ppas')), { kind: 'event', title: 'Mine', sy: '2026-2027', from: '2026-12-01', to: '2026-12-01', status: 'planned', log: [] })), 'rules: a teacher can’t add events yet');
   check(await refused(t, F => F.setDoc(F.doc(F.collection(cloud.db, 'schools', reqRole.schoolId, 'planYears'), '2026-2027'), { sy: '2026-2027', terms: [], days: [] })), 'rules: a teacher can’t change the school year');
   check(await refused(a, F => F.setDoc(F.doc(F.collection(cloud.db, 'schools', reqRole.schoolId, 'planYears'), '2026-2027'), { sy: '2027-2028', terms: [], days: [] })), 'rules: the document is the school year it says');
