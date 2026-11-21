@@ -84,8 +84,19 @@ schools (or to everyone, for a free feature), with no code change and no new rul
 - **What's new:** a feature's notes appear for a school when the feature turns on for it. The
   usual *"Updated · …"* toast announces it once, as for any update. Notes are reworded so they no
   longer say "pilot at this school"; the pilot sentence shows only while the feature is in pilot.
-- **Pro badge:** a Pro feature's page shows a small **Pro** badge at Pro schools. A Free school sees
-  no trace of Pro features (no locked tabs), unless follow-up F3 says otherwise.
+- **Pro badge:** a Pro feature's page shows a small **Pro** badge at Pro schools.
+- **Free schools: More → Pro** (decided 2026-11-21, F3). A page listing what Pro adds (Leave and
+  CS Form 6, leave cards, the School Calendar, and Pro features to come) and whom to contact, with
+  **Try Pro free for 7 days**:
+  - Only the school's property custodian can start it, **once per school**.
+  - Every Pro feature at the Pro stage turns on for the whole school (custodian/AO, School Head,
+    teachers) for 7 days. A strip in More says *Pro trial · 5 days left*.
+  - 2 days before the end, and on the last day, the custodian is reminded (notification + title
+    bar badge, as for app updates).
+  - When the 7 days end, the school is Free again and the trial records follow F2 (view only).
+  - The admin sees trials in the schools list (*Trial · ends Nov 28*) and can **Make Pro**, **extend
+    the trial**, or **allow a new trial**.
+  - Before the trial, Pro features stay out of sight: no locked tabs, only the More → Pro page.
 
 ## 4. Data and rules
 
@@ -103,6 +114,11 @@ schools (or to everyone, for a free feature), with no code change and no new rul
 `untilMs` 0). Only the admin may write the `pro` field; the school's own custodian can't. Every
 school's custodian rule must ignore a change to `pro` it didn't make.
 
+**The 7-day trial is stored on the school too:** `schools/{sid}.trial = { startMs, untilMs, by }`.
+The school's custodian may write it **only once** (no `trial` before), with `untilMs` = `startMs` +
+7 days (± a few minutes) and `startMs` close to `request.time`. Only the admin may change it after
+that (extend, or remove it to allow a new trial).
+
 **`firestore.rules`:**
 
 ```
@@ -110,7 +126,9 @@ function adminSchool() { return '97JbEODfGJhWcejYDWhO'; }
 function features() { return get(/databases/$(database)/documents/appConfig/features).data; }
 function isPro(schoolId) {
   let p = schoolDoc(schoolId).get('pro', null);
-  return p != null && (p.get('untilMs', 0) == 0 || p.untilMs > request.time.toMillis());
+  let t = schoolDoc(schoolId).get('trial', null);
+  return (p != null && (p.get('untilMs', 0) == 0 || p.untilMs > request.time.toMillis()))
+    || (t != null && t.get('untilMs', 0) > request.time.toMillis());
 }
 function featureOn(name, schoolId) {
   let st = features().get(name, {}).get('stage', 'testing');
@@ -175,7 +193,9 @@ rule, starting at **Testing**.
   - Only the admin school's custodian sees the panel, and other custodians can't write the
     document (rules).
   - Make a school Pro (by School ID, with an end date); Testing → Pro: the tabs appear on that
-    school's phones live; a Free school still sees nothing; Everyone: they see it too.
+    school's phones live; a Free school sees only More → Pro; Everyone: they see it too.
+  - The 7-day trial: the custodian starts it once; Pro features turn on for the school; a second
+    trial is refused (rules); after 7 days they turn off (view only); the admin can extend it.
   - A school's own custodian can't make itself Pro (rules); an expired Pro turns the features off.
   - The schools list shows names, School IDs, user counts and Pro.
   - What's new announces the feature.
@@ -186,7 +206,7 @@ rule, starting at **Testing**.
 
 | PR | Scope |
 |---|---|
-| **A1** | `appConfig/features` + `schools.pro` + rules `featureOn`/`isPro` + the Admin panel (feature switches, schools list, Make Pro) + Leave and Calendar moved to switches + tests. **Publish the rules once.** |
+| **A1** | `appConfig/features` + `schools.pro` + rules `featureOn`/`isPro` + the Admin panel (feature switches, schools list, Make Pro, trials) + More → Pro with the 7-day trial + Leave and Calendar moved to switches + tests. **Publish the rules once.** |
 | A2 (later) | Anything from the follow-ups not in A1 (e.g. reminders before Pro ends, a price/plan page). |
 
 After A1, the School Planning parts (D2 PPAs, D3 prints, D4 monitoring, D5 links) are built behind
@@ -209,9 +229,9 @@ After A1, the School Planning parts (D2 PPAs, D3 prints, D4 monitoring, D5 links
   admin removes it?
 - **F2 When Pro ends:** do the school's Leave and Calendar records become **view only** (read,
   print, no new entries), or **hidden** until Pro is renewed? (They are never deleted.)
-- **F3 Free schools:** should they see that Pro exists (a "Pro" item in More explaining what it
-  adds and whom to contact), or see nothing at all?
+- ~~F3 Free schools~~ **Decided 2026-11-21:** *"free schools can access the Pro page in 7 days"*,
+  read as **a 7-day free trial of Pro**, started from More → Pro (section 3).
 - Payment stays outside the app (the admin marks Pro after being paid).
 
-If these stay unanswered, A1 uses the recommended defaults: **F1** an optional end date per school;
-**F2** view only (read and print, nothing new); **F3** a short *Pro* page in More for Free schools.
+If F1 and F2 stay unanswered, A1 uses the recommended defaults: **F1** an optional end date per
+school; **F2** view only (read and print, nothing new). F2 also applies when a trial ends.
