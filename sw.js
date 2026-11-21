@@ -6,6 +6,8 @@
  * - firebase-config.js (Supply Requests settings): network first like the page, so a
  *   config edited on GitHub reaches phones without a rebuild.
  * - Firebase SDK (assets/cloud/) is not precached; it is cached the first time it is used.
+ * - The pictures of the printed calendar (assets/cal-art/) are not precached either; they are
+ *   kept in their own cache the first time a print uses them.
  * - Text recognition for "Scan ICS" (assets/ocr/, ~7 MB) is not precached; it is kept
  *   in its own cache the first time it is used, so app updates don't download it again.
  * - Tapping a phone notification (shown by the page while the app is open or was used
@@ -17,7 +19,7 @@
  *   downloaded right away and a phone notification says it is ready.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
-const CACHE = 'custodianpro-fb43db72ee18';
+const CACHE = 'custodianpro-1f0f903b4293';
 const PRECACHE_URLS = [
     "./",
     "./index.html",
@@ -53,6 +55,7 @@ const PRECACHE_URLS = [
     "./assets/vendor/qrcode.js"
   ];
 const OCR_CACHE = 'custodianpro-ocr-7.0.0';
+const ART_CACHE = 'custodianpro-calart-1';   // bump when a picture in assets/cal-art/ changes
 const NETWORK_TIMEOUT_MS = 3000;
 
 self.addEventListener('install', (event) => {
@@ -67,7 +70,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(
-        keys.filter((k) => k.startsWith('custodianpro-') && k !== CACHE && k !== OCR_CACHE).map((k) => caches.delete(k))
+        keys.filter((k) => k.startsWith('custodianpro-') && k !== CACHE && k !== OCR_CACHE && k !== ART_CACHE).map((k) => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
@@ -112,8 +115,8 @@ async function handleConfig(request) {
 }
 
 async function handleAsset(request) {
-  const isOcr = new URL(request.url).pathname.includes('/assets/ocr/');
-  const cache = await caches.open(isOcr ? OCR_CACHE : CACHE);
+  const p = new URL(request.url).pathname;
+  const cache = await caches.open(p.includes('/assets/ocr/') ? OCR_CACHE : p.includes('/assets/cal-art/') ? ART_CACHE : CACHE);
   const cached = await cache.match(request, { ignoreSearch: true });
   if (cached) return cached;
   const response = await fetch(request);

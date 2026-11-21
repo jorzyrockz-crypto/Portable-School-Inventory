@@ -200,13 +200,15 @@ const listFiles = (dir) =>
 
 const SHOTS_DIR = path.join(ASSETS, 'screenshots');
 const BRAND_DIR = path.join(ASSETS, 'brand');
+// Calendar print art (assets/cal-art/, ~0.4–1 MB): cached the first time a print uses it.
+const ART_DIR = path.join(ASSETS, 'cal-art');
 const precache = [
   path.join(ROOT, 'index.html'),
   path.join(ROOT, 'manifest.webmanifest'),
   path.join(ROOT, 'firebase-config.js'), // also network-first in sw.js, so edits apply without a rebuild
   // Store screenshots (manifest "screenshots") are only shown by Chrome's install sheet, and the
   // large brand PNGs only by link previews / the README; the app itself uses banner.webp.
-  ...listFiles(ASSETS).filter((p) => ![OCR_DIR, CLOUD_DIR, SHOTS_DIR].some((d) => p.startsWith(d + path.sep)))
+  ...listFiles(ASSETS).filter((p) => ![OCR_DIR, CLOUD_DIR, SHOTS_DIR, ART_DIR].some((d) => p.startsWith(d + path.sep)))
     .filter((p) => !(p.startsWith(BRAND_DIR + path.sep) && p.endsWith('.png'))),
 ].filter((p) => fs.existsSync(p));
 

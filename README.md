@@ -454,6 +454,18 @@ The first part of **School Planning** (plan: `docs/plans/school-calendar-and-ppa
 
 Data: `schools/{schoolId}/planYears/{sy}` (one per school year: `start`, `end`, `memo`, `terms[]` with `blocks[]`, `days[]`, `people[]`) and `schools/{schoolId}/ppas/{id}` (`kind`: `event`, `program`, `project` or `activity`; `parentId`, dates, `who[]`, `team[]`, `budget`, `source`, `status`, `decision`, `log[]`). Everyone at the school reads them; the School Head and the AO write them; a teacher may only create their own proposal and change or withdraw it while it waits or was returned. **Publish `firestore.rules` again** to turn it on.
 
+#### Printing the calendar (wall calendar)
+
+**Print** on the School calendar (the AO's Calendar page, the School Head's Plan tab and the teachers' Calendar tab) opens a print sheet with a live preview of each sheet (plan: `docs/plans/monthly-calendar-print.md`). Everyone can print.
+
+- **Page:** a header (school logo, name, School ID, division, school year), a clay-style art banner with the month and its term and class-day count, the grid of days (days without classes tinted, small marks for exams, events and activities; a long event shows on its first day and each Monday), *+N more* in a full box with the rest listed under *More this month*, and a footer (legend, motto or note line, printed date).
+- **Art:** this month's art (a picture for each month in `assets/cal-art/`), a general scene, the school's own photo (with a crop handle) or none to save ink; Full, Soft or Light; as a top banner or behind the grid.
+- **Colour:** Teal, Blue, Green, Red, Violet, Orange or black and white.
+- **Paper:** A4, Folio / Portfolio (8.5 × 13 in, long bond) or A3, landscape or portrait; 1 or 2 months a sheet (2 months: **stacked** or **side by side**). Pick the same paper size in the print box.
+- **Months:** this month, a range, or the whole school year (11 pages, or 6 sheets at 2 a sheet). The week starts on Sunday or Monday.
+- **What shows:** holidays, days without classes, exams, school events, activities, DepEd school-year blocks, DepEd national events, *Mine only*, times, venues and people.
+- The choices are kept on the device (`localStorage` `cp_calprint_v1`); the school photo and logo are kept on the device too (IndexedDB `cp-print-pictures`) and removed by **Reset app**. Nothing new is saved online. The art is downloaded the first time it is used and then works offline (service worker cache `custodianpro-calart-*`).
+
 ### School stock and “I took this” (teachers)
 
 Teachers kept asking *“Sir, meron pa ba nito?”*. The teacher's phone now has a third tab, **Stock**:
