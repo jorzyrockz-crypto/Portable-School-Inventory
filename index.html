@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="86966a9704d1">
+  <meta name="app-version" content="d54ee8b90531">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -279,6 +279,16 @@
       html:not(.no-tabs) #calBody:has(> [data-cal-month]) {
         display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 1fr); gap: 1rem; align-items: start; }
       html:not(.no-tabs) #calBody:has(> [data-cal-month]) > * { margin-top: 0 !important; }
+      /* Tab strips, the school-year arrows and the action buttons: sized to what is in them, not edge to edge */
+      html:not(.no-tabs) #viewCalendar [role="tablist"], html:not(.no-tabs) #viewLeave [role="tablist"],
+      html:not(.no-tabs) #viewBooks [role="tablist"] { width: fit-content; min-width: min(22rem, 100%); max-width: 100%; }
+      html:not(.no-tabs) #viewCalendar .flex > [role="tablist"] { flex: none; min-width: min(15rem, 100%); }
+      html:not(.no-tabs) #viewCalendar .flex.items-center.justify-between:has(> [data-cal-sy]) { justify-content: center; gap: 0.75rem; }
+      html:not(.no-tabs) #viewCalendar .grid.grid-cols-2:has(> #calAddEvent),
+      html:not(.no-tabs) #viewLeave .grid.grid-cols-2:has(> #lvEncodeBtn) { display: flex; flex-wrap: wrap; }
+      html:not(.no-tabs) #viewCalendar .grid.grid-cols-2:has(> #calAddEvent) > button,
+      html:not(.no-tabs) #viewLeave .grid.grid-cols-2:has(> #lvEncodeBtn) > button { width: auto; padding-left: 1.5rem; padding-right: 1.5rem; }
+      html:not(.no-tabs) #viewCalendar [data-cal-setup], html:not(.no-tabs) #viewCalendar [data-cal-none] { max-width: 42rem; }
       html:not(.no-tabs) #viewCalendar .ppa-tree { display: grid; grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr)); gap: 0.75rem; align-items: start; }
       html:not(.no-tabs) #viewCalendar .ppa-tree > * { margin-top: 0 !important; }
       html:not(.no-tabs) #viewCalendar .ppa-tree > h2 { grid-column: 1 / -1; }
@@ -33636,6 +33646,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-desktop-bars', date: 'Nov 2026', title: 'Fixes: tidier bars on the Calendar, Leave and Books pages', points: [
+        'On a computer, the tab strips (Calendar / Plan, Agenda / Month, the Leave and Books tabs), the school-year arrows and the buttons no longer stretch from edge to edge; they are sized to what is in them.'
+      ] },
       { id: '2026-11-desktop-pages', date: 'Nov 2026', title: 'Every page fills the computer screen now', points: [
         'Supply requests, Books & Library, Calendar, Leave and Reports now use the whole screen on a computer, like Inventory and the Admin panel, with their cards and lists side by side in columns.',
         'The calendar agenda shows the days side by side, and the month sits beside the day you picked.',
