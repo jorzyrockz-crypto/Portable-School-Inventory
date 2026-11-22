@@ -499,6 +499,15 @@ No new rules: `dashboard/summary` is read only by staff, viewers and the head, w
 
 **Print** on the School calendar (the AO's Calendar page, the School Head's Plan tab and the teachers' Calendar tab) opens a print sheet with a live preview of each sheet (plan: `docs/plans/monthly-calendar-print.md`). Everyone can print.
 
+- **Style and layout** (Nov 2026, plan: `docs/plans/calendar-print-v2.md`, samples in `docs/plans/calendar-print-v2/`): five styles. Each one sets the options below, which can still be changed:
+  - **Agenda** (the default): landscape, rounded day boxes with big numbers (the *Fredoka* font), a coloured dot for each entry, and the list of dates on the right.
+  - **Write-in:** portrait, empty boxes to write in, a large month title on the art, and the list below.
+  - **Poster:** a coloured column on the left with the art, the month, the list and the Notes; the names are written in the boxes.
+  - **Ink saver:** black and white, thin lines, empty boxes, grey art beside the list; days off are hatched.
+  - **Classic:** the earlier look, with everything written in the boxes.
+- **Day boxes:** *Written in*, *Dots only* or *Empty*. Holidays and days without classes keep their name in every mode.
+- **List of dates:** *Beside*, *Below* or *None*. Each row has a date badge (*12 FRI*, *1–5 JUN*), the title and the time, venue and people (per the ticks). It follows **What to show** and *Mine only*: DepEd school-year and national dates appear only when ticked. If the list is too long, the type gets smaller (to about 5.8 pt), then the last rows give way to *+N more in the app*. With 2 months a sheet, one list covers both months (with a heading for each month). Side by side, the list and the Notes go below, and *Beside* is greyed out.
+- **Notes box:** off unless turned on; *Beside* or *Below*; lines, dots or blank, with its own title (e.g. *Reminders*).
 - **Page:** a header (school logo, name, School ID, division, school year), a clay-style art banner with the month and its term and class-day count, the grid of days (days without classes tinted, small marks for exams, events and activities; a long event shows on its first day and each Monday), *+N more* in a full box with the rest listed under *More this month*, and a footer (legend, motto or note line, printed date).
 - **Art:** this month's art (a picture for each month in `assets/cal-art/`), a general scene, the school's own photo (**Pro**, with a crop handle) or none to save ink; Full, Soft or Light; as a top banner or behind the grid.
 - **Colour:** Teal, Blue, Green, Red, Violet, Orange or black and white.

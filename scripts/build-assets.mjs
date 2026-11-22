@@ -35,6 +35,8 @@ const html = read(path.join(ROOT, 'index.html'));
 const TEXT_FONTS = [
   { family: 'Inter Variable', pkg: '@fontsource-variable/inter', prefix: 'inter' },
   { family: 'JetBrains Mono Variable', pkg: '@fontsource-variable/jetbrains-mono', prefix: 'jetbrains-mono' },
+  // the printed calendar's rounded numbers and titles (300–700)
+  { family: 'Fredoka Variable', pkg: '@fontsource-variable/fredoka', prefix: 'fredoka', weight: '300 700' },
 ];
 const SUBSETS = {
   'latin-ext': 'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF',
@@ -46,7 +48,7 @@ for (const f of TEXT_FONTS) {
   for (const [subset, range] of Object.entries(SUBSETS)) {
     const file = `${f.prefix}-${subset}-wght-normal.woff2`;
     fs.copyFileSync(path.join(NM, f.pkg, 'files', file), path.join(FONTS, file));
-    fontCss += `@font-face{font-family:'${f.family}';font-style:normal;font-display:swap;font-weight:100 900;` +
+    fontCss += `@font-face{font-family:'${f.family}';font-style:normal;font-display:swap;font-weight:${f.weight || '100 900'};` +
       `src:url(./fonts/${file}) format('woff2-variations'),url(./fonts/${file}) format('woff2');unicode-range:${range}}\n`;
   }
 }

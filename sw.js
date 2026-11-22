@@ -20,7 +20,7 @@
  *   downloaded right away and a phone notification says it is ready.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
-const CACHE = 'custodianpro-b2877b6a3c81';
+const CACHE = 'custodianpro-9ca131f7c9da';
 const PRECACHE_URLS = [
     "./",
     "./index.html",
@@ -35,6 +35,8 @@ const PRECACHE_URLS = [
     "./assets/fonts/Phosphor-Bold.woff2",
     "./assets/fonts/Phosphor-Duotone.woff2",
     "./assets/fonts/Phosphor-Fill.woff2",
+    "./assets/fonts/fredoka-latin-ext-wght-normal.woff2",
+    "./assets/fonts/fredoka-latin-wght-normal.woff2",
     "./assets/fonts/inter-latin-ext-wght-normal.woff2",
     "./assets/fonts/inter-latin-wght-normal.woff2",
     "./assets/fonts/jetbrains-mono-latin-ext-wght-normal.woff2",

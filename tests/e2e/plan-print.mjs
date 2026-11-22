@@ -39,6 +39,7 @@ try {
   for (let i = 1; i <= 7; i++) await addPpa(a, { kind: 'event', title: `Club meeting number ${i} with a longer name`, from: '2026-06-17' });
   await until(a, () => calEvents.filter(e => !e.removed).length >= 10, 'AO has the entries', 8000);
   check(await ev(a, () => WHATS_NEW.some(r => r.id === '2026-11-calendar-print' && r.pilot === 'plan') && wnList().some(r => r.id === '2026-11-calendar-print')), 'What’s new: Print the school calendar (pilot)');
+  check(await ev(a, () => wnList().some(r => r.id === '2026-11-calendar-print-v2' && /list of dates and Notes/.test(r.title))), 'What’s new: A nicer printed calendar, with a list of dates and Notes');
 
   out('2 the print sheet: June 2026 on A4 landscape');
   await a.bringToFront();
@@ -46,6 +47,10 @@ try {
   check(await ev(a, () => !!document.getElementById('calPrintBtn')), 'AO: Print on the calendar');
   await ev(a, () => document.getElementById('calPrintBtn').click());
   await until(a, () => !!document.querySelector('#cprPreview .cpr-sheet'), 'preview');
+  check(await ev(a, () => cpr.style === 'agenda' && cpr.boxes === 'dots' && cpr.list === 'beside' && cpr.notes === 'off' && document.querySelector('#cprPreview .cpr-sheet').dataset.cprStyle === 'agenda' && !document.querySelector('#cprPreview [data-cpr-notes]')), 'new default: the Agenda style, dots in the boxes, the list beside, no Notes');
+  // the checks below are of the Classic style (everything written in the boxes); the new styles: part 4b
+  await set(a, 'style', 'classic');
+  check(await ev(a, () => cpr.boxes === 'entries' && cpr.list === 'off' && !document.querySelector('#cprPreview [data-cpr-panel]')), 'Classic: written in the boxes, no list');
   check(await ev(a, () => document.getElementById('calModalBox').classList.contains('cal-wide') && /Sheet 1 of 1 · 1 month/.test(document.getElementById('cprCount').textContent)), 'preview: Sheet 1 of 1 · 1 month');
   check(await prev(a, () => { const m = document.querySelector('#cprPreview [data-cpr-month]'); return m.dataset.cprMonth === '2026-06' && m.querySelectorAll('[data-cpr-day]').length === 30; }), 'June 2026: 30 days');
   check(await prev(a, () => { const cells = [...document.querySelectorAll('#cprPreview .cpr-grid > .cpr-cell')]; return !cells[0].dataset.cprDay && cells[1].dataset.cprDay === '2026-06-01'; }), 'Sunday first: June 1 (a Monday) in the 2nd box');
@@ -102,6 +107,75 @@ try {
   await ev(a, () => { cprSet('per', 1); cprSet('paper', 'a4'); cprSet('orient', 'landscape'); cprSet('range', 'range'); cprSet('from', '2026-08'); cprSet('to', '2026-10'); });
   check(await ev(a, () => /Sheet 1 of 3 · 3 months/.test(document.getElementById('cprCount').textContent) && document.querySelector('#cprPreview [data-cpr-month]').dataset.cprMonth === '2026-08'), 'From – to: August to October, 3 sheets');
   await ev(a, () => cprSet('range', 'month'));
+
+  out('4b styles: Agenda, Write-in, Poster, Ink saver; the list of dates and Notes');
+  const fits = () => prev(a, () => { const s = document.querySelector('#cprPreview .cpr-sheet'); return s.scrollHeight <= s.clientHeight + 1 && s.scrollWidth <= s.clientWidth + 1; });
+  const li = () => prev(a, () => [...document.querySelectorAll('#cprPreview [data-cpr-li]')].filter(x => !x.hasAttribute('data-cpr-hide')).map(x => x.textContent.replace(/\s+/g, ' ').trim()));
+  await ev(a, () => { cprSet('weekStart', 0); cprSet('venues', false); cprSet('motto', '', true); });
+  check(await ev(a, () => document.querySelectorAll('[data-cpr-style-pick]').length === 5 && !!document.querySelector('details[data-cpr-sec="layout"][open]')), 'Style and layout: 5 styles to pick from, at the top');
+  await ev(a, () => document.querySelector('[data-cpr-style-pick="agenda"]').click());
+  check(await ev(a, () => cpr.style === 'agenda' && cpr.orient === 'landscape' && !!document.querySelector('#cprPreview [data-cpr-panel="right"] [data-cpr-list]')), 'Agenda: landscape, the list of dates on the right');
+  check(await prev(a, () => !document.querySelector('#cprPreview .cpr-grid [data-cpr-entry]') && !!document.querySelector('#cprPreview [data-cpr-day="2026-06-19"] [data-cpr-dots]')), 'Agenda: dots in the boxes, no names');
+  check(await prev(a, () => /Independence Day/.test(document.querySelector('#cprPreview [data-cpr-day="2026-06-12"] [data-cpr-offname]').textContent)), 'June 12 still says Independence Day');
+  let rows = await li();
+  check(rows.some(r => /^19 FRI.*Parent–Teacher Conference.*1:00 PM/.test(r)) && rows.some(r => /^24 WED.*Reading camp/.test(r)), 'the list: date badge, title and time (19 FRI · Parent–Teacher Conference · 1:00 PM)');
+  check(await prev(a, () => { const ds = [...document.querySelectorAll('#cprPreview [data-cpr-li]')].map(x => x.dataset.cprLi); const e = calEntries(calCurSy()); const f = k => (e.find(x => x.key === k) || {}).from || ''; return ds.every((k, i) => !i || f(ds[i - 1]) <= f(k)); }), 'the list: in date order');
+  check(await prev(a, () => { const l = document.querySelector('#cprPreview [data-cpr-list]'); const vis = [...l.querySelectorAll('[data-cpr-li]')].filter(x => !x.hasAttribute('data-cpr-hide')).length; const cut = Number(l.dataset.cprCut); return l.scrollHeight <= l.clientHeight + 1 && vis + cut === Number(l.dataset.cprList) && (!cut || new RegExp(`\\+${cut} more in the app`).test(l.textContent)); }), 'the list fits its space (smaller type, then “+N more in the app”)');
+  check(await prev(a, () => { const l = document.querySelector('#cprPreview [data-cpr-list]'); return [...l.querySelectorAll('[data-cpr-li]')].filter(x => !x.hasAttribute('data-cpr-hide')).length >= 10; }), 'the list uses its space: at least 10 dates beside June');
+  check(await fits(), 'Agenda: the sheet fits');
+  // the list follows What to show: SY dates and DepEd dates only when ticked
+  const syIn = () => prev(a, () => { const e = calEntries(calCurSy()); return [...document.querySelectorAll('#cprPreview [data-cpr-li]')].filter(x => { const en = e.find(y => y.key === x.dataset.cprLi); return en && ['sy', 'nat'].includes(cprGroup(en)); }).length; });
+  const syOn = await syIn();
+  await ev(a, () => cprShow('sy', false));
+  check(syOn > 0 && (await syIn()) === 0, `School year dates: in the list when ticked (${syOn}), gone when not`);
+  await ev(a, () => cprShow('sy', true));
+  await ev(a, () => cprShow('act', false));
+  rows = await li();
+  check(!rows.some(r => /Reading camp/.test(r)), 'Activities unticked: not in the list');
+  await ev(a, () => cprShow('act', true));
+  // Notes: off unless turned on; beside or below; lines, dots or blank; its own title
+  await set(a, 'notes', 'beside');
+  check(await prev(a, () => !!document.querySelector('#cprPreview [data-cpr-panel="right"] [data-cpr-notes="lines"]') && /Notes/.test(document.querySelector('#cprPreview [data-cpr-notes-title]').textContent)), 'Notes beside: lined, titled “Notes”');
+  await ev(a, () => { cprSet('notesPaper', 'dots'); cprSet('notesTitle', 'Reminders', true); });
+  check(await prev(a, () => !!document.querySelector('#cprPreview [data-cpr-notes="dots"]') && /Reminders/.test(document.querySelector('#cprPreview [data-cpr-notes-title]').textContent)), 'Notes: dots, own title “Reminders”');
+  check(await fits(), 'Agenda with Notes: the sheet fits');
+  await set(a, 'notes', 'below');
+  check(await prev(a, () => !!document.querySelector('#cprPreview [data-cpr-panel="bottom"] [data-cpr-notes]') && !document.querySelector('#cprPreview [data-cpr-panel="right"] [data-cpr-notes]')), 'Notes below the calendar');
+  await shot(a, 'agenda');
+  // Write-in: portrait, empty boxes, the list (and Notes) below
+  await ev(a, () => document.querySelector('[data-cpr-style-pick="planner"]').click());
+  check(await ev(a, () => cpr.orient === 'portrait' && cpr.boxes === 'empty' && cpr.list === 'below' && cpr.notes === 'below'), 'Write-in: portrait, empty boxes, list and Notes below');
+  check(await prev(a, () => !document.querySelector('#cprPreview .cpr-grid [data-cpr-entry], #cprPreview .cpr-grid [data-cpr-dots]') && /Independence Day/.test(document.querySelector('#cprPreview [data-cpr-day="2026-06-12"]').textContent) && !!document.querySelector('#cprPreview [data-cpr-panel="bottom"] [data-cpr-list]')), 'Write-in: nothing in the boxes but the holiday’s name; the list below');
+  check(await fits(), 'Write-in: the sheet fits');
+  await shot(a, 'planner');
+  // Poster: a coloured column with the month, the list and Notes; the names in the boxes
+  await ev(a, () => { cprSet('style', 'poster'); cprSet('notes', 'beside'); });
+  check(await prev(a, () => { const p = document.querySelector('#cprPreview [data-cpr-panel="left"]'); return !!p && /June/.test(p.querySelector('[data-cpr-title]').textContent) && !!p.querySelector('[data-cpr-list]') && !!p.querySelector('[data-cpr-notes]') && !!document.querySelector('#cprPreview .cpr-grid [data-cpr-entry]'); }), 'Poster: the month, the list and Notes in a column on the left; names in the boxes');
+  check(await fits(), 'Poster: the sheet fits');
+  await shot(a, 'poster');
+  // Ink saver: black and white lines, grey art beside
+  await set(a, 'style', 'ink');
+  check(await prev(a, () => { const s = document.querySelector('#cprPreview .cpr-sheet'); const im = s.querySelector('[data-cpr-panel] img[data-cpr-art]'); return s.dataset.cprStyle === 'ink' && getComputedStyle(s).backgroundColor === 'rgb(255, 255, 255)' && !!im && /grayscale/.test(im.style.filter) && !s.querySelector('.cpr-banner'); }), 'Ink saver: white paper, grey art beside, no banner');
+  check(await fits(), 'Ink saver: the sheet fits');
+  await shot(a, 'ink');
+  // Day boxes and the list can still be changed after picking a style
+  await ev(a, () => { cprSet('boxes', 'entries'); cprSet('list', 'off'); });
+  check(await prev(a, () => !!document.querySelector('#cprPreview .cpr-grid [data-cpr-entry]') && !document.querySelector('#cprPreview [data-cpr-list]')), 'changed after the style: names in the boxes, no list');
+  // two months on a sheet
+  await ev(a, () => { cprSet('style', 'agenda'); cprSet('range', 'range'); cprSet('from', '2026-06'); cprSet('to', '2026-07'); cprSet('per', 2); });
+  check(await prev(a, () => document.querySelectorAll('#cprPreview [data-cpr-month]').length === 2 && document.querySelectorAll('#cprPreview [data-cpr-list]').length === 1 && /June/i.test(document.querySelector('#cprPreview [data-cpr-list]').textContent) && /July/i.test(document.querySelector('#cprPreview [data-cpr-list]').textContent)), '2 stacked: one list for both months');
+  check(await fits(), '2 stacked: the sheet fits');
+  await set(a, 'layout', 'side');
+  check(await ev(a, () => !!document.querySelector('#cprPreview [data-cpr-panel="bottom"] [data-cpr-list]') && !document.querySelector('#cprPreview [data-cpr-panel="right"]') && document.querySelector('[data-cpr-opt="list:beside"]').disabled && !!document.querySelector('[data-cpr-side-note]')), '2 side by side: the list and Notes go below; Beside is greyed out');
+  check(await fits(), '2 side by side: the sheet fits');
+  await shot(a, 'side2');
+  await ev(a, () => { window.__printed = 0; cprPrint(); });
+  await until(a, () => window.__printed === 1, 'printed', 8000);
+  check(await ev(a, () => document.querySelectorAll('#printPrSection .cpr-sheet [data-cpr-list]').length === 1), 'printed: the list goes to paper too');
+  // remembered, and older saved choices still open
+  check(await ev(a, () => { const s = JSON.parse(localStorage.getItem('cp_calprint_v1')); return s.style === 'agenda' && s.notes === 'beside' && s.notesTitle === 'Reminders'; }), 'remembered: style, Notes and its title');
+  check(await ev(a, () => { const keep = localStorage.getItem('cp_calprint_v1'); localStorage.setItem('cp_calprint_v1', JSON.stringify({ paper: 'folio', accent: 'blue', motto: 'Old' })); cpr = null; const o = cprOpts(); const ok = o.paper === 'folio' && o.style === 'agenda' && o.boxes === 'dots' && o.notes === 'off'; localStorage.setItem('cp_calprint_v1', keep); cpr = null; cprOpts(); return ok; }), 'choices saved before the styles still open (with the new defaults)');
+  await ev(a, () => { cprSet('per', 1); cprSet('layout', 'stack'); cprSet('range', 'month'); cprSet('notes', 'off'); cprSet('style', 'classic'); cprSet('weekStart', 1); cprSet('venues', true); cprSet('motto', 'Excellence in every learner', true); cprSet('paper', 'a4'); cprSet('orient', 'landscape'); });
 
   out('5 the school’s photo and logo (this device)');
   await a.bringToFront();
