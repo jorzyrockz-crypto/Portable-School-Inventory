@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="c306ea27994e">
+  <meta name="app-version" content="9ca131f7c9da">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -445,6 +445,10 @@
     .cpr-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); flex: none; }
     .cpr-cell { min-width: 0; overflow: hidden; }
     .cpr-en { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+    .cpr-sheet[data-cpr-style]:not([data-cpr-style="classic"]) .cpr-dows { font-weight: 700; text-transform: none; }
+    .cpr-sheet[data-cpr-style]:not([data-cpr-style="classic"]) .cpr-month { gap: 0; }
+    @media print { .cpr-sheet[data-cpr-style] { background: #fff !important; } }
+    .cpr-sheet [data-cpr-hide] { display: none !important; }
     .cpr-mk { display: inline-block; margin-right: 0.6mm; vertical-align: 0.05em; }
     .cpr-mk-dot { border-radius: 50%; } .cpr-mk-sq { border-radius: 0.3mm; }
     .cpr-mk-tri { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
@@ -686,6 +690,14 @@
       @media (max-width: 639px) {
         body.page-art #viewItems, body.page-art #viewCatalog { padding-top: 1rem; }
         body.page-art #masterLedgerSection, body.page-art #catalogSection { margin-left: 0; margin-right: 0; border-width: 1px; border-radius: 1rem; }
+      }
+      /* This month's art or your own picture: a wide strip across the top (2.36 : 1), a lighter fade so the scene shows */
+      html body.page-art.art-wide {
+        background-image: linear-gradient(to bottom, rgb(var(--page) / 0.1) 0, rgb(var(--page) / 0.45) 10rem, rgb(var(--page)) max(18.5rem, 41.5vw)), var(--art-img);
+        background-size: 100% max(100%, 40rem), auto max(19rem, 42.5vw); background-position: 0 0, center top;
+      }
+      html.dark body.page-art.art-wide {
+        background-image: linear-gradient(to bottom, rgb(var(--page) / 0.55) 0, rgb(var(--page) / 0.75) 10rem, rgb(var(--page)) max(18.5rem, 41.5vw)), var(--art-img);
       }
       /* the header turns to frosted glass so the art shows through */
       body.page-art > header.safe-top { background-color: rgb(255 255 255 / 0.62); }
@@ -1795,8 +1807,7 @@
         <div>
           <p class="px-2 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Appearance</p>
           <div id="moreTheme" data-theme-switch class="px-1"></div>
-          <p class="px-2 pt-3 pb-1.5 text-xs font-semibold text-slate-600">Background picture on</p>
-          <div id="moreArt" data-art-switch class="px-1"></div>
+          <div id="moreArt" data-art-switch class="px-1 pt-2"></div>
         </div>
         <div id="moreAccount" class="hidden"></div>
         <div>
@@ -1844,6 +1855,23 @@
           <div id="rqArt" data-art-switch></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Background picture: which picture (original, this month's, your own · Pro) and on which pages -->
+  <div id="bgModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeBgModal()" onkeydown="if (event.key === 'Escape') closeBgModal()">
+    <div role="dialog" aria-modal="true" aria-labelledby="bgTitle" class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-image text-xl"></i></span>
+          <div class="min-w-0">
+            <h3 id="bgTitle" class="font-extrabold text-base text-slate-900 leading-tight">Background picture</h3>
+            <p class="text-xs font-semibold text-slate-500">Behind the top of the page</p>
+          </div>
+        </div>
+        <button onclick="closeBgModal()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="bgBody" class="space-y-4"></div>
     </div>
   </div>
 
@@ -16235,7 +16263,8 @@
     ];
     const FEATURES = [
       { key: 'leave', label: 'Leave & CS Form 6', sub: 'Applications, leave cards, ₱250 days', icon: 'ph-calendar-check' },
-      { key: 'plan', label: 'School calendar', sub: 'Holidays, events · programs and activities next', icon: 'ph-calendar-dots' }
+      { key: 'plan', label: 'School calendar', sub: 'Holidays, events · programs and activities next', icon: 'ph-calendar-dots' },
+      { key: 'bg', label: 'Your own background', sub: 'Upload a picture for the app and the printed calendar', icon: 'ph-image', def: 'pro' }
     ];
     const featJSON = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
     var featCfg = featJSON(FEAT_KEY);   // appConfig/features (kept on the phone for the next start)
@@ -16248,7 +16277,8 @@
 
     function featStage(name) {
       const st = featCfg && featCfg[name] && featCfg[name].stage;
-      return FEAT_STAGES.some(s => s[0] === st) ? st : 'testing';   // no switch yet: Testing ES only
+      const f = FEATURES.find(x => x.key === name);
+      return FEAT_STAGES.some(s => s[0] === st) ? st : (f && f.def) || 'testing';   // no switch yet: Testing ES only (your own background: Pro)
     }
     function proState(d, now = Date.now()) {
       d = d || {};
@@ -16263,6 +16293,7 @@
       return proState(proDocs && proDocs.sid === sid ? proDocs : {});
     }
     function featPilot(name) {
+      if (name !== 'leave' && name !== 'plan') return false;
       try { return (localStorage.getItem(name === 'leave' ? LEAVE_PILOT_KEY : PLAN_PILOT_KEY) || '').split(',').includes(reqRole.schoolId); }
       catch (e) { return false; }
     }
@@ -16316,7 +16347,7 @@
     // A switch, Pro or the trial changed: features start or stop, and the screens follow.
     function featApply() {
       const ps = schoolPro();
-      const sig = [featState('leave'), featState('plan'), ps.pro, ps.trial, ps.left, ps.ended, reqRole && reqRole.schoolId].join('|');
+      const sig = [featState('leave'), featState('plan'), featState('bg'), ps.pro, ps.trial, ps.left, ps.ended, reqRole && reqRole.schoolId].join('|');
       const changed = sig !== featSig;
       featSig = sig;
       if (changed) {
@@ -16331,6 +16362,7 @@
       }
       proNav();
       renderProStrip();
+      try { syncPageArt(); renderArtSwitches(); renderBgModal(); } catch (e) {}
       if (proIsOpen()) renderProSheet();
       if (adminIsOpen()) renderAdmin();
     }
@@ -16555,7 +16587,7 @@
       if (!isAdminDevice() || !cloud.db) return false;
       const F = cloud.sdk, cur = featCfg || {};
       const body = {};
-      ['leave', 'plan', 'contact', 'log'].forEach(k => { const v = k in patch ? patch[k] : cur[k]; if (v !== undefined && v !== null) body[k] = v; });
+      ['leave', 'plan', 'bg', 'contact', 'log'].forEach(k => { const v = k in patch ? patch[k] : cur[k]; if (v !== undefined && v !== null) body[k] = v; });
       if (logEntry) body.log = [...(cur.log || []), cleanJSON(logEntry)].slice(-100);
       const before = featCfg;
       featCfg = cleanJSON(body);
@@ -18805,7 +18837,9 @@
       show: { holiday: true, off: true, exam: true, event: true, act: true, sy: true, nat: false },
       mine: false, times: true, venues: false, people: false, termLine: true,
       hdrLogo: true, hdrName: true, hdrId: true, hdrDiv: false, hdrSy: true, division: '',
-      legend: true, motto: '', printed: true
+      legend: true, motto: '', printed: true,
+      // Styles (Nov 2026): the look, what goes in the day boxes, the list of dates and the Notes box
+      style: 'agenda', boxes: 'dots', list: 'beside', notes: 'off', notesPaper: 'lines', notesTitle: 'Notes'
     };
     let cpr = null, cprPics = { photo: '', logo: '' }, cprPicsFor = '', cprSheetNo = 0, cprZoom = false;
     function cprOpts() {
@@ -18816,6 +18850,12 @@
       if (!CPR_PAPER[cpr.paper]) cpr.paper = 'a4';
       if (!CPR_ACCENT[cpr.accent]) cpr.accent = 'teal';
       cpr.per = cpr.per === 2 ? 2 : 1;
+      if (!CPR_PRESET[cpr.style]) cpr.style = 'agenda';
+      if (!['entries', 'dots', 'empty'].includes(cpr.boxes)) cpr.boxes = CPR_PRESET[cpr.style].boxes;
+      if (!['beside', 'below', 'off'].includes(cpr.list)) cpr.list = CPR_PRESET[cpr.style].list;
+      if (!['beside', 'below', 'off'].includes(cpr.notes)) cpr.notes = 'off';
+      if (!['lines', 'dots', 'blank'].includes(cpr.notesPaper)) cpr.notesPaper = 'lines';
+      cpr.notesTitle = String(cpr.notesTitle == null ? 'Notes' : cpr.notesTitle).slice(0, 40);
       return cpr;
     }
     function cprSave() { try { localStorage.setItem(CPR_KEY, JSON.stringify(cpr)); } catch (e) {} }
@@ -18841,7 +18881,7 @@
     const cprMonthName = mo => new Date(mo + '-01T00:00:00').toLocaleDateString('en-PH', { month: 'long' });
     const cprArtFor = (o, mo) => {
       if (o.theme === 'none') return '';
-      if (o.theme === 'photo' && cprPics.photo) return cprPics.photo;
+      if (o.theme === 'photo' && cprPics.photo && bgUsable()) return cprPics.photo;   // your own picture: Pro
       const sc = CPR_SCENES.find(s => 'g:' + s[0] === o.theme);
       if (sc) return sc[2];
       const mm = mo.slice(5, 7);
@@ -18866,7 +18906,7 @@
     function cprColor(o, e) {
       if (o.accent === 'bw') return '#333';
       const g = cprGroup(e);
-      return g === 'holiday' ? '#be123c' : g === 'off' ? (e.kind === 'suspension' ? '#b45309' : e.kind === 'break' ? '#64748b' : '#e11d48') : g === 'exam' ? '#7c3aed' : g === 'event' ? '#059669' : g === 'act' ? '#4f46e5' : '#0d9488';
+      return g === 'holiday' ? '#e11d48' : g === 'off' ? (e.kind === 'suspension' ? '#b45309' : e.kind === 'break' ? '#64748b' : '#e11d48') : g === 'exam' ? '#7c3aed' : g === 'event' ? '#059669' : g === 'act' ? '#4f46e5' : '#0284c7';
     }
     const cprMarkHTML = (shape, color, mm) => `<span class="cpr-mk cpr-mk-${shape}" style="width:${mm}mm;height:${mm}mm;background:${color}"></span>`;
     const cprFill = (o, d) => {
@@ -18895,7 +18935,18 @@
       const hdrH = hdr ? 15 * kH : 0, ftH = (o.legend || o.motto || o.printed) ? 6.5 * kH : 0, gap = 4 * kH;
       const per = o.per === 2 ? 2 : 1, side = per === 2 && o.layout === 'side';
       const availH = g.h - hdrH - ftH - (hdr ? 2 * kH : 0) - (ftH ? 1.5 * kH : 0);
-      const bw = side ? (g.w - gap) / 2 : g.w, bh = per === 2 && !side ? (availH - gap) / 2 : availH;
+      // The style, and where the list of dates and the Notes go (two months side by side: below only)
+      const st = CPR_PRESET[o.style] ? o.style : 'agenda', poster = st === 'poster';
+      const where = v => (v === 'beside' && side ? 'below' : v);
+      const besideP = { list: where(o.list) === 'beside', notes: where(o.notes) === 'beside' };
+      const belowP = { list: where(o.list) === 'below', notes: where(o.notes) === 'below' };
+      const hasSide = poster || besideP.list || besideP.notes, hasBelow = belowP.list || belowP.notes;
+      const land = o.orient === 'landscape';
+      const sideW = hasSide ? g.w * (poster ? (land ? 0.26 : 0.3) : land ? 0.25 : 0.32) : 0;
+      const mw = g.w - sideW - (hasSide ? gap : 0);
+      const belowH = hasBelow ? availH * (per === 2 && !side ? 0.2 : land ? 0.27 : 0.25) : 0;
+      const mh = availH - belowH - (hasBelow ? gap : 0);
+      const bw = side ? (mw - gap) / 2 : mw, bh = per === 2 && !side ? (mh - gap) / 2 : mh;
       const sheets = [];
       for (let i = 0; i < months.length; i += per) sheets.push(months.slice(i, i + per));
       const header = () => !hdr ? '' : `
@@ -18903,7 +18954,7 @@
           ${o.hdrLogo && cprPics.logo ? `<img src="${cprPics.logo}" alt="" style="height:${hdrH - 2 * kH}mm;width:auto;max-width:${hdrH * 1.6}mm;object-fit:contain">` : ''}
           <div style="min-width:0;flex:1">
             ${o.hdrDiv && div ? `<div style="font-size:${7 * kH}pt;color:#475569;line-height:1.15">Republic of the Philippines · Department of Education · ${calE(div)}</div>` : ''}
-            ${o.hdrName && bare ? `<div data-cpr-school style="font-size:${13 * kH}pt;font-weight:800;line-height:1.1;color:#0f172a;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${calE(bare)}</div>` : ''}
+            ${o.hdrName && bare ? `<div data-cpr-school style="font-family:var(--cpr-font, inherit);font-size:${13 * kH}pt;font-weight:${st === 'classic' ? 800 : 600};line-height:1.1;color:#0f172a;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${calE(bare)}</div>` : ''}
             <div style="font-size:${7.5 * kH}pt;color:#475569;line-height:1.2">${[o.hdrId && no ? `School ID ${calE(no)}` : '', o.hdrSy ? calE(calSyText(sy)) : ''].filter(Boolean).join(' · ')}</div>
           </div>
         </div>`;
@@ -18919,13 +18970,20 @@
           ${o.motto ? `<div data-cpr-motto style="flex:1;min-width:0;text-align:center;font-style:italic;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${calE(o.motto)}</div>` : ''}
           ${o.printed ? `<div style="color:#64748b;white-space:nowrap">Printed ${calE(longDate(localISODate()))}</div>` : ''}
         </div>`;
-      const block = mo => cprMonthHTML(o, g, mo, bw, bh, side, { y, list, off, cd, ac });
-      const pageHTML = (ms, idx) => `
-        <div class="cpr-sheet" data-cpr-sheet="${idx}" style="width:${g.W}mm;height:${g.H - 0.4}mm;padding:${g.M}mm">
+      const ctx = { y, list, off, cd, ac };
+      const block = mo => (st === 'classic' && o.boxes === 'entries' ? cprMonthHTML(o, g, mo, bw, bh, side, ctx) : cprMonth2HTML(o, st, g, mo, bw, bh, side, ctx, poster && per === 1));
+      const pageHTML = (ms, idx) => {
+        const months = `<div style="display:flex;flex-direction:${side ? 'row' : 'column'};gap:${gap}mm;height:${mh}mm">${ms.map(block).join('')}</div>`;
+        const below = hasBelow ? cprPanelHTML(o, st, g, 'bottom', mw, belowH, ms, ctx, belowP) : '';
+        const sidePanel = hasSide ? cprPanelHTML(o, st, g, poster ? 'left' : 'right', sideW, availH, ms, ctx, besideP) : '';
+        const main = `<div style="display:flex;flex-direction:column;gap:${gap}mm;width:${mw}mm;height:${availH}mm;flex:none">${months}${below}</div>`;
+        return `
+        <div class="cpr-sheet" data-cpr-sheet="${idx}" data-cpr-style="${st}" style="width:${g.W}mm;height:${g.H - 0.4}mm;padding:${g.M}mm;background:${cprLook(st, o).paper}${st === 'classic' ? '' : `;--cpr-font:${CPR_FONT}`}">
           ${header()}
-          <div style="display:flex;flex-direction:${side ? 'row' : 'column'};gap:${gap}mm;height:${availH}mm">${ms.map(block).join('')}</div>
+          <div style="display:flex;gap:${gap}mm;height:${availH}mm">${poster ? sidePanel + main : main + sidePanel}</div>
           ${footer()}
         </div>`;
+      };
       return {
         g, count: sheets.length,
         html: sheets.map((ms, i) => (onlyIdx == null || onlyIdx === i ? pageHTML(ms, i) : '')).join('')
@@ -19023,6 +19081,268 @@
         </div>`;
     }
 
+    // ---- Styles (Nov 2026): Agenda, Write-in planner, Poster, Ink saver and Classic -------------------
+    // Each style presets "Day boxes" and "List of dates"; both can still be changed. Notes (lines, dots or
+    // blank, own title) are off unless ticked. The list follows What to show and Mine only.
+    const CPR_STYLES = [
+      ['agenda', 'Agenda', 'Dots in the boxes · the dates beside'],
+      ['planner', 'Write-in', 'Empty boxes to write in'],
+      ['poster', 'Poster', 'A coloured column with the month'],
+      ['ink', 'Ink saver', 'Black and white · thin lines'],
+      ['classic', 'Classic', 'Everything written in the boxes']
+    ];
+    const CPR_PRESET = {
+      agenda: { boxes: 'dots', list: 'beside', orient: 'landscape' }, planner: { boxes: 'empty', list: 'below', orient: 'portrait' },
+      poster: { boxes: 'entries', list: 'beside', orient: 'landscape' }, ink: { boxes: 'empty', list: 'beside', orient: 'landscape' },
+      classic: { boxes: 'entries', list: 'off' }
+    };
+    const CPR_FONT = "'Fredoka Variable', Fredoka, 'Inter Variable', Inter, Arial, sans-serif";
+    const CPR_GROUPS = ['holiday', 'off', 'exam', 'sy', 'nat', 'event', 'act'];
+    const cprSortOn = (a, b) => (a.from === a.to) - (b.from === b.to) || CPR_GROUPS.indexOf(cprGroup(a)) - CPR_GROUPS.indexOf(cprGroup(b)) || String(a.startTime || '').localeCompare(String(b.startTime || ''));
+    const cprMonDays = mo => new Date(Date.UTC(Number(mo.slice(0, 4)), Number(mo.slice(5, 7)), 0)).getUTCDate();
+    // Each style's look
+    function cprLook(st, o) {
+      const bw = o.accent === 'bw', ac = CPR_ACCENT[o.accent] || CPR_ACCENT.teal;
+      const base = { paper: '#fffcf6', card: '#ffffff', wk: '#f7f2e8', line: '#ebe2d0', gap: 1.6, radius: 2.4, num: '#334155', numWk: '#a8a29e', accent: ac[0], accent2: bw ? '#111' : '#d97706', dow: 'text' };
+      if (st === 'planner') return { ...base, line: '#e3d9c6', wk: '#fffcf6', gap: 1.5, radius: 2, dow: 'pill', blank: 'stripes' };
+      if (st === 'poster') return { ...base, paper: '#f8fafc', wk: '#f1f5f9', line: '#e5eaf0', gap: 2, radius: 3, numWk: '#94a3b8', accent2: bw ? '#111' : '#0f172a' };
+      if (st === 'ink') return { ...base, paper: '#ffffff', card: '#ffffff', wk: '#ffffff', line: '#a3a3a3', gap: 0, radius: 0, num: '#171717', numWk: '#737373', accent: '#171717', accent2: '#171717', dow: 'ink' };
+      return base;
+    }
+    // One month in the new styles: title (or banner), weekday row, the day boxes
+    function cprMonth2HTML(o, st, g, mo, bw, bh, side, ctx, noTitle) {
+      const { y, list, off, cd } = ctx, L = cprLook(st, o);
+      const k = g.k * (o.per === 2 ? (side ? 0.8 : 0.84) : 1);
+      const ws = Number(o.weekStart) === 1 ? 1 : 0;
+      const lead = (calDow(mo + '-01') - ws + 7) % 7, days = cprMonDays(mo), weeks = Math.ceil((lead + days) / 7);
+      const art = st === 'ink' || st === 'poster' ? '' : cprArtFor(o, mo);
+      const banner = art && o.place === 'banner';
+      const artOp = o.strength === 'light' ? 0.32 : o.strength === 'soft' ? 0.62 : 1;
+      const terms = y ? (y.terms || []).filter(t => t.from && t.from.slice(0, 7) <= mo && (t.to || t.from).slice(0, 7) >= mo).map(t => `Term ${t.n}`) : [];
+      const nDays = cd.months[mo] || 0;
+      const termLine = o.termLine && y ? [terms.join(' · '), nDays ? plural(nDays, 'class day') : (y.start && mo >= y.start.slice(0, 7) && mo <= y.end.slice(0, 7) ? 'No classes' : '')].filter(Boolean).join(' · ') : '';
+      const titleH = noTitle ? 0 : banner ? Math.min(bh * (st === 'planner' ? 0.3 : 0.24), bw / (st === 'planner' ? 2.36 : 3.1)) : (st === 'ink' ? 15 : 12) * k;
+      const dowH = (st === 'planner' ? 6 : 5) * k, dowGap = 1.2 * k;
+      const gap = L.gap * k;
+      const gridH = bh - titleH - dowH - dowGap - (banner ? 1.6 * k : 0);
+      const cellW = (bw - 6 * gap) / 7, rowH = (gridH - (weeks - 1) * gap) / weeks;
+      const datePt = Math.max(7, Math.min(18, cellW * 0.55, rowH * 0.7));
+      const dnH = datePt * 0.3528 * 1.2;
+      const pad = 0.9 * k;
+      const boxes = o.boxes || 'entries';
+      const ept = Math.max(4.8, Math.min(8.4, cellW * 0.15 + 0.5));
+      const lineMm = ept * 0.3528 * 1.45;
+      const cap = Math.max(0, Math.floor((rowH - dnH - pad * 2) / lineMm));
+      const tint = (c, a) => c.length === 7 ? c + a : c;
+      const cells = [];
+      for (let i = 0; i < lead; i++) cells.push(null);
+      for (let d = 1; d <= days; d++) {
+        const iso = `${mo}-${String(d).padStart(2, '0')}`, col = (lead + d - 1) % 7;
+        const on = list.filter(e => e.from <= iso && e.to >= iso).sort(cprSortOn);
+        const items = on.map(e => {
+          const wdy = calDow(iso), cont = e.from !== iso && !(wdy === 1 || (col === 0 && wdy !== 0 && wdy !== 6));
+          if (cont) { const span = (Date.parse(e.to) - Date.parse(e.from)) / 864e5 + 1; if (span > 10 || wdy === 0 || wdy === 6) return null; }
+          return { e, cont };
+        }).filter(Boolean);
+        const offD = off[iso], offName = offD ? (on.find(e => ['holiday', 'off'].includes(cprGroup(e))) || offD).title || '' : '';
+        cells.push({ iso, d, items, off: offD, offName, outside: y && y.start && (iso < y.start || iso > y.end) });
+      }
+      while (cells.length % 7) cells.push(null);
+      const ink = st === 'ink';
+      const cellHTML = c => {
+        if (!c) return L.blank === 'stripes' ? `<div style="border-radius:${L.radius * k}mm;background:repeating-linear-gradient(45deg,#f3ecdf 0 ${1.4 * k}mm,transparent ${1.4 * k}mm ${2.8 * k}mm)"></div>`
+          : ink ? `<div style="border-right:0.25mm solid #e5e5e5;border-bottom:0.25mm solid #e5e5e5"></div>` : '<div></div>';
+        const w = calDow(c.iso), wk = w === 0 || w === 6;
+        const offC = c.off ? cprColor(o, c.off) : '';
+        const bg = c.off ? (ink ? `repeating-linear-gradient(135deg,#fff 0 ${1.2 * k}mm,#e9e9e9 ${1.2 * k}mm ${1.5 * k}mm)` : cprFill(o, c.off)) : wk ? L.wk : L.card;
+        const border = ink ? 'border-right:0.25mm solid #a3a3a3;border-bottom:0.25mm solid #a3a3a3;' : `border:0.3mm solid ${c.off ? tint(offC, '55') : L.line};border-radius:${L.radius * k}mm;`;
+        const num = `<div style="font-family:${CPR_FONT};font-size:${datePt}pt;line-height:1.05;font-weight:${ink && wk ? 400 : 600};color:${c.outside ? '#cbd5e1' : c.off ? offC : wk ? L.numWk : L.num}">${c.d}</div>`;
+        const realItems = c.items.filter(it => !c.off || !['holiday', 'off'].includes(cprGroup(it.e)) || it.cont);
+        let inner = '';
+        if (boxes === 'dots') {
+          const dots = realItems.filter(it => !it.cont).slice(0, 5);
+          const bars = realItems.filter(it => it.cont);
+          inner = `${dots.length ? `<div data-cpr-dots style="position:absolute;top:${pad + 0.6 * k}mm;right:${pad}mm;display:flex;gap:${0.6 * k}mm">${dots.map(it => cprMarkHTML(CPR_MARK[cprGroup(it.e)], cprColor(o, it.e), 1.9 * k)).join('')}</div>` : ''}
+            ${bars.length ? `<div style="position:absolute;left:${pad}mm;right:${pad}mm;bottom:${pad + (c.offName ? ept * 0.3528 * 1.3 : 0)}mm;display:flex;flex-direction:column;gap:${0.5 * k}mm">${bars.slice(0, 2).map(it => `<div class="cpr-bar" style="height:${0.7 * k}mm;border-radius:${k}mm;background:${cprColor(o, it.e)};opacity:0.4"></div>`).join('')}</div>` : ''}`;
+        } else if (boxes === 'entries') {
+          const n = realItems.length, fits = n <= cap ? n : Math.max(0, cap - 1);
+          inner = realItems.slice(0, fits).map(it => it.cont
+            ? `<div class="cpr-bar" style="height:${lineMm * 0.32}mm;margin:${lineMm * 0.2}mm 0;border-radius:${k}mm;background:${cprColor(o, it.e)};opacity:0.4"></div>`
+            : `<div class="cpr-en" data-cpr-entry="${calE(it.e.key)}" style="-webkit-line-clamp:1;margin-top:${0.45 * k}mm;font-size:${ept}pt;line-height:1.3;font-weight:700;color:${cprColor(o, it.e)};background:${ink ? 'transparent' : tint(cprColor(o, it.e), '16')};border-radius:${0.9 * k}mm;padding:0 ${0.8 * k}mm;white-space:nowrap;text-overflow:ellipsis;display:block">${ink ? cprMarkHTML(CPR_MARK[cprGroup(it.e)], '#333', ept * 0.3528 * 0.6) : ''}${calE([o.times && it.e.startTime ? calTime12(it.e.startTime).replace(':00', '') : '', it.e.title].filter(Boolean).join(' '))}</div>`).join('')
+            + (n > fits ? `<div data-cpr-more style="font-size:${ept * 0.92}pt;font-weight:700;color:#64748b;margin-top:${0.3 * k}mm">+${n - fits} more</div>` : '');
+        }
+        return `<div class="cpr-cell" data-cpr-day="${c.iso}" ${c.off ? 'data-cpr-off' : ''} style="position:relative;${border}background:${bg};padding:${pad}mm ${pad * 1.1}mm">
+          ${num}${inner}
+          ${c.offName ? `<div data-cpr-offname style="position:absolute;left:${pad * 1.1}mm;right:${pad}mm;bottom:${pad * 0.8}mm;font-size:${Math.max(4.8, Math.min(7.2, cellW * 0.12))}pt;line-height:1.1;font-weight:800;color:${ink ? '#171717' : offC};${st === 'planner' || ink ? 'text-transform:uppercase;letter-spacing:0.02em;' : ''}white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${calE(c.offName)}</div>` : ''}
+        </div>`;
+      };
+      const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dows = Array.from({ length: 7 }, (_, i) => wd[(i + ws) % 7]);
+      const isWk = i => { const x = (i + ws) % 7; return x === 0 || x === 6; };
+      const dowHTML = `<div class="cpr-dows" style="height:${dowH}mm;margin-bottom:${dowGap}mm;gap:${gap}mm;font-size:${Math.max(6, 7.6 * k)}pt;${L.dow === 'ink' ? 'text-align:left;' : ''}">${dows.map((d, i) => L.dow === 'pill'
+        ? `<div style="font-family:${CPR_FONT};font-weight:600;letter-spacing:0.02em;color:#fff;background:${isWk(i) ? '#a8a29e' : L.accent};border-radius:${dowH}mm;line-height:${dowH}mm">${d}</div>`
+        : `<div style="letter-spacing:0.1em;${L.dow === 'ink' ? `padding-left:${pad * 1.1}mm;color:#171717;` : `color:${isWk(i) ? '#94a3b8' : L.accent};`}">${d}</div>`).join('')}</div>`;
+      const name = calE(cprMonthName(mo)), yr = mo.slice(0, 4);
+      const imgStyle = `width:100%;height:100%;object-fit:cover;object-position:center ${o.theme === 'photo' && cprPics.photo ? o.photoY : 62}%;${o.accent === 'bw' ? 'filter:grayscale(1);' : ''}`;
+      let titleHTML = '';
+      if (noTitle) titleHTML = '';
+      else if (banner && st === 'planner') {
+        const tp = Math.max(18, titleH * 0.34 / 0.3528);
+        titleHTML = `<div class="cpr-banner" style="height:${titleH}mm;border-radius:${3 * k}mm ${3 * k}mm 0 0;background:${L.paper}">
+            <img src="${art}" alt="" data-cpr-art="${calE(art)}" style="${imgStyle}opacity:${artOp}">
+            <div style="position:absolute;left:0;right:0;bottom:0;height:55%;background:linear-gradient(to bottom,${L.paper}00,${L.paper})"></div>
+            <div style="position:absolute;left:${3 * k}mm;bottom:${0.5 * k}mm">
+              <div data-cpr-title style="font-family:${CPR_FONT};font-size:${tp}pt;font-weight:600;line-height:0.95;color:${L.accent}">${name}</div>
+              <div ${termLine ? 'data-cpr-term' : ''} style="font-family:${CPR_FONT};font-size:${Math.max(7, tp * 0.28)}pt;font-weight:500;color:#78716c">${calE([yr, termLine].filter(Boolean).join(' · '))}</div>
+            </div></div>`;
+      } else if (banner) {
+        const tp = Math.max(16, Math.min(titleH * 0.34, 15 * k) / 0.3528);
+        titleHTML = `<div class="cpr-banner" style="height:${titleH}mm;border-radius:${4 * k}mm">
+            <img src="${art}" alt="" data-cpr-art="${calE(art)}" style="${imgStyle}opacity:${artOp}">
+            <div style="position:absolute;left:${4 * k}mm;top:${3.2 * k}mm;background:${L.paper}ee;border-radius:${3.2 * k}mm;padding:${1.2 * k}mm ${3.4 * k}mm ${1.6 * k}mm">
+              <div data-cpr-title style="font-family:${CPR_FONT};font-size:${tp}pt;font-weight:600;line-height:1;color:${L.accent}">${name} <span style="color:${L.accent2}">${yr}</span></div>
+              ${termLine ? `<div data-cpr-term style="font-size:${Math.max(6, tp * 0.27)}pt;font-weight:700;color:#475569;margin-top:${0.5 * k}mm">${calE(termLine)}</div>` : ''}
+            </div></div>`;
+      } else {
+        const tp = Math.max(14, titleH * 0.62 / 0.3528);
+        titleHTML = `<div style="height:${titleH}mm;display:flex;align-items:flex-end;justify-content:space-between;gap:${3 * k}mm;${ink ? `border-bottom:${0.7 * k}mm solid #171717;padding-bottom:${k}mm;` : ''}">
+            <div data-cpr-title style="font-family:${CPR_FONT};font-size:${tp}pt;font-weight:600;line-height:0.95;color:${L.accent}">${name} <span style="font-weight:${ink ? 300 : 500};color:${ink ? '#171717' : L.accent2}">${yr}</span></div>
+            ${termLine ? `<div data-cpr-term style="font-size:${Math.max(6, 8 * k)}pt;font-weight:600;color:#475569;text-align:right">${calE(termLine)}</div>` : ''}</div>`;
+      }
+      const wm = art && !banner ? `<img class="cpr-wm" src="${art}" alt="" data-cpr-art="${calE(art)}" style="${imgStyle}opacity:${o.strength === 'full' ? 0.3 : artOp * 0.45}">` : '';
+      return `
+        <div class="cpr-month" data-cpr-month="${mo}" data-cpr-style="${st}" style="width:${bw}mm;height:${bh}mm">
+          ${wm}${titleHTML}
+          <div style="height:${banner ? 1.6 * k : 0}mm"></div>
+          ${dowHTML}
+          <div class="cpr-grid" style="height:${gridH}mm;grid-template-rows:repeat(${weeks},1fr);gap:${gap}mm;${ink ? 'border-left:0.25mm solid #a3a3a3;border-top:0.25mm solid #a3a3a3;' : ''}">${cells.map(cellHTML).join('')}</div>
+        </div>`;
+    }
+    // The list of dates for the months on a sheet: date badge, title, time · venue · people
+    function cprListRows(o, months, list) {
+      const a = months[0] + '-01', b = months[months.length - 1] + '-' + String(cprMonDays(months[months.length - 1])).padStart(2, '0');
+      return list.filter(e => e.from <= b && e.to >= a).sort((x, y) => (x.from < y.from ? -1 : x.from > y.from ? 1 : CPR_GROUPS.indexOf(cprGroup(x)) - CPR_GROUPS.indexOf(cprGroup(y)) || String(x.startTime || '').localeCompare(String(y.startTime || ''))));
+    }
+    function cprBadge(e) {
+      const d1 = Number(e.from.slice(8, 10)), d2 = Number(e.to.slice(8, 10)), same = e.from.slice(0, 7) === e.to.slice(0, 7);
+      const mon = iso => new Date(iso + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short' }).toUpperCase();
+      const dow = iso => ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][calDow(iso)];
+      if (e.from === e.to) return [String(d1), dow(e.from)];
+      if (same) return [`${d1}–${d2}`, mon(e.from)];
+      return [String(d1), `TO ${mon(e.to)} ${d2}`];
+    }
+    // Fit each list of dates on the page: smaller type first (down to about 5.8 pt), then the last rows
+    // give way to "+N more in the app". Runs on the preview and on the sheets before printing.
+    function cprFitLists(root) {
+      root.querySelectorAll('[data-cpr-list]').forEach(l => {
+        const body = l.querySelector('[data-cpr-rows]'), note = l.querySelector('[data-cpr-cutnote]');
+        if (!body) return;
+        const base = Number(l.dataset.cprPt) || 7.6;
+        const rows = [...body.querySelectorAll('[data-cpr-li]')], heads = [...body.querySelectorAll('[data-cpr-mh]')];
+        rows.concat(heads).forEach(r => r.removeAttribute('data-cpr-hide'));
+        if (note) note.textContent = '';
+        l.dataset.cprCut = 0;
+        const over = () => l.scrollHeight > l.clientHeight + 1;
+        for (const sc of [1, 0.92, 0.84, 0.76]) { body.style.fontSize = `${base * sc}pt`; if (!over()) return; }
+        if (note) note.textContent = '+0 more in the app';   // keep its line while rows are taken away
+        let n = 0;
+        for (let i = rows.length - 1; i >= 0 && over(); i--) { rows[i].setAttribute('data-cpr-hide', ''); n++; }
+        heads.forEach(h => { let x = h.nextElementSibling, any = false; while (x && !x.hasAttribute('data-cpr-mh')) { if (!x.hasAttribute('data-cpr-hide')) any = true; x = x.nextElementSibling; } if (!any) h.setAttribute('data-cpr-hide', ''); });
+        if (note) note.textContent = n ? `+${n} more in the app` : '';
+        l.dataset.cprCut = n;
+      });
+    }
+    const cprFontsReady = () => (document.fonts && document.fonts.load ? Promise.race([document.fonts.load("600 20px 'Fredoka Variable'").catch(() => {}), new Promise(r => setTimeout(r, 1500))]) : Promise.resolve());
+    // The side (or bottom) panel: the list of dates and Notes; the Poster's coloured column has the art and the month too
+    function cprPanelHTML(o, st, g, pos, pw, ph, months, ctx, parts) {
+      const L = cprLook(st, o), k = g.k, poster = st === 'poster' && pos === 'left', ink = st === 'ink';
+      const fg = poster ? '#ffffff' : '#1e293b', sub = poster ? '#ccfbf1' : '#64748b';
+      const wantList = !!parts.list, wantNotes = !!parts.notes, padW = poster ? 7 * k : 0;
+      const head = (t, color, attr) => ink
+        ? `<div ${attr} style="font-size:${7.2 * k}pt;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;border-bottom:${0.5 * k}mm solid #171717;padding-bottom:${0.6 * k}mm;margin-bottom:${0.8 * k}mm">${calE(t)}</div>`
+        : poster ? `<div ${attr} style="font-size:${6.8 * k}pt;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#5eead4;margin-bottom:${0.6 * k}mm">${calE(t)}</div>`
+        : `<div ${attr} style="font-family:${CPR_FONT};font-size:${11 * k}pt;font-weight:600;color:${color};margin-bottom:${0.6 * k}mm">${calE(t)}</div>`;
+      let top = '', topH = 0;
+      if (poster) {
+        const mo = months[0], art = cprArtFor(o, mo), artH = art ? Math.min(ph * 0.3, pw / 1.25) : 0;
+        const name = months.length > 1 ? `${cprMonthName(months[0])} – ${cprMonthName(months[1])}` : cprMonthName(mo);
+        const y = ctx.y, terms = y ? (y.terms || []).filter(t => t.from && t.from.slice(0, 7) <= mo && (t.to || t.from).slice(0, 7) >= mo).map(t => `Term ${t.n}`) : [];
+        const nDays = months.reduce((n, m) => n + (ctx.cd.months[m] || 0), 0);
+        const tl = o.termLine && y ? [mo.slice(0, 4), terms.join(' · '), nDays ? plural(nDays, 'class day') : ''].filter(Boolean).join(' · ') : mo.slice(0, 4);
+        const tp = Math.max(18, Math.min((pw - padW) * 0.2, 19 * k) / 0.3528 * (months.length > 1 ? 0.6 : 1));
+        topH = artH + tp * 0.3528 * 1.05 + 9 * k;
+        top = `${art ? `<div style="height:${artH}mm;margin:${-3.5 * k}mm ${-3.5 * k}mm 0;border-bottom-right-radius:${14 * k}mm;overflow:hidden"><img src="${art}" alt="" data-cpr-art="${calE(art)}" style="width:100%;height:100%;object-fit:cover;object-position:22% 70%;${o.strength === 'light' ? 'opacity:0.45;' : o.strength === 'soft' ? 'opacity:0.75;' : ''}"></div>` : ''}
+          <div style="margin-top:${3 * k}mm"><div data-cpr-title style="font-family:${CPR_FONT};font-size:${tp}pt;font-weight:600;line-height:0.95">${calE(name)}</div>
+          <div ${o.termLine ? 'data-cpr-term' : ''} style="font-family:${CPR_FONT};font-size:${Math.max(7, 10 * k)}pt;color:#99f6e4;margin-top:${0.6 * k}mm">${calE(tl)}</div></div>`;
+      } else if (ink && pos === 'right' && o.theme !== 'none') {
+        const art = cprArtFor(o, months[0]);
+        if (art) { topH = Math.min(ph * 0.2, pw / 2.36) + 3 * k; top = `<div style="height:${topH - 3 * k}mm;border:0.3mm solid #171717;overflow:hidden"><img src="${art}" alt="" data-cpr-art="${calE(art)}" style="width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.1) brightness(1.06)"></div>`; }
+      }
+      const bottomRow = pos === 'bottom' && wantList && wantNotes;
+      const school = poster && !o.hdrName ? 5 * k : 0;
+      const restH = ph - topH - school - (poster ? 7 * k : 0) - (top ? 3 * k : 0);
+      const notesMin = 34 * k;
+      let listH = 0, notesH = 0;
+      if (bottomRow) { listH = restH; notesH = restH; }
+      else if (wantList && wantNotes) { notesH = Math.max(notesMin, restH * 0.36); listH = restH - notesH - 3 * k; }
+      else if (wantList) listH = restH; else if (wantNotes) notesH = restH;
+      const card = !poster && !ink && st !== 'classic' && st !== 'planner';
+      const boxPad = card ? 3 * k : 0;
+      // the list, fitted: smaller type, then "+N more in the app"
+      let listHTML = '';
+      if (wantList && listH > 8 * k) {
+        const rows = cprListRows(o, months, ctx.list);
+        const colsN = pos === 'bottom' && !bottomRow ? 2 : 1;
+        const subOf = e => [o.times && e.startTime ? calTime12(e.startTime) : '', o.venues && e.venue ? e.venue : '', o.people && e.who ? e.who : ''].filter(Boolean).join(' · ');
+        // sizes in em of the list's type, so cprFitLists can make it smaller on the page and then cut rows
+        const pt = 7.6 * k, two = months.length > 1;
+        const rowHTML = e => {
+          const [b1, b2] = cprBadge(e), col = poster ? '#ffffff' : cprColor(o, e);
+          const s = subOf(e);
+          return `<div data-cpr-li="${calE(e.key)}" style="break-inside:avoid;display:flex;gap:0.75em;align-items:flex-start;padding:0.3em 0;${ink ? 'border-bottom:0.2mm solid #e5e5e5;' : poster ? '' : `border-bottom:0.25mm dashed ${L.line};`}">
+            <div style="width:3.6em;flex:none;text-align:center;border-radius:0.6em;${ink ? '' : poster ? 'background:#ffffff1f;' : `background:${col}1a;`}color:${ink ? '#171717' : col};padding:0.2em 0">
+              <div style="font-family:${CPR_FONT};font-size:${b1.length > 3 ? 0.98 : 1.32}em;font-weight:600;line-height:1">${calE(b1)}</div>
+              <div style="font-size:0.62em;font-weight:800;letter-spacing:0.04em;line-height:1.2;white-space:nowrap">${calE(b2)}</div></div>
+            <div style="min-width:0;line-height:1.25;color:${fg}"><div style="font-weight:700;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${calE(e.title)}</div>${s ? `<div style="font-size:0.85em;color:${sub}">${calE(s)}</div>` : ''}</div>
+          </div>`;
+        };
+        let body = '';
+        if (two) months.forEach(m => { const r = rows.filter(e => cprListRows(o, [m], [e]).length); if (r.length) body += `<div data-cpr-mh style="break-after:avoid;font-size:0.84em;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:${poster ? '#99f6e4' : '#94a3b8'};margin-top:0.3em">${calE(cprMonthName(m))}</div>${r.map(rowHTML).join('')}`; });
+        else body = rows.map(rowHTML).join('');
+        listHTML = `<div data-cpr-list="${rows.length}" data-cpr-pt="${pt}" style="${bottomRow ? '' : `height:${listH}mm;`}overflow:hidden;${card ? `background:#fff;border:0.3mm solid ${L.line};border-radius:${3.5 * k}mm;padding:${boxPad}mm ${boxPad * 1.1}mm;` : ''}">
+          ${head(ink ? 'Dates' : st === 'planner' || pos === 'bottom' ? 'Dates to remember' : 'This month', L.accent, '')}
+          ${rows.length ? `<div data-cpr-rows style="font-size:${pt}pt;${colsN > 1 ? `column-count:2;column-gap:${5 * k}mm;` : ''}">${body}</div>` : `<div style="font-size:${7 * k}pt;color:${sub}">Nothing this month.</div>`}
+          <div data-cpr-cutnote style="font-size:${pt * 0.9}pt;font-weight:700;color:${sub};margin-top:${0.8 * k}mm"></div>
+        </div>`;
+      }
+      let notesHTML = '';
+      if (wantNotes && notesH > 8 * k) {
+        const lc = poster ? '#ffffff47' : ink ? '#bdbdbd' : '#cbd5e1', step = 6.6 * k;
+        const paperCss = o.notesPaper === 'dots' ? `background-image:radial-gradient(${poster ? '#ffffff66' : '#c7b99f'} 0.32mm,transparent 0.38mm);background-size:${4.6 * k}mm ${4.6 * k}mm;`
+          : o.notesPaper === 'blank' ? '' : `background-image:repeating-linear-gradient(to bottom,transparent 0 ${step - 0.25}mm,${lc} ${step - 0.25}mm ${step}mm);`;
+        notesHTML = `<div data-cpr-notes="${o.notesPaper || 'lines'}" style="${bottomRow ? '' : `height:${notesH}mm;`}display:flex;flex-direction:column;${card ? `background:#fff;border:0.3mm solid ${L.line};border-radius:${3.5 * k}mm;padding:${boxPad}mm ${boxPad * 1.1}mm;` : ''}">
+          ${head(o.notesTitle || 'Notes', L.accent2, 'data-cpr-notes-title')}
+          <div style="flex:1;${paperCss}${o.notesPaper === 'blank' || o.notesPaper === 'dots' ? `border:0.3mm solid ${poster ? '#ffffff40' : L.line};border-radius:${2 * k}mm;` : ''}"></div>
+        </div>`;
+      }
+      const name = String(reqRole && reqRole.schoolName || schoolInfo.school || '').trim().replace(/^\d{6}\s*[-–·]?\s*/, '');
+      const inner = bottomRow
+        ? `<div style="display:grid;grid-template-columns:1.2fr 1fr;gap:${5 * k}mm;height:100%">${listHTML}${notesHTML}</div>`
+        : `${top}<div style="display:flex;flex-direction:column;gap:${3 * k}mm;margin-top:${top ? 3 * k : 0}mm">${listHTML}${notesHTML}</div>${school ? `<div style="position:absolute;left:${3.5 * k}mm;right:${3.5 * k}mm;bottom:${2.5 * k}mm;font-size:${6 * k}pt;color:#99f6e4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${calE(name.toUpperCase())}</div>` : ''}`;
+      return `<div class="cpr-panel" data-cpr-panel="${pos}" style="position:relative;flex:none;width:${pw}mm;height:${ph}mm;overflow:hidden;${poster ? `background:${o.accent === 'bw' ? '#262626' : L.accent};color:#fff;border-radius:${4 * k}mm;padding:${3.5 * k}mm;` : ''}">${inner}</div>`;
+    }
+    // The thumbnails of the Layout section (small drawings, no pictures to load)
+    function cprStyleThumb(st) {
+      const c = (CPR_ACCENT[cprOpts().accent] || CPR_ACCENT.teal)[0];
+      const grid = (cls, wkFill, dot) => `<span style="display:grid;grid-template-columns:repeat(7,1fr);gap:${cls}px;flex:1">${Array.from({ length: 21 }, (_, i) => `<span style="height:6px;border-radius:${cls ? 1.5 : 0}px;background:${i % 7 === 0 || i % 7 === 6 ? wkFill : '#fff'};${cls ? '' : 'border:0.5px solid #a3a3a3;'}position:relative">${dot && i % 5 === 2 ? `<span style="position:absolute;right:1px;top:1px;width:2px;height:2px;border-radius:50%;background:${c}"></span>` : ''}</span>`).join('')}</span>`;
+      const side = (bg, lines) => `<span style="width:15px;display:flex;flex-direction:column;gap:2px;${bg}">${Array.from({ length: lines }, () => '<span style="height:2px;border-radius:1px;background:#cbd5e1"></span>').join('')}</span>`;
+      if (st === 'poster') return `<span style="display:flex;gap:3px;height:100%"><span style="width:16px;border-radius:3px;background:${c}"></span>${grid(1.5, '#e2e8f0', true)}</span>`;
+      if (st === 'planner') return `<span style="display:flex;flex-direction:column;gap:2px;height:100%"><span style="height:8px;border-radius:2px;background:linear-gradient(#a7d7a0,#fdf6e9)"></span>${grid(1.5, '#f5efe3', false)}<span style="height:5px;background:repeating-linear-gradient(#fff 0 2px,#cbd5e1 2px 2.5px)"></span></span>`;
+      if (st === 'ink') return `<span style="display:flex;gap:3px;height:100%;background:#fff"><span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="height:3px;width:60%;background:#171717"></span>${grid(0, '#fff', false)}</span>${side('', 5)}</span>`;
+      if (st === 'classic') return `<span style="display:flex;flex-direction:column;gap:2px;height:100%"><span style="height:8px;border-radius:2px;background:linear-gradient(90deg,#a7d7a0,#fde68a)"></span><span style="height:3px;background:${c}"></span>${grid(0, '#f8fafc', false)}</span>`;
+      return `<span style="display:flex;gap:3px;height:100%"><span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="height:8px;border-radius:2px;background:linear-gradient(90deg,#a7d7a0,#fde68a)"></span>${grid(1.5, '#f5efe3', true)}</span>${side('background:#fff;border-radius:2px;padding:2px', 4)}</span>`;
+    }
+
     // ---- The print sheet: preview and options -------------------------------------------------
     function openCalPrint() {
       if (!planOn() || !calCanRead()) return;
@@ -19038,7 +19358,8 @@
       const tick = (key, label, sub) => `<label class="flex items-center gap-2.5 py-1.5"><input type="checkbox" ${sub ? `onchange="cprShow('${key}', this.checked)" ${o.show[key] ? 'checked' : ''}` : `onchange="cprSet('${key}', this.checked)" ${o[key] ? 'checked' : ''}`} data-cpr-tick="${key}" class="w-5 h-5 rounded accent-teal-700"><span class="text-sm text-slate-700">${label}</span></label>`;
       const sec = (id, icon, title, inner, open) => `<details class="rounded-2xl border border-slate-200 bg-white" data-cpr-sec="${id}" ${open ? 'open' : ''}><summary class="px-3 py-2.5 text-sm font-extrabold text-slate-800 cursor-pointer flex items-center gap-2"><i class="ph-bold ${icon} text-teal-700"></i> ${title}</summary><div class="px-3 pb-3 space-y-2">${inner}</div></details>`;
       const mo = cprMonths()[0];
-      const thumb = (v, label, src, icon = 'ph-prohibit') => `<button type="button" onclick="cprSet('theme', '${v}')" data-cpr-theme="${v}" aria-pressed="${o.theme === v}" class="text-left rounded-xl overflow-hidden border-2 ${o.theme === v ? 'border-teal-600' : 'border-transparent'} bg-slate-50">
+      const photoPro = !bgCanUpload() && !(bgUsable() && cprPics.photo);   // a Free school: the photo is Pro
+      const thumb = (v, label, src, icon = 'ph-prohibit') => `<button type="button" onclick="${v === 'photo' && photoPro ? 'bgProNotice()' : `cprSet('theme', '${v}')`}" data-cpr-theme="${v}" aria-pressed="${o.theme === v}" class="text-left rounded-xl overflow-hidden border-2 ${o.theme === v ? 'border-teal-600' : 'border-transparent'} bg-slate-50">
           <span class="block h-14 bg-slate-100">${src ? `<img src="${src}" alt="" loading="lazy" class="w-full h-full object-cover">` : `<span class="w-full h-full flex items-center justify-center text-slate-400"><i class="ph-bold ${icon} text-xl"></i></span>`}</span>
           <span class="block px-1.5 py-1 text-[11px] font-bold text-slate-700 leading-tight">${label}</span></button>`;
       const photoOk = !!cprPics.photo;
@@ -19046,12 +19367,12 @@
         <div class="grid grid-cols-3 gap-2">
           ${thumb('auto', 'This month’s art', cprArtFor({ ...o, theme: 'auto' }, mo))}
           ${CPR_SCENES.map(s => thumb('g:' + s[0], s[1], s[2])).join('')}
-          ${thumb('photo', 'School photo', cprPics.photo, 'ph-image')}
+          ${thumb('photo', bgCanUpload() ? 'School photo' : 'School photo <span class="text-amber-600" data-cpr-pro><i class="ph-bold ph-crown"></i> Pro</span>', bgUsable() ? cprPics.photo : '', 'ph-image')}
           ${thumb('none', 'None (saves ink)', '')}
         </div>
-        ${o.theme === 'photo' ? `<div class="rounded-xl bg-slate-50 border border-slate-200 p-2.5 space-y-2" data-cpr-photo-box>
+        ${o.theme === 'photo' && !photoPro ? `<div class="rounded-xl bg-slate-50 border border-slate-200 p-2.5 space-y-2" data-cpr-photo-box>
           <p class="text-xs text-slate-600">${photoOk ? 'Your school’s photo, kept on this device only.' : 'Pick a photo of your school (or a banner). It is kept on this device only.'}</p>
-          <div class="flex gap-2"><label class="flex-1 h-10 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5 cursor-pointer"><i class="ph-bold ph-image"></i> ${photoOk ? 'Change photo' : 'Pick a photo'}<input type="file" accept="image/*" id="cprPhotoIn" class="hidden" onchange="cprPickPic('photo', this)"></label>
+          <div class="flex gap-2">${bgCanUpload() ? `<label class="flex-1 h-10 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5 cursor-pointer"><i class="ph-bold ph-image"></i> ${photoOk ? 'Change photo' : 'Pick a photo'}<input type="file" accept="image/*" id="cprPhotoIn" class="hidden" onchange="cprPickPic('photo', this)"></label>` : '<span class="flex-1 text-[11px] text-amber-800 self-center" data-cpr-photo-ended><i class="ph-bold ph-lock-simple"></i> View only · Pro ended</span>'}
             ${photoOk ? `<button type="button" onclick="cprDropPic('photo')" class="h-10 px-3 rounded-xl bg-white border border-slate-200 text-sm font-bold text-rose-700">Remove</button>` : ''}</div>
           ${photoOk ? `<label class="block"><span class="block text-[11px] font-bold uppercase text-slate-500">Which part shows: top to bottom</span><input type="range" min="0" max="100" value="${o.photoY}" oninput="cprSet('photoY', Number(this.value), true)" id="cprPhotoY" class="w-full accent-teal-700"></label>` : ''}
         </div>` : ''}
@@ -19068,6 +19389,20 @@
         <p class="text-[11px] font-bold uppercase text-slate-500">Months</p>${seg('range', o.range, [['month', 'This month'], ['range', 'From – to'], ['sy', 'Whole SY']])}
         ${o.range === 'range' ? `<div class="grid grid-cols-2 gap-2">${calLbl('From', sel('cprFrom', o.from || mo, months.map(m => [m, calShort(m + '-01', true).replace(/ \d+,/, '')]), "cprSet('from', this.value)"))}${calLbl('To', sel('cprTo', o.to || o.from || mo, months.map(m => [m, calShort(m + '-01', true).replace(/ \d+,/, '')]), "cprSet('to', this.value)"))}</div>` : ''}
         <p class="text-[11px] font-bold uppercase text-slate-500">Week starts on</p>${seg('weekStart', o.weekStart, [[0, 'Sunday'], [1, 'Monday']])}`;
+      const sideOff = o.per === 2 && o.layout === 'side';   // two months side by side: no room beside them
+      const seg3 = (key, opts) => `<div class="grid gap-1 p-1 rounded-xl bg-slate-100" style="grid-template-columns:repeat(${opts.length},minmax(0,1fr))">${opts.map(([v, l]) => { const dis = v === 'beside' && sideOff; const on = String(o[key]) === v; return `<button type="button" ${dis ? 'disabled title="Not with two months side by side"' : ''} onclick="cprSet('${key}', '${v}')" data-cpr-opt="${key}:${v}" aria-pressed="${on}" class="h-9 rounded-lg text-xs font-bold ${dis ? 'text-slate-300' : on ? 'bg-white text-slate-900 shadow ring-1 ring-slate-900/5' : 'text-slate-500'}">${l}</button>`; }).join('')}</div>`;
+      const layoutInner = `
+        <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">${CPR_STYLES.map(([v, l, d]) => `<button type="button" onclick="cprSet('style', '${v}')" data-cpr-style-pick="${v}" aria-pressed="${o.style === v}" title="${calE(d)}" class="text-left rounded-xl overflow-hidden border-2 ${o.style === v ? 'border-teal-600' : 'border-transparent'} bg-slate-50">
+            <span class="block h-12 p-1.5 ${v === 'poster' ? 'bg-slate-100' : v === 'ink' ? 'bg-white' : 'bg-amber-50/60'}">${cprStyleThumb(v)}</span>
+            <span class="block px-1.5 py-1 text-[11px] font-bold text-slate-700 leading-tight">${l}</span></button>`).join('')}</div>
+        <p class="text-[11px] text-slate-500" data-cpr-style-note>${calE((CPR_STYLES.find(x => x[0] === o.style) || CPR_STYLES[0])[2])}. Each style sets the options below; you can still change them.</p>
+        <p class="text-[11px] font-bold uppercase text-slate-500">Day boxes</p>${seg3('boxes', [['entries', 'Written in'], ['dots', 'Dots only'], ['empty', 'Empty']])}
+        <p class="text-[11px] text-slate-500 -mt-1">${o.boxes === 'entries' ? 'The activities are written in the boxes.' : o.boxes === 'dots' ? 'A coloured dot for each activity; the names go in the list.' : 'Room to write. Holidays and no-class days are still named.'}</p>
+        <p class="text-[11px] font-bold uppercase text-slate-500">List of dates</p>${seg3('list', [['beside', 'Beside'], ['below', 'Below'], ['off', 'None']])}
+        <p class="text-[11px] font-bold uppercase text-slate-500">Notes box</p>${seg3('notes', [['off', 'None'], ['beside', 'Beside'], ['below', 'Below']])}
+        ${o.notes !== 'off' ? `${seg3('notesPaper', [['lines', 'Lines'], ['dots', 'Dots'], ['blank', 'Blank']])}
+          ${calLbl('Title of the box', `<input id="cprNotesTitle" type="text" maxlength="40" value="${calE(o.notesTitle)}" placeholder="Notes" oninput="cprSet('notesTitle', this.value, true)" class="${CAL_IN}">`)}` : ''}
+        ${sideOff && (o.list === 'beside' || o.notes === 'beside') ? '<p class="text-[11px] text-amber-700" data-cpr-side-note>Two months side by side: the list and Notes go below.</p>' : ''}`;
       const showInner = `
         ${CPR_SHOW.map(([k, l]) => tick(k, l, true)).join('')}
         <hr class="border-slate-100">
@@ -19092,6 +19427,7 @@
             </div>
           </div>
           <div class="cpr-ui-opts space-y-2">
+            ${sec('layout', 'ph-layout', 'Style and layout', layoutInner, true)}
             ${sec('art', 'ph-paint-brush', 'Art and colour', artInner, true)}
             ${sec('page', 'ph-file', 'Paper and months', pageInner, true)}
             ${sec('show', 'ph-funnel', 'What to show', showInner, false)}
@@ -19113,6 +19449,9 @@
       const avail = Math.max(200, box.clientWidth - 16);
       const sc = (cprZoom ? Math.min(1, (avail * 2) / pxW) : avail / pxW);
       box.innerHTML = `<div style="width:${pxW * sc}px;height:${pxH * sc}px;margin:0 auto;box-shadow:0 2px 10px rgb(0 0 0 / .15);background:#fff;overflow:hidden"><div style="transform:scale(${sc});transform-origin:0 0;width:${pxW}px">${one.html}</div></div>`;
+      cprFitLists(box);
+      const drawn = box.firstElementChild;
+      cprFontsReady().then(() => { if (box.firstElementChild === drawn) cprFitLists(box); });
       box.classList.toggle('cursor-zoom-in', !cprZoom); box.classList.toggle('cursor-zoom-out', cprZoom);
       const c = document.getElementById('cprCount');
       if (c) c.textContent = `Sheet ${cprSheetNo + 1} of ${all.count} · ${plural(months.length, 'month')}`;
@@ -19135,7 +19474,15 @@
       const o = cprOpts();
       if (key === 'motto') val = String(val || '').slice(0, 140);
       if (key === 'division') val = String(val || '').slice(0, 100);
+      if (key === 'notesTitle') val = String(val || '').slice(0, 40);
       o[key] = val;
+      // A style sets its boxes, list and paper direction (one month a sheet); Notes stay as they are, next to the list
+      if (key === 'style' && CPR_PRESET[val]) {
+        const ps = CPR_PRESET[val];
+        o.boxes = ps.boxes; o.list = ps.list;
+        if (ps.orient && o.per === 1) o.orient = ps.orient;
+        if (o.notes !== 'off' && ps.list !== 'off') o.notes = ps.list;
+      }
       if (key === 'per' && val === 2 && o.orient === 'landscape' && o.layout === 'stack') o.orient = 'portrait';
       if (key === 'per' && val === 1 && o.orient === 'portrait') o.orient = 'landscape';
       if (key === 'layout') o.orient = val === 'side' ? 'landscape' : 'portrait';
@@ -19209,6 +19556,7 @@
     async function cprPickPic(kind, input) {
       const file = input && input.files && input.files[0];
       if (!file) return;
+      if (kind === 'photo' && !bgCanUpload()) { input.value = ''; bgProNotice(); return; }
       try {
         const blob = await cprShrink(file, kind === 'logo' ? 400 : 1600, kind === 'logo' ? 'image/png' : 'image/jpeg');
         await cprIdb('readwrite', st => st.put(blob, cprPicKey(kind)));
@@ -19236,8 +19584,17 @@
       const months = cprMonths();
       if (!months.length) return;
       const res = cprSheetsHTML(months, null), g = res.g;
+      // fit the lists of dates off screen first (the print area is hidden until printing)
+      const meas = document.createElement('div');
+      meas.style.cssText = 'position:fixed;left:-30000px;top:0;visibility:hidden;pointer-events:none';
+      meas.innerHTML = res.html;
+      document.body.appendChild(meas);
+      await cprFontsReady();
+      cprFitLists(meas);
+      const html = meas.innerHTML;
+      meas.remove();
       const sec = document.getElementById('printPrSection');
-      sec.innerHTML = `<style>@page cpr { size: ${g.W}mm ${g.H}mm; margin: 0; } @media print { .cpr-sheet { page: cpr; } }</style><div class="cpr-print">${res.html}</div>`;
+      sec.innerHTML = `<style>@page cpr { size: ${g.W}mm ${g.H}mm; margin: 0; } @media print { .cpr-sheet { page: cpr; } }</style><div class="cpr-print">${html}</div>`;
       // the pictures must be there before the print box opens
       const imgs = [...sec.querySelectorAll('img')];
       await Promise.race([Promise.all(imgs.map(i => (i.complete ? Promise.resolve() : new Promise(r => { i.onload = i.onerror = r; })))), new Promise(r => setTimeout(r, 4000))]);
@@ -23694,6 +24051,7 @@
       if (t === 'plan') { calSync(); renderHeadCalendar(); }
       document.querySelectorAll('#hdBody [data-hd-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.hdPane !== t));
       renderHeadTabs(!!document.querySelector('#hdBody [data-hd-pane]'));
+      syncPageArt();
       window.scrollTo({ top: 0 });
     }
     // ---- School Head, Nov 2026: Today and More (the same look as the custodian's Home) ----------
@@ -25915,6 +26273,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       document.getElementById('rqItemsDot').classList.toggle('hidden', !toAck.length);
       document.getElementById('rqItemsPane').classList.toggle('hidden', tab !== 'items');
       document.getElementById('rqTodayPane').classList.toggle('hidden', tab !== 'today');
+      syncPageArt();
       document.getElementById('rqMorePane').classList.toggle('hidden', tab !== 'more');
       document.getElementById('rqRequestsPane').classList.toggle('hidden', tab !== 'requests');
       document.getElementById('rqStockPane').classList.toggle('hidden', tab !== 'stock');
@@ -33253,6 +33612,18 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-calendar-print-v2', date: 'Nov 2026', title: 'A nicer printed calendar, with a list of dates and Notes', points: [
+        'Print the calendar now has 5 styles: Agenda (the new look), Write-in, Poster, Ink saver and Classic. Rounded day boxes, big friendly numbers and softer colours, so it looks like a calendar, not a document.',
+        'The list of dates: every activity of the month in order, with its date, time, venue and people, beside the calendar or below it. It follows What to show and Mine only.',
+        'Day boxes: the activities written in, a coloured dot for each, or empty boxes to write in. Holidays and no-class days are still named.',
+        'Add a Notes box (off unless you turn it on), beside or below, with lines, dots or blank, and your own title.'
+      ], pilot: 'plan' },
+      { id: '2026-11-background-pick', date: 'Nov 2026', title: 'Pick your background picture', points: [
+        'More → Appearance → Background picture opens a window (teachers and the School Head: the Appearance button at the top).',
+        'Choose the original picture or this month’s picture (a new one every month, the same art as the printed calendar).',
+        'Show it on any page: every page of the custodian, the teacher and the School Head can have it, with All and None.',
+        'Pro: upload your own picture for the app’s background and for the printed calendar.'
+      ] },
       { id: '2026-11-teacher-today', date: 'Nov 2026', title: 'Teachers get the same look as the custodian', points: [
         'A new Today page opens first: Needs your attention, Supply requests (with + Request and your latest 3), This week on the school calendar, My Items, Library and Leave.',
         'Tabs at the bottom of the phone: Today, My Items, Requests, Calendar and More. School stock, Library, Leave (and the Library desk for the librarian) are under More.',
@@ -33978,7 +34349,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       }
       window.addEventListener('storage', e => { // another tab
         if (e.key === THEME_KEY) applyTheme();
-        if (e.key === ART_KEY) { syncPageArt(); renderArtSwitches(); }
+        if (e.key === ART_KEY || e.key === ART_PIC_KEY) artChanged();
       });
     }
 
@@ -34275,43 +34646,244 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
 
     // ---- Faded school art behind the top of the page ----------------------------------
-    // More → Appearance → "Background picture on": each tab can be switched on or off (saved on
-    // this device, like light / dark). Default: Home only, plus the teacher's screen.
-    var ART_KEY = 'custodian_page_art_v1'; // JSON list of views · missing = default
-    var ART_DEFAULT = ['HOME', 'REQUESTER'];
-    var ART_PAGES = [['HOME', 'ph-house', 'Home'], ['ITEMS', 'ph-package', 'Inventory'], ['CATALOG', 'ph-books', 'Catalog'], ['REPORTS', 'ph-chart-pie-slice', 'Reports']];
+    // More → Appearance → Background picture (a window; teachers and the School Head: the
+    // Appearance button). Saved on this device, like light / dark:
+    //  · which picture: the original (the sign-in art), this month's art (the printed calendar's,
+    //    a new one each month) or your own (Pro: uploaded, kept on this device in IndexedDB);
+    //  · which pages show it: every page of the custodian, the teacher and the School Head.
+    // Default: Home, and every page of a teacher's or head's phone.
+    var ART_KEY = 'custodian_page_art_v1';       // JSON list of pages · missing = default
+    var ART_PIC_KEY = 'custodian_page_art_pic_v1'; // 'original' | 'month' | 'custom'
+    var ART_PAGES = [['HOME', 'ph-house', 'Home'], ['ITEMS', 'ph-package', 'Inventory'], ['CATALOG', 'ph-books', 'Catalog'], ['REPORTS', 'ph-chart-pie-slice', 'Reports'],
+      ['REQUESTS', 'ph-tray', 'Supply requests'], ['TEACHERS', 'ph-chalkboard-teacher', 'Teachers'], ['BOOKS', 'ph-book-open-text', 'Books & Library'],
+      ['CALENDAR', 'ph-calendar-dots', 'Calendar', 'plan'], ['LEAVE', 'ph-calendar-check', 'Leave', 'leave'], ['ADMIN', 'ph-sliders-horizontal', 'Admin panel', 'admin']];
+    var ART_T = [['T:today', 'ph-house', 'Today'], ['T:items', 'ph-backpack', 'My Items'], ['T:requests', 'ph-paper-plane-tilt', 'Requests'], ['T:calendar', 'ph-calendar-dots', 'Calendar', 'plan'],
+      ['T:stock', 'ph-package', 'School stock'], ['T:library', 'ph-books', 'Library'], ['T:leave', 'ph-calendar-check', 'Leave', 'leave'], ['T:more', 'ph-dots-three-circle', 'More']];
+    var ART_H = [['H:today', 'ph-house', 'Today'], ['H:approve', 'ph-seal-check', 'Approve'], ['H:school', 'ph-buildings', 'School'], ['H:plan', 'ph-calendar-dots', 'Calendar', 'plan'],
+      ['H:more', 'ph-dots-three-circle', 'More'], ['H:items', 'ph-package', 'Inventory'], ['H:people', 'ph-users-three', 'Who holds what'], ['H:history', 'ph-clock-counter-clockwise', 'Your decisions'], ['H:leave', 'ph-calendar-check', 'My leave', 'leave']];
+    var ART_DEFAULT = ['HOME'].concat(ART_T.map(p => p[0]), ART_H.map(p => p[0]));
+    var bgCustomUrl = '', bgCustomFor = '', bgLoading = false, bgView = { pro: false };
     function artPages() {
       try {
         const v = JSON.parse(localStorage.getItem(ART_KEY));
-        if (Array.isArray(v)) return v.filter(k => k === 'REQUESTER' || ART_PAGES.some(p => p[0] === k));
+        if (Array.isArray(v)) {
+          // before Nov 2026 a teacher's and head's screen had one switch: 'REQUESTER'
+          const list = v.includes('REQUESTER') ? v.concat(ART_T.map(p => p[0]), ART_H.map(p => p[0])) : v;
+          const ok = new Set(ART_PAGES.concat(ART_T, ART_H).map(p => p[0]));
+          return [...new Set(list.filter(k => ok.has(k)))];
+        }
       } catch (e) {}
       return ART_DEFAULT.slice();
     }
+    // The pages of this phone (custodian, teacher or School Head), with the switched-off features left out
+    function artPageList() {
+      let list = ART_PAGES;
+      try { if (isTeacherDevice()) list = ART_T; else if (isHeadDevice()) list = ART_H; } catch (e) {}
+      return list.filter(p => !p[3] || (p[3] === 'plan' ? planOn() : p[3] === 'leave' ? leaveOn() : (() => { try { return isAdminDevice(); } catch (e) { return false; } })()));
+    }
+    // The page on screen now
+    function artCurKey() {
+      if (activeMainView === 'REQUESTER' || (activeMainView === 'BOOKS' && isTeacherDevice())) return 'T:' + (activeMainView === 'BOOKS' ? 'library' : (teacherTab || 'today'));
+      if (activeMainView === 'HEAD') return 'H:' + (headTab || 'today');
+      return activeMainView;
+    }
+    function artPic() { const v = localStorage.getItem(ART_PIC_KEY); return v === 'month' || v === 'custom' ? v : 'original'; }
+    function artMonthSrc() { return `assets/cal-art/m${String(new Date().getMonth() + 1).padStart(2, '0')}.webp`; }
+    // Your own picture (app and printed calendar): Pro. 'on' = may upload; 'ended' = what was saved stays
+    function bgState() { try { return featState('bg'); } catch (e) { return ''; } }
+    function bgCanUpload() { return bgState() === 'on' && !(typeof isViewOnly === 'function' && isViewOnly() && isCustodianDevice()); }
+    function bgUsable() { const s = bgState(); return s === 'on' || s === 'ended'; }
     function toggleArtPage(key) {
       const list = artPages();
       const i = list.indexOf(key);
       if (i >= 0) list.splice(i, 1); else list.push(key);
       localStorage.setItem(ART_KEY, JSON.stringify(list));
-      syncPageArt();
-      renderArtSwitches();
+      artChanged();
     }
+    function artSetAll(on) {
+      const mine = artPageList().map(p => p[0]);
+      const list = artPages().filter(k => !mine.includes(k)).concat(on ? mine : []);
+      localStorage.setItem(ART_KEY, JSON.stringify(list));
+      artChanged();
+    }
+    function setArtPic(k) {
+      const st = bgState();
+      if (k === 'custom') {
+        if (!bgCanUpload() && !(st === 'ended' && bgCustomUrl)) { bgView.pro = true; renderBgModal(); return; }
+        if (!bgCustomUrl) { const f = document.getElementById('bgFile'); if (f) f.click(); return; }
+      }
+      bgView.pro = false;
+      localStorage.setItem(ART_PIC_KEY, k);
+      artChanged();
+    }
+    function artChanged() { syncPageArt(); renderArtSwitches(); renderBgModal(); }
     function syncPageArt() {
       const gated = document.documentElement.classList.contains('gated');
-      document.body.classList.toggle('page-art', !gated && artPages().includes(activeMainView === 'HEAD' ? 'REQUESTER' : activeMainView));
+      let key = 'HOME';
+      try { key = artCurKey(); } catch (e) {}
+      const on = !gated && artPages().includes(key);
+      let pic = artPic();
+      const sid = (reqRole && reqRole.schoolId) || 'local';
+      if (pic === 'custom' && bgCustomFor !== sid && !bgLoading) setTimeout(bgLoad, 0);
+      if (pic === 'custom' && !(bgCustomUrl && bgCustomFor === sid && bgUsable())) pic = 'original';
+      const b = document.body;
+      b.classList.toggle('page-art', on);
+      b.classList.toggle('art-wide', on && pic !== 'original');
+      b.dataset.art = on ? pic : '';
+      if (on && pic !== 'original') b.style.setProperty('--art-img', `url("${pic === 'custom' ? bgCustomUrl : artMonthSrc()}")`);
+      else b.style.removeProperty('--art-img');
     }
-    function renderArtSwitches() {
-      const on = artPages();
-      const opt = (key, icon, label) => {
+    // Your own picture: kept on this device (the printed calendar's picture store), one per school
+    const bgKey = () => `appbg:${(reqRole && reqRole.schoolId) || 'local'}`;
+    async function bgLoad() {
+      const sid = (reqRole && reqRole.schoolId) || 'local';
+      if (bgCustomFor === sid || bgLoading) return;
+      bgLoading = true;
+      let blob = null;
+      try { blob = await cprIdb('readonly', st => st.get(bgKey())); } catch (e) {}
+      const had = !!bgCustomUrl;
+      if (bgCustomUrl) URL.revokeObjectURL(bgCustomUrl);
+      bgCustomUrl = blob ? URL.createObjectURL(blob) : '';
+      bgCustomFor = sid;
+      bgLoading = false;
+      if (had || blob) artChanged();
+    }
+    // A wide strip like the month art (2.36 : 1), the middle of the picture, at most 1600 px wide
+    function bgShrink(file) {
+      return new Promise((res, rej) => {
+        const url = URL.createObjectURL(file), img = new Image();
+        img.onload = () => {
+          const W = img.naturalWidth, H = img.naturalHeight, R = 1584 / 672;
+          let sw = W, sh = Math.round(W / R);
+          if (sh > H) { sh = H; sw = Math.round(H * R); }
+          const sx = Math.round((W - sw) / 2), sy = Math.round((H - sh) / 2);
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.min(1600, sw)); c.height = Math.max(1, Math.round(c.width / R));
+          c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          const data = c.toDataURL('image/jpeg', 0.85), bin = atob(data.split(',')[1] || '');
+          const u8 = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+          if (!u8.length) { rej(new Error('That picture could not be read.')); return; }
+          res(new Blob([u8], { type: 'image/jpeg' }));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('That file is not a picture.')); };
+        img.src = url;
+      });
+    }
+    async function bgPick(input) {
+      const file = input && input.files && input.files[0];
+      if (input) input.value = '';
+      if (!file) return;
+      if (!bgCanUpload()) { bgView.pro = true; renderBgModal(); return; }
+      try {
+        const blob = await bgShrink(file);
+        await cprIdb('readwrite', st => st.put(blob, bgKey()));
+        if (bgCustomUrl) URL.revokeObjectURL(bgCustomUrl);
+        bgCustomUrl = URL.createObjectURL(blob);
+        bgCustomFor = (reqRole && reqRole.schoolId) || 'local';
+        localStorage.setItem(ART_PIC_KEY, 'custom');
+        bgView.pro = false;
+        showToast('Your picture is the background now', 'ph-image');
+      } catch (e) { appAlert(String((e && e.message) || e)); }
+      artChanged();
+    }
+    async function bgDrop() {
+      if (!await appConfirm('The original picture comes back. You can upload another one any time.', { title: 'Remove your picture?', ok: 'Remove', tone: 'warn', icon: 'ph-trash' })) return;
+      try { await cprIdb('readwrite', st => st.delete(bgKey())); } catch (e) {}
+      if (bgCustomUrl) URL.revokeObjectURL(bgCustomUrl);
+      bgCustomUrl = '';
+      if (artPic() === 'custom') localStorage.setItem(ART_PIC_KEY, 'original');
+      artChanged();
+    }
+    // Free schools: what Pro adds (a toast where the window isn't open, e.g. the calendar print)
+    function bgProNotice() {
+      const cust = isCustodianDevice() && !isViewOnly();
+      showToast(bgState() === 'ended' ? 'View only · Pro at this school ended' : 'Your own picture is part of Pro', 'ph-crown',
+        cust ? { label: 'About Pro', onClick: () => { closeBgModal(); openProSheet(); } } : null);
+    }
+    function openBgModal() {
+      try { closeMoreMenu(); } catch (e) {}
+      try { closeAppearPanel(); } catch (e) {}
+      bgView.pro = false;
+      document.getElementById('bgModal').classList.remove('hidden');
+      renderBgModal();
+      bgLoad();
+    }
+    function closeBgModal() { const m = document.getElementById('bgModal'); if (m) m.classList.add('hidden'); }
+    function bgIsOpen() { const m = document.getElementById('bgModal'); return !!(m && !m.classList.contains('hidden')); }
+    function renderBgModal() {
+      const body = document.getElementById('bgBody');
+      if (!body || !bgIsOpen()) return;
+      const pic = artPic(), st = bgState(), can = bgCanUpload(), has = !!bgCustomUrl;
+      const month = new Date().toLocaleDateString('en-PH', { month: 'long' });
+      const landscape = matchMedia('(orientation: landscape)').matches;
+      const dark = document.documentElement.classList.contains('dark');
+      const orig = `assets/brand/login-${landscape ? 'landscape' : 'portrait'}${dark ? '-dark' : ''}.webp`;
+      const card = (k, title, sub, src, badge = '') => `
+        <button type="button" role="radio" aria-checked="${pic === k}" data-bg-pic="${k}" onclick="setArtPic('${k}')"
+          class="text-left rounded-2xl overflow-hidden border-2 bg-white transition ${pic === k ? 'border-brand-600 ring-2 ring-brand-100' : 'border-slate-200 hover:border-slate-300'}">
+          <span class="block relative h-20 bg-slate-100">${src ? `<img src="${src}" alt="" class="w-full h-full object-cover ${k === 'original' ? 'object-top' : ''}">` : '<span class="w-full h-full flex items-center justify-center text-slate-400"><i class="ph-bold ph-upload-simple text-2xl"></i></span>'}
+            ${pic === k ? '<span class="absolute top-1.5 left-1.5 w-6 h-6 rounded-full bg-brand-600 text-white flex items-center justify-center shadow"><i class="ph-bold ph-check text-xs"></i></span>' : ''}${badge}</span>
+          <span class="block px-2 py-1.5"><span class="block text-xs font-extrabold text-slate-900">${title}</span><span class="block text-[11px] text-slate-500 leading-snug">${sub}</span></span>
+        </button>`;
+      const crown = can ? '' : `<span class="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-amber-400 text-amber-950 text-[10px] font-extrabold flex items-center gap-0.5 shadow" data-bg-pro><i class="ph-bold ph-crown"></i> Pro</span>`;
+      const cust = isCustodianDevice() && !isViewOnly();
+      const proBox = bgView.pro ? `
+        <div class="rounded-2xl bg-amber-50 border border-amber-200 px-3 py-3 text-xs text-amber-900 space-y-2" data-bg-pro-box="${st || 'free'}">
+          <p class="flex items-start gap-2"><i class="ph-bold ${st === 'ended' ? 'ph-lock-simple' : 'ph-crown'} text-base mt-0.5"></i>
+            <span>${st === 'ended' ? '<b>View only.</b> Pro at this school ended. Your picture stays; to upload another one, the school needs Pro again.'
+              : '<b>Your own picture is part of Pro.</b> Upload a photo of your school for the app’s background and for the printed calendar. The original and this month’s picture stay free.'}</span></p>
+          ${cust ? '<button type="button" onclick="closeBgModal(); openProSheet()" data-bg-about-pro class="h-9 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-crown"></i> About Pro</button>'
+            : '<p class="font-semibold">Ask the property custodian about Pro.</p>'}
+        </div>` : '';
+      const mine = (has || pic === 'custom') ? `
+        <div class="flex flex-wrap gap-2" data-bg-custom-actions>
+          ${can ? `<label class="h-9 px-3 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800 flex items-center gap-1.5 cursor-pointer hover:bg-slate-50"><i class="ph-bold ph-image"></i> ${has ? 'Change picture' : 'Pick a picture'}<input type="file" accept="image/*" class="hidden" onchange="bgPick(this)"></label>` : ''}
+          ${has ? '<button type="button" onclick="bgDrop()" data-bg-remove class="h-9 px-3 rounded-xl bg-white border border-slate-200 text-xs font-bold text-rose-700 flex items-center gap-1.5 hover:bg-rose-50"><i class="ph-bold ph-trash"></i> Remove</button>' : ''}
+        </div>` : '';
+      const pages = artPageList(), on = artPages();
+      const n = pages.filter(p => on.includes(p[0])).length;
+      const opt = ([key, icon, label]) => {
         const checked = on.includes(key);
         return `<button type="button" role="checkbox" aria-checked="${checked}" data-art-opt="${key}" onclick="toggleArtPage('${key}')"
           class="h-10 px-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition ${checked ? 'bg-white text-slate-900 shadow-sm seg-on' : 'text-slate-600 hover:text-slate-800'}">
           <i class="ph-bold ${icon} text-sm"></i><span class="flex-1 text-left truncate">${label}</span>
           <span class="art-box ${checked ? 'is-on' : ''}"><i class="ph-bold ph-check"></i></span></button>`;
       };
+      const html = `
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1 mb-1.5">Picture</p>
+          <div role="radiogroup" aria-label="Picture" class="grid grid-cols-3 gap-2">
+            ${card('original', 'Original', 'The school, as on the sign-in screen', orig)}
+            ${card('month', 'This month', `${month} · a new picture every month`, artMonthSrc())}
+            ${card('custom', 'Your own', has ? 'Kept on this device' : can ? 'Upload a photo of your school' : 'Upload a photo · Pro', bgCustomUrl, crown)}
+          </div>
+          <input type="file" id="bgFile" accept="image/*" class="hidden" onchange="bgPick(this)">
+        </div>
+        ${proBox}${mine}
+        <div>
+          <div class="flex items-center justify-between gap-2 px-1 mb-1.5">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Show it on · ${n === pages.length ? 'every page' : `${n} of ${pages.length}`}</p>
+            <span class="flex gap-3 text-xs font-bold text-brand-700"><button type="button" onclick="artSetAll(true)" data-art-all>All</button><button type="button" onclick="artSetAll(false)" data-art-none>None</button></span>
+          </div>
+          <div role="group" aria-label="Background picture on" class="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100" data-art-pages>${pages.map(opt).join('')}</div>
+        </div>
+        <p class="text-[11px] text-slate-500 px-1">Saved on this device. The printed calendar has its own picture (Print on the School calendar).</p>`;
+      if (body.dataset.html !== html) { body.innerHTML = html; body.dataset.html = html; }   // unchanged: keep the buttons (and focus)
+    }
+    // More → Appearance (and a teacher's or head's Appearance button): one row that opens the window
+    function renderArtSwitches() {
+      const pic = artPic(), pages = artPageList(), on = artPages();
+      const n = pages.filter(p => on.includes(p[0])).length;
+      const name = pic === 'month' ? 'This month' : pic === 'custom' ? 'Your own' : 'Original';
+      const src = pic === 'month' ? artMonthSrc() : pic === 'custom' && bgCustomUrl ? bgCustomUrl : 'assets/brand/login-landscape.webp';
+      const where = !n ? 'Off' : n === pages.length ? 'Every page' : n === 1 && on.includes(pages[0][0]) ? `${pages[0][2]} only` : `${n} of ${pages.length} pages`;
       document.querySelectorAll('[data-art-switch]').forEach(el => {
-        el.innerHTML = el.id === 'rqArt'
-          ? `<div class="grid p-1 rounded-xl bg-slate-100">${opt('REQUESTER', 'ph-image', 'Background picture')}</div>`
-          : `<div role="group" aria-label="Background picture on" class="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100">${ART_PAGES.map(p => opt(...p)).join('')}</div>`;
+        el.innerHTML = `<button type="button" onclick="openBgModal()" data-bg-open class="w-full text-left flex items-center gap-3 p-1.5 pr-2.5 rounded-xl bg-slate-100 hover:bg-slate-200/70 transition">
+          <span class="w-14 h-10 shrink-0 rounded-lg overflow-hidden bg-slate-200"><img src="${src}" alt="" class="w-full h-full object-cover"></span>
+          <span class="min-w-0 flex-1"><span class="block text-xs font-extrabold text-slate-900">Background picture</span><span class="block text-[11px] text-slate-500 truncate" data-bg-sum>${name} · ${where}</span></span>
+          <i class="ph-bold ph-caret-right text-slate-400"></i></button>`;
       });
     }
 

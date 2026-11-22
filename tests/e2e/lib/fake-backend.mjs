@@ -106,8 +106,8 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
     }
     if (p[0] === 'appConfig' && p.length === 2 && p[1] === 'features') {
       const after = kind === 'create' || !before ? data : { ...before, ...data };
-      const ok = isAdmin(ctx) && Object.keys(after).every(k => ['leave', 'plan', 'log', 'contact', 'updatedAt'].includes(k)) &&
-        ['leave', 'plan'].every(k => STAGES.includes((after[k] || {}).stage || 'testing')) && Array.isArray(after.log ?? []) && (after.log ?? []).length <= 100 && str(after.contact ?? '', 200);
+      const ok = isAdmin(ctx) && Object.keys(after).every(k => ['leave', 'plan', 'bg', 'log', 'contact', 'updatedAt'].includes(k)) &&
+        ['leave', 'plan', 'bg'].every(k => STAGES.includes((after[k] || {}).stage || 'testing')) && Array.isArray(after.log ?? []) && (after.log ?? []).length <= 100 && str(after.contact ?? '', 200);
       if (!ok) deny('features write', { path, data });
       return;
     }
