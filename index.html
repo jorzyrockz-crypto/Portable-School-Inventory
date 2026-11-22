@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="d54ee8b90531">
+  <meta name="app-version" content="2034c7427422">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -271,11 +271,11 @@
       html:not(.no-tabs) #viewRequests .req-grid > *, html:not(.no-tabs) #bkList > *, html:not(.no-tabs) #viewBooks .lap-grid > *,
       html:not(.no-tabs) #bkPane .space-y-2:has(> [data-bk-place]) > *, html:not(.no-tabs) #viewLeave .lv-grid > * { margin-top: 0 !important; }
       html:not(.no-tabs) #bkList > :not([data-bk-title]) { grid-column: 1 / -1; }
-      /* Calendar: the agenda's days side by side; the month beside the chosen day */
-      html:not(.no-tabs) #calBody:has(> [data-cal-group]) {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr)); gap: 1rem 0.875rem; align-items: start; }
+      /* Calendar: the agenda reads down a column, then continues at the top of the next; the month beside the chosen day */
+      html:not(.no-tabs) #calBody:has(> [data-cal-group]) { display: block; columns: 22rem; column-gap: 0.875rem; }
       html:not(.no-tabs) #calBody:has(> [data-cal-group]) > * { margin-top: 0 !important; }
-      html:not(.no-tabs) #calBody:has(> [data-cal-group]) > :not([data-cal-group]) { grid-column: 1 / -1; }
+      html:not(.no-tabs) #calBody:has(> [data-cal-group]) > [data-cal-group] { break-inside: avoid; margin-bottom: 1rem; }
+      html:not(.no-tabs) #calBody:has(> [data-cal-group]) > :not([data-cal-group]) { column-span: all; margin-bottom: 1rem; }
       html:not(.no-tabs) #calBody:has(> [data-cal-month]) {
         display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 1fr); gap: 1rem; align-items: start; }
       html:not(.no-tabs) #calBody:has(> [data-cal-month]) > * { margin-top: 0 !important; }
@@ -33646,6 +33646,9 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-agenda-columns', date: 'Nov 2026', title: 'Fixes: the calendar agenda reads like a list again', points: [
+        'On a computer, the agenda fills the first column from top to bottom, then goes on at the top of the next column — no more hopping across rows, and no gaps where a taller day used to stretch its row.'
+      ] },
       { id: '2026-11-desktop-bars', date: 'Nov 2026', title: 'Fixes: tidier bars on the Calendar, Leave and Books pages', points: [
         'On a computer, the tab strips (Calendar / Plan, Agenda / Month, the Leave and Books tabs), the school-year arrows and the buttons no longer stretch from edge to edge; they are sized to what is in them.'
       ] },
