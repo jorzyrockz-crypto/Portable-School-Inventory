@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="9ca131f7c9da">
+  <meta name="app-version" content="86966a9704d1">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -261,7 +261,24 @@
       #viewItems, #viewCatalog { max-width: 76rem; }
       /* Admin panel: the schools on the left, the school picked on the right; feature switches side by side */
       html:not(.no-tabs) #viewAdmin { max-width: 76rem; }
-      html:not(.no-tabs) #viewCalendar.cal-plan { max-width: 72rem; }
+      /* Supply requests, Books & Library, Calendar, Leave and Reports: the same page width as Inventory and the
+         Admin panel, with their lists in columns (Nov 2026) */
+      html:not(.no-tabs) #viewRequests, html:not(.no-tabs) #viewBooks, html:not(.no-tabs) #viewCalendar,
+      html:not(.no-tabs) #viewLeave, html:not(.no-tabs) #viewDashboard { max-width: 76rem; }
+      html:not(.no-tabs) #viewRequests .req-grid, html:not(.no-tabs) #bkList, html:not(.no-tabs) #viewBooks .lap-grid,
+      html:not(.no-tabs) #bkPane .space-y-2:has(> [data-bk-place]), html:not(.no-tabs) #viewLeave .lv-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr)); gap: 0.75rem; align-items: start; }
+      html:not(.no-tabs) #viewRequests .req-grid > *, html:not(.no-tabs) #bkList > *, html:not(.no-tabs) #viewBooks .lap-grid > *,
+      html:not(.no-tabs) #bkPane .space-y-2:has(> [data-bk-place]) > *, html:not(.no-tabs) #viewLeave .lv-grid > * { margin-top: 0 !important; }
+      html:not(.no-tabs) #bkList > :not([data-bk-title]) { grid-column: 1 / -1; }
+      /* Calendar: the agenda's days side by side; the month beside the chosen day */
+      html:not(.no-tabs) #calBody:has(> [data-cal-group]) {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr)); gap: 1rem 0.875rem; align-items: start; }
+      html:not(.no-tabs) #calBody:has(> [data-cal-group]) > * { margin-top: 0 !important; }
+      html:not(.no-tabs) #calBody:has(> [data-cal-group]) > :not([data-cal-group]) { grid-column: 1 / -1; }
+      html:not(.no-tabs) #calBody:has(> [data-cal-month]) {
+        display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 1fr); gap: 1rem; align-items: start; }
+      html:not(.no-tabs) #calBody:has(> [data-cal-month]) > * { margin-top: 0 !important; }
       html:not(.no-tabs) #viewCalendar .ppa-tree { display: grid; grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr)); gap: 0.75rem; align-items: start; }
       html:not(.no-tabs) #viewCalendar .ppa-tree > * { margin-top: 0 !important; }
       html:not(.no-tabs) #viewCalendar .ppa-tree > h2 { grid-column: 1 / -1; }
@@ -694,11 +711,15 @@
       /* This month's art or your own picture: a wide strip across the top (2.36 : 1), a lighter fade so the scene shows */
       html body.page-art.art-wide {
         background-image: linear-gradient(to bottom, rgb(var(--page) / 0.1) 0, rgb(var(--page) / 0.45) 10rem, rgb(var(--page)) max(18.5rem, 41.5vw)), var(--art-img);
-        background-size: 100% max(100%, 40rem), auto max(19rem, 42.5vw); background-position: 0 0, center top;
+        /* the fade is at least as tall as the picture (42.5vw on wide screens), so a short page shows no hard edge */
+        background-size: 100% max(100%, 40rem, 46vw), auto max(19rem, 42.5vw); background-position: 0 0, center top;
       }
       html.dark body.page-art.art-wide {
         background-image: linear-gradient(to bottom, rgb(var(--page) / 0.55) 0, rgb(var(--page) / 0.75) 10rem, rgb(var(--page)) max(18.5rem, 41.5vw)), var(--art-img);
       }
+      /* Forms as a page (computers): see-through, with the page it opened over set aside, so the picture shows */
+      html:not(.no-tabs) body.page-art.coa-on #coaModal.coa-page { background: transparent; }
+      html:not(.no-tabs) body.page-art.coa-on > [id^="view"] { display: none !important; }
       /* the header turns to frosted glass so the art shows through */
       body.page-art > header.safe-top { background-color: rgb(255 255 255 / 0.62); }
       html.dark body.page-art > header.safe-top { background-color: rgb(18 26 43 / 0.62); }
@@ -1379,7 +1400,7 @@
   <section id="viewRequests" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
     <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
       <div class="min-w-0">
-        <button onclick="switchMainView('HOME')" class="min-h-10 -ml-1 px-1 -mt-2 text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-caret-left"></i> Home</button>
+        <button onclick="switchMainView('HOME')" class="lap-hide min-h-10 -ml-1 px-1 -mt-2 text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"><i class="ph-bold ph-caret-left"></i> Home</button>
         <h1 class="text-xl font-extrabold text-slate-900 whitespace-nowrap">Supply requests</h1>
         <p id="reqViewSchool" class="text-xs text-slate-500 truncate"></p>
       </div>
@@ -12632,8 +12653,9 @@
         ${reqFlowHTML(counts)}
         <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1 pt-1">${REQ_STAGES.find(st => st.key === reqTab).title}</h2>`;
 
+      const grid = cards => `<div class="req-grid space-y-3">${cards}</div>`;   // in columns on a computer
       if (reqTab === 'pending') {
-        html += pending.length ? pending.map(r => reqCardHTML(r)).join('')
+        html += pending.length ? grid(pending.map(r => reqCardHTML(r)).join(''))
           : reqEmptyHTML('ph-tray', 'No requests waiting', 'New requests from teachers appear here. Tap Invite to send them the link.');
       } else if (reqTab === 'approved') {
         const buy = approved.filter(r => reqBuyLines(r).length);
@@ -12642,7 +12664,7 @@
         const total = picked.reduce((n, r) => n + reqBuyTotal(r), 0);
         html += buy.length ? `
           <p class="text-xs text-slate-500 px-1">Tick the requests to put on one Purchase Request. Items are added together.</p>
-          ${buy.map(r => reqCardHTML(r, { pick: true })).join('')}
+          ${grid(buy.map(r => reqCardHTML(r, { pick: true })).join(''))}
           <div class="sticky bottom-20 z-10" data-toast-avoid>
             <button id="prPrepareBtn" onclick="openPrFromPicked()" ${picked.length ? '' : 'disabled'} class="w-full h-14 rounded-2xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white font-extrabold text-sm shadow-lg flex items-center justify-center gap-2">
               <i class="ph-bold ph-file-plus text-lg"></i> Prepare Purchase Request · ${plural(picked.length, 'request')} · ₱${peso2(total)}
@@ -12650,16 +12672,16 @@
           </div>` : '';
         html += stockOnly.length ? `
           <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1 pt-2">All in stock · nothing to buy</p>
-          ${stockOnly.map(r => reqCardHTML(r, { supply: true })).join('')}` : '';
+          ${grid(stockOnly.map(r => reqCardHTML(r, { supply: true })).join(''))}` : '';
         if (!approved.length) html += reqEmptyHTML('ph-shopping-cart', 'Nothing to purchase', 'Approved requests wait here until you put them on a Purchase Request.');
       } else if (reqTab === 'prs') {
         html += prHeadBannerHTML();
-        html += prList.length ? prList.map(prCardHTML).join('')
+        html += prList.length ? grid(prList.map(prCardHTML).join(''))
           : reqEmptyHTML('ph-file-text', 'No Purchase Requests yet', 'Approve requests, then prepare a PR from the To purchase tab.');
       } else {
-        html += closed.length ? closed.map(r => reqCardHTML(r, { supply: r.status === 'closed' })).join('') : reqEmptyHTML('ph-archive', 'Nothing here yet', 'Requests on a PR, supplied, declined or cancelled.');
+        html += closed.length ? grid(closed.map(r => reqCardHTML(r, { supply: r.status === 'closed' })).join('')) : reqEmptyHTML('ph-archive', 'Nothing here yet', 'Requests on a PR, supplied, declined or cancelled.');
       }
-      html += `<button onclick="custodianSignOut()" class="min-h-10 text-xs font-bold text-slate-500 hover:text-slate-700 flex items-center gap-1 px-1 mt-1"><i class="ph-bold ph-sign-out"></i> Sign out</button>`;
+      html += `<button onclick="custodianSignOut()" class="lap-hide min-h-10 text-xs font-bold text-slate-500 hover:text-slate-700 flex items-center gap-1 px-1 mt-1"><i class="ph-bold ph-sign-out"></i> Sign out</button>`;
       body.innerHTML = html;
       placeToast();
     }
@@ -30064,7 +30086,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       const req = loans.filter(l => l.status === 'requested');
       const out = loans.filter(bkLoanOut).sort((a, b) => String(a.dueISO || '').localeCompare(String(b.dueISO || '')));
       const done = loans.filter(l => ['returned', 'lost', 'declined'].includes(l.status)).slice(0, 15);
-      const sec = (title, list, empty, attr) => `<div ${attr}><h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 px-1">${title}</h4>${list.length ? `<div class="space-y-2">${list.map(l => bkLoanCardHTML(l)).join('')}</div>` : `<p class="rounded-2xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-500">${empty}</p>`}</div>`;
+      const sec = (title, list, empty, attr) => `<div ${attr}><h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 px-1">${title}</h4>${list.length ? `<div class="space-y-2 lap-grid">${list.map(l => bkLoanCardHTML(l)).join('')}</div>` : `<p class="rounded-2xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-500">${empty}</p>`}</div>`;
       pane.innerHTML = `
         ${bkCanManage() ? `<div class="flex flex-wrap gap-2">${bkBtn('Lend a book', 'ph-hand-heart', 'openBkLend()', 'brand', 'id="bkLendBtn2"')}${bkBtn('Loan ledger', 'ph-printer', "bkPrintLoans('all')")}${out.some(bkOverdue) ? bkBtn('Overdue list', 'ph-printer', "bkPrintLoans('overdue')") : ''}</div>` : ''}
         ${sec(`Asking to borrow · ${req.length}`, req, 'No requests waiting.', 'data-bk-req')}
@@ -31087,7 +31109,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         </div>
         ${notYet.length ? `<p class="rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold px-3 py-2">${plural(notYet.length, 'Book Issuance List')} not yet received: ${escapeHTML(notYet.slice(0, 4).map(m => m.teacher).join(', '))}</p>` : ''}
         ${list.length ? `<div class="grid grid-cols-5 gap-1.5 text-center">${[['With learners', tot.n], ['Returned', tot.r], ['Damaged', tot.d], ['Lost', tot.l + tot.p], ['Paid ₱', peso2(tot.amt)]].map(([l, v]) => `<div class="rounded-xl bg-white border border-slate-200 py-2"><p class="text-sm font-extrabold font-mono text-slate-900">${v}</p><p class="text-[10px] font-bold uppercase text-slate-500 leading-tight">${l}</p></div>`).join('')}</div>` : ''}
-        <div class="space-y-2">${list.map(c => { const t = bkClassTotals(c); const pending = (c.titles || []).reduce((n, x) => n + Math.max(0, (x.l || 0) + (x.p || 0) - ((c.ap || {})[x.b] || 0)), 0); return `
+        <div class="space-y-2 lap-grid">${list.map(c => { const t = bkClassTotals(c); const pending = (c.titles || []).reduce((n, x) => n + Math.max(0, (x.l || 0) + (x.p || 0) - ((c.ap || {})[x.b] || 0)), 0); return `
           <button type="button" onclick="openBkClass('${escapeHTML(c.id)}')" data-bk-class="${escapeHTML(c.id)}" class="w-full text-left rounded-2xl bg-white border border-slate-200 hover:border-sky-300 shadow-sm p-3 flex items-center gap-3">
             <span class="w-10 h-10 shrink-0 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center"><i class="ph-bold ph-student text-xl"></i></span>
             <span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHTML(c.section || 'Class')}</span><span class="block text-[11px] text-slate-500 truncate">${escapeHTML(c.name || '')} · ${t.n} with learners · ${t.r} returned${t.l + t.p ? ` · <b class="text-rose-600">${t.l + t.p} lost</b>` : ''}${(c.learners || []).length ? ` · ${c.learners.length} names` : ''}</span>
@@ -31536,6 +31558,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       placeToast();
       renderCoa();
       paintTabs();
+      syncPageArt();
     }
     function closeCoa() {
       const modal = document.getElementById('coaModal');
@@ -31543,7 +31566,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       modal.classList.add('hidden');
       modal.classList.remove('coa-page');
       placeToast();
-      if (wasPage) paintTabs();
+      if (wasPage) { paintTabs(); syncPageArt(); }
     }
     // Computers (mouse, 1024px+) and tablets held sideways show the tabs as a sidebar; there the
     // forms are a page, not a pop-up. Same query as the sidebar CSS.
@@ -31563,6 +31586,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       modal.classList.toggle('coa-page', sidebarLayout());
       paintTabs();
       placeToast();
+      syncPageArt();
     });
     function coaGo(page) { if (document.querySelector('#coaBody [data-coa]')) coaRead(); coaPage = page; renderCoa(); document.getElementById('coaBody').scrollTop = 0; }
     function coaSetOpt(key, value) { coaRead(); coaOpts[key] = value; coaSave(); renderCoa(); }
@@ -33612,6 +33636,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-desktop-pages', date: 'Nov 2026', title: 'Every page fills the computer screen now', points: [
+        'Supply requests, Books & Library, Calendar, Leave and Reports now use the whole screen on a computer, like Inventory and the Admin panel, with their cards and lists side by side in columns.',
+        'The calendar agenda shows the days side by side, and the month sits beside the day you picked.',
+        'The Forms page shows the background picture too, and the picture no longer ends in a hard line partway down short pages.'
+      ] },
       { id: '2026-11-calendar-print-v2', date: 'Nov 2026', title: 'A nicer printed calendar, with a list of dates and Notes', points: [
         'Print the calendar now has 5 styles: Agenda (the new look), Write-in, Poster, Ink saver and Classic. Rounded day boxes, big friendly numbers and softer colours, so it looks like a calendar, not a document.',
         'The list of dates: every activity of the month in order, with its date, time, venue and people, beside the calendar or below it. It follows What to show and Mine only.',
@@ -34656,7 +34685,8 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     var ART_PIC_KEY = 'custodian_page_art_pic_v1'; // 'original' | 'month' | 'custom'
     var ART_PAGES = [['HOME', 'ph-house', 'Home'], ['ITEMS', 'ph-package', 'Inventory'], ['CATALOG', 'ph-books', 'Catalog'], ['REPORTS', 'ph-chart-pie-slice', 'Reports'],
       ['REQUESTS', 'ph-tray', 'Supply requests'], ['TEACHERS', 'ph-chalkboard-teacher', 'Teachers'], ['BOOKS', 'ph-book-open-text', 'Books & Library'],
-      ['CALENDAR', 'ph-calendar-dots', 'Calendar', 'plan'], ['LEAVE', 'ph-calendar-check', 'Leave', 'leave'], ['ADMIN', 'ph-sliders-horizontal', 'Admin panel', 'admin']];
+      ['CALENDAR', 'ph-calendar-dots', 'Calendar', 'plan'], ['LEAVE', 'ph-calendar-check', 'Leave', 'leave'], ['FORMS', 'ph-files', 'Forms', 'side'],
+      ['ADMIN', 'ph-sliders-horizontal', 'Admin panel', 'admin']];
     var ART_T = [['T:today', 'ph-house', 'Today'], ['T:items', 'ph-backpack', 'My Items'], ['T:requests', 'ph-paper-plane-tilt', 'Requests'], ['T:calendar', 'ph-calendar-dots', 'Calendar', 'plan'],
       ['T:stock', 'ph-package', 'School stock'], ['T:library', 'ph-books', 'Library'], ['T:leave', 'ph-calendar-check', 'Leave', 'leave'], ['T:more', 'ph-dots-three-circle', 'More']];
     var ART_H = [['H:today', 'ph-house', 'Today'], ['H:approve', 'ph-seal-check', 'Approve'], ['H:school', 'ph-buildings', 'School'], ['H:plan', 'ph-calendar-dots', 'Calendar', 'plan'],
@@ -34679,10 +34709,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     function artPageList() {
       let list = ART_PAGES;
       try { if (isTeacherDevice()) list = ART_T; else if (isHeadDevice()) list = ART_H; } catch (e) {}
-      return list.filter(p => !p[3] || (p[3] === 'plan' ? planOn() : p[3] === 'leave' ? leaveOn() : (() => { try { return isAdminDevice(); } catch (e) { return false; } })()));
+      // 'side': a page only beside the sidebar (Forms is a pop-up on phones)
+      return list.filter(p => !p[3] || (p[3] === 'plan' ? planOn() : p[3] === 'leave' ? leaveOn() : p[3] === 'side' ? (() => { try { return sidebarLayout(); } catch (e) { return false; } })() : (() => { try { return isAdminDevice(); } catch (e) { return false; } })()));
     }
     // The page on screen now
     function artCurKey() {
+      if (coaIsPage()) return 'FORMS';
       if (activeMainView === 'REQUESTER' || (activeMainView === 'BOOKS' && isTeacherDevice())) return 'T:' + (activeMainView === 'BOOKS' ? 'library' : (teacherTab || 'today'));
       if (activeMainView === 'HEAD') return 'H:' + (headTab || 'today');
       return activeMainView;
@@ -34730,6 +34762,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       b.classList.toggle('page-art', on);
       b.classList.toggle('art-wide', on && pic !== 'original');
       b.dataset.art = on ? pic : '';
+      b.classList.toggle('coa-on', coaIsPage());   // Forms as a page: the page under it steps aside so the picture shows
       if (on && pic !== 'original') b.style.setProperty('--art-img', `url("${pic === 'custom' ? bgCustomUrl : artMonthSrc()}")`);
       else b.style.removeProperty('--art-img');
     }
