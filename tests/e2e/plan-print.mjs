@@ -107,6 +107,13 @@ try {
   await a.bringToFront();
   execFileSync('convert', ['-size', '1200x500', 'gradient:#7dd3fc-#fde68a', '/tmp/cpr-photo.png']);
   execFileSync('convert', ['-size', '300x300', 'xc:none', '-fill', '#1d4ed8', '-draw', 'circle 150,150 150,20', '/tmp/cpr-logo.png']);
+  // the school's photo is Pro: a Free school sees the crown and what Pro adds
+  check(await ev(a, () => !!document.querySelector('[data-cpr-theme="photo"] [data-cpr-pro]')), 'Free school: School photo shows Pro');
+  await ev(a, () => document.querySelector('[data-cpr-theme="photo"]').click());
+  check(await ev(a, () => cpr.theme !== 'photo' && /part of Pro/.test(document.getElementById('appToast').textContent)), 'tapping it tells about Pro, the art stays');
+  await ev(a, () => proStartTrial());
+  await until(a, () => schoolPro().live && bgCanUpload(), 'Pro trial', 8000);
+  await ev(a, () => cprRedraw());
   await ev(a, () => cprSet('theme', 'photo'));
   await until(a, () => !!document.getElementById('cprPhotoIn'), 'photo picker');
   await sleep(400);

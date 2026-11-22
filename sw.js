@@ -20,7 +20,7 @@
  *   downloaded right away and a phone notification says it is ready.
  * Inventory data itself lives in localStorage and never touches this cache.
  */
-const CACHE = 'custodianpro-c306ea27994e';
+const CACHE = 'custodianpro-b2877b6a3c81';
 const PRECACHE_URLS = [
     "./",
     "./index.html",

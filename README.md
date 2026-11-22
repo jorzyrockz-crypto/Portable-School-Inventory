@@ -67,19 +67,21 @@ Printed forms always use the light look. In dark mode the sign-in screen and the
 
 ### Background picture
 
-The faded school picture behind the top of the page shows on **Home** by default. Under
-**More → Appearance → Background picture on**, each tab has a tick box: **Home**, **Inventory**,
-**Catalog** and **Reports**. Teachers get one *Background picture* switch for their screen.
+**More → Appearance → Background picture** opens a window (teachers and the School Head: the **Appearance** button at the top, then *Background picture*). The row in the menu shows what is picked, e.g. *Original · Home only*.
 
-- The choice is saved on the device, like light / dark (`custodian_page_art_v1` in local storage, a list of tabs; missing means the default). It is kept after a restart and follows other open tabs.
-- The header turns to frosted glass wherever the picture is on.
-- On phones, Inventory and Catalog normally run edge to edge under the top bar. With the picture on, their card floats with a 16 px gap and rounded corners, as on wider screens, so the picture shows around it.
-- `tests/e2e/login-theme.mjs` (section 5b) checks:
-  - the default;
-  - ticking and unticking;
-  - the floating card on a phone;
-  - that the choice is kept after a restart;
-  - the teacher's switch.
+- **Picture:**
+  - **Original**: the faded school picture from the sign-in screen (a night version in dark mode).
+  - **This month**: the clay art of the current month, the same as on the printed calendar (`assets/cal-art/m01–m12.webp`). It changes by itself every month.
+  - **Your own** (**Pro**): upload a photo. It is cut to a wide strip (2.36 : 1, the middle of the photo, at most 1600 px, JPEG) and kept on this device in IndexedDB (`appbg:<school>`), so it costs no cloud space. **Change picture** and **Remove** bring the original back. Free schools see a **Pro** crown; tapping it explains Pro (**About Pro** for the custodian, *Ask the property custodian about Pro* for others). When Pro or the trial ends, the picture stays (view only) but can't be changed.
+- **Show it on:** a tick box for every page of this phone, with **All** and **None**:
+  - custodian: Home, Inventory, Catalog, Reports, Supply requests, Teachers, Books & Library, and Calendar, Leave and the Admin panel where they are on;
+  - teacher: Today, My Items, Requests, Calendar, School stock, Library, Leave, More;
+  - School Head: Today, Approve, School, Calendar, More, Inventory, Who holds what, Your decisions, My leave.
+- The default is Home for the custodian, and every page on a teacher's or head's phone. The old single teacher switch carries over.
+- Saved on the device, like light / dark: `custodian_page_art_v1` (the pages) and `custodian_page_art_pic_v1` (`original`, `month` or `custom`). Kept after a restart, and followed by other open tabs.
+- The header turns to frosted glass wherever the picture is on. On phones, Inventory and Catalog normally run edge to edge; with the picture on, their card floats with a 16 px gap and rounded corners so the picture shows around it.
+- **Pro switch:** *Your own background* (`bg`) is listed on More · Pro and in the Admin panel's features; it starts at **Pro** (Testing ES, Pro schools and trials). The printed calendar's **School photo** follows the same switch.
+- `tests/e2e/background.mjs` checks the window, this month's art, every page for the three roles, the Pro crown and notice, uploading in a trial, the restart, Remove and the old switch. `tests/e2e/login-theme.mjs` (section 5b) checks the default, ticking, the floating card and the restart.
 
 Dark colours are generated, not hand-written: `scripts/dark-theme.mjs` reads the Tailwind
 colour classes in `index.html` (`bg-white`, `text-slate-900`, `bg-amber-50`,
@@ -498,7 +500,7 @@ No new rules: `dashboard/summary` is read only by staff, viewers and the head, w
 **Print** on the School calendar (the AO's Calendar page, the School Head's Plan tab and the teachers' Calendar tab) opens a print sheet with a live preview of each sheet (plan: `docs/plans/monthly-calendar-print.md`). Everyone can print.
 
 - **Page:** a header (school logo, name, School ID, division, school year), a clay-style art banner with the month and its term and class-day count, the grid of days (days without classes tinted, small marks for exams, events and activities; a long event shows on its first day and each Monday), *+N more* in a full box with the rest listed under *More this month*, and a footer (legend, motto or note line, printed date).
-- **Art:** this month's art (a picture for each month in `assets/cal-art/`), a general scene, the school's own photo (with a crop handle) or none to save ink; Full, Soft or Light; as a top banner or behind the grid.
+- **Art:** this month's art (a picture for each month in `assets/cal-art/`), a general scene, the school's own photo (**Pro**, with a crop handle) or none to save ink; Full, Soft or Light; as a top banner or behind the grid.
 - **Colour:** Teal, Blue, Green, Red, Violet, Orange or black and white.
 - **Paper:** A4, Folio / Portfolio (8.5 × 13 in, long bond) or A3, landscape or portrait; 1 or 2 months a sheet (2 months: **stacked** or **side by side**). Pick the same paper size in the print box.
 - **Months:** this month, a range, or the whole school year (11 pages, or 6 sheets at 2 a sheet). The week starts on Sunday or Monday.
@@ -1032,6 +1034,7 @@ node notifications.mjs                # bell, phone notifications, shortcuts, in
 node app-updates.mjs                  # update notices (title bar), Restart, What's new (own server)
 node whats-new.mjs                    # this release has its own What's new entry (no browser)
 node login-theme.mjs                  # sign-in screen, teacher code / invite link, sign out, light/dark
+node background.mjs                   # Background picture window: original / this month / your own (Pro), every page of the custodian, teacher and head
 node coa-forms.mjs                    # welcome tour, poster, PAR, ITR/PTR transfers, RRSP, RPCPPE/IIRUP, background update check
 node phone-layout.mjs                 # 390 px phone: no sideways scroll, 32 px+ buttons, bottom sheets, toast placement
 node members-stock.mjs                # approval, edit / remove / add back, new invite link, School stock, "I took this"

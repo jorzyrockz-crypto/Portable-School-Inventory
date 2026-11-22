@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="c306ea27994e">
+  <meta name="app-version" content="b2877b6a3c81">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -686,6 +686,14 @@
       @media (max-width: 639px) {
         body.page-art #viewItems, body.page-art #viewCatalog { padding-top: 1rem; }
         body.page-art #masterLedgerSection, body.page-art #catalogSection { margin-left: 0; margin-right: 0; border-width: 1px; border-radius: 1rem; }
+      }
+      /* This month's art or your own picture: a wide strip across the top (2.36 : 1), a lighter fade so the scene shows */
+      html body.page-art.art-wide {
+        background-image: linear-gradient(to bottom, rgb(var(--page) / 0.1) 0, rgb(var(--page) / 0.45) 10rem, rgb(var(--page)) max(18.5rem, 41.5vw)), var(--art-img);
+        background-size: 100% max(100%, 40rem), auto max(19rem, 42.5vw); background-position: 0 0, center top;
+      }
+      html.dark body.page-art.art-wide {
+        background-image: linear-gradient(to bottom, rgb(var(--page) / 0.55) 0, rgb(var(--page) / 0.75) 10rem, rgb(var(--page)) max(18.5rem, 41.5vw)), var(--art-img);
       }
       /* the header turns to frosted glass so the art shows through */
       body.page-art > header.safe-top { background-color: rgb(255 255 255 / 0.62); }
@@ -1795,8 +1803,7 @@
         <div>
           <p class="px-2 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Appearance</p>
           <div id="moreTheme" data-theme-switch class="px-1"></div>
-          <p class="px-2 pt-3 pb-1.5 text-xs font-semibold text-slate-600">Background picture on</p>
-          <div id="moreArt" data-art-switch class="px-1"></div>
+          <div id="moreArt" data-art-switch class="px-1 pt-2"></div>
         </div>
         <div id="moreAccount" class="hidden"></div>
         <div>
@@ -1844,6 +1851,23 @@
           <div id="rqArt" data-art-switch></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Background picture: which picture (original, this month's, your own · Pro) and on which pages -->
+  <div id="bgModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeBgModal()" onkeydown="if (event.key === 'Escape') closeBgModal()">
+    <div role="dialog" aria-modal="true" aria-labelledby="bgTitle" class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 safe-pad max-h-[94vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="ph-bold ph-image text-xl"></i></span>
+          <div class="min-w-0">
+            <h3 id="bgTitle" class="font-extrabold text-base text-slate-900 leading-tight">Background picture</h3>
+            <p class="text-xs font-semibold text-slate-500">Behind the top of the page</p>
+          </div>
+        </div>
+        <button onclick="closeBgModal()" class="w-8 h-8 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <div id="bgBody" class="space-y-4"></div>
     </div>
   </div>
 
@@ -16235,7 +16259,8 @@
     ];
     const FEATURES = [
       { key: 'leave', label: 'Leave & CS Form 6', sub: 'Applications, leave cards, ₱250 days', icon: 'ph-calendar-check' },
-      { key: 'plan', label: 'School calendar', sub: 'Holidays, events · programs and activities next', icon: 'ph-calendar-dots' }
+      { key: 'plan', label: 'School calendar', sub: 'Holidays, events · programs and activities next', icon: 'ph-calendar-dots' },
+      { key: 'bg', label: 'Your own background', sub: 'Upload a picture for the app and the printed calendar', icon: 'ph-image', def: 'pro' }
     ];
     const featJSON = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
     var featCfg = featJSON(FEAT_KEY);   // appConfig/features (kept on the phone for the next start)
@@ -16248,7 +16273,8 @@
 
     function featStage(name) {
       const st = featCfg && featCfg[name] && featCfg[name].stage;
-      return FEAT_STAGES.some(s => s[0] === st) ? st : 'testing';   // no switch yet: Testing ES only
+      const f = FEATURES.find(x => x.key === name);
+      return FEAT_STAGES.some(s => s[0] === st) ? st : (f && f.def) || 'testing';   // no switch yet: Testing ES only (your own background: Pro)
     }
     function proState(d, now = Date.now()) {
       d = d || {};
@@ -16263,6 +16289,7 @@
       return proState(proDocs && proDocs.sid === sid ? proDocs : {});
     }
     function featPilot(name) {
+      if (name !== 'leave' && name !== 'plan') return false;
       try { return (localStorage.getItem(name === 'leave' ? LEAVE_PILOT_KEY : PLAN_PILOT_KEY) || '').split(',').includes(reqRole.schoolId); }
       catch (e) { return false; }
     }
@@ -16316,7 +16343,7 @@
     // A switch, Pro or the trial changed: features start or stop, and the screens follow.
     function featApply() {
       const ps = schoolPro();
-      const sig = [featState('leave'), featState('plan'), ps.pro, ps.trial, ps.left, ps.ended, reqRole && reqRole.schoolId].join('|');
+      const sig = [featState('leave'), featState('plan'), featState('bg'), ps.pro, ps.trial, ps.left, ps.ended, reqRole && reqRole.schoolId].join('|');
       const changed = sig !== featSig;
       featSig = sig;
       if (changed) {
@@ -16331,6 +16358,7 @@
       }
       proNav();
       renderProStrip();
+      try { syncPageArt(); renderArtSwitches(); renderBgModal(); } catch (e) {}
       if (proIsOpen()) renderProSheet();
       if (adminIsOpen()) renderAdmin();
     }
@@ -16555,7 +16583,7 @@
       if (!isAdminDevice() || !cloud.db) return false;
       const F = cloud.sdk, cur = featCfg || {};
       const body = {};
-      ['leave', 'plan', 'contact', 'log'].forEach(k => { const v = k in patch ? patch[k] : cur[k]; if (v !== undefined && v !== null) body[k] = v; });
+      ['leave', 'plan', 'bg', 'contact', 'log'].forEach(k => { const v = k in patch ? patch[k] : cur[k]; if (v !== undefined && v !== null) body[k] = v; });
       if (logEntry) body.log = [...(cur.log || []), cleanJSON(logEntry)].slice(-100);
       const before = featCfg;
       featCfg = cleanJSON(body);
@@ -18841,7 +18869,7 @@
     const cprMonthName = mo => new Date(mo + '-01T00:00:00').toLocaleDateString('en-PH', { month: 'long' });
     const cprArtFor = (o, mo) => {
       if (o.theme === 'none') return '';
-      if (o.theme === 'photo' && cprPics.photo) return cprPics.photo;
+      if (o.theme === 'photo' && cprPics.photo && bgUsable()) return cprPics.photo;   // your own picture: Pro
       const sc = CPR_SCENES.find(s => 'g:' + s[0] === o.theme);
       if (sc) return sc[2];
       const mm = mo.slice(5, 7);
@@ -19038,7 +19066,8 @@
       const tick = (key, label, sub) => `<label class="flex items-center gap-2.5 py-1.5"><input type="checkbox" ${sub ? `onchange="cprShow('${key}', this.checked)" ${o.show[key] ? 'checked' : ''}` : `onchange="cprSet('${key}', this.checked)" ${o[key] ? 'checked' : ''}`} data-cpr-tick="${key}" class="w-5 h-5 rounded accent-teal-700"><span class="text-sm text-slate-700">${label}</span></label>`;
       const sec = (id, icon, title, inner, open) => `<details class="rounded-2xl border border-slate-200 bg-white" data-cpr-sec="${id}" ${open ? 'open' : ''}><summary class="px-3 py-2.5 text-sm font-extrabold text-slate-800 cursor-pointer flex items-center gap-2"><i class="ph-bold ${icon} text-teal-700"></i> ${title}</summary><div class="px-3 pb-3 space-y-2">${inner}</div></details>`;
       const mo = cprMonths()[0];
-      const thumb = (v, label, src, icon = 'ph-prohibit') => `<button type="button" onclick="cprSet('theme', '${v}')" data-cpr-theme="${v}" aria-pressed="${o.theme === v}" class="text-left rounded-xl overflow-hidden border-2 ${o.theme === v ? 'border-teal-600' : 'border-transparent'} bg-slate-50">
+      const photoPro = !bgCanUpload() && !(bgUsable() && cprPics.photo);   // a Free school: the photo is Pro
+      const thumb = (v, label, src, icon = 'ph-prohibit') => `<button type="button" onclick="${v === 'photo' && photoPro ? 'bgProNotice()' : `cprSet('theme', '${v}')`}" data-cpr-theme="${v}" aria-pressed="${o.theme === v}" class="text-left rounded-xl overflow-hidden border-2 ${o.theme === v ? 'border-teal-600' : 'border-transparent'} bg-slate-50">
           <span class="block h-14 bg-slate-100">${src ? `<img src="${src}" alt="" loading="lazy" class="w-full h-full object-cover">` : `<span class="w-full h-full flex items-center justify-center text-slate-400"><i class="ph-bold ${icon} text-xl"></i></span>`}</span>
           <span class="block px-1.5 py-1 text-[11px] font-bold text-slate-700 leading-tight">${label}</span></button>`;
       const photoOk = !!cprPics.photo;
@@ -19046,12 +19075,12 @@
         <div class="grid grid-cols-3 gap-2">
           ${thumb('auto', 'This month’s art', cprArtFor({ ...o, theme: 'auto' }, mo))}
           ${CPR_SCENES.map(s => thumb('g:' + s[0], s[1], s[2])).join('')}
-          ${thumb('photo', 'School photo', cprPics.photo, 'ph-image')}
+          ${thumb('photo', bgCanUpload() ? 'School photo' : 'School photo <span class="text-amber-600" data-cpr-pro><i class="ph-bold ph-crown"></i> Pro</span>', bgUsable() ? cprPics.photo : '', 'ph-image')}
           ${thumb('none', 'None (saves ink)', '')}
         </div>
-        ${o.theme === 'photo' ? `<div class="rounded-xl bg-slate-50 border border-slate-200 p-2.5 space-y-2" data-cpr-photo-box>
+        ${o.theme === 'photo' && !photoPro ? `<div class="rounded-xl bg-slate-50 border border-slate-200 p-2.5 space-y-2" data-cpr-photo-box>
           <p class="text-xs text-slate-600">${photoOk ? 'Your school’s photo, kept on this device only.' : 'Pick a photo of your school (or a banner). It is kept on this device only.'}</p>
-          <div class="flex gap-2"><label class="flex-1 h-10 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5 cursor-pointer"><i class="ph-bold ph-image"></i> ${photoOk ? 'Change photo' : 'Pick a photo'}<input type="file" accept="image/*" id="cprPhotoIn" class="hidden" onchange="cprPickPic('photo', this)"></label>
+          <div class="flex gap-2">${bgCanUpload() ? `<label class="flex-1 h-10 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5 cursor-pointer"><i class="ph-bold ph-image"></i> ${photoOk ? 'Change photo' : 'Pick a photo'}<input type="file" accept="image/*" id="cprPhotoIn" class="hidden" onchange="cprPickPic('photo', this)"></label>` : '<span class="flex-1 text-[11px] text-amber-800 self-center" data-cpr-photo-ended><i class="ph-bold ph-lock-simple"></i> View only · Pro ended</span>'}
             ${photoOk ? `<button type="button" onclick="cprDropPic('photo')" class="h-10 px-3 rounded-xl bg-white border border-slate-200 text-sm font-bold text-rose-700">Remove</button>` : ''}</div>
           ${photoOk ? `<label class="block"><span class="block text-[11px] font-bold uppercase text-slate-500">Which part shows: top to bottom</span><input type="range" min="0" max="100" value="${o.photoY}" oninput="cprSet('photoY', Number(this.value), true)" id="cprPhotoY" class="w-full accent-teal-700"></label>` : ''}
         </div>` : ''}
@@ -19209,6 +19238,7 @@
     async function cprPickPic(kind, input) {
       const file = input && input.files && input.files[0];
       if (!file) return;
+      if (kind === 'photo' && !bgCanUpload()) { input.value = ''; bgProNotice(); return; }
       try {
         const blob = await cprShrink(file, kind === 'logo' ? 400 : 1600, kind === 'logo' ? 'image/png' : 'image/jpeg');
         await cprIdb('readwrite', st => st.put(blob, cprPicKey(kind)));
@@ -23694,6 +23724,7 @@
       if (t === 'plan') { calSync(); renderHeadCalendar(); }
       document.querySelectorAll('#hdBody [data-hd-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.hdPane !== t));
       renderHeadTabs(!!document.querySelector('#hdBody [data-hd-pane]'));
+      syncPageArt();
       window.scrollTo({ top: 0 });
     }
     // ---- School Head, Nov 2026: Today and More (the same look as the custodian's Home) ----------
@@ -25915,6 +25946,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       document.getElementById('rqItemsDot').classList.toggle('hidden', !toAck.length);
       document.getElementById('rqItemsPane').classList.toggle('hidden', tab !== 'items');
       document.getElementById('rqTodayPane').classList.toggle('hidden', tab !== 'today');
+      syncPageArt();
       document.getElementById('rqMorePane').classList.toggle('hidden', tab !== 'more');
       document.getElementById('rqRequestsPane').classList.toggle('hidden', tab !== 'requests');
       document.getElementById('rqStockPane').classList.toggle('hidden', tab !== 'stock');
@@ -33253,6 +33285,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-background-pick', date: 'Nov 2026', title: 'Pick your background picture', points: [
+        'More → Appearance → Background picture opens a window (teachers and the School Head: the Appearance button at the top).',
+        'Choose the original picture or this month’s picture (a new one every month, the same art as the printed calendar).',
+        'Show it on any page: every page of the custodian, the teacher and the School Head can have it, with All and None.',
+        'Pro: upload your own picture for the app’s background and for the printed calendar.'
+      ] },
       { id: '2026-11-teacher-today', date: 'Nov 2026', title: 'Teachers get the same look as the custodian', points: [
         'A new Today page opens first: Needs your attention, Supply requests (with + Request and your latest 3), This week on the school calendar, My Items, Library and Leave.',
         'Tabs at the bottom of the phone: Today, My Items, Requests, Calendar and More. School stock, Library, Leave (and the Library desk for the librarian) are under More.',
@@ -33978,7 +34016,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
       }
       window.addEventListener('storage', e => { // another tab
         if (e.key === THEME_KEY) applyTheme();
-        if (e.key === ART_KEY) { syncPageArt(); renderArtSwitches(); }
+        if (e.key === ART_KEY || e.key === ART_PIC_KEY) artChanged();
       });
     }
 
@@ -34275,43 +34313,244 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
 
     // ---- Faded school art behind the top of the page ----------------------------------
-    // More → Appearance → "Background picture on": each tab can be switched on or off (saved on
-    // this device, like light / dark). Default: Home only, plus the teacher's screen.
-    var ART_KEY = 'custodian_page_art_v1'; // JSON list of views · missing = default
-    var ART_DEFAULT = ['HOME', 'REQUESTER'];
-    var ART_PAGES = [['HOME', 'ph-house', 'Home'], ['ITEMS', 'ph-package', 'Inventory'], ['CATALOG', 'ph-books', 'Catalog'], ['REPORTS', 'ph-chart-pie-slice', 'Reports']];
+    // More → Appearance → Background picture (a window; teachers and the School Head: the
+    // Appearance button). Saved on this device, like light / dark:
+    //  · which picture: the original (the sign-in art), this month's art (the printed calendar's,
+    //    a new one each month) or your own (Pro: uploaded, kept on this device in IndexedDB);
+    //  · which pages show it: every page of the custodian, the teacher and the School Head.
+    // Default: Home, and every page of a teacher's or head's phone.
+    var ART_KEY = 'custodian_page_art_v1';       // JSON list of pages · missing = default
+    var ART_PIC_KEY = 'custodian_page_art_pic_v1'; // 'original' | 'month' | 'custom'
+    var ART_PAGES = [['HOME', 'ph-house', 'Home'], ['ITEMS', 'ph-package', 'Inventory'], ['CATALOG', 'ph-books', 'Catalog'], ['REPORTS', 'ph-chart-pie-slice', 'Reports'],
+      ['REQUESTS', 'ph-tray', 'Supply requests'], ['TEACHERS', 'ph-chalkboard-teacher', 'Teachers'], ['BOOKS', 'ph-book-open-text', 'Books & Library'],
+      ['CALENDAR', 'ph-calendar-dots', 'Calendar', 'plan'], ['LEAVE', 'ph-calendar-check', 'Leave', 'leave'], ['ADMIN', 'ph-sliders-horizontal', 'Admin panel', 'admin']];
+    var ART_T = [['T:today', 'ph-house', 'Today'], ['T:items', 'ph-backpack', 'My Items'], ['T:requests', 'ph-paper-plane-tilt', 'Requests'], ['T:calendar', 'ph-calendar-dots', 'Calendar', 'plan'],
+      ['T:stock', 'ph-package', 'School stock'], ['T:library', 'ph-books', 'Library'], ['T:leave', 'ph-calendar-check', 'Leave', 'leave'], ['T:more', 'ph-dots-three-circle', 'More']];
+    var ART_H = [['H:today', 'ph-house', 'Today'], ['H:approve', 'ph-seal-check', 'Approve'], ['H:school', 'ph-buildings', 'School'], ['H:plan', 'ph-calendar-dots', 'Calendar', 'plan'],
+      ['H:more', 'ph-dots-three-circle', 'More'], ['H:items', 'ph-package', 'Inventory'], ['H:people', 'ph-users-three', 'Who holds what'], ['H:history', 'ph-clock-counter-clockwise', 'Your decisions'], ['H:leave', 'ph-calendar-check', 'My leave', 'leave']];
+    var ART_DEFAULT = ['HOME'].concat(ART_T.map(p => p[0]), ART_H.map(p => p[0]));
+    var bgCustomUrl = '', bgCustomFor = '', bgLoading = false, bgView = { pro: false };
     function artPages() {
       try {
         const v = JSON.parse(localStorage.getItem(ART_KEY));
-        if (Array.isArray(v)) return v.filter(k => k === 'REQUESTER' || ART_PAGES.some(p => p[0] === k));
+        if (Array.isArray(v)) {
+          // before Nov 2026 a teacher's and head's screen had one switch: 'REQUESTER'
+          const list = v.includes('REQUESTER') ? v.concat(ART_T.map(p => p[0]), ART_H.map(p => p[0])) : v;
+          const ok = new Set(ART_PAGES.concat(ART_T, ART_H).map(p => p[0]));
+          return [...new Set(list.filter(k => ok.has(k)))];
+        }
       } catch (e) {}
       return ART_DEFAULT.slice();
     }
+    // The pages of this phone (custodian, teacher or School Head), with the switched-off features left out
+    function artPageList() {
+      let list = ART_PAGES;
+      try { if (isTeacherDevice()) list = ART_T; else if (isHeadDevice()) list = ART_H; } catch (e) {}
+      return list.filter(p => !p[3] || (p[3] === 'plan' ? planOn() : p[3] === 'leave' ? leaveOn() : (() => { try { return isAdminDevice(); } catch (e) { return false; } })()));
+    }
+    // The page on screen now
+    function artCurKey() {
+      if (activeMainView === 'REQUESTER' || (activeMainView === 'BOOKS' && isTeacherDevice())) return 'T:' + (activeMainView === 'BOOKS' ? 'library' : (teacherTab || 'today'));
+      if (activeMainView === 'HEAD') return 'H:' + (headTab || 'today');
+      return activeMainView;
+    }
+    function artPic() { const v = localStorage.getItem(ART_PIC_KEY); return v === 'month' || v === 'custom' ? v : 'original'; }
+    function artMonthSrc() { return `assets/cal-art/m${String(new Date().getMonth() + 1).padStart(2, '0')}.webp`; }
+    // Your own picture (app and printed calendar): Pro. 'on' = may upload; 'ended' = what was saved stays
+    function bgState() { try { return featState('bg'); } catch (e) { return ''; } }
+    function bgCanUpload() { return bgState() === 'on' && !(typeof isViewOnly === 'function' && isViewOnly() && isCustodianDevice()); }
+    function bgUsable() { const s = bgState(); return s === 'on' || s === 'ended'; }
     function toggleArtPage(key) {
       const list = artPages();
       const i = list.indexOf(key);
       if (i >= 0) list.splice(i, 1); else list.push(key);
       localStorage.setItem(ART_KEY, JSON.stringify(list));
-      syncPageArt();
-      renderArtSwitches();
+      artChanged();
     }
+    function artSetAll(on) {
+      const mine = artPageList().map(p => p[0]);
+      const list = artPages().filter(k => !mine.includes(k)).concat(on ? mine : []);
+      localStorage.setItem(ART_KEY, JSON.stringify(list));
+      artChanged();
+    }
+    function setArtPic(k) {
+      const st = bgState();
+      if (k === 'custom') {
+        if (!bgCanUpload() && !(st === 'ended' && bgCustomUrl)) { bgView.pro = true; renderBgModal(); return; }
+        if (!bgCustomUrl) { const f = document.getElementById('bgFile'); if (f) f.click(); return; }
+      }
+      bgView.pro = false;
+      localStorage.setItem(ART_PIC_KEY, k);
+      artChanged();
+    }
+    function artChanged() { syncPageArt(); renderArtSwitches(); renderBgModal(); }
     function syncPageArt() {
       const gated = document.documentElement.classList.contains('gated');
-      document.body.classList.toggle('page-art', !gated && artPages().includes(activeMainView === 'HEAD' ? 'REQUESTER' : activeMainView));
+      let key = 'HOME';
+      try { key = artCurKey(); } catch (e) {}
+      const on = !gated && artPages().includes(key);
+      let pic = artPic();
+      const sid = (reqRole && reqRole.schoolId) || 'local';
+      if (pic === 'custom' && bgCustomFor !== sid && !bgLoading) setTimeout(bgLoad, 0);
+      if (pic === 'custom' && !(bgCustomUrl && bgCustomFor === sid && bgUsable())) pic = 'original';
+      const b = document.body;
+      b.classList.toggle('page-art', on);
+      b.classList.toggle('art-wide', on && pic !== 'original');
+      b.dataset.art = on ? pic : '';
+      if (on && pic !== 'original') b.style.setProperty('--art-img', `url("${pic === 'custom' ? bgCustomUrl : artMonthSrc()}")`);
+      else b.style.removeProperty('--art-img');
     }
-    function renderArtSwitches() {
-      const on = artPages();
-      const opt = (key, icon, label) => {
+    // Your own picture: kept on this device (the printed calendar's picture store), one per school
+    const bgKey = () => `appbg:${(reqRole && reqRole.schoolId) || 'local'}`;
+    async function bgLoad() {
+      const sid = (reqRole && reqRole.schoolId) || 'local';
+      if (bgCustomFor === sid || bgLoading) return;
+      bgLoading = true;
+      let blob = null;
+      try { blob = await cprIdb('readonly', st => st.get(bgKey())); } catch (e) {}
+      const had = !!bgCustomUrl;
+      if (bgCustomUrl) URL.revokeObjectURL(bgCustomUrl);
+      bgCustomUrl = blob ? URL.createObjectURL(blob) : '';
+      bgCustomFor = sid;
+      bgLoading = false;
+      if (had || blob) artChanged();
+    }
+    // A wide strip like the month art (2.36 : 1), the middle of the picture, at most 1600 px wide
+    function bgShrink(file) {
+      return new Promise((res, rej) => {
+        const url = URL.createObjectURL(file), img = new Image();
+        img.onload = () => {
+          const W = img.naturalWidth, H = img.naturalHeight, R = 1584 / 672;
+          let sw = W, sh = Math.round(W / R);
+          if (sh > H) { sh = H; sw = Math.round(H * R); }
+          const sx = Math.round((W - sw) / 2), sy = Math.round((H - sh) / 2);
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.min(1600, sw)); c.height = Math.max(1, Math.round(c.width / R));
+          c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          const data = c.toDataURL('image/jpeg', 0.85), bin = atob(data.split(',')[1] || '');
+          const u8 = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+          if (!u8.length) { rej(new Error('That picture could not be read.')); return; }
+          res(new Blob([u8], { type: 'image/jpeg' }));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('That file is not a picture.')); };
+        img.src = url;
+      });
+    }
+    async function bgPick(input) {
+      const file = input && input.files && input.files[0];
+      if (input) input.value = '';
+      if (!file) return;
+      if (!bgCanUpload()) { bgView.pro = true; renderBgModal(); return; }
+      try {
+        const blob = await bgShrink(file);
+        await cprIdb('readwrite', st => st.put(blob, bgKey()));
+        if (bgCustomUrl) URL.revokeObjectURL(bgCustomUrl);
+        bgCustomUrl = URL.createObjectURL(blob);
+        bgCustomFor = (reqRole && reqRole.schoolId) || 'local';
+        localStorage.setItem(ART_PIC_KEY, 'custom');
+        bgView.pro = false;
+        showToast('Your picture is the background now', 'ph-image');
+      } catch (e) { appAlert(String((e && e.message) || e)); }
+      artChanged();
+    }
+    async function bgDrop() {
+      if (!await appConfirm('The original picture comes back. You can upload another one any time.', { title: 'Remove your picture?', ok: 'Remove', tone: 'warn', icon: 'ph-trash' })) return;
+      try { await cprIdb('readwrite', st => st.delete(bgKey())); } catch (e) {}
+      if (bgCustomUrl) URL.revokeObjectURL(bgCustomUrl);
+      bgCustomUrl = '';
+      if (artPic() === 'custom') localStorage.setItem(ART_PIC_KEY, 'original');
+      artChanged();
+    }
+    // Free schools: what Pro adds (a toast where the window isn't open, e.g. the calendar print)
+    function bgProNotice() {
+      const cust = isCustodianDevice() && !isViewOnly();
+      showToast(bgState() === 'ended' ? 'View only · Pro at this school ended' : 'Your own picture is part of Pro', 'ph-crown',
+        cust ? { label: 'About Pro', onClick: () => { closeBgModal(); openProSheet(); } } : null);
+    }
+    function openBgModal() {
+      try { closeMoreMenu(); } catch (e) {}
+      try { closeAppearPanel(); } catch (e) {}
+      bgView.pro = false;
+      document.getElementById('bgModal').classList.remove('hidden');
+      renderBgModal();
+      bgLoad();
+    }
+    function closeBgModal() { const m = document.getElementById('bgModal'); if (m) m.classList.add('hidden'); }
+    function bgIsOpen() { const m = document.getElementById('bgModal'); return !!(m && !m.classList.contains('hidden')); }
+    function renderBgModal() {
+      const body = document.getElementById('bgBody');
+      if (!body || !bgIsOpen()) return;
+      const pic = artPic(), st = bgState(), can = bgCanUpload(), has = !!bgCustomUrl;
+      const month = new Date().toLocaleDateString('en-PH', { month: 'long' });
+      const landscape = matchMedia('(orientation: landscape)').matches;
+      const dark = document.documentElement.classList.contains('dark');
+      const orig = `assets/brand/login-${landscape ? 'landscape' : 'portrait'}${dark ? '-dark' : ''}.webp`;
+      const card = (k, title, sub, src, badge = '') => `
+        <button type="button" role="radio" aria-checked="${pic === k}" data-bg-pic="${k}" onclick="setArtPic('${k}')"
+          class="text-left rounded-2xl overflow-hidden border-2 bg-white transition ${pic === k ? 'border-brand-600 ring-2 ring-brand-100' : 'border-slate-200 hover:border-slate-300'}">
+          <span class="block relative h-20 bg-slate-100">${src ? `<img src="${src}" alt="" class="w-full h-full object-cover ${k === 'original' ? 'object-top' : ''}">` : '<span class="w-full h-full flex items-center justify-center text-slate-400"><i class="ph-bold ph-upload-simple text-2xl"></i></span>'}
+            ${pic === k ? '<span class="absolute top-1.5 left-1.5 w-6 h-6 rounded-full bg-brand-600 text-white flex items-center justify-center shadow"><i class="ph-bold ph-check text-xs"></i></span>' : ''}${badge}</span>
+          <span class="block px-2 py-1.5"><span class="block text-xs font-extrabold text-slate-900">${title}</span><span class="block text-[11px] text-slate-500 leading-snug">${sub}</span></span>
+        </button>`;
+      const crown = can ? '' : `<span class="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-amber-400 text-amber-950 text-[10px] font-extrabold flex items-center gap-0.5 shadow" data-bg-pro><i class="ph-bold ph-crown"></i> Pro</span>`;
+      const cust = isCustodianDevice() && !isViewOnly();
+      const proBox = bgView.pro ? `
+        <div class="rounded-2xl bg-amber-50 border border-amber-200 px-3 py-3 text-xs text-amber-900 space-y-2" data-bg-pro-box="${st || 'free'}">
+          <p class="flex items-start gap-2"><i class="ph-bold ${st === 'ended' ? 'ph-lock-simple' : 'ph-crown'} text-base mt-0.5"></i>
+            <span>${st === 'ended' ? '<b>View only.</b> Pro at this school ended. Your picture stays; to upload another one, the school needs Pro again.'
+              : '<b>Your own picture is part of Pro.</b> Upload a photo of your school for the app’s background and for the printed calendar. The original and this month’s picture stay free.'}</span></p>
+          ${cust ? '<button type="button" onclick="closeBgModal(); openProSheet()" data-bg-about-pro class="h-9 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold flex items-center gap-1.5"><i class="ph-bold ph-crown"></i> About Pro</button>'
+            : '<p class="font-semibold">Ask the property custodian about Pro.</p>'}
+        </div>` : '';
+      const mine = (has || pic === 'custom') ? `
+        <div class="flex flex-wrap gap-2" data-bg-custom-actions>
+          ${can ? `<label class="h-9 px-3 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800 flex items-center gap-1.5 cursor-pointer hover:bg-slate-50"><i class="ph-bold ph-image"></i> ${has ? 'Change picture' : 'Pick a picture'}<input type="file" accept="image/*" class="hidden" onchange="bgPick(this)"></label>` : ''}
+          ${has ? '<button type="button" onclick="bgDrop()" data-bg-remove class="h-9 px-3 rounded-xl bg-white border border-slate-200 text-xs font-bold text-rose-700 flex items-center gap-1.5 hover:bg-rose-50"><i class="ph-bold ph-trash"></i> Remove</button>' : ''}
+        </div>` : '';
+      const pages = artPageList(), on = artPages();
+      const n = pages.filter(p => on.includes(p[0])).length;
+      const opt = ([key, icon, label]) => {
         const checked = on.includes(key);
         return `<button type="button" role="checkbox" aria-checked="${checked}" data-art-opt="${key}" onclick="toggleArtPage('${key}')"
           class="h-10 px-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition ${checked ? 'bg-white text-slate-900 shadow-sm seg-on' : 'text-slate-600 hover:text-slate-800'}">
           <i class="ph-bold ${icon} text-sm"></i><span class="flex-1 text-left truncate">${label}</span>
           <span class="art-box ${checked ? 'is-on' : ''}"><i class="ph-bold ph-check"></i></span></button>`;
       };
+      const html = `
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-1 mb-1.5">Picture</p>
+          <div role="radiogroup" aria-label="Picture" class="grid grid-cols-3 gap-2">
+            ${card('original', 'Original', 'The school, as on the sign-in screen', orig)}
+            ${card('month', 'This month', `${month} · a new picture every month`, artMonthSrc())}
+            ${card('custom', 'Your own', has ? 'Kept on this device' : can ? 'Upload a photo of your school' : 'Upload a photo · Pro', bgCustomUrl, crown)}
+          </div>
+          <input type="file" id="bgFile" accept="image/*" class="hidden" onchange="bgPick(this)">
+        </div>
+        ${proBox}${mine}
+        <div>
+          <div class="flex items-center justify-between gap-2 px-1 mb-1.5">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Show it on · ${n === pages.length ? 'every page' : `${n} of ${pages.length}`}</p>
+            <span class="flex gap-3 text-xs font-bold text-brand-700"><button type="button" onclick="artSetAll(true)" data-art-all>All</button><button type="button" onclick="artSetAll(false)" data-art-none>None</button></span>
+          </div>
+          <div role="group" aria-label="Background picture on" class="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100" data-art-pages>${pages.map(opt).join('')}</div>
+        </div>
+        <p class="text-[11px] text-slate-500 px-1">Saved on this device. The printed calendar has its own picture (Print on the School calendar).</p>`;
+      if (body.dataset.html !== html) { body.innerHTML = html; body.dataset.html = html; }   // unchanged: keep the buttons (and focus)
+    }
+    // More → Appearance (and a teacher's or head's Appearance button): one row that opens the window
+    function renderArtSwitches() {
+      const pic = artPic(), pages = artPageList(), on = artPages();
+      const n = pages.filter(p => on.includes(p[0])).length;
+      const name = pic === 'month' ? 'This month' : pic === 'custom' ? 'Your own' : 'Original';
+      const src = pic === 'month' ? artMonthSrc() : pic === 'custom' && bgCustomUrl ? bgCustomUrl : 'assets/brand/login-landscape.webp';
+      const where = !n ? 'Off' : n === pages.length ? 'Every page' : n === 1 && on.includes(pages[0][0]) ? `${pages[0][2]} only` : `${n} of ${pages.length} pages`;
       document.querySelectorAll('[data-art-switch]').forEach(el => {
-        el.innerHTML = el.id === 'rqArt'
-          ? `<div class="grid p-1 rounded-xl bg-slate-100">${opt('REQUESTER', 'ph-image', 'Background picture')}</div>`
-          : `<div role="group" aria-label="Background picture on" class="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100">${ART_PAGES.map(p => opt(...p)).join('')}</div>`;
+        el.innerHTML = `<button type="button" onclick="openBgModal()" data-bg-open class="w-full text-left flex items-center gap-3 p-1.5 pr-2.5 rounded-xl bg-slate-100 hover:bg-slate-200/70 transition">
+          <span class="w-14 h-10 shrink-0 rounded-lg overflow-hidden bg-slate-200"><img src="${src}" alt="" class="w-full h-full object-cover"></span>
+          <span class="min-w-0 flex-1"><span class="block text-xs font-extrabold text-slate-900">Background picture</span><span class="block text-[11px] text-slate-500 truncate" data-bg-sum>${name} · ${where}</span></span>
+          <i class="ph-bold ph-caret-right text-slate-400"></i></button>`;
       });
     }
 
