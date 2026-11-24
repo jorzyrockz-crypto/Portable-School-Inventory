@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="2034c7427422">
+  <meta name="app-version" content="1a7194ad950d">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -448,6 +448,8 @@
       body:not(.printing-labels) #printLabelsSection { display: none !important; }
       body.printing-pr #printReportSection, body.printing-pr #printLabelsSection { display: none !important; }
       body:not(.printing-pr) #printPrSection { display: none !important; }
+      body.printing-pr #printAttendSection { display: none !important; }
+      body:not(.printing-attend) #printAttendSection { display: none !important; }
       @page { margin: 12mm; }
       .acct-page { break-after: page; page-break-after: always; }
       .acct-page:last-child { break-after: auto; page-break-after: auto; }
@@ -1496,6 +1498,11 @@
     <div id="lvView" class="space-y-4"></div>
   </section>
 
+  <!-- ATTENDANCE (School Planning pilot, part E): the morning check-in, today, the month -->
+  <section id="viewAttend" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
+    <div id="attendView" class="space-y-4"></div>
+  </section>
+
   <!-- ADMIN PANEL (Testing ES custodian): schools, feature switches, Pro and trials -->
   <section id="viewAdmin" class="hidden max-w-2xl mx-auto px-4 pt-4 pb-8 space-y-4 no-print">
     <div id="adminView" class="space-y-4"></div>
@@ -1589,6 +1596,7 @@
   <!-- QR PROPERTY LABELS (printed instead of the report while body has .printing-labels) -->
   <section id="printLabelsSection" class="print-only"></section>
   <section id="printPrSection" class="print-only"></section>
+  <section id="printAttendSection" class="print-only"></section>
 
   <!-- TOAST (status messages, e.g. "ready to work offline") -->
   <!-- In-app dialog: replaces the browser's alert / confirm / prompt boxes ("… says") -->
@@ -1679,6 +1687,11 @@
         <i class="ph-bold ph-calendar-check text-[22px]"></i>
         <span class="flex items-center gap-1">Leave <span id="sideLeaveCount" class="hidden px-1.5 rounded-full bg-teal-100 text-teal-800 font-mono text-[11px]"></span></span>
       </button>
+      <button id="sideAttend" onclick="openAttendView()" data-view="ATTEND" style="display:none" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-hand-pointing text-[22px]"></i>
+        <span class="flex items-center gap-1">Attendance <span id="sideAttendCount" class="hidden px-1.5 rounded-full bg-teal-100 text-teal-800 font-mono text-[11px]"></span></span>
+      </button>
       <button id="sideForms" onclick="openCoa()" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
         <i class="ph-bold ph-files text-[22px]"></i>
@@ -1748,6 +1761,11 @@
         <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
         <i class="ph-bold ph-calendar-check text-[22px]"></i>
         <span class="flex items-center gap-1">My leave</span>
+      </button>
+      <button id="hdTab-attend" role="tab" data-hd-tab="attend" onclick="setHeadTab('attend')" style="display:none" class="tab-btn lap-only relative h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition text-slate-500">
+        <span class="tab-ind absolute top-0 inset-x-6 h-0.5 rounded-full bg-brand-600 opacity-0"></span>
+        <i class="ph-bold ph-hand-pointing text-[22px]"></i>
+        <span class="flex items-center gap-1">Attendance</span>
       </button>
     </div>
     <!-- A teacher: Today · My Items · Requests · Calendar · More (a sidebar on a computer, the More pages listed) -->
@@ -1833,6 +1851,12 @@
           <button id="moreCoaItem" onclick="openCoa()" class="more-item"><i class="ph-bold ph-stamp text-brand-600"></i> Government forms <span class="ml-auto text-[11px] font-bold text-slate-500">RPCPPE · PTR · IIRUP</span></button>
           <button onclick="closeMoreMenu(); printReport()" class="more-item"><i class="ph-bold ph-printer text-slate-600"></i> Print report</button>
           <button onclick="closeMoreMenu(); exportCSV()" class="more-item"><i class="ph-bold ph-download-simple text-emerald-600"></i> Export inventory (CSV)</button>
+      <button id="moreAttendItem" onclick="openAttendView()" data-view="ATTEND" style="display:none" class="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-slate-100 active:bg-slate-200">
+        <i class="ph-bold ph-hand-pointing text-xl text-teal-700"></i>
+        <span class="flex-1 min-w-0"><span class="block text-sm font-bold text-slate-800">Attendance</span>
+        <span class="block text-[11px] text-slate-500">Who's in today · the month</span></span>
+        <span id="moreAttendCount" class="hidden px-1.5 rounded-full bg-teal-100 text-teal-800 font-mono text-[11px]"></span>
+      </button>
           <button onclick="closeMoreMenu(); exportRegisterCSV()" class="more-item"><i class="ph-bold ph-file-csv text-emerald-600"></i> Property register (CSV)</button>
         </div>
         <div>
@@ -2366,6 +2390,11 @@
   <div id="lvModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeLvModal()" onkeydown="if (event.key === 'Escape') closeLvModal()">
     <div id="lvModalBox" role="dialog" aria-modal="true" class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 safe-pad max-h-[94vh] overflow-y-auto">
       <div id="lvModalBody" class="space-y-4"></div>
+    </div>
+  </div>
+  <div id="attModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 no-print" onclick="if (event.target === this) closeAttModal()">
+    <div id="attModalBox" role="dialog" aria-modal="true" class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 safe-pad max-h-[94vh] overflow-y-auto">
+      <div id="attModalBody" class="space-y-4"></div>
     </div>
   </div>
   <datalist id="bkAreaList"><option value="Mother Tongue"><option value="Filipino"><option value="English"><option value="Reading &amp; Literacy"><option value="Mathematics"><option value="Science"><option value="Araling Panlipunan"><option value="Makabansa"><option value="GMRC / Values Education"><option value="MAPEH"><option value="EPP / TLE"><option value="Kindergarten"><option value="Senior High School"><option value="General"></datalist>
@@ -3750,12 +3779,13 @@
     // =========================================================================
     // 4. VIEW NAVIGATION (DASHBOARD <-> CATALOG)
     // =========================================================================
-    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester', TEACHERS: 'viewTeachers', HEAD: 'viewHead', BOOKS: 'viewBooks', LEAVE: 'viewLeave', CALENDAR: 'viewCalendar', ADMIN: 'viewAdmin' };
+    const MAIN_VIEWS = { HOME: 'viewHome', ITEMS: 'viewItems', CATALOG: 'viewCatalog', REPORTS: 'viewDashboard', REQUESTS: 'viewRequests', REQUESTER: 'viewRequester', TEACHERS: 'viewTeachers', HEAD: 'viewHead', BOOKS: 'viewBooks', LEAVE: 'viewLeave', CALENDAR: 'viewCalendar', ATTEND: 'viewAttend', ADMIN: 'viewAdmin' };
 
     function switchMainView(viewName) {
       if (viewName === 'DASHBOARD') viewName = 'REPORTS'; // old name
       if (!MAIN_VIEWS[viewName]) viewName = 'HOME';
       if (viewName === 'LEAVE' && !(leaveOn() && isCustodianDevice())) viewName = 'HOME';   // the Leave pilot
+      if (viewName === 'ATTEND' && !attendNavOk()) viewName = 'HOME';   // the attendance pilot
       if (viewName === 'CALENDAR' && !(planOn() && isCustodianDevice())) viewName = 'HOME';   // the School Calendar pilot
       if (viewName === 'ADMIN' && !isAdminDevice()) viewName = 'HOME';   // the Admin panel: Testing ES custodian only
       if (isTeacherDevice()) viewName = viewName === 'BOOKS' && isLibrarianDevice() ? 'BOOKS' : 'REQUESTER'; // a teacher's phone: supply requests (the librarian: also the Library desk)
@@ -3789,6 +3819,7 @@
       if (viewName === 'BOOKS') renderBooksView();
       if (viewName === 'LEAVE') renderLeaveView();
       if (viewName === 'CALENDAR') renderCalendarView();
+      if (viewName === 'ATTEND') renderAttendView();
       if (viewName === 'ADMIN') renderAdmin();
       syncPageArt();
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -16285,6 +16316,7 @@
     let ADMIN_SCHOOL = '97JbEODfGJhWcejYDWhO';                    // Testing ES (firestore.rules adminSchool; tests point it at their school)
     const LEAVE_PILOT_KEY = 'custodian_leave_pilot_v1';          // tests: Leave on at another school (the rules still decide)
     const PLAN_PILOT_KEY = 'custodian_plan_pilot_v1';            // the same for the school calendar
+    const ATTEND_PILOT_KEY = 'custodian_attend_pilot_v1';        // teacher attendance (School Planning, part E)
     const FEAT_KEY = 'custodian_features_v1', PRO_KEY = 'custodian_pro_v1';
     const TRIAL_DAYS = 7, TRIAL_MS = TRIAL_DAYS * 86400000;
     const FEAT_STAGES = [
@@ -16296,6 +16328,7 @@
     const FEATURES = [
       { key: 'leave', label: 'Leave & CS Form 6', sub: 'Applications, leave cards, ₱250 days', icon: 'ph-calendar-check' },
       { key: 'plan', label: 'School calendar', sub: 'Holidays, events · programs and activities next', icon: 'ph-calendar-dots' },
+      { key: 'attend', label: 'Attendance', sub: "The morning sign-in · who's in today · the month", icon: 'ph-hand-pointing' },
       { key: 'bg', label: 'Your own background', sub: 'Upload a picture for the app and the printed calendar', icon: 'ph-image', def: 'pro' }
     ];
     const featJSON = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
@@ -16325,8 +16358,9 @@
       return proState(proDocs && proDocs.sid === sid ? proDocs : {});
     }
     function featPilot(name) {
-      if (name !== 'leave' && name !== 'plan') return false;
-      try { return (localStorage.getItem(name === 'leave' ? LEAVE_PILOT_KEY : PLAN_PILOT_KEY) || '').split(',').includes(reqRole.schoolId); }
+      const key = { leave: LEAVE_PILOT_KEY, plan: PLAN_PILOT_KEY, attend: ATTEND_PILOT_KEY }[name];
+      if (!key) return false;
+      try { return (localStorage.getItem(key) || '').split(',').includes(reqRole.schoolId); }
       catch (e) { return false; }
     }
     const isAdminSchool = () => !!(reqRole && reqRole.schoolId === ADMIN_SCHOOL);
@@ -16350,6 +16384,7 @@
     function featEnded(name) { return featState(name) === 'ended'; }
     function leaveOn() { return featureOn('leave'); }
     function planOn() { return featureOn('plan'); }
+    function attendOn() { return featureOn('attend'); }
     // Features now Pro (what More → Pro lists)
     const proFeatures = () => FEATURES.filter(f => featStage(f.key) === 'pro');
 
@@ -16379,15 +16414,17 @@
     // A switch, Pro or the trial changed: features start or stop, and the screens follow.
     function featApply() {
       const ps = schoolPro();
-      const sig = [featState('leave'), featState('plan'), featState('bg'), ps.pro, ps.trial, ps.left, ps.ended, reqRole && reqRole.schoolId].join('|');
+      const sig = [featState('leave'), featState('plan'), featState('attend'), featState('bg'), ps.pro, ps.trial, ps.left, ps.ended, reqRole && reqRole.schoolId].join('|');
       const changed = sig !== featSig;
       featSig = sig;
       if (changed) {
         try { if (leaveOn()) leaveSync(); else leaveStop(); lvNav(); } catch (e) { console.warn('leave switch', e); }
         try { if (planOn()) calSync(); else calStop(); calNav(); } catch (e) { console.warn('calendar switch', e); }
+        try { if (attendOn()) attendSync(); else attendStop(); attendNav(); } catch (e) { console.warn('attendance switch', e); }
         try {
           if (activeMainView === 'LEAVE') { if (leaveOn() && isCustodianDevice()) renderLeaveView(); else switchMainView('HOME'); }
           if (activeMainView === 'CALENDAR') { if (planOn() && isCustodianDevice()) calRender(); else switchMainView('HOME'); }
+          if (activeMainView === 'ATTEND') { if (attendNavOk()) renderAttendView(); else switchMainView('HOME'); }
           renderRequestsEverywhere();
         } catch (e) { console.warn('switch render', e); }
         try { notifProTrial(Date.now()); } catch (e) {}
@@ -16958,6 +16995,402 @@
     }
 
     // =========================================================================
+    // ==================== ATTENDANCE (School Planning pilot, part E) ===================
+    // One entry per person per class day (schools/{sid}/attendance/{date}_{uid}). A teacher
+    // signs themselves in (present / official business); the AO and the School Head write
+    // anyone's entry. Everyone at the school reads the board: the class day has no custodian
+    // of its own. Filing a leave never marks anyone absent; Absent is the School Head's mark.
+    const ATT_MARKS = { present: 'Present', ob: 'Official business', absent: 'Absent', leave: 'On leave', p250: 'Service-credit day', reset: 'Cleared' };
+    const ATT_PILL = { present: 'teal', ob: 'sky', absent: 'rose', leave: 'violet', p250: 'amber', reset: 'slate' };
+    let attList = [], attUnsub = null, attTimer = null, attMonth = '';
+    const attCol = () => cloud.sdk.collection(cloud.db, 'schools', reqRole.schoolId, 'attendance');
+    const attDayId = (iso, uid) => iso + '_' + uid;
+    const attToday = () => localISODate();
+    const attMyUid = () => (cloud.user && cloud.user.uid) || '';
+    const attClock = ms => new Date(ms).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+
+    // Everyone the head keeps an eye on: the people the AO keeps on the school year (teachers
+    // can't read members), the people already on the plan, and whoever has an entry today.
+    function attRoster() {
+      try { return (typeof ppaRoster === 'function' ? ppaRoster() : []).filter(p => p.uid); }
+      catch (e) { return []; }
+    }
+
+    // A class day: a weekday inside the school year that the calendar does not mark as a day
+    // off. Without the calendar (Plan off) every weekday counts.
+    function attIsClassDay(iso) {
+      try {
+        const d = new Date(iso + 'T12:00:00');
+        const w = d.getDay();
+        if (!w || w === 6) return false;
+        if (!planOn()) return true;
+        const y = calYears && calYears[calSyOf(iso)];
+        if (!y || !y.start || !y.end) return true;   // no calendar loaded yet: a weekday
+        if (iso < y.start || iso > y.end) return false;
+        return !calOffMap(y)[iso];
+      } catch (e) { return true; }
+    }
+    function attClassDaysOf(monthIso) {
+      const out = [];
+      const y = Number(monthIso.slice(0, 4)), m = Number(monthIso.slice(5, 7));
+      const last = new Date(y, m, 0).getDate();
+      for (let d = 1; d <= last; d++) {
+        const iso = monthIso + '-' + String(d).padStart(2, '0');
+        if (attIsClassDay(iso)) out.push(iso);
+      }
+      return out;
+    }
+
+    function attMyToday() { return attList.find(a => a.date === attToday() && a.uid === attMyUid()) || null; }
+    function attEntryOf(uid, iso) { return attList.find(a => a.date === iso && a.uid === uid) || null; }
+    // Waiting: a leave covering today is filed but not decided yet — never counts as absent.
+    function attLeaveWaiting(uid, iso) {
+      try {
+        return leaveOn() && (lvList || []).some(l => l.uid === uid &&
+          !['declined', 'cancelled', 'done'].includes(l.status) && (l.from || '') <= iso && (l.to || iso) >= iso);
+      } catch (e) { return false; }
+    }
+    function attendPendingList() {
+      if (!attIsClassDay(attToday())) return [];
+      return attRoster().filter(p => !attEntryOf(p.uid, attToday()) && !attLeaveWaiting(p.uid, attToday()));
+    }
+    function attendAbsentToday() { return attList.filter(a => a.date === attToday() && a.mark === 'absent').length; }
+
+    function attendNavOk() {
+      try {
+        if (!attendOn() || !cloud.user) return false;
+        if (isCustodianDevice()) return !isIncomingDevice() && !viewOnlyEnded() && !assistantRemoved();
+        if (isHeadDevice()) return lvHeadOk();
+        return isTeacherDevice() && myMemberStatus() === 'active';
+      } catch (e) { return false; }
+    }
+    function attendNav() {
+      const ok = attendNavOk();
+      const side = document.getElementById('sideAttend'), more = document.getElementById('moreAttendItem');
+      if (side) side.style.display = ok ? '' : 'none';
+      if (more) more.style.display = ok && !isCustodianDevice() ? '' : 'none';
+      const pend = ok ? attendPendingList().length : 0;
+      ['sideAttendCount', 'moreAttendCount'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.textContent = pend || ''; el.classList.toggle('hidden', !pend); }
+      });
+    }
+
+    function attendSync() {
+      if (attUnsub || !cloud.db || !cloud.user || !cloud.sdk || !attendOn()) return;
+      if (!attendNavOk()) return;
+      attUnsub = listenSynced(attCol(), ['updatedAt'], snap => {
+        try {
+          attList = snap.docs.map(d => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
+          attList.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+          attendNav();
+          if (activeMainView === 'ATTEND') renderAttendView();
+          if (isHeadDevice() && headTab === 'attend') renderHeadAttend();
+          if (isTeacherDevice()) renderRequesterView();   // the Today card shows the sign-in
+          attMaybeMorning();
+          try { scheduleDash(); } catch (e) {}
+        } catch (e) { console.warn('attendance render', e); }
+      }, err => { console.warn('attendance sync', err); });
+      if (!attTimer) attTimer = setInterval(() => {
+        try { attMaybeMorning(); attendNav(); if (activeMainView === 'ATTEND') renderAttendView(); } catch (e) {}
+      }, 60000);
+    }
+    function attendStop() {
+      if (attUnsub) { try { attUnsub(); } catch (e) {} attUnsub = null; }
+      if (attTimer) { clearInterval(attTimer); attTimer = null; }
+      attList = [];
+      attendNav();
+    }
+
+    // ---- The morning check-in ------------------------------------------------------------
+    function attGreetedKey() { return 'attend_greeted_' + attToday() + '_' + attMyUid(); }
+    function attMaybeMorning() {
+      try {
+        if (!attendNavOk() || !attIsClassDay(attToday()) || attMyToday()) return;
+        if (localStorage.getItem(attGreetedKey())) return;
+        localStorage.setItem(attGreetedKey(), '1');
+        openAttendModal('morning');
+      } catch (e) {}
+    }
+
+    function attLogLine(mark, by) {
+      const w = calWho();
+      return { at: Date.now(), mark, by: by || w.role || 'teacher', name: String(w.name || '').slice(0, 80) };
+    }
+    async function attWrite(iso, uid, name, mark) {
+      const F = cloud.sdk;
+      const ref = F.doc(cloud.db, 'schools', reqRole.schoolId, 'attendance', attDayId(iso, uid));
+      const snap = await F.getDoc(ref);
+      const before = snap.exists() ? (snap.data() || {}) : null;
+      const w = calWho();
+      const by = w.role === 'ao' ? 'ao' : (w.role || 'teacher');
+      const log = [...((before && before.log) || []).slice(-38), attLogLine(mark, by)];
+      const body = { date: iso, uid, name: String(name || '').slice(0, 80), mark, by, log, updatedAt: F.serverTimestamp() };
+      if (mark === 'present' || mark === 'ob') body.timeMs = Date.now();
+      if (before) await F.updateDoc(ref, body);
+      else await F.setDoc(ref, { ...body, createdAt: F.serverTimestamp() });
+    }
+
+    function attMarkPill(mark) {
+      const t = ATT_PILL[mark] || 'slate';
+      return `<span class="inline-flex items-center gap-1 rounded-full bg-${t}-100 text-${t}-800 text-[11px] font-bold px-2 py-0.5">${escapeHTML(ATT_MARKS[mark] || mark)}</span>`;
+    }
+
+    function openAttendModal(mode, uid) {
+      const m = document.getElementById('attModal'), body = document.getElementById('attModalBody');
+      if (!m || !body) return;
+      const today = attToday(), mine = attMyToday();
+      const w = calWho();
+      let html = '';
+      if (mode === 'morning') {
+        const first = escapeHTML(String(w.name || '').split(' ')[0] || 'there');
+        html = `
+          <div class="text-center pt-1">
+            <span class="inline-flex h-14 w-14 rounded-full bg-teal-100 items-center justify-center"><i class="ph-bold ph-sun text-3xl text-teal-700"></i></span>
+            <h2 class="text-lg font-extrabold text-slate-900 mt-2">Good morning, ${first}!</h2>
+            <p class="text-sm text-slate-500 mt-0.5">${escapeHTML(longDate(today))} · a class day</p>
+          </div>
+          ${mine ? `<div class="rounded-2xl bg-teal-50 border border-teal-200 p-4 text-center" data-att-done>
+            <p class="text-sm font-bold text-teal-800">You're signed in · ${escapeHTML(ATT_MARKS[mine.mark] || mine.mark)}${mine.timeMs ? ' · ' + escapeHTML(attClock(mine.timeMs)) : ''}</p>
+          </div>` : `
+          <div class="space-y-2">
+            <button type="button" onclick="attSignIn('present')" id="attPresentBtn" class="w-full h-16 rounded-2xl bg-teal-700 hover:bg-teal-800 active:scale-[0.98] text-white font-extrabold text-base shadow-md shadow-teal-500/30 flex items-center justify-center gap-2 transition">
+              <i class="ph-bold ph-check-circle text-2xl"></i> I'm present
+            </button>
+            <button type="button" onclick="attSignIn('ob')" id="attObBtn" class="w-full h-12 rounded-2xl bg-white border border-slate-200 hover:border-sky-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-2 transition">
+              <i class="ph-bold ph-briefcase text-xl text-sky-700"></i> Official business
+            </button>
+            ${leaveOn() ? `<button type="button" onclick="attLeaveInstead()" id="attLeaveBtn" class="w-full h-12 rounded-2xl bg-white border border-slate-200 hover:border-violet-300 text-sm font-bold text-slate-800 flex items-center justify-center gap-2 transition">
+              <i class="ph-bold ph-file-text text-xl text-violet-700"></i> I'm filing a leave
+            </button>` : ''}
+            <p class="text-[11px] text-slate-400 text-center px-4">Filing a leave never marks you absent. The School Head sees you're waiting for it.</p>
+          </div>`}
+          <button type="button" onclick="closeAttModal()" class="w-full h-10 text-sm font-bold text-slate-500 hover:text-slate-700">${mine ? 'Close' : 'Later'}</button>`;
+      } else if (mode === 'mark' && uid) {
+        const p = attRoster().find(x => x.uid === uid) || { name: '' };
+        const cur = attEntryOf(uid, today);
+        const btns = [
+          ['present', 'Present', 'ph-check-circle', 'teal'],
+          ['ob', 'Official business', 'ph-briefcase', 'sky'],
+          ['absent', 'Absent', 'ph-x-circle', 'rose'],
+          ['p250', 'Service-credit day', 'ph-clock', 'amber'],
+        ];
+        html = `
+          <div>
+            <h2 class="text-base font-extrabold text-slate-900">${escapeHTML(p.name || 'Teacher')}</h2>
+            <p class="text-xs text-slate-500">${escapeHTML(today)}${cur ? ' · now ' + escapeHTML(ATT_MARKS[cur.mark] || cur.mark) : ' · not signed in yet'}</p>
+          </div>
+          <div class="space-y-2">
+            ${btns.map(([mk, label, icon, tone]) => `<button type="button" data-att-mark="${mk}" onclick="attMarkFor('${uid}','${mk}')" class="w-full h-12 rounded-2xl border text-sm font-bold flex items-center gap-2 px-4 transition border-slate-200 hover:border-${tone}-300 text-slate-800"><i class="ph-bold ${icon} text-xl text-${tone}-700"></i>${label}${cur && cur.mark === mk ? ' <span class="ml-auto text-[11px] text-' + tone + '-700">now</span>' : ''}</button>`).join('')}
+          </div>
+          ${cur ? `<button type="button" data-att-mark="reset" onclick="attMarkFor('${uid}','reset')" class="w-full h-10 text-sm font-bold text-slate-500 hover:text-slate-700">Clear today</button>` : ''}
+          <button type="button" onclick="closeAttModal()" class="w-full h-10 text-sm font-bold text-slate-400">Cancel</button>`;
+      }
+      body.innerHTML = html;
+      m.classList.remove('hidden');
+    }
+    function closeAttModal() {
+      const m = document.getElementById('attModal');
+      if (m) m.classList.add('hidden');
+    }
+    async function attSignIn(mark) {
+      try {
+        const w = calWho();
+        await attWrite(attToday(), attMyUid(), w.name || (reqRole.me && reqRole.me.name) || 'Teacher', mark);
+        showToast(mark === 'present' ? 'Signed in · have a good class day!' : 'Official business noted', 'ph-check-circle');
+        closeAttModal();
+      } catch (e) { console.warn(e); showToast('Could not sign in — try again', 'ph-warning'); }
+    }
+    function attLeaveInstead() {
+      closeAttModal();
+      try { if (leaveOn()) openLvSheet('apply', null, 'self'); } catch (e) { console.warn(e); }
+    }
+    async function attMarkFor(uid, mark) {
+      try {
+        const p = attRoster().find(x => x.uid === uid) || {};
+        await attWrite(attToday(), uid, p.name || 'Teacher', mark);
+        showToast(`${ATT_MARKS[mark]} · saved`, 'ph-check-circle');
+        closeAttModal();
+      } catch (e) { console.warn(e); showToast('Could not save — try again', 'ph-warning'); }
+    }
+
+    // ---- The board: who's in today ----------------------------------------------------------
+    function attBoardHTML() {
+      const today = attToday();
+      const canMark = lvHeadOk() || (isCustodianDevice() && !isIncomingDevice());
+      const rows = attRoster().map(p => {
+        const e = attEntryOf(p.uid, today);
+        const waiting = !e && attLeaveWaiting(p.uid, today);
+        const late = !e && !waiting && new Date().getHours() >= 8;
+        const chip = e ? attMarkPill(e.mark) + (e.timeMs && (e.mark === 'present' || e.mark === 'ob') ? `<span class="text-[11px] text-slate-400 font-mono">${escapeHTML(attClock(e.timeMs))}</span>` : '')
+          : waiting ? `<span class="inline-flex items-center gap-1 rounded-full bg-violet-100 text-violet-800 text-[11px] font-bold px-2 py-0.5">Leave filed · waiting</span>`
+          : late ? `<span class="inline-flex items-center gap-1 rounded-full bg-rose-100 text-rose-800 text-[11px] font-bold px-2 py-0.5"><i class="ph-bold ph-warning"></i>Not signed in</span>`
+          : `<span class="text-[11px] text-slate-400 font-semibold">Not yet</span>`;
+        const rowAttr = canMark ? `cursor-pointer hover:bg-slate-50 rounded-xl px-2 -mx-2" data-att-row="${p.uid}" onclick="openAttendModal('mark','${p.uid}')` : '"';
+        return `<div class="flex items-center gap-3 py-2.5 ${rowAttr}>
+          <span class="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center text-sm font-extrabold text-slate-500 shrink-0">${escapeHTML((p.name || '?')[0])}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold text-slate-800 truncate">${escapeHTML(p.name)}</p>
+            ${p.pos ? `<p class="text-[11px] text-slate-400 truncate">${escapeHTML(p.pos)}</p>` : ''}
+          </div>
+          <div class="flex items-center gap-2 shrink-0">${chip}</div>
+        </div>`;
+      }).join('');
+      const pend = attendPendingList().length;
+      return `
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+          <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Who's in today</h3>
+          ${pend ? `<span class="text-[11px] font-bold text-rose-700" data-att-pending>${pend} not signed in</span>` : `<span class="text-[11px] font-bold text-teal-700" data-att-pending>Everyone in</span>`}
+        </div>
+        <div class="divide-y divide-slate-100">${rows || '<p class="text-sm text-slate-400 py-4 text-center">No one on the list yet.</p>'}</div>`;
+    }
+
+    // ---- The month summary ------------------------------------------------------------------
+    function attMonthData(monthIso) {
+      const days = attClassDaysOf(monthIso);
+      return { days, rows: attRoster().map(p => {
+        const cells = days.map(d => {
+          const e = attEntryOf(p.uid, d);
+          return { d, mark: e ? e.mark : (attLeaveWaiting(p.uid, d) ? 'waiting' : '') };
+        });
+        const count = mk => cells.filter(c => c.mark === mk).length;
+        return { p, cells, present: count('present') + count('ob'), leave: count('leave'), absent: count('absent'), p250: count('p250') };
+      }) };
+    }
+    function attDotHTML(c, todayIso) {
+      const base = 'inline-block h-3.5 w-3.5 rounded-full align-middle';
+      const title = `${c.d}${c.mark ? ' · ' + (ATT_MARKS[c.mark] || (c.mark === 'waiting' ? 'Leave filed, waiting' : c.mark)) : ''}`;
+      if (c.mark === 'present' || c.mark === 'ob') return `<span class="${base} bg-teal-600" title="${escapeHTML(title)}"></span>`;
+      if (c.mark === 'absent') return `<span class="${base} bg-rose-600" title="${escapeHTML(title)}"></span>`;
+      if (c.mark === 'leave') return `<span class="${base} bg-violet-500" title="${escapeHTML(title)}"></span>`;
+      if (c.mark === 'p250') return `<span class="${base} bg-amber-500" title="${escapeHTML(title)}"></span>`;
+      if (c.mark === 'waiting') return `<span class="${base} border-2 border-violet-400 bg-white" title="${escapeHTML(title)}"></span>`;
+      if (c.d > todayIso) return `<span class="${base} border border-slate-200 bg-slate-50" title="${escapeHTML(title)}"></span>`;
+      return `<span class="${base} border-2 border-slate-300 bg-white" title="${escapeHTML(title || 'no entry')}"></span>`;
+    }
+
+    function attBodyHTML() {
+      const today = attToday();
+      const classDay = attIsClassDay(today);
+      const mine = attMyToday();
+      const canMark = lvHeadOk() || (isCustodianDevice() && !isIncomingDevice());
+      if (!attMonth) attMonth = today.slice(0, 7);
+      const md = attMonthData(attMonth);
+      const monthName = new Date(Number(attMonth.slice(0, 4)), Number(attMonth.slice(5, 7)) - 1, 1)
+        .toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
+      return `
+        <div class="flex items-start justify-between gap-3">
+          <p class="text-xs text-slate-500 mt-0.5">${classDay ? 'A class day today' : 'No classes today'} · ${escapeHTML(longDate(today))}</p>
+          <button type="button" onclick="printAttend()" id="attPrintBtn" class="shrink-0 h-10 px-3 rounded-xl bg-white border border-slate-200 hover:border-teal-300 text-sm font-bold text-slate-700 flex items-center gap-2"><i class="ph-bold ph-printer text-lg"></i>Print</button>
+        </div>
+
+        ${classDay && !mine ? `<button type="button" onclick="openAttendModal('morning')" id="attSignBtn" class="w-full h-14 rounded-2xl bg-teal-700 hover:bg-teal-800 active:scale-[0.98] text-white font-extrabold text-sm shadow-md shadow-teal-500/30 flex items-center justify-center gap-2 transition"><i class="ph-bold ph-hand-pointing text-xl"></i>Sign in for today</button>` : ''}
+        ${mine ? `<div class="rounded-2xl bg-teal-50 border border-teal-200 p-4 flex items-center gap-3" data-att-mine="${mine.mark}"><i class="ph-bold ph-check-circle text-2xl text-teal-700"></i><div><p class="text-sm font-bold text-teal-900">You're signed in</p><p class="text-xs text-teal-700">${escapeHTML(ATT_MARKS[mine.mark] || mine.mark)}${mine.timeMs ? ' · ' + escapeHTML(attClock(mine.timeMs)) : ''}</p></div></div>` : ''}
+
+        ${canMark ? `<div class="rounded-2xl border border-slate-200 bg-white p-4 space-y-2" data-att-board>${attBoardHTML()}</div>` : ''}
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 space-y-3" data-att-month>
+          <div class="flex items-center justify-between">
+            <button type="button" onclick="attMonthMove(-1)" class="h-9 w-9 rounded-xl hover:bg-slate-100 flex items-center justify-center" aria-label="Previous month"><i class="ph-bold ph-caret-left"></i></button>
+            <h3 class="text-sm font-extrabold text-slate-800">${escapeHTML(monthName)}</h3>
+            <button type="button" onclick="attMonthMove(1)" class="h-9 w-9 rounded-xl hover:bg-slate-100 flex items-center justify-center" aria-label="Next month"><i class="ph-bold ph-caret-right"></i></button>
+          </div>
+          <div class="space-y-2">
+            ${md.rows.map(r => `
+              <div class="flex items-center gap-3" data-att-month-row="${r.p.uid}">
+                <p class="w-32 sm:w-40 shrink-0 text-xs font-bold text-slate-700 truncate">${escapeHTML(r.p.name)}</p>
+                <div class="flex flex-wrap gap-1">${r.cells.map(c => attDotHTML(c, today)).join('')}</div>
+                <p class="ml-auto text-[11px] font-mono text-slate-400 shrink-0">${r.present}·${r.leave}·${r.absent}</p>
+              </div>`).join('') || '<p class="text-sm text-slate-400 text-center py-3">No entries yet.</p>'}
+          </div>
+          <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+            <span class="inline-flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-full bg-teal-600"></span>Present / OB</span>
+            <span class="inline-flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-full bg-violet-500"></span>On leave</span>
+            <span class="inline-flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-600"></span>Absent</span>
+            <span class="inline-flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-full bg-amber-500"></span>Service-credit day</span>
+            <span class="inline-flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-full border-2 border-slate-300 bg-white"></span>No entry</span>
+          </div>
+          <p class="text-[11px] text-slate-400">Present · on leave · absent at the end of each row. Check against CS Form 48 before printing.</p>
+        </div>`;
+    }
+    function renderAttendView() {
+      const el = document.getElementById('attendView');
+      if (!el) return;
+      if (!attendNavOk()) { el.innerHTML = ''; return; }
+      el.innerHTML = attBodyHTML();
+    }
+    // The School Head's Attendance tab: the same body inside their page
+    function renderHeadAttend() {
+      const pane = document.querySelector('#hdBody [data-hd-pane="attend"]');
+      if (pane && lvHeadOk()) pane.innerHTML = attBodyHTML();
+    }
+    function attMonthMove(dir) {
+      const y = Number(attMonth.slice(0, 4)), m = Number(attMonth.slice(5, 7));
+      const d = new Date(y, m - 1 + dir, 1);
+      attMonth = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      if (isHeadDevice()) renderHeadAttend(); else renderAttendView();
+    }
+    function openAttendView(tab) {
+      if (!attendNavOk()) return;
+      if (isHeadDevice()) { setHeadTab('attend'); return; }   // the head's phone: their own tab
+      switchMainView('ATTEND');
+      if (tab === 'board') setTimeout(() => {
+        const b = document.querySelector('[data-att-board]');
+        if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 80);
+    }
+
+    // ---- Print: the month summary (one table) ------------------------------------------------
+    function printAttend() {
+      const sec = document.getElementById('printAttendSection');
+      if (!sec) return;
+      const month = attMonth || attToday().slice(0, 7);
+      const md = attMonthData(month);
+      const schoolName = String(schoolInfo.school || reqRole.schoolName || 'School').toUpperCase();
+      const monthName = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1, 1)
+        .toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
+      const todayIso = attToday();
+      const glyph = c => (c.mark === 'present' || c.mark === 'ob') ? ['●', '#0f766e']
+        : c.mark === 'absent' ? ['✕', '#be123c']
+        : c.mark === 'leave' ? ['○', '#6d28d9']
+        : c.mark === 'p250' ? ['◐', '#b45309']
+        : c.d > todayIso ? ['', '#94a3b8'] : ['·', '#94a3b8'];
+      sec.innerHTML = `
+        <div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;max-width:190mm;margin:0 auto;">
+          <p style="text-align:center;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#475569;">Republic of the Philippines · Department of Education</p>
+          <h1 style="text-align:center;font-size:16px;font-weight:800;margin:2mm 0 0;">${escapeHTML(schoolName)}</h1>
+          <p style="text-align:center;font-size:12px;color:#334155;margin:1mm 0 4mm;">Teacher attendance · ${escapeHTML(monthName)}</p>
+          <table style="width:100%;border-collapse:collapse;font-size:10px;">
+            <thead>
+              <tr>
+                <th style="text-align:left;border:1px solid #94a3b8;padding:1.2mm 1.6mm;">Teacher</th>
+                ${md.days.map(d => `<th style="border:1px solid #94a3b8;padding:1.2mm .4mm;width:4.6mm;">${Number(d.slice(8))}</th>`).join('')}
+                <th style="border:1px solid #94a3b8;padding:1.2mm .8mm;">P</th><th style="border:1px solid #94a3b8;padding:1.2mm .8mm;">L</th><th style="border:1px solid #94a3b8;padding:1.2mm .8mm;">A</th><th style="border:1px solid #94a3b8;padding:1.2mm .8mm;">SC</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${md.rows.map(r => `<tr>
+                <td style="border:1px solid #94a3b8;padding:1.2mm 1.6mm;font-weight:700;">${escapeHTML(r.p.name)}</td>
+                ${r.cells.map(c => { const [ch, col] = glyph(c); return `<td style="border:1px solid #cbd5e1;text-align:center;color:${col};font-weight:700;">${ch}</td>`; }).join('')}
+                <td style="border:1px solid #94a3b8;text-align:center;font-weight:700;">${r.present}</td>
+                <td style="border:1px solid #94a3b8;text-align:center;">${r.leave}</td>
+                <td style="border:1px solid #94a3b8;text-align:center;">${r.absent}</td>
+                <td style="border:1px solid #94a3b8;text-align:center;">${r.p250}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+          <p style="font-size:9px;color:#475569;margin-top:2mm;">● present / official business &nbsp;&nbsp; ○ on leave (approved) &nbsp;&nbsp; ✕ absent &nbsp;&nbsp; ◐ service-credit day &nbsp;&nbsp; · no entry. P = days present, L = on leave, A = absent, SC = service-credit days. Check against CS Form 48.</p>
+          <table style="width:100%;margin-top:8mm;font-size:10px;"><tr>
+            <td style="width:50%;text-align:center;">Prepared by:<br><br><b>${escapeHTML(String((calWho().name || '')).toUpperCase())}</b><br>${isCustodianDevice() ? 'Property Custodian' : 'Teacher'}</td>
+            <td style="text-align:center;">Checked by:<br><br><b>____________________________</b><br>School Head</td>
+          </tr></table>
+        </div>`;
+      document.body.classList.add('printing-attend');
+      const done = () => { document.body.classList.remove('printing-attend'); window.removeEventListener('afterprint', done); };
+      window.addEventListener('afterprint', done);
+      setTimeout(() => window.print(), 50);
+    }
+
     // LEAVE (CS Form No. 6, Revised 2020) · behind the 'leave' switch (Admin panel)
     // The teacher applies (or the AO, on the custodian account, encodes a paper form). The AO
     // receives it and recommends the kind of leave, the days and the credits (with the memo), and
@@ -24058,7 +24491,7 @@
             <i class="ph-bold ph-caret-right text-slate-400"></i>
           </button>`;
         const pane = (k, inner) => `<div data-hd-pane="${k}" class="space-y-5 ${headTab === k ? '' : 'hidden'}">${inner}</div>`;
-        html = pane('today', headTodayHTML({ waiting, aps, plans, nRoutine, turnWait })) + pane('approve', left) + pane('more', headMoreHTML()) + pane('school', headDashHTML()) + pane('items', headTab === 'items' ? headItemsHTML() : '') + pane('people', headPeopleHTML()) + pane('history', history) + (leaveOn() ? pane('leave', lvMineHTML()) : '') + (planOn() ? pane('plan', (calSync(), calViewHTML(false))) : '');
+        html = pane('today', headTodayHTML({ waiting, aps, plans, nRoutine, turnWait })) + pane('approve', left) + pane('more', headMoreHTML()) + pane('school', headDashHTML()) + pane('items', headTab === 'items' ? headItemsHTML() : '') + pane('people', headPeopleHTML()) + pane('history', history) + (leaveOn() ? pane('leave', lvMineHTML()) : '') + (planOn() ? pane('plan', (calSync(), calViewHTML(false))) : '') + pane('attend', '<div data-att-head-placeholder></div>');
       }
       renderHeadTabs(two, nTab);
       const body = document.getElementById('hdBody');
@@ -24073,14 +24506,15 @@
     // Tabs like a teacher's: Approve (with the count waiting) · School · People · History.
     var headTab = 'today';
     var headPeopleQ = '';
-    var HEAD_TITLES = { today: 'Today', approve: 'For your approval', school: 'School property', items: 'School inventory', people: 'Who holds what', history: 'Your decisions', leave: 'My leave', plan: 'School calendar', more: 'More' };
+    var HEAD_TITLES = { today: 'Today', approve: 'For your approval', school: 'School property', items: 'School inventory', people: 'Who holds what', history: 'Your decisions', leave: 'My leave', plan: 'School calendar', more: 'More' , attend: 'Attendance' };
     function setHeadTab(t) {
-      if (!HEAD_TITLES[t] || (t === 'leave' && !leaveOn()) || (t === 'plan' && !planOn())) return;
+      if (!HEAD_TITLES[t] || (t === 'leave' && !leaveOn()) || (t === 'plan' && !planOn()) || (t === 'attend' && !attendOn())) return;
       const was = headTab;
       headTab = t;
       if (t === 'items') { startHeadInventory(); if (was !== 'items') renderHeadView(); }
       if (t === 'leave') renderHeadLeave();
       if (t === 'plan') { calSync(); renderHeadCalendar(); }
+      if (t === 'attend') { attendSync(); renderHeadAttend(); }
       document.querySelectorAll('#hdBody [data-hd-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.hdPane !== t));
       renderHeadTabs(!!document.querySelector('#hdBody [data-hd-pane]'));
       syncPageArt();
@@ -24132,6 +24566,15 @@
           sub: !lvLoaded ? 'Loading…' : open ? `${open} in progress · Form 6 and leave credits` : 'Apply · Form 6 and leave credits',
           btn: featEnded('leave') ? '' : `<button type="button" onclick="openLvSheet('apply')" id="hdTodayLeave" class="shrink-0 h-10 px-3 rounded-xl bg-cyan-700 hover:bg-cyan-800 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 transition"><i class="ph-bold ph-plus"></i> Apply</button>` }));
       }
+      if (attendOn() && lvHeadOk()) {
+        const pend = attendPendingList(), abs = attendAbsentToday();
+        const sub = pend.length ? (pend.slice(0, 3).map(p => escapeHTML(p.name.split(' ')[0])).join(', ') + (pend.length > 3 ? ` +${pend.length - 3}` : '') + ' not signed in yet')
+          : abs ? `${abs} absent · everyone else in` : 'Everyone signed in';
+        cards.push(headCardHTML({ attr: 'data-hd-today="attend"', go: "openAttendView('board')",
+          tone: 'bg-teal-50 text-teal-700', icon: 'ph-hand-pointing',
+          title: `Attendance · ${pend.length ? plural(pend.length, 'teacher') + ' to sign in' : 'all in'}`,
+          sub, btn: `<button type="button" onclick="openAttendView('board')" id="hdTodayAttend" class="shrink-0 h-10 px-3 rounded-xl bg-teal-700 hover:bg-teal-800 active:scale-95 text-white text-xs font-extrabold transition">Open</button>` }));
+      }
       const sp = headSpend();
       cards.push(headCardHTML({ attr: 'data-hd-today="prs"', go: "setHeadTab('school')", tone: 'bg-emerald-50 text-emerald-700', icon: 'ph-wallet', title: 'Purchase Requests',
         sub: [sp.nPend && `${sp.nPend} waiting (${pesoShort(sp.pend)})`, sp.mo && `${pesoShort(sp.mo)} approved this month`, sp.yr ? `${pesoShort(sp.yr)} approved in ${sp.year}` : `None approved yet in ${sp.year}`].filter(Boolean).join(' · ') }));
@@ -24152,6 +24595,7 @@
           ${row("setHeadTab('people')", 'ph-users-three', 'bg-indigo-50 text-indigo-600', 'Who holds what', 'Teachers and the property in their care', 'data-hd-more-row="people"')}
           ${row("setHeadTab('history')", 'ph-clock-counter-clockwise', 'bg-violet-50 text-violet-700', 'Your decisions', 'What you approved or returned, with a search', 'data-hd-more-row="history"')}
           ${leaveOn() && lvHeadOk() ? row("setHeadTab('leave')", 'ph-calendar-check', 'bg-cyan-50 text-cyan-700', 'My leave', 'Apply · Form 6 and leave credits', 'data-hd-more-row="leave"') : ''}
+          ${attendOn() && lvHeadOk() ? row("setHeadTab('attend')", 'ph-hand-pointing', 'bg-teal-50 text-teal-700', 'Attendance', "Who's in today · the month", 'data-hd-more-row="attend"') : ''}
           ${row('openSchoolHistory()', 'ph-lock-key', 'bg-slate-100 text-slate-600', 'School history', 'Every change on the custodian’s devices · can’t be edited', 'data-hd-more-row="log"')}
         </div>`;
     }
@@ -24166,10 +24610,11 @@
       const nav = document.getElementById('hdNav');
       if (!nav) return;
       if (activeMainView === 'HEAD') headNavShow(!!on);
-      const lvTab = leaveOn() && lvHeadOk(), calTab = planOn();
-      if ((headTab === 'leave' && !lvTab) || (headTab === 'plan' && !calTab)) headTab = 'today';
+      const lvTab = leaveOn() && lvHeadOk(), calTab = planOn(), attTab = attendOn() && lvHeadOk();
+      if ((headTab === 'leave' && !lvTab) || (headTab === 'plan' && !calTab) || (headTab === 'attend' && !attTab)) headTab = 'today';
       document.getElementById('hdTab-plan').style.display = calTab ? '' : 'none';
       document.getElementById('hdTab-leave').style.display = lvTab ? '' : 'none';
+      const hdTabAtt = document.getElementById('hdTab-attend'); if (hdTabAtt) hdTabAtt.style.display = attTab ? '' : 'none';
       nav.classList.toggle('grid-cols-5', calTab);
       nav.classList.toggle('grid-cols-4', !calTab);
       document.getElementById('hdTitle').textContent = on ? HEAD_TITLES[headTab] : HEAD_TITLES.approve;
@@ -26242,6 +26687,12 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
         cards.push(headCardHTML({ attr: 'data-t-today="leave"', go: "setTeacherTab('leave')", tone: 'bg-cyan-50 text-cyan-700', icon: 'ph-calendar-check', title: 'Leave', badge: back,
           sub: !lvLoaded ? 'Loading…' : [lvOpen ? `${lvOpen} in progress` : 'Apply for leave · CS Form 6', back && `${back} for you to look at`].filter(Boolean).join(' · '),
           btn: active && !featEnded('leave') ? `<button type="button" onclick="openLvSheet('apply')" id="tTodayLeave" class="shrink-0 h-10 px-3 rounded-xl bg-cyan-700 hover:bg-cyan-800 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 transition"><i class="ph-bold ph-plus"></i> Apply</button>` : '' }));
+      }
+      if (attendOn()) {
+        const mine = attMyToday(), classDay = attIsClassDay(localISODate());
+        cards.push(headCardHTML({ attr: 'data-t-today="attend"', go: "openAttendView()", tone: 'bg-teal-50 text-teal-700', icon: 'ph-hand-pointing', title: 'Attendance',
+          sub: !classDay ? 'No classes today' : mine ? `Signed in · ${ATT_MARKS[mine.mark] || mine.mark}` : 'Tap to sign in for today',
+          btn: active && classDay && !mine ? `<button type="button" onclick="openAttendModal('morning')" id="tTodayAttend" class="shrink-0 h-10 px-3 rounded-xl bg-teal-700 hover:bg-teal-800 active:scale-95 text-white text-xs font-extrabold transition">Sign in</button>` : '' }));
       }
       return `
         <div class="t-today space-y-5">
@@ -33646,6 +34097,11 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-attendance', date: 'Nov 2026', title: 'Attendance: who is in today', points: [
+        'On class days the app now asks everyone once: present, on official business, or filing a leave. One tap and the time is recorded.',
+        "The School Head's phone shows who's in, who's on leave and who still has to sign in, with one tap to mark present, on official business, absent or a service-credit day.",
+        'The month view prints a summary to check against the Daily Time Record. A pilot at Testing ES for now.',
+      ], icon: 'ph-hand-pointing', pilot: 'attend' },
       { id: '2026-11-agenda-columns', date: 'Nov 2026', title: 'Fixes: the calendar agenda reads like a list again', points: [
         'On a computer, the agenda fills the first column from top to bottom, then goes on at the top of the next column — no more hopping across rows, and no gaps where a taller day used to stretch its row.'
       ] },
@@ -34312,7 +34768,7 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
     }
 
     // What's new on this phone: a pilot's note only where the pilot is on
-    function wnList() { return WHATS_NEW.filter(r => !r.pilot || (r.pilot === 'leave' && leaveOn()) || (r.pilot === 'plan' && planOn()) || (r.pilot === 'admin' && isAdminDevice())); }
+    function wnList() { return WHATS_NEW.filter(r => !r.pilot || (r.pilot === 'leave' && leaveOn()) || (r.pilot === 'plan' && planOn()) || (r.pilot === 'attend' && attendOn()) || (r.pilot === 'admin' && isAdminDevice())); }
     function initAppUpdates() {
       syncTitleBarMode();
       if (navigator.windowControlsOverlay && navigator.windowControlsOverlay.addEventListener) {
