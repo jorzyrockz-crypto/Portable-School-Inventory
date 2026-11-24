@@ -9,7 +9,7 @@
 // Both are test shortcuts on top of the real switches (firestore.rules featureOn): the admin
 // school (adminSchool, changeable with setAdminSchool) always has every feature at the Testing
 // stage; appConfig/features moves a feature to 'pro' (Pro schools and trials) or 'all'.
-export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWcejYDWhO'], planPilot = ['97JbEODfGJhWcejYDWhO'], adminSchool = '97JbEODfGJhWcejYDWhO' } = {}) {
+export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWcejYDWhO'], planPilot = ['97JbEODfGJhWcejYDWhO'], attendPilot = ['97JbEODfGJhWcejYDWhO'], adminSchool = '97JbEODfGJhWcejYDWhO' } = {}) {
   let adminSid = adminSchool;
   const store = new Map();
   const users = new Map();
@@ -66,6 +66,7 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
   };
   const leavePilotOn = sid => leavePilot === 'any' || (Array.isArray(leavePilot) && leavePilot.includes(sid));
   const planPilotOn = sid => planPilot === 'any' || (Array.isArray(planPilot) && planPilot.includes(sid));
+  const attendPilotOn = sid => attendPilot === 'any' || (Array.isArray(attendPilot) && attendPilot.includes(sid));
   // firestore.rules featureOn / featureRead / isPro
   const STAGES = ['off', 'testing', 'pro', 'all'];
   const cfgStage = name => { const st = ((store.get('appConfig/features') || {})[name] || {}).stage; return STAGES.includes(st) ? st : 'testing'; };
@@ -74,6 +75,7 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
   const featRead = (name, sid, pilot) => featOn(name, sid, pilot) || (cfgStage(name) === 'pro' && !!(schoolPre(sid) && (schoolPre(sid).pro || schoolPre(sid).trial)));
   const leaveOn = sid => featOn('leave', sid, leavePilotOn), leaveRead = sid => featRead('leave', sid, leavePilotOn);
   const planOn = sid => featOn('plan', sid, planPilotOn), planRead = sid => featRead('plan', sid, planPilotOn);
+  const attendOn = sid => featOn('attend', sid, attendPilotOn), attendRead = sid => featRead('attend', sid, attendPilotOn);
   const isAdmin = ctx => isCust(ctx, adminSid);
   const TRIAL_MS = 7 * 86400000;
   const SY_RE = /^[0-9]{4}-[0-9]{4}$/;
@@ -409,6 +411,21 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
           ch.every(k => ['status', 'cancelledMs', 'log', 'updatedAt'].includes(k))) return;
       deny('leave update', { path, ch, status: data.status });
     }
+    if (p.length === 4 && sub === 'attendance') {
+      if (!attendOn(sid)) deny('attendance: not a pilot school', { path });
+      const okBody = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(data.date ?? '') &&
+        typeof (data.uid ?? '') === 'string' && data.uid.length > 0 && data.uid.length <= 64 && str(data.name ?? '', 80) && (data.name ?? '').length > 0 &&
+        ['present', 'ob', 'absent', 'leave', 'p250', 'reset'].includes(data.mark) && str(data.note ?? '', 120) &&
+        Array.isArray(data.log ?? []) && (data.log ?? []).length <= 40;
+      if (!okBody) deny('attendance body', { path, mark: data.mark });
+      if (kind === 'create') {
+        if (isStaff(ctx, sid) || isHeadOf(ctx, sid)) return;
+        if (isMember(ctx, sid) && data.uid === ctx.uid && ['present', 'ob'].includes(data.mark) && data.by === 'teacher') return;
+        deny('attendance create', { path, mark: data.mark, by: data.by });
+      }
+      if ((isStaff(ctx, sid) || isHeadOf(ctx, sid)) && (data.uid ?? '') === (before.uid ?? '')) return;
+      deny('attendance update', { path });
+    }
     if (p.length === 4 && sub === 'planYears') {
       if (!planOn(sid)) deny('plan year: not a pilot school', { path });
       if ((isStaff(ctx, sid) || isHeadOf(ctx, sid)) && data.sy === p[3] && SY_RE.test(p[3]) && Array.isArray(data.terms ?? []) && (data.terms ?? []).length <= 4 &&
@@ -574,6 +591,11 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
       if (!filters.some(f => f.field === 'uid' && f.op === '==' && f.value === ctx.uid)) deny('list leaves', { path, filters });
       return;
     }
+    if (sub === 'attendance') {
+      if (!attendRead(sid)) deny('read attendance: not a pilot school', { path });
+      if (canView(ctx, sid) || isHeadOf(ctx, sid) || isMember(ctx, sid)) return;
+      deny('read attendance', { path, uid: ctx.uid });
+    }
     if (sub === 'planYears' || sub === 'ppas' || sub === 'ppaPhotos') {
       if (!planRead(sid)) deny(`read ${sub}: not a pilot school`, { path });
       if (canView(ctx, sid) || isHeadOf(ctx, sid) || isMember(ctx, sid)) return;
@@ -638,7 +660,7 @@ export function createBackend({ autoApprove = true, leavePilot = ['97JbEODfGJhWc
     let after = kind === 'set' || !before ? resolveTS(data) : { ...before, ...resolveTS(data) };
     const p = parts(path);
     // members/requests/reports/holds rules look at the whole document; others at what was sent
-    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog', 'staff', 'approvals', 'suggestions', 'loans', 'bookMoves', 'classBooks', 'leaves', 'leaveCards', 'planYears', 'ppas'].includes(p[2]);
+    const whole = p.length === 4 && ['members', 'stockHolds', 'inspections', 'purchaseRequests', 'heads', 'turnovers', 'auditLog', 'staff', 'approvals', 'suggestions', 'loans', 'bookMoves', 'classBooks', 'leaves', 'leaveCards', 'planYears', 'ppas', 'attendance'].includes(p[2]);
     checkWrite(before ? 'update' : 'create', path, whole ? after : data, before || {}, ctx);
     if (autoApprove && !before && p.length === 4 && p[2] === 'members' && after.status === 'pending') after = { ...after, status: 'active', approvedMs: Date.now() };
     store.set(path, after);

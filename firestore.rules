@@ -134,6 +134,9 @@ service cloud.firestore {
     // Leave (CS Form 6) and leave cards; School Planning (the school calendar, PPAs next)
     function planPilot(schoolId) { return featureOn('plan', schoolId); }
     function planRead(schoolId) { return featureRead('plan', schoolId); }
+    // Teacher attendance (School Planning pilot, part E).
+    function attendPilot(schoolId) { return featureOn('attend', schoolId); }
+    function attendRead(schoolId) { return featureRead('attend', schoolId); }
     // A card's photo: the person's Google profile photo (lhN.googleusercontent.com), or empty.
     function googlePhotoOk() {
       return request.resource.data.get('photo', '') == ''
@@ -754,6 +757,32 @@ service cloud.firestore {
           || ((isMember(schoolId) || isHead(schoolId)) && resource.data.uid == request.auth.uid && resource.data.status == 'applied'
               && request.resource.data.status == 'cancelled'
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledMs', 'log', 'updatedAt'])));
+        allow delete: if isCustodian(schoolId);   // Reset app only
+      }
+
+      // Teacher attendance (School Planning pilot, part E): one entry per person per class
+      // day (date_uid). A teacher signs themselves in (present or official business); the AO
+      // (custodian, assistants) and the School Head write anyone's entry (absent is the head's
+      // mark only, a leave day covered by an approved application, a day counted as
+      // service-credit leave, clearing an entry). Everyone at the school reads the board: the
+      // class day has no custodian of its own.
+      match /attendance/{dayId} {
+        function attendBodyOk() {
+          let d = request.resource.data;
+          return d.get('date', '') is string && d.get('date', '').matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+            && d.get('uid', '') is string && d.get('uid', '').size() > 0 && d.get('uid', '').size() <= 64
+            && shortText(d.get('name', ''), 80) && d.get('name', '').size() > 0
+            && d.get('mark', '') in ['present', 'ob', 'absent', 'leave', 'p250', 'reset']
+            && shortText(d.get('note', ''), 120)
+            && d.get('log', []) is list && d.get('log', []).size() <= 40;
+        }
+        allow read: if attendRead(schoolId) && (canView(schoolId) || isHead(schoolId) || isMember(schoolId));
+        allow create: if attendPilot(schoolId) && attendBodyOk() && (isStaff(schoolId) || isHead(schoolId)
+          || (isMember(schoolId) && request.resource.data.uid == request.auth.uid
+              && request.resource.data.mark in ['present', 'ob'] && request.resource.data.by == 'teacher'));
+        allow update: if attendPilot(schoolId) && attendBodyOk()
+          && request.resource.data.get('uid', '') == resource.data.get('uid', '')
+          && (isStaff(schoolId) || isHead(schoolId));
         allow delete: if isCustodian(schoolId);   // Reset app only
       }
 
