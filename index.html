@@ -11,7 +11,7 @@
   <meta name="format-detection" content="telephone=no">
   <title>CustodianPro – School Inventory &amp; APP-CSE 2027</title>
   <!-- Filled in by `npm run build` (same value as the sw.js cache version). -->
-  <meta name="app-version" content="1a7194ad950d">
+  <meta name="app-version" content="fbbd292eb059">
   <meta name="application-name" content="CustodianPro">
   <meta name="description" content="School property and supplies inventory for DepEd property custodians and teachers: QR property tags, physical count, ICS/PAR/RIS releases, transfers, year-end COA reports (RPCPPE, RPCSP, IIRUP) and supply requests from teachers’ phones. Free, works offline.">
   <meta name="author" content="CustodianPro">
@@ -23335,6 +23335,7 @@
       const period = countPeriod(now);
       const units = allTaggedUnits().filter(x => !x.unit.lostMs);
       const counted = units.filter(x => (x.unit.seen || 0) >= period.start).length;
+      const remaining = Math.max(0, units.length - counted);
       const head = isCustodianDevice() && cloud.user ? currentHead() : null;
       const countAp = apLatest('count', period.asAt);
       const sec = (icon, title, inner, attr = '') => `
@@ -23356,10 +23357,10 @@
         else countStatus = `<p class="text-xs font-bold text-emerald-700 flex items-center gap-1" data-ye-count="approved"><i class="ph-bold ph-seal-check"></i> Approved by ${escapeHTML(apStamp(countAp))} · shown on the printed report</p>`;
       } else countStatus = '<p class="text-[11px] text-slate-500">The School Head signs the printed report (Approved by). Once your School Head joins the app, you can send it to them here.</p>';
       let html = sec('ph-clipboard-text', `${period.label} · as at ${escapeHTML(formatShortDate(period.asAt + 'T00:00:00'))}`, `
-          <p class="text-xs text-slate-600">${period.open ? `Counting now: <b data-ye-counted>${counted} of ${units.length}</b> tagged units checked since ${escapeHTML(formatShortDate(period.start))} (${pct}%).` : `Starts ${escapeHTML(formatShortDate(period.start))}. Scan the QR labels or use Count on Home; the report is built from the counts.`}</p>
+          <p class="text-xs text-slate-600">${period.open ? `Counting now: <b data-ye-counted>${counted} of ${units.length}</b> tagged units checked since ${escapeHTML(formatShortDate(period.start))} (${pct}%). ${remaining ? `<b>${remaining} ${remaining === 1 ? 'unit remains' : 'units remain'}</b> to check.` : 'All tagged units checked.'}` : `Starts ${escapeHTML(formatShortDate(period.start))}. Scan the QR labels or use Count on Home; the report is built from the counts.`}</p>
           ${period.open && units.length ? `<div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-brand-600" style="width:${pct}%"></div></div>` : ''}
           <div class="grid grid-cols-2 gap-2">
-            <button onclick="closeYearEnd(); startCount()" class="h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-check-square"></i> Count now</button>
+            <button onclick="closeYearEnd(); startCount()" class="h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-check-square"></i> ${period.open ? 'Continue count' : 'Count now'}</button>
             <button onclick="closeYearEnd(); openCoa(); coaGo('count')" class="h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5"><i class="ph-bold ph-printer"></i> RPCPPE / RPCSP</button>
           </div>
           ${countStatus}`, 'data-ye-section="count"');
@@ -23437,6 +23438,16 @@
       const period = countPeriod();
       const data = countReportData(period);
       const committee = committeeList();
+      const tagged = allTaggedUnits().filter(x => !x.unit.lostMs);
+      const unchecked = tagged.filter(x => (x.unit.seen || 0) < period.start).length;
+      const review = [
+        `${period.label} · as at ${formatShortDate(period.asAt + 'T00:00:00')}`,
+        `PPE: ${data.ppe.found} of ${data.ppe.card} found`,
+        `Semi-expendable: ${data.sep.found} of ${data.sep.card} found`,
+        `${unchecked} tagged ${unchecked === 1 ? 'unit has' : 'units have'} not been checked yet.`,
+        committee.length ? `Inventory Committee: ${committee.join(', ')}` : 'No Inventory Committee names entered.'
+      ].join('\n');
+      if (!confirm(`Review before sending to ${currentHead().name}:\n\n${review}\n\nSend this count report for approval?`)) return;
       const line = (t, label) => ({ desc: `${label}: ${data[t].found} of ${data[t].card} found${data[t].missing.length ? ` · not found: ${data[t].missing.slice(0, 12).join(', ')}${data[t].missing.length > 12 ? ` +${data[t].missing.length - 12} more` : ''}` : ''}`.slice(0, 200), qty: data[t].found, unit: `of ${data[t].card}` });
       const lines = [line('ppe', 'PPE (RPCPPE)'), line('sep', 'Semi-expendable (RPCSP)')].filter((l, i) => data[i ? 'sep' : 'ppe'].card > 0);
       const id = submitApproval('count', period.asAt, {
@@ -34097,6 +34108,10 @@ ${sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.lengt
 
     // Newest first. Add an entry when a release changes something people will notice.
     const WHATS_NEW = [
+      { id: '2026-11-count-review', date: 'Nov 2026', title: 'Year-end count: clearer progress and a review before sending', points: [
+        'Year-end & reminders shows how many tagged units are still to check, and the action changes to Continue count when a count is underway.',
+        'Before sending a physical count report to the School Head, review the PPE and semi-expendable totals, unchecked tagged units and Inventory Committee names. You can cancel and keep counting or editing.'
+      ] },
       { id: '2026-11-attendance', date: 'Nov 2026', title: 'Attendance: who is in today', points: [
         'On class days the app now asks everyone once: present, on official business, or filing a leave. One tap and the time is recorded.',
         "The School Head's phone shows who's in, who's on leave and who still has to sign in, with one tap to mark present, on official business, absent or a service-credit day.",
